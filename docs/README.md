@@ -9,6 +9,7 @@ Start here (canonical)
 - Data formats and record rules: [docs/DATA_FORMATS.md](docs/DATA_FORMATS.md)
 - Editor user guide (GUI/usage status): [docs/EDITOR_README.md](docs/EDITOR_README.md)
 - Deliverable impact walkthrough: [docs/DELIVERABLE_IMPACT.md](docs/DELIVERABLE_IMPACT.md)
+- PKF/FDI change summary: [docs/PKF_FDI_CHANGE_SUMMARY.md](docs/PKF_FDI_CHANGE_SUMMARY.md)
 
 Developer references
 - Developer guide (tests, scripts, CLI usage): [docs/DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md) (to be added)

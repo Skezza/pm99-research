@@ -54,6 +54,7 @@ Canonical documentation (start here)
 - Data formats and field mapping: [docs/PLAYER_FIELD_MAP.md](docs/PLAYER_FIELD_MAP.md)
 - Reverse‑engineering summary: [docs/REVERSE_ENGINEERING_HANDOVER.md](docs/REVERSE_ENGINEERING_HANDOVER.md) and [docs/REVERSE_ENGINEERING_FINAL_REPORT.md](docs/REVERSE_ENGINEERING_FINAL_REPORT.md)
 - Deliverable impact walkthrough: [docs/DELIVERABLE_IMPACT.md](docs/DELIVERABLE_IMPACT.md)
+- PKF/FDI change summary: [docs/PKF_FDI_CHANGE_SUMMARY.md](docs/PKF_FDI_CHANGE_SUMMARY.md)
 - Project docs index: [docs/README.md](docs/README.md)
 
 Legacy investigation artifacts (kept for reference)
