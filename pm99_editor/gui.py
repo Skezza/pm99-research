@@ -7,37 +7,47 @@ from datetime import datetime
 import re
 from collections import defaultdict
 import threading
+import importlib
 
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 
-try:
-    # When executed as a package: python -m pm99_editor.gui
-    from .models import PlayerRecord, TeamRecord, CoachRecord
-    from .io import FDIFile
-    from .file_writer import save_modified_records
-    from .xor import xor_decode
-    from .loaders import load_teams, load_coaches
-    from .pkf import PKFDecoderError, PKFFile
-    from .exporters import (
-        generate_player_table_text,
-        generate_coach_table_text,
-        generate_team_table_text,
-    )
-except Exception:  # pragma: no cover - fallback path when run as a script
-    # When executed directly: python pm99_editor/gui.py
-    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-    from pm99_editor.models import PlayerRecord, TeamRecord, CoachRecord
-    from pm99_editor.io import FDIFile
-    from pm99_editor.file_writer import save_modified_records
-    from pm99_editor.xor import xor_decode
-    from pm99_editor.loaders import load_teams, load_coaches
-    from pm99_editor.pkf import PKFDecoderError, PKFFile
-    from pm99_editor.exporters import (
-        generate_player_table_text,
-        generate_coach_table_text,
-        generate_team_table_text,
-    )
+
+def _load_pm99_module(module: str):
+    """Load a ``pm99_editor`` submodule in both package and script execution modes."""
+
+    package_context = __package__ if __package__ not in (None, "") else None
+    if package_context:
+        return importlib.import_module(f".{module}", package_context)
+
+    project_root = Path(__file__).resolve().parent.parent
+    project_path = str(project_root)
+    if project_path not in sys.path:
+        sys.path.insert(0, project_path)
+    return importlib.import_module(f"pm99_editor.{module}")
+
+
+models = _load_pm99_module("models")
+io_mod = _load_pm99_module("io")
+file_writer = _load_pm99_module("file_writer")
+xor_mod = _load_pm99_module("xor")
+loaders = _load_pm99_module("loaders")
+pkf_mod = _load_pm99_module("pkf")
+exporters = _load_pm99_module("exporters")
+
+PlayerRecord = models.PlayerRecord
+TeamRecord = models.TeamRecord
+CoachRecord = models.CoachRecord
+FDIFile = io_mod.FDIFile
+save_modified_records = file_writer.save_modified_records
+xor_decode = xor_mod.xor_decode
+load_teams = loaders.load_teams
+load_coaches = loaders.load_coaches
+PKFDecoderError = pkf_mod.PKFDecoderError
+PKFFile = pkf_mod.PKFFile
+generate_player_table_text = exporters.generate_player_table_text
+generate_coach_table_text = exporters.generate_coach_table_text
+generate_team_table_text = exporters.generate_team_table_text
 
 
 """
