@@ -80,7 +80,8 @@ def find_player_records(file_data: bytes) -> List[Tuple[int, PlayerRecord]]:
             
             encoded = file_data[pos + 2 : pos + 2 + length]
             decoded = xor_decode(encoded, 0x61)
-            
+
+            found_separated = False
             # Process separated player records (high confidence)
             if 1000 < length < 100000 and separator in decoded:
                 parts = decoded.split(separator)
@@ -90,7 +91,7 @@ def find_player_records(file_data: bytes) -> List[Tuple[int, PlayerRecord]]:
                             rec = PlayerRecord.from_bytes(part, pos)
                             if rec.name and rec.name != "Unknown Player" and len(rec.name) > 3:
                                 norm_name = _normalize_name(rec.name)
-                                
+
                                 # Early deduplication - only keep best version
                                 if norm_name not in seen_names:
                                     rec.confidence = 95
@@ -99,12 +100,12 @@ def find_player_records(file_data: bytes) -> List[Tuple[int, PlayerRecord]]:
                                     records_by_name[norm_name] = (pos, rec, 95)
                         except Exception:
                             pass
+                found_separated = True
                 sections_scanned += 1
-            
+
             # Process embedded records in medium/large sections (lower confidence)
-            # Changed from 'elif' to 'if' to also check sections with separators
-            # Some players are embedded even in sections that have separated records
-            if 1000 < length < 200000:
+            # Skip embedded scan for sections that yielded separated records, unless section is large enough
+            if (not found_separated and 1000 < length < 200000) or (found_separated and 10000 < length < 200000):
                 try:
                     text = decoded.decode("latin-1", errors="ignore")
                     
