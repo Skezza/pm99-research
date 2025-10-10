@@ -23,7 +23,7 @@ To edit player **characteristics and abilities**, we need to:
    - Needed: Parse each individual player's complete record
    
 2. **Map Field Byte Offsets**
-   - Current: We know the schema from Ghidra (see [`out/schema_players.md`](out/schema_players.md))
+   - Current: We know the schema from Ghidra (see [`../archive/schema_players.md`](../archive/schema_players.md))
    - Needed: Find where these fields actually are in the file
    
 3. **Handle Variable-Length Records**
@@ -74,7 +74,7 @@ C. **Runtime Debugging** (3-4 hours) - Most Reliable
 
 ### 2. Field Parsing Implementation
 
-**Based on Schema** ([`out/schema_players.md`](out/schema_players.md)):
+**Based on Schema** ([`../archive/schema_players.md`](../archive/schema_players.md)):
 
 ```python
 class PlayerRecord:
@@ -295,7 +295,7 @@ Breakdown:
 - Name extraction working
 
 ### ✅ Known Information
-- Field schema from Ghidra ([`out/schema_players.md`](out/schema_players.md))
+- Field schema from Ghidra ([`../archive/schema_players.md`](../archive/schema_players.md))
 - File format understood
 - 10 skill attributes mapped (with offsets)
 - Physical attributes mapped (height, weight, birth)

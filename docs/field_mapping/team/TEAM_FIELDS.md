@@ -443,8 +443,8 @@ OVERALL PROGRESS: ~70%
 - [`DBDAT/ENT98030.FDI`](DBDAT/ENT98030.FDI) - Coaches (analyzed partially)
 
 **Previous Documentation**:
-- [`out/schema_players.md`](out/schema_players.md) - Ghidra analysis (partial)
-- [`out/handover.md`](out/handover.md) - Previous session notes
+- [`../../archive/schema_players.md`](../../archive/schema_players.md) - Ghidra analysis (partial)
+- [`../../archive/handover.md`](../../archive/handover.md) - Previous session notes
 
 ---
 

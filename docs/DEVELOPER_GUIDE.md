@@ -122,7 +122,7 @@ Documentation policy (canonical vs legacy)
 - Canonical: docs/ (concise and maintained)
   - Entrypoints: [docs/GETTING_STARTED.md](./GETTING_STARTED.md), [docs/ARCHITECTURE.md](./ARCHITECTURE.md), [docs/DATA_FORMATS.md](./DATA_FORMATS.md), [docs/EDITOR_README.md](./EDITOR_README.md)
   - Narrative summary: [docs/REVERSE_ENGINEERING_REPORT.md](./REVERSE_ENGINEERING_REPORT.md)
-- Legacy: out/ and session logs in docs/ preserved for traceability
+- Legacy: docs/archive/ and session logs in docs/ preserved for traceability
   - Useful as references (triangulation, verify snapshots)
   - Do not extend; migrate material into canonical docs as rules solidify
 
@@ -154,7 +154,7 @@ Prepare and persist a targeted decoded text replacement (advanced)
 
 Where to raise questions
 - Start with canonical docs in this folder
-- Cross-check with out/ artifacts if you need historical context
+- Cross-check with docs/archive/ artifacts if you need historical context
 - Use code anchors:
   - Scan: [FDIFile._iter_records()](../pm99_editor/io.py:63)
   - Parse: [PlayerRecord.from_bytes()](../pm99_editor/models.py:63)

@@ -271,9 +271,9 @@ All manually verified known teams were successfully extracted:
 - [`DBDAT/ENT98030.FDI`](DBDAT/ENT98030.FDI) - Coach database (analyzed)
 
 ### Documentation
-- [`out/FINAL_HANDOVER.md`](out/FINAL_HANDOVER.md) - Previous handover
-- [`out/ENHANCEMENT_PLAN.md`](out/ENHANCEMENT_PLAN.md) - Editor roadmap
-- [`out/schema_players.md`](out/schema_players.md) - Player field schema
+- [`../archive/FINAL_HANDOVER.md`](../archive/FINAL_HANDOVER.md) - Previous handover
+- [`../archive/ENHANCEMENT_PLAN.md`](../archive/ENHANCEMENT_PLAN.md) - Editor roadmap
+- [`../archive/schema_players.md`](../archive/schema_players.md) - Player field schema
 
 ### Editors Created
 - [`PM99_Editor.py`](PM99_Editor.py) - Professional GUI editor ⭐
