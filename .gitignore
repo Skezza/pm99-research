@@ -15,8 +15,6 @@ venv/
 *.orig
 
 # Data
-*.FDI
-*.PKF
 *.FDI.backup
 *.FDI.bak
 

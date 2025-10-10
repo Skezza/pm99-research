@@ -1,0 +1,11 @@
+binary,string,rva_hex,xrefs
+MANAGPRE.EXE,"dbdat\eq98%03u.fdi","0x0073524c",1
+MANAGPRE.EXE,"dbdat\jug98%03u.fdi","0x00735260",1
+MANAGPRE.EXE,"dbdat\ent98%03u.fdi","0x00734d10",1
+MANAGPRE.EXE,"dbdat\textos\paises.%u","0x007352b0",1
+MANAGPRE.EXE,"dbdat\textos\apellido.%u","0x00735300",1
+MANAGPRE.EXE,"dbdat\textos\nombres.%u","0x0073531c",1
+DBASEPRE.EXE,"dbdat\eq98030.fdi","0x004a6758",1
+DBASEPRE.EXE,"dbdat\jug98030.fdi","0x004a4ba8",9
+DBASEPRE.EXE,"dbdat\ent98030.fdi","0x004a437c",7
+DBASEPRE.EXE,"DBDAT\TEXTOS\PAISES.%u","0x004a694c",1
