@@ -1,16 +1,21 @@
 """Tests for the conservative PKF parser."""
 
 import struct
+from pathlib import Path
 from typing import Iterable, Sequence
 
 import pytest
 
 from pm99_editor.pkf import (
+    ArchiveStringMatch,
+    ArchiveStringSearcher,
     PKFDecoderError,
     PKFFile,
     PKFStringMatch,
     PKFStringSearcher,
 )
+from pm99_editor.models import FDIHeader
+from pm99_editor.xor import encode_entry
 
 
 def build_toc32_pkf(chunks):
@@ -78,6 +83,24 @@ def _build_pkf(entries: Sequence[bytes]) -> bytes:
     return bytes(header + table + payload)
 
 
+def _build_fdi(entries: Sequence[bytes]) -> bytes:
+    """Create a minimal FDI image with provided decoded payloads."""
+
+    header = FDIHeader(record_count=len(entries), version=2, max_offset=0, dir_size=len(entries) * 8)
+    header_bytes = header.to_bytes()
+    directory = bytearray()
+    payload = bytearray()
+    offset = len(header_bytes) + len(entries) * 8
+
+    for idx, decoded in enumerate(entries):
+        encoded = encode_entry(decoded)
+        directory.extend(struct.pack("<IHH", offset, ord("P"), idx))
+        payload.extend(encoded)
+        offset += len(encoded)
+
+    return header_bytes + bytes(directory) + bytes(payload)
+
+
 def test_pkf_string_searcher_accepts_single_string():
     raw = _build_pkf([b"Hello World", b"No matches here"])
     pkf = PKFFile.from_bytes("sample.pkf", raw)
@@ -142,3 +165,36 @@ def test_decoder_registry():
         PKFFile.decode_payload(b"BADxxx")
 
     PKFFile.clear_decoders()
+
+
+def test_archive_string_searcher_scans_pkf_and_fdi(tmp_path: Path):
+    pkf_path = tmp_path / "sample.pkf"
+    pkf_path.write_bytes(_build_pkf([b"Alpha hero", b"Beta block"]))
+
+    fdi_path = tmp_path / "sample.fdi"
+    fdi_path.write_bytes(_build_fdi([b"Coach Alpha", b"Club Beta"]))
+
+    searcher = ArchiveStringSearcher(case_sensitive=False)
+    matches = searcher.search([tmp_path], ["alpha", "beta"])
+
+    assert matches  # ensure we found something
+    pkf_hits = [m for m in matches if m.path == pkf_path]
+    fdi_hits = [m for m in matches if m.path == fdi_path]
+
+    assert any(m.file_type == "PKF" and m.needle == "alpha" for m in pkf_hits)
+    assert any(m.file_type == "PKF" and m.needle == "beta" for m in pkf_hits)
+    assert any(m.file_type == "FDI" and m.needle == "alpha" for m in fdi_hits)
+    assert any(m.file_type == "FDI" and m.needle == "beta" for m in fdi_hits)
+
+    grouped = searcher.search_grouped([tmp_path], ["alpha", "beta"])
+    assert set(grouped) == {"alpha", "beta"}
+    assert all(isinstance(m, ArchiveStringMatch) for group in grouped.values() for m in group)
+
+
+def test_archive_string_searcher_records_missing_paths(tmp_path: Path):
+    searcher = ArchiveStringSearcher()
+    missing = tmp_path / "does_not_exist"
+    matches = searcher.search([missing], "alpha")
+
+    assert matches == []
+    assert searcher.errors and searcher.errors[0][0] == missing
