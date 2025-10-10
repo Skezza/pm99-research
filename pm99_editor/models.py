@@ -611,6 +611,8 @@ class PlayerRecord:
     confidence: int = 100
     # Mark records that are low-confidence or suppressed by deduplication heuristics so the UI can hide/show them.
     suppressed: bool = False
+    # Internal flag signalling that the raw name bytes need rebuilding before serialization.
+    name_dirty: bool = field(default=False, init=False, repr=False)
     
     @classmethod
     def from_bytes(cls, data: bytes, offset: int, version: int = 700) -> 'PlayerRecord':
@@ -788,6 +790,7 @@ class PlayerRecord:
                     # If patching fails for any reason, keep original raw_data unchanged
                     pass
 
+            rec.name_dirty = False
             return rec
             
         except Exception as e:
@@ -902,6 +905,9 @@ class PlayerRecord:
         """
         # Build XOR-decoded payload first (decoded = in-file decoded record)
         if self.raw_data is not None:
+            if getattr(self, 'name_dirty', False):
+                self._rebuild_name_region()
+
             data = bytearray(self.raw_data)
 
             # Update team ID (bytes 0-1, little-endian)
@@ -909,44 +915,6 @@ class PlayerRecord:
 
             # Update squad number (byte 2)
             data[2] = self.squad_number
-            
-            # Update player name if modified
-            # Name region: bytes 5 to name_end marker (0x61x4)
-            # Format: [abbreviated name][separator][FULL NAME][0x61x4 marker]
-            if self.modified:
-                # Build new name string
-                given = (self.given_name or "").strip()
-                surname = (self.surname or "").strip()
-                
-                # Format: Proper-case given + UPPERCASE surname (matches parser expectations)
-                new_name = f"{given.title()} {surname.upper()}".strip()
-                name_bytes = new_name.encode('latin-1', errors='ignore')
-                
-                # Find current name region
-                old_name_end = self._find_name_end_in_data(data)
-                if old_name_end is not None and old_name_end >= 5:
-                    # Calculate space available (from byte 5 to old name_end)
-                    old_name_len = old_name_end - 5
-                    
-                    # Build new name region with marker
-                    # If new name fits in old space, pad it; otherwise rebuild record
-                    if len(name_bytes) <= old_name_len:
-                        # Fits - replace in place with padding
-                        padded_name = name_bytes + b' ' * (old_name_len - len(name_bytes))
-                        data[5:old_name_end] = padded_name
-                    else:
-                        # Doesn't fit - need to rebuild the record with new name length
-                        # Keep: header (bytes 0-4), new name, marker, then all metadata/attributes
-                        header = data[0:5]
-                        marker = bytes([0x61]) * 4
-                        new_name_region = name_bytes + marker
-                        
-                        # Find where metadata starts (after old marker)
-                        metadata_start = old_name_end + 4
-                        metadata_and_attrs = data[metadata_start:]
-                        
-                        # Rebuild
-                        data = bytearray(header + new_name_region + metadata_and_attrs)
 
             # Compute attribute start limit to avoid overwriting attributes
             attr_start = len(data) - 19
@@ -989,6 +957,7 @@ class PlayerRecord:
                     data[offset] = attr_val ^ 0x61
 
             decoded = bytes(data)
+            self.raw_data = decoded
         else:
             # Construct a canonical decoded record from fields (sized so attributes align).
             header = struct.pack("<H", self.team_id) + bytes([self.squad_number]) + b'\x00\x00'
@@ -1034,7 +1003,71 @@ class PlayerRecord:
         if self.raw_data is None:
             return encode_entry(decoded)
         return decoded
-    
+
+    def _update_full_name(self):
+        """Synchronise the legacy `name` field with given + surname."""
+        self.name = f"{self.given_name} {self.surname}".strip()
+
+    def _mark_name_dirty(self):
+        """Mark the record so the raw name bytes are rebuilt on next serialization."""
+        self.modified = True
+        self.name_dirty = True
+
+    def _rebuild_name_region(self):
+        """Rebuild the raw_data name region ensuring metadata/attributes remain aligned."""
+        if self.raw_data is None:
+            self.name_dirty = False
+            return
+
+        data = bytearray(self.raw_data)
+
+        name_start = 5
+        attr_start = len(data) - 19 if len(data) >= 19 else len(data)
+        marker = bytes([0x61]) * 4
+        min_metadata_len = 14  # Allows offsets up to name_end + 13 (height)
+
+        given = (self.given_name or "").strip()
+        surname = (self.surname or "").strip()
+        formatted_name = f"{given.title()} {surname.upper()}".strip()
+        try:
+            new_name_bytes = formatted_name.encode('latin-1')
+        except Exception:
+            new_name_bytes = formatted_name.encode('latin-1', errors='replace')
+
+        old_name_end = self._find_name_end_in_data(bytes(data))
+        if old_name_end is None or old_name_end < name_start:
+            fallback_end = attr_start - (min_metadata_len + len(marker))
+            old_name_end = max(name_start, fallback_end)
+
+        old_name_len = max(old_name_end - name_start, 0)
+
+        min_name_bytes = max(16, old_name_len)
+        if len(new_name_bytes) < min_name_bytes:
+            new_name_bytes = new_name_bytes + b" " * (min_name_bytes - len(new_name_bytes))
+
+        metadata_start = min(attr_start, old_name_end + len(marker))
+        metadata_block = data[metadata_start:attr_start]
+        attributes_block = data[attr_start:]
+
+        metadata_len = max(len(metadata_block), min_metadata_len)
+        if len(metadata_block) < metadata_len:
+            metadata_block = metadata_block + b"\x00" * (metadata_len - len(metadata_block))
+
+        if len(attributes_block) < 19:
+            attributes_block = attributes_block + b"\x00" * (19 - len(attributes_block))
+
+        header = data[:name_start]
+
+        new_data = bytearray()
+        new_data += header
+        new_data += new_name_bytes
+        new_data += marker
+        new_data += metadata_block
+        new_data += attributes_block
+
+        self.raw_data = bytes(new_data)
+        self.name_dirty = False
+
     @staticmethod
     def _find_name_end_in_data(data: bytes) -> Optional[int]:
         """Find the 'aaaa' (0x61 0x61 0x61 0x61) name-end marker in data."""
@@ -1131,7 +1164,7 @@ class PlayerRecord:
     
     def set_given_name(self, new_name: str):
         """Set player's given name (first name).
-        
+
         Args:
             new_name: New given name (1-12 characters, validated by game)
             
@@ -1143,10 +1176,10 @@ class PlayerRecord:
             raise ValueError("Given name cannot be empty")
         if len(new_name) > 12:
             raise ValueError("Given name too long (max 12 characters)")
-        
+
         self.given_name = new_name
-        self.name = f"{self.given_name} {self.surname}".strip()
-        self.modified = True
+        self._update_full_name()
+        self._mark_name_dirty()
     
     def set_surname(self, new_name: str):
         """Set player's surname (last name).
@@ -1162,10 +1195,10 @@ class PlayerRecord:
             raise ValueError("Surname cannot be empty")
         if len(new_name) > 12:
             raise ValueError("Surname too long (max 12 characters)")
-        
+
         self.surname = new_name
-        self.name = f"{self.given_name} {self.surname}".strip()
-        self.modified = True
+        self._update_full_name()
+        self._mark_name_dirty()
     
     def set_name(self, full_name: str):
         """Set player's full name (splits into given name and surname).
@@ -1184,8 +1217,11 @@ class PlayerRecord:
         if len(parts) < 2:
             raise ValueError("Name must contain both given name and surname")
         
-        self.set_given_name(parts[0])
-        self.set_surname(parts[1])
+        given, surname = parts[0], parts[1]
+        self.given_name = given.strip()
+        self.surname = surname.strip()
+        self._update_full_name()
+        self._mark_name_dirty()
 
     def set_nationality(self, nat_id: int):
         """Set nationality ID (0-255)."""
