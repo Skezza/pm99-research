@@ -1,28 +1,44 @@
 """Lightweight PKF container helpers.
 
-This module provides a conservative parser that can discover simple
-entry tables inside PKF archives.  It intentionally avoids guessing at
-resource-specific payload formats; instead it exposes raw entry bytes and a
-registry so specialised decoders can be plugged in incrementally.
-
-The implementation errs on the side of safety: if a PKF file does not match
-our supported table layout we fall back to a single-entry representation.
-This still lets tooling consume the file without making incorrect
-assumptions about its structure, while enabling future improvements once the
-format is better understood.
+This module provides a deterministic parser for simple table-of-contents
+layouts inside PKF archives.  Rather than silently falling back to
+best-effort heuristics, the parser validates that entry metadata accounts for
+the entire payload and raises :class:`PKFTableValidationError` when it does
+not.  Payload bytes are still exposed alongside a best-effort classification
+so specialised decoders can be plugged in incrementally.
 """
 
 from __future__ import annotations
 
 import struct
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
+
+from pm99_editor.diagnostics import record_pipeline_issue
 
 Decoder = Callable[[bytes], Any]
 
 
 class PKFDecoderError(RuntimeError):
     """Wrap decoder failures so callers can handle them uniformly."""
+
+
+class PKFTableValidationError(PKFDecoderError):
+    """Raised when a PKF table-of-contents fails structural validation."""
+
+    def __init__(self, issues: Sequence[str]) -> None:
+        self.issues = list(issues)
+        message = "PKF table validation failed: " + "; ".join(self.issues)
+        super().__init__(message)
+
+
+class PKFEntryKind(str, Enum):
+    """Best-effort classification for well-known PKF payload layouts."""
+
+    TEAM_ROSTER = "team_roster"
+    STRING_TABLE = "string_table"
+    BINARY = "binary"
 
 
 @dataclass
@@ -35,6 +51,7 @@ class PKFEntry:
     raw_bytes: bytes
     name: Optional[str] = None
     meta: Dict[str, Any] = field(default_factory=dict)
+    kind: PKFEntryKind = PKFEntryKind.BINARY
 
     def preview(self, size: int = 16) -> bytes:
         """Return the first ``size`` bytes for quick inspection."""
@@ -71,10 +88,43 @@ class PKFFile:
     # Construction helpers
     # ------------------------------------------------------------------
     @classmethod
-    def from_bytes(cls, name: str, file_bytes: bytes) -> "PKFFile":
-        """Parse raw bytes into a :class:`PKFFile` instance."""
+    def from_bytes(
+        cls,
+        name: str,
+        file_bytes: bytes,
+        *,
+        strict: bool = True,
+        allow_raw_fallback: bool = False,
+    ) -> "PKFFile":
+        """Parse raw bytes into a :class:`PKFFile` instance.
 
-        entries, format_hint = cls._parse_entries(file_bytes)
+        Args:
+            name: Friendly identifier used in ``repr`` output.
+            file_bytes: Raw PKF blob.
+            strict: When ``True`` (default) structural validation failures raise
+                :class:`PKFTableValidationError`.
+            allow_raw_fallback: Enable the legacy single-entry fallback when
+                ``strict`` is ``False``.
+        """
+        try:
+            entries, format_hint = cls._parse_entries(file_bytes)
+        except PKFTableValidationError as exc:
+            record_pipeline_issue(
+                "pkf_table_validation",
+                {"file": name, "issues": exc.issues},
+            )
+            if strict:
+                raise
+            if allow_raw_fallback:
+                fallback_entry = PKFEntry(
+                    index=0,
+                    offset=0,
+                    length=len(file_bytes),
+                    raw_bytes=file_bytes,
+                    kind=PKFEntryKind.BINARY,
+                )
+                return cls(name, file_bytes, [fallback_entry], format_hint="raw")
+            raise
         return cls(name, file_bytes, entries, format_hint=format_hint)
 
     @staticmethod
@@ -82,53 +132,82 @@ class PKFFile:
         """Attempt to parse a simple table-of-contents.
 
         The heuristic currently supports a layout of ``<count><offset><size>``
-        triples using 32-bit little-endian integers.  If that check fails we
-        gracefully fall back to representing the whole file as a single entry.
+        triples using 32-bit little-endian integers.  If that check fails a
+        :class:`PKFTableValidationError` is raised detailing the violations.
         """
+        issues: List[str] = []
 
-        if len(file_bytes) >= 12:  # enough room for count + one entry
+        if len(file_bytes) < 12:
+            issues.append("file shorter than minimum TOC size (12 bytes)")
+            raise PKFTableValidationError(issues)
+
+        try:
+            count = struct.unpack_from("<I", file_bytes, 0)[0]
+        except struct.error as exc:  # pragma: no cover - defensive
+            issues.append(f"failed to unpack entry count: {exc}")
+            raise PKFTableValidationError(issues) from exc
+
+        if not 0 < count < 4096:
+            issues.append(f"entry count {count} outside supported range")
+            raise PKFTableValidationError(issues)
+
+        table_size = 4 + count * 8
+        if table_size > len(file_bytes):
+            issues.append("table extends beyond end of file")
+            raise PKFTableValidationError(issues)
+
+        entries: List[PKFEntry] = []
+
+        for index in range(count):
+            base = 4 + index * 8
             try:
-                count = struct.unpack_from("<I", file_bytes, 0)[0]
-            except struct.error:
-                count = 0
-            else:
-                table_size = 4 + count * 8
-                if 0 < count < 4096 and table_size <= len(file_bytes):
-                    entries: List[PKFEntry] = []
-                    valid = True
-                    for index in range(count):
-                        base = 4 + index * 8
-                        try:
-                            offset, length = struct.unpack_from("<II", file_bytes, base)
-                        except struct.error:
-                            valid = False
-                            break
-                        if offset < table_size:
-                            valid = False
-                            break
-                        if offset + length > len(file_bytes):
-                            valid = False
-                            break
-                        raw = file_bytes[offset : offset + length]
-                        entries.append(
-                            PKFEntry(
-                                index=index,
-                                offset=offset,
-                                length=length,
-                                raw_bytes=raw,
-                            )
-                        )
-                    if valid and len(entries) == count:
-                        return entries, "toc32"
+                offset, length = struct.unpack_from("<II", file_bytes, base)
+            except struct.error as exc:
+                issues.append(f"failed to unpack entry {index}: {exc}")
+                continue
+            if offset < table_size:
+                issues.append(
+                    f"entry {index} offset 0x{offset:x} overlaps TOC (size 0x{table_size:x})"
+                )
+            if length == 0:
+                issues.append(f"entry {index} length is zero")
+            if offset + length > len(file_bytes):
+                issues.append(
+                    f"entry {index} extends beyond file (end 0x{offset + length:x}, size 0x{len(file_bytes):x})"
+                )
+            raw = file_bytes[offset : offset + max(0, length)]
+            entries.append(
+                PKFEntry(
+                    index=index,
+                    offset=offset,
+                    length=length,
+                    raw_bytes=raw,
+                    kind=_classify_entry(raw),
+                )
+            )
 
-        # Fallback: treat the entire blob as one entry
-        fallback_entry = PKFEntry(
-            index=0,
-            offset=0,
-            length=len(file_bytes),
-            raw_bytes=file_bytes,
-        )
-        return [fallback_entry], "raw"
+        if issues:
+            raise PKFTableValidationError(issues)
+
+        # Validate monotonic offsets and contiguous coverage
+        sorted_pairs = sorted(((entry.offset, entry.length, entry.index) for entry in entries))
+        expected_offset = table_size
+        for offset, length, index in sorted_pairs:
+            if offset != expected_offset:
+                issues.append(
+                    f"entry {index} starts at 0x{offset:x}, expected 0x{expected_offset:x}"
+                )
+            expected_offset = offset + length
+
+        if expected_offset != len(file_bytes):
+            issues.append(
+                f"payload coverage mismatch: last entry ends 0x{expected_offset:x}, file size 0x{len(file_bytes):x}"
+            )
+
+        if issues:
+            raise PKFTableValidationError(issues)
+
+        return entries, "toc32"
 
     # ------------------------------------------------------------------
     # Registry management
@@ -165,6 +244,7 @@ class PKFFile:
                 raw_bytes=entry.raw_bytes,
                 name=entry.name,
                 meta=dict(entry.meta),
+                kind=entry.kind,
             )
             for entry in self._entries
         ]
@@ -205,6 +285,7 @@ class PKFFile:
             raw_bytes=entry.raw_bytes,
             name=entry.name,
             meta=dict(entry.meta),
+            kind=entry.kind,
         )
 
     # ------------------------------------------------------------------
@@ -302,4 +383,23 @@ class PKFFile:
         return f"PKFFile(name={self.name!r}, entries={len(self._entries)}, format={self._format_hint!r})"
 
 
-__all__ = ["PKFDecoderError", "PKFEntry", "PKFFile"]
+def _classify_entry(raw: bytes) -> PKFEntryKind:
+    """Best-effort classification of a PKF entry payload."""
+
+    if raw.startswith(b"\x61\xdd\x63") and len(raw) > 64:
+        return PKFEntryKind.TEAM_ROSTER
+
+    printable = sum(1 for byte in raw if 32 <= byte <= 126)
+    if raw and printable / max(1, len(raw)) > 0.85:
+        return PKFEntryKind.STRING_TABLE
+
+    return PKFEntryKind.BINARY
+
+
+__all__ = [
+    "PKFDecoderError",
+    "PKFTableValidationError",
+    "PKFEntry",
+    "PKFEntryKind",
+    "PKFFile",
+]
