@@ -11,7 +11,7 @@ from pm99_editor.xor import decode_entry
 
 # Scanner implementation is packaged to avoid importing the GUI monolith.
 # Import the scanner from the package rather than the top-level script.
-from pm99_editor.scanner import find_player_records
+from pm99_editor.scanner import find_player_records, PlayerScanError, PlayerScanIssue
 # Use the package-local writer (placeholder implementation exists in pm99_editor.file_writer)
 from pm99_editor.file_writer import save_modified_records
 import struct
@@ -91,6 +91,7 @@ class FDIFile:
         self.directory = []
         self.records = []
         self.modified_records = {}
+        self.scan_issues: List[PlayerScanIssue] = []
     
     def load(self):
         """Load and parse the FDI file (OPTIMIZED VERSION)"""
@@ -109,7 +110,15 @@ class FDIFile:
 
         # Use optimized scanner for primary record discovery
         # This replaces 4 separate scanning passes with a single coordinated pass
-        scanner_records = find_player_records(file_data)
+        self.scan_issues = []
+        try:
+            scanner_records = find_player_records(
+                file_data, strict=True, quarantine=self.scan_issues
+            )
+        except PlayerScanError as exc:
+            raise PlayerScanError(
+                exc.issues
+            ) from exc
         
         # Build normalized name lookup for deduplication
         names_seen = set()
