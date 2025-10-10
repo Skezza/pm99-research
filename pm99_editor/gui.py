@@ -32,31 +32,14 @@ except Exception:
 
 # Ensure common helpers are available when run as a script
 from pathlib import Path
-
-"""
-Modern GUI application for Premier Manager 99 Database Editor
-Uses the modular package structure
-"""
-
-import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
-from pm99_editor.models import PlayerRecord, TeamRecord, CoachRecord
-from pm99_editor.io import FDIFile
-from pm99_editor.file_writer import save_modified_records
-from pm99_editor.xor import xor_decode
-from pm99_editor.loaders import load_teams, load_coaches
-from pm99_editor.pkf import PKFDecoderError, PKFFile
-from pm99_editor.pkf_searcher import PKFSearcher, SearchResult
-from pm99_editor.exporters import (
-    generate_player_table_text,
-    generate_coach_table_text,
-    generate_team_table_text,
-)
 from datetime import datetime
 import re
 from collections import defaultdict
 import threading
+import importlib
 
+import tkinter as tk
+from tkinter import ttk, messagebox, filedialog
 
 def _format_hex_preview(data: bytes, width: int = 16, start_offset: int = 0, max_lines: int = 1000) -> tuple[str, bool]:
     """Return a hex dump for ``data`` suitable for text display with pagination support.
