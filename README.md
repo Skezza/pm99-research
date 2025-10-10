@@ -6,6 +6,9 @@ One‑stop entrypoint for working with Premier Manager 99 database files: inspec
 Quick start
 Requirements: Python 3.8+; run from repo root. Database files are under [DBDAT/](DBDAT/).
 
+GUI tips
+- Launch the desktop editor via `python -m pm99_editor.gui`; the **Tools → Open PKF Viewer…** menu opens the new container inspector for `.PKF` archives with a built-in string searcher that accepts single needles or lists.
+
 CLI examples
 The command line uses [pm99_editor/cli.py](pm99_editor/cli.py) via module entry. Core commands are implemented in [cli.cmd_list()](pm99_editor/cli.py:10), [cli.cmd_search()](pm99_editor/cli.py:22), [cli.cmd_rename()](pm99_editor/cli.py:38) and [cli.cmd_info()](pm99_editor/cli.py:74); the entry point is [cli.main()](pm99_editor/cli.py:89).
 
@@ -40,6 +43,7 @@ Project layout
   - Models: [PlayerRecord](pm99_editor/models.py:13) with parser [PlayerRecord.from_bytes()](pm99_editor/models.py:63) and serializer [PlayerRecord.to_bytes()](pm99_editor/models.py:281)
   - Header & directory: [FDIHeader.from_bytes()](pm99_editor/models.py:389), [DirectoryEntry.from_bytes()](pm99_editor/models.py:434)
   - XOR helpers: [pm99_editor/xor.py](pm99_editor/xor.py)
+  - PKF containers: [pm99_editor/pkf.py](pm99_editor/pkf.py)
 - CLI: [pm99_editor/cli.py](pm99_editor/cli.py)
 - Tests: [tests/](tests/)
 - Analysis scripts: [scripts/](scripts/)
