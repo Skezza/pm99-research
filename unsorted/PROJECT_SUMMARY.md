@@ -1,4 +1,4 @@
-# Premier Manager 99 Reverse Engineering - Project Summary
+﻿# Premier Manager 99 Reverse Engineering - Project Summary
 
 ## Mission Accomplished
 
@@ -27,24 +27,24 @@ Successfully reverse-engineered the Premier Manager 99 database loader system an
 
 ### Python Implementation
 
-Created package [`pm99_editor/`](pm99_editor/) with:
+Created package [`app/`](app/) with:
 
-- **[`xor.py`](pm99_editor/xor.py)** - Encode/decode utilities
+- **[`xor.py`](app/xor.py)** - Encode/decode utilities
   - `decode_entry()` - Extract XOR-encrypted fields
   - `encode_entry()` - Reverse operation for writing
   - `read_string()`/`write_string()` - Text handling
 
-- **[`models.py`](pm99_editor/models.py)** - Data structures
+- **[`models.py`](app/models.py)** - Data structures
   - `PlayerRecord` - Player data with fields
   - `FDIHeader` - File header structure
   - `DirectoryEntry` - Offset table entries
 
-- **[`io.py`](pm99_editor/io.py)** - File operations
+- **[`io.py`](app/io.py)** - File operations
   - `FDIFile` - Read/write FDI databases
   - Directory parsing
   - Record iteration
 
-- **[`cli.py`](pm99_editor/cli.py)** - User interface
+- **[`cli.py`](app/cli.py)** - User interface
   - `info` - Display database metadata
   - `list` - Show players
   - `search` - Find by name
@@ -56,7 +56,7 @@ Created package [`pm99_editor/`](pm99_editor/) with:
 
 ```bash
 # Display database information
-python -m pm99_editor info DBDAT/JUG98030.FDI
+python -m app info DBDAT/JUG98030.FDI
 # Output: Signature, version, 11479 records, 2656 directory entries
 
 # Decode individual entries
@@ -79,12 +79,12 @@ python out/decode_one.py DBDAT/TEXTOS.PKF 0x0 --out textos_0000.bin
    - Compare decoded bytes with Ghidra offsets in schema
 
 2. **Encoder Implementation**
-   - XOR encode function exists: [`encode_entry()`](pm99_editor/xor.py:38-56)
+   - XOR encode function exists: [`encode_entry()`](app/xor.py:38-56)
    - Need: Field serialization to match binary format
    - Test: Encode→Decode round-trip must be bit-identical
 
 3. **Write Pipeline**
-   - Framework exists: [`FDIFile.save()`](pm99_editor/io.py:117-137)
+   - Framework exists: [`FDIFile.save()`](app/io.py:117-137)
    - Need: Directory rebuilding with updated offsets
    - Validate: Modified file loads in MANAGPRE.EXE without errors
 
@@ -166,12 +166,12 @@ decoded = bytes(b ^ 0x61 for b in encoded)
 - [`out/breadcrumbs.csv`](out/breadcrumbs.csv) - String search results
 
 ### Python Package
-- [`pm99_editor/__init__.py`](pm99_editor/__init__.py) - Package exports
-- [`pm99_editor/__main__.py`](pm99_editor/__main__.py) - Entry point
-- [`pm99_editor/xor.py`](pm99_editor/xor.py) - XOR utilities
-- [`pm99_editor/models.py`](pm99_editor/models.py) - Data structures
-- [`pm99_editor/io.py`](pm99_editor/io.py) - File I/O
-- [`pm99_editor/cli.py`](pm99_editor/cli.py) - CLI interface
+- [`app/__init__.py`](app/__init__.py) - Package exports
+- [`app/__main__.py`](app/__main__.py) - Entry point
+- [`app/xor.py`](app/xor.py) - XOR utilities
+- [`app/models.py`](app/models.py) - Data structures
+- [`app/io.py`](app/io.py) - File I/O
+- [`app/cli.py`](app/cli.py) - CLI interface
 
 ### Test Data
 - [`textos_0000.bin`](textos_0000.bin) - Decoded TEXTOS sample
@@ -182,7 +182,7 @@ decoded = bytes(b ^ 0x61 for b in encoded)
 
 ```bash
 # View database metadata
-python -m pm99_editor info DBDAT/JUG98030.FDI
+python -m app info DBDAT/JUG98030.FDI
 
 # Decode a specific entry
 python out/decode_one.py DBDAT/JUG98030.FDI 0x410 --preview
@@ -195,13 +195,13 @@ python out/decode_one.py DBDAT/TEXTOS.PKF 0x0 --out output.bin
 
 ```bash
 # List players with parsed names
-python -m pm99_editor list DBDAT/JUG98030.FDI --limit 20
+python -m app list DBDAT/JUG98030.FDI --limit 20
 
 # Search for specific player
-python -m pm99_editor search DBDAT/JUG98030.FDI "Ronaldo"
+python -m app search DBDAT/JUG98030.FDI "Ronaldo"
 
 # Rename player
-python -m pm99_editor rename DBDAT/JUG98030.FDI --id 123 --name "New Name"
+python -m app rename DBDAT/JUG98030.FDI --id 123 --name "New Name"
 ```
 
 ## Critical Success Factors
@@ -262,7 +262,7 @@ To complete the editor:
 
 1. **Test Parsing at Offset 0x410**
    ```bash
-   python -c "from pm99_editor.xor import decode_entry; 
+   python -c "from app.xor import decode_entry; 
    data=open('DBDAT/JUG98030.FDI','rb').read(); 
    dec,_=decode_entry(data,0x410); 
    print(dec[:128].hex())"

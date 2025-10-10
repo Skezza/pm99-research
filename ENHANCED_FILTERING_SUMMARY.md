@@ -1,4 +1,4 @@
-# Enhanced Team Filtering - Summary
+﻿# Enhanced Team Filtering - Summary
 
 ## Problem
 After initial refactoring, the Teams tab in the GUI still displayed garbage entries:
@@ -126,11 +126,11 @@ The filters allow legitimate team names like:
 - "AC Milan"
 
 ## Files Modified
-- [`pm99_editor/loaders.py`](pm99_editor/loaders.py) - Enhanced `load_teams()` function
+- [`app/loaders.py`](app/loaders.py) - Enhanced `load_teams()` function
 - [`test_garbage_filters.py`](test_garbage_filters.py) - New test to validate filters
 
 ## Next Steps
-1. Test in actual GUI: `python -m pm99_editor.gui`
+1. Test in actual GUI: `python -m app.gui`
 2. Navigate to Teams tab
 3. Verify only clean, valid team names appear
 4. Expected: ~50-70 valid teams instead of 116 mixed entries

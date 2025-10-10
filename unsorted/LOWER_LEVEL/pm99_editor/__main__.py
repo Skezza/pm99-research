@@ -1,6 +1,6 @@
-"""Main entry point for pm99_editor package.
+﻿"""Main entry point for app package.
 
-Allows running the editor as: python -m pm99_editor
+Allows running the editor as: python -m app
 """
 
 from .cli import main

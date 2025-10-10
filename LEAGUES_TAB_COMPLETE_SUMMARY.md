@@ -1,4 +1,4 @@
-# Leagues Tab Implementation - Complete Summary
+﻿# Leagues Tab Implementation - Complete Summary
 
 ## Confirmed League Structure (from game screenshots)
 
@@ -32,7 +32,7 @@ Based on the provided game screenshots showing the England league selection scre
 ## Completed Implementation ✅
 
 ### 1. League Definitions Module
-**File**: [`pm99_editor/league_definitions.py`](pm99_editor/league_definitions.py)
+**File**: [`app/league_definitions.py`](app/league_definitions.py)
 
 Provides:
 ```python
@@ -54,7 +54,7 @@ division = get_english_division(team_id)  # Returns 1-4
 ```
 
 ### 2. Team Loader
-**File**: [`pm99_editor/loaders.py`](pm99_editor/loaders.py:234-296)
+**File**: [`app/loaders.py`](app/loaders.py:234-296)
 
 Correctly loads teams from:
 - Section 1 @ 0x201 (~11KB)
@@ -65,7 +65,7 @@ Uses:
 - Separator pattern: `0x61 0xdd 0x63`
 
 ### 3. TeamRecord Model Updates
-**File**: [`pm99_editor/models.py`](pm99_editor/models.py:226-243)
+**File**: [`app/models.py`](app/models.py:226-243)
 
 Added methods:
 ```python
@@ -80,7 +80,7 @@ team.get_country()  # Returns "England", "Spain", etc.
 ## Remaining Work 🔧
 
 ### Critical Blocker: Fix Team Name Extraction
-**File**: [`pm99_editor/models.py`](pm99_editor/models.py:77-141)
+**File**: [`app/models.py`](app/models.py:77-141)
 **Method**: `TeamRecord._extract_name()`
 
 **Current Issues**:
@@ -151,7 +151,7 @@ def _extract_name(self):
 ```
 
 ### Implement Leagues Tab UI
-**File**: [`pm99_editor/gui.py`](pm99_editor/gui.py)
+**File**: [`app/gui.py`](app/gui.py)
 
 **Add after Teams tab**:
 ```python
@@ -166,7 +166,7 @@ def create_leagues_tab(self):
     
     ttk.Label(filter_frame, text="Country:").pack(side="left", padx=5)
     
-    from pm99_editor.league_definitions import get_all_countries
+    from app.league_definitions import get_all_countries
     countries = ["All"] + get_all_countries()
     
     self.country_var = tk.StringVar(value="England")
@@ -250,7 +250,7 @@ def populate_leagues_tab(self):
     search_text = self.league_search_var.get().lower()
     
     # Import league utilities
-    from pm99_editor.league_definitions import get_team_league, get_all_countries
+    from app.league_definitions import get_team_league, get_all_countries
     
     # Group teams by (country, league)
     leagues_dict = {}
@@ -360,3 +360,4 @@ def on_league_team_doubleclick(self, event):
 - England is the only country with 4 divisions
 - Other countries have single top-flight leagues
 - UI should match game's visual style (see screenshots)
+

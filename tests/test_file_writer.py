@@ -1,10 +1,10 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 import struct
 from pathlib import Path
 import pytest
 
-from pm99_editor.file_writer import write_fdi_record
-from pm99_editor.models import FDIHeader, DirectoryEntry
+from app.file_writer import write_fdi_record
+from app.models import FDIHeader, DirectoryEntry
 
 
 def _build_fdi_file(record_payloads):

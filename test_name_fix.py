@@ -1,9 +1,9 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """Test that player name renaming doesn't corrupt the database."""
 
 import struct
-from pm99_editor.models import PlayerRecord
-from pm99_editor.xor import write_string, read_string
+from app.models import PlayerRecord
+from app.xor import write_string, read_string
 
 def test_name_encoding_roundtrip():
     """Test that we can rename a player and read it back correctly."""

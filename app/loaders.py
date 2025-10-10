@@ -1,4 +1,4 @@
-"""
+﻿"""
 Data loaders for Premier Manager 99 FDI files.
 
 This module provides shared loading logic for coaches and teams,
@@ -9,9 +9,9 @@ sequential scanning instead.
 
 from pathlib import Path
 from typing import List, Tuple, Any
-from pm99_editor.xor import xor_decode
-from pm99_editor.models import TeamRecord
-from pm99_editor.coach_models import parse_coaches_from_record, EditableCoachRecord
+from app.xor import xor_decode
+from app.models import TeamRecord
+from app.coach_models import parse_coaches_from_record, EditableCoachRecord
 
 
 def decode_entry(data: bytes, offset: int) -> Tuple[bytes, int]:

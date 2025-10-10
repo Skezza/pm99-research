@@ -1,4 +1,4 @@
-# 🎉 SUCCESS: Complete Working Player Editor!
+﻿# 🎉 SUCCESS: Complete Working Player Editor!
 
 ## Major Achievement
 
@@ -77,7 +77,7 @@ Players are distributed across multiple XOR-encoded sections:
 
 ### Core Files Created
 
-**1. Player Parser** - [`pm99_editor/player_models.py`](pm99_editor/player_models.py)
+**1. Player Parser** - [`app/player_models.py`](app/player_models.py)
 ```python
 def parse_all_players(file_data: bytes) -> List[Player]:
     """Parse all players from JUG98030.FDI"""
@@ -214,15 +214,15 @@ Apply same approach to EQ98030.FDI (teams):
 ## Files Delivered
 
 ### New Code
-- [`pm99_editor/player_models.py`](pm99_editor/player_models.py) - Player parser ✓
+- [`app/player_models.py`](app/player_models.py) - Player parser ✓
 - [`player_editor.py`](player_editor.py) - CLI application ✓
 - [`analyze_player_file.py`](analyze_player_file.py) - Analysis script ✓
 - [`analyze_largest_player_section.py`](analyze_largest_player_section.py) - Deep analysis ✓
 
 ### Existing Framework (Reused)
-- [`pm99_editor/xor.py`](pm99_editor/xor.py) - XOR utilities
-- [`pm99_editor/file_writer.py`](pm99_editor/file_writer.py) - File I/O
-- [`pm99_editor/coach_models.py`](pm99_editor/coach_models.py) - Coach parser
+- [`app/xor.py`](app/xor.py) - XOR utilities
+- [`app/file_writer.py`](app/file_writer.py) - File I/O
+- [`app/coach_models.py`](app/coach_models.py) - Coach parser
 
 ### Backups Created
 - `DBDAT/JUG98030.FDI.backup` - Automatic backup

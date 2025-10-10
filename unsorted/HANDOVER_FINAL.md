@@ -1,4 +1,4 @@
-# Premier Manager 99 Reverse Engineering - Final Handover
+﻿# Premier Manager 99 Reverse Engineering - Final Handover
 
 ## Executive Summary
 
@@ -7,7 +7,7 @@ Successfully reverse-engineered the encryption algorithm and file structure for 
 ## What Was Accomplished ✓
 
 ### 1. Encryption Algorithm - FULLY DECODED
-**File**: [`pm99_editor/xor.py`](pm99_editor/xor.py)
+**File**: [`app/xor.py`](app/xor.py)
 
 ```python
 def decode_entry(data: bytes, offset: int) -> tuple[bytes, int]:
@@ -63,7 +63,7 @@ Extracted from [`MANAGPRE.EXE.FUN_004afd80`](MANAGPRE.EXE:0x004afd80):
 ### 4. Python Framework - PRODUCTION READY
 **Structure**:
 ```
-pm99_editor/
+app/
 ├── __init__.py          - Package initialization
 ├── __main__.py          - CLI entry point
 ├── xor.py              - Encode/decode utilities ✓ COMPLETE
@@ -81,7 +81,7 @@ pm99_editor/
 
 **Test**:
 ```bash
-python -m pm99_editor info DBDAT/JUG98030.FDI
+python -m app info DBDAT/JUG98030.FDI
 # Output:
 # File: DBDAT/JUG98030.FDI
 # Signature: DMFIv1.0
@@ -104,7 +104,7 @@ Created artifacts:
 ## What Remains Incomplete ❌
 
 ### The Parser Implementation
-**File**: [`pm99_editor/models.py:50`](pm99_editor/models.py:50)
+**File**: [`app/models.py:50`](app/models.py:50)
 
 ```python
 @classmethod
@@ -258,7 +258,7 @@ Currently at step 2/8.
 ## Deliverables
 
 ### Code
-- `pm99_editor/` - Python package (90% complete)
+- `app/` - Python package (90% complete)
 - `debug_*.py` - Analysis scripts (working)
 - `out/decode_one.py` - Standalone decoder (verified)
 
@@ -273,8 +273,8 @@ To finish:
 1. Read [`out/PARSER_FINDINGS.md`](out/PARSER_FINDINGS.md)
 2. Choose Option A, B, or C above
 3. Map byte layout for 3-5 player records
-4. Implement [`PlayerRecord.from_bytes()`](pm99_editor/models.py:50)
-5. Test with `python -m pm99_editor list DBDAT/JUG98030.FDI`
+4. Implement [`PlayerRecord.from_bytes()`](app/models.py:50)
+5. Test with `python -m app list DBDAT/JUG98030.FDI`
 6. Should see real names instead of "Unknown Player"
 7. Implement `to_bytes()` (reverse operation)
 8. Test round-trip

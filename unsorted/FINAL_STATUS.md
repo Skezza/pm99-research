@@ -1,4 +1,4 @@
-
+﻿
 # Premier Manager 99 Reverse Engineering - Final Status Report
 
 ## Completed Work
@@ -34,7 +34,7 @@
 
 ### 4. Python Editor Framework ✓
 
-Created modular Python package [`pm99_editor/`](pm99_editor/):
+Created modular Python package [`app/`](app/):
 
-- [`xor.py`](pm99_editor/xor.py:1-102) - XOR encode/decode utilities
-- [`models.py`](pm99_editor/models.py:1-243
+- [`xor.py`](app/xor.py:1-102) - XOR encode/decode utilities
+- [`models.py`](app/models.py:1-243

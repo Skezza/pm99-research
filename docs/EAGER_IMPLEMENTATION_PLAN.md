@@ -1,4 +1,4 @@
-Eager-loading Implementation Plan for PM99 Editor
+﻿Eager-loading Implementation Plan for PM99 Editor
 
 Overview
 This document specifies a line-by-line implementation plan to support "eager" loading — i.e. pull all FDI and PKF files into memory at startup — while keeping the codebase safe, testable and extensible.
@@ -12,11 +12,11 @@ Goals
 - Provide safeguards (max-memory, warnings, dry-run).
 
 New files & locations (implementation targets)
-- [`pm99_editor/datastore.py`](pm99_editor/datastore.py:1) — core in-memory repository and loader.
-- [`pm99_editor/pkf.py`](pm99_editor/pkf.py:1) — conservative PKF parser & serializer.
-- Add helpers to [`pm99_editor/io.py`](pm99_editor/io.py:1): `FDIFile.from_bytes()` and `FDIFile.to_bytes()`.
-- Reuse [`pm99_editor/file_writer.py`](pm99_editor/file_writer.py:1) for FDI in-memory writes; add a small wrapper if needed.
-- Update CLI: [`pm99_editor/cli.py`](pm99_editor/cli.py:1) to accept `--db-root`, `--mode`, `--max-memory`, `--dry-run`.
+- [`app/datastore.py`](app/datastore.py:1) — core in-memory repository and loader.
+- [`app/pkf.py`](app/pkf.py:1) — conservative PKF parser & serializer.
+- Add helpers to [`app/io.py`](app/io.py:1): `FDIFile.from_bytes()` and `FDIFile.to_bytes()`.
+- Reuse [`app/file_writer.py`](app/file_writer.py:1) for FDI in-memory writes; add a small wrapper if needed.
+- Update CLI: [`app/cli.py`](app/cli.py:1) to accept `--db-root`, `--mode`, `--max-memory`, `--dry-run`.
 - Tests: `tests/test_datastore.py` and `tests/test_pkf_parser.py`.
 
 High-level architecture
@@ -26,7 +26,7 @@ High-level architecture
   - commit/flush converts objects to bytes then writes atomically to disk (or returns bytes in dry-run).
 
 DataStore API (detailed signatures)
-- Class: [`DataStore`](pm99_editor/datastore.py:1)
+- Class: [`DataStore`](app/datastore.py:1)
   - `def __init__(self, db_root: Path, mode: str = "eager", max_memory_bytes: Optional[int] = None, dry_run: bool = False):`
   - `def load_all(self) -> None:` Discover and eagerly load all FDI/PKF files into memory.
   - `def list_fdi(self) -> List[str]:` Return list of relative FDI paths (keys).
@@ -39,16 +39,16 @@ DataStore API (detailed signatures)
   - `def stats(self) -> dict:` memory usage, file counts, total bytes.
 
 FDI in-memory wrapper changes
-- Add: [`FDIFile.from_bytes()`](pm99_editor/io.py:1)
+- Add: [`FDIFile.from_bytes()`](app/io.py:1)
   - Signature: `@classmethod def from_bytes(cls, name: str, file_bytes: bytes, source_path: Optional[Path]=None) -> "FDIFile":`
   - Behaviour: parse header and directory, decode records into PlayerRecord instances (reuse existing parsing code).
-- Add: [`FDIFile.to_bytes()`](pm99_editor/io.py:1)
+- Add: [`FDIFile.to_bytes()`](app/io.py:1)
   - Signature: `def to_bytes(self) -> bytes:` Create updated file bytes by calling `save_modified_records()` semantics.
 - Add: `def inspect_record(self, offset: int) -> dict:` Return raw_bytes, decoded_bytes, model and helpful previews.
 - Keep `FDIFile.load()` for on-disk convenience.
 
 PKF parser & wrapper
-- New module: [`pm99_editor/pkf.py`](pm99_editor/pkf.py:1)
+- New module: [`app/pkf.py`](app/pkf.py:1)
 - Conservative parser goals:
   - Parse container header and TOC; do not attempt brittle decodes by default.
   - Store raw payload bytes for each entry and the entry metadata (name/index/offset/length).
@@ -60,7 +60,7 @@ PKF parser & wrapper
   - `def to_bytes(self) -> bytes` — rebuild TOC, adjust offsets, recompute checksums if present (conservative: preserve unknown fields if possible).
 - Model: `PKFEntry` fields: index, name (optional), offset, length, raw_bytes, meta.
 
-Discovery & eager load flow (line-by-line plan for [`DataStore.load_all()`](pm99_editor/datastore.py:1))
+Discovery & eager load flow (line-by-line plan for [`DataStore.load_all()`](app/datastore.py:1))
 1. Resolve `db_root` via helper `resolve_db_root(cli_arg, env="PM99_DB_ROOT", default=Path("DBDAT"))`.
 2. Build lists: fdi_paths = sorted(db_root.rglob("*.FDI")), pkf_paths = sorted(db_root.rglob("*.PKF")).
 3. For each path in combined list:
@@ -82,14 +82,14 @@ Save / commit flow (FDI specifics)
 - To save an FDI object:
  1. Call `bytes_out = fdi_obj.to_bytes()` (which applies `save_modified_records()` semantics).
  2. If dry_run: return `bytes_out` without writing.
- 3. Create backup file using [`pm99_editor/file_writer.create_backup()`](pm99_editor/file_writer.py:17).
+ 3. Create backup file using [`app/file_writer.create_backup()`](app/file_writer.py:17).
  4. Write to a temporary file in the same directory (use `tempfile.NamedTemporaryFile(delete=False, dir=target.parent)`).
  5. Use `os.replace(temp_path, target_path)` for atomic swap.
  6. On Windows, optionally acquire an exclusive lock during write using `msvcrt.locking()` or `portalocker`.
 - For PKF writes, use `pkf_obj.to_bytes()` then the same atomic-write steps.
 
 CLI changes & UX
-- Global options added to [`pm99_editor/cli.py`](pm99_editor/cli.py:1):
+- Global options added to [`app/cli.py`](app/cli.py:1):
   - `--db-root DBROOT` (string)
   - `--mode {eager,lazy,hybrid}` (default `eager` for this plan)
   - `--max-memory BYTES`
@@ -100,7 +100,7 @@ CLI changes & UX
   - `inspect` — inspect an FDI or PKF entry by path + offset/index
   - `export-pkf-entry` — write a PKF entry to disk (images, etc.)
 - Example:
-  - `python -m pm99_editor load-all --db-root DBDAT --mode eager`
+  - `python -m app load-all --db-root DBDAT --mode eager`
 
 Tests
 - `tests/test_datastore.py`
@@ -132,10 +132,10 @@ Backwards compatibility & migration notes
 - Tests and CLI should adopt DataStore gradually — start by exposing a `load-all` dev command.
 
 Implementation milestones (order)
-1. Add `resolve_db_root()` and CLI flags in [`pm99_editor/cli.py`](pm99_editor/cli.py:1).
-2. Implement [`pm99_editor/datastore.py`](pm99_editor/datastore.py:1) skeleton with discovery and simple metadata store.
-3. Add `FDIFile.from_bytes()` and `FDIFile.to_bytes()` to [`pm99_editor/io.py`](pm99_editor/io.py:1).
-4. Implement [`pm99_editor/pkf.py`](pm99_editor/pkf.py:1) conservative parser.
+1. Add `resolve_db_root()` and CLI flags in [`app/cli.py`](app/cli.py:1).
+2. Implement [`app/datastore.py`](app/datastore.py:1) skeleton with discovery and simple metadata store.
+3. Add `FDIFile.from_bytes()` and `FDIFile.to_bytes()` to [`app/io.py`](app/io.py:1).
+4. Implement [`app/pkf.py`](app/pkf.py:1) conservative parser.
 5. Wire `DataStore.load_all()` to fully load files into memory; enforce `max_memory_bytes`.
 6. Add `save_fdi()` and `save_pkf()` flows using atomic replace and backups.
 7. Add tests and minimal docs.
@@ -148,7 +148,7 @@ Rough estimate of effort
 Example usage (eager mode)
 ```
 from pathlib import Path
-from pm99_editor.datastore import DataStore
+from app.datastore import DataStore
 ds = DataStore(Path("DBDAT/"), mode="eager", max_memory_bytes=1024*1024*1024)
 ds.load_all()
 print(ds.stats())
@@ -165,11 +165,11 @@ new_bytes = ds.save_fdi("JUG98030.FDI", write_to_disk=False)
 Notes and rationale
 - Eager mode is ideal for interactive reverse engineering: it lets you patch, experiment, and rebuild quickly.
 - The primary trade-off is memory; the plan includes a conservative default `max_memory_bytes` and a dry-run mode so destructive operations are optional.
-- Reuse of existing functions (notably [`save_modified_records()`](pm99_editor/file_writer.py:180)) minimizes risk.
+- Reuse of existing functions (notably [`save_modified_records()`](app/file_writer.py:180)) minimizes risk.
 
 Next steps
 - If you want, I can:
-  - generate the initial skeleton for [`pm99_editor/datastore.py`](pm99_editor/datastore.py:1) and [`pm99_editor/pkf.py`](pm99_editor/pkf.py:1),
-  - or implement `FDIFile.from_bytes()` in-place in [`pm99_editor/io.py`](pm99_editor/io.py:1).
+  - generate the initial skeleton for [`app/datastore.py`](app/datastore.py:1) and [`app/pkf.py`](app/pkf.py:1),
+  - or implement `FDIFile.from_bytes()` in-place in [`app/io.py`](app/io.py:1).
 
 Choose which file skeleton should be created first.

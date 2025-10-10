@@ -1,4 +1,4 @@
-# Premier Manager 99 - Final Reverse Engineering Findings
+﻿# Premier Manager 99 - Final Reverse Engineering Findings
 
 ## Major Breakthrough: Understanding the Format
 
@@ -141,7 +141,7 @@ Keep analyzing file structure:
 
 ### Working Code
 ```
-pm99_editor/
+app/
 ├── xor.py          ✓ Perfect
 ├── models.py       ⚠ 90% (parser stub)
 ├── io.py           ✓ Header parsing works

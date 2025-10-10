@@ -1,4 +1,4 @@
-"""
+﻿"""
 Coach Editor for Premier Manager 99
 Proof-of-concept demonstrating:
 1. Load ENT98030.FDI
@@ -14,9 +14,9 @@ import sys
 import struct
 from pathlib import Path
 from typing import List, Tuple
-from pm99_editor.coach_models import Coach, parse_coaches_from_record
-from pm99_editor.xor import decode_entry, encode_entry
-from pm99_editor.file_writer import create_backup, replace_text_in_decoded, write_fdi_record
+from app.coach_models import Coach, parse_coaches_from_record
+from app.xor import decode_entry, encode_entry
+from app.file_writer import create_backup, replace_text_in_decoded, write_fdi_record
 
 COACH_FILE = 'DBDAT/ENT98030.FDI'
 COACH_RECORD_OFFSET = 0x026cf6

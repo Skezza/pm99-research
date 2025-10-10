@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 Evaluate sample players against the real PM99 database.
 
@@ -29,7 +29,7 @@ from typing import Optional, List, Dict, Any, Tuple
 # Ensure project root on sys.path when running from scripts/
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from pm99_editor.io import FDIFile  # noqa: E402
+from app.io import FDIFile  # noqa: E402
 
 
 POS_MAP_STR = {

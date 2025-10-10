@@ -1,11 +1,11 @@
-"""Test coach parsing."""
+﻿"""Test coach parsing."""
 
 import struct
 from pathlib import Path
 
 import pytest
 
-from pm99_editor.coach_models import parse_coaches_from_record
+from app.coach_models import parse_coaches_from_record
 
 COACH_FILE = Path('DBDAT/ENT98030.FDI')
 

@@ -1,22 +1,22 @@
-# Premier Manager 99 Editor — User Guide
+﻿# Premier Manager 99 Editor — User Guide
 
-This guide explains how to operate the bundled tooling to inspect and edit Premier Manager 99 database files. It focuses on the Tk desktop editor (`pm99_editor/gui.py`) and highlights companion CLI helpers for automation.
+This guide explains how to operate the bundled tooling to inspect and edit Premier Manager 99 database files. It focuses on the Tk desktop editor (`app/gui.py`) and highlights companion CLI helpers for automation.
 
 ## Launching the GUI
 1. Ensure the `DBDAT` folder containing `JUG98030.FDI`, `ENT98030.FDI`, and `EQ98030.FDI` is present alongside the repository.
 2. From the repository root run:
    ```bash
-   python -m pm99_editor.gui
+   python -m app.gui
    ```
 3. The window opens with a default size capped to your screen resolution and immediately loads `DBDAT/JUG98030.FDI`. Status updates appear in the bottom status bar (initially `Ready`).
 
 ### Command-line alternative
 The same library powers a CLI that can inspect and edit records without the GUI:
 ```bash
-python -m pm99_editor info DBDAT/JUG98030.FDI   # header + counts
-python -m pm99_editor list DBDAT/JUG98030.FDI   # tabular roster output
-python -m pm99_editor search DBDAT/JUG98030.FDI "Ronaldo"
-python -m pm99_editor rename DBDAT/JUG98030.FDI --id 123 --name "New Name"
+python -m app info DBDAT/JUG98030.FDI   # header + counts
+python -m app list DBDAT/JUG98030.FDI   # tabular roster output
+python -m app search DBDAT/JUG98030.FDI "Ronaldo"
+python -m app rename DBDAT/JUG98030.FDI --id 123 --name "New Name"
 ```
 The GUI uses these same parsers; if the CLI works, the GUI will too.
 
@@ -44,26 +44,26 @@ The application hosts a left-hand navigation tree and a right-hand editor that c
 
 ### Teams tab
 * Also lazy-loaded; the application keeps player search responsive while team data loads on a background thread.
-* The roster tree displays leagues/countries pulled from `pm99_editor/loaders.py`; selecting a team shows stadium and metadata fields in the right-hand overlay.
+* The roster tree displays leagues/countries pulled from `app/loaders.py`; selecting a team shows stadium and metadata fields in the right-hand overlay.
 * Editable fields include team name, ID, stadium, capacity, car park size, and pitch quality (combo box of known constants).
 * `Show squad lineup` toggles a roster sub-panel listing correlated player names when available.
 
 ### ⚽ Leagues tab
-* Presents a hierarchical Country → League → Team tree built from `pm99_editor/league_definitions.py` combined with parsed team data.
+* Presents a hierarchical Country → League → Team tree built from `app/league_definitions.py` combined with parsed team data.
 * Country and free-text filters help narrow large datasets; double-clicking a team row jumps to the Team overlay.
 * Stadium name, capacity, and pitch details display alongside the tree so you can audit metadata without leaving the tab.
 
 ### Tools → Open PKF Viewer…
-The Tools menu launches a file picker for PKF archives. After choosing a file the modal viewer uses [`PKFFile`](../pm99_editor/pkf.py) to list entries and previews decoded bytes with the same `_format_hex_preview()` helper. Errors encountered while opening the archive are surfaced in the status bar.
+The Tools menu launches a file picker for PKF archives. After choosing a file the modal viewer uses [`PKFFile`](../app/pkf.py) to list entries and previews decoded bytes with the same `_format_hex_preview()` helper. Errors encountered while opening the archive are surfaced in the status bar.
 
 ## Saving and backups
 * `Apply Changes` queues edits in memory; `Save Database` (menu item or `Ctrl+S`) writes them back to disk.
-* `pm99_editor/file_writer.py` creates a `.backup` copy before rewriting `JUG98030.FDI` so you can revert quickly.
+* `app/file_writer.py` creates a `.backup` copy before rewriting `JUG98030.FDI` so you can revert quickly.
 * Directory offsets and the header `max_offset` are recomputed automatically; you do not need to adjust them manually even if record sizes change.
 
 ## Safety checklist
 - Work on copies of the original `DBDAT` directory. Each save creates a backup, but keeping an untouched source is recommended.
-- Keep names the same length when possible. If you extend them, reload the player in the GUI or via `python -m pm99_editor info` to confirm offsets still line up.
+- Keep names the same length when possible. If you extend them, reload the player in the GUI or via `python -m app info` to confirm offsets still line up.
 - After major edits run `pytest -q` to ensure regression suites that depend on fixture files still pass.
 
 ## Troubleshooting
@@ -77,3 +77,4 @@ The Tools menu launches a file picker for PKF archives. After choosing a file th
 Automated tests under `pytest` skip integration cases if the proprietary `DBDAT` assets are missing, so a clean checkout without the data will still report success (with skips). To exercise the full suite, supply the game databases before running the command.
 
 For deeper technical detail see [`docs/ARCHITECTURE.md`](./ARCHITECTURE.md) and [`docs/DATA_FORMATS.md`](./DATA_FORMATS.md).
+

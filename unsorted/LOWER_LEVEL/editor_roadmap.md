@@ -1,4 +1,4 @@
-# PM99 Database Editor Roadmap
+﻿# PM99 Database Editor Roadmap
 
 ## Current Reverse-Engineering Evidence
 
@@ -58,7 +58,7 @@ This document outlines the steps required to evolve the current reverse-engineer
 ## 3. Editing Workflow (Command-line)
 
 1. **CLI entry point**  
-   - Create `pm99_editor.py` with subcommands:
+   - Create `app.py` with subcommands:
      - `list players` → display player IDs/names.
      - `rename --id <idx> --name "New Name"` → modify name field.
      - Future: `set-attr --id <idx> --field speed --value 87`.
@@ -136,9 +136,9 @@ This document outlines the steps required to evolve the current reverse-engineer
 
 ## 9. Deliverables for Initial Editor Release
 
-1. Python package `pm99_editor/` with modules:
+1. Python package `app/` with modules:
    - `io.py`, `models.py`, `cli.py`, `xor.py`
-2. CLI script `python -m pm99_editor rename --id 123 --name "New Name"`
+2. CLI script `python -m app rename --id 123 --name "New Name"`
 3. Updated documentation in `/out`:
    - `editor_usage.md`
    - `schema_players.md`

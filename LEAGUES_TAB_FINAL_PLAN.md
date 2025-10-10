@@ -1,4 +1,4 @@
-# Leagues Tab Implementation - Final Plan
+﻿# Leagues Tab Implementation - Final Plan
 
 ## Key Findings
 
@@ -29,7 +29,7 @@
 ### Phase 1: Fix Team Loading (PRIORITY)
 Before implementing Leagues tab, must fix fundamental team loading issues.
 
-**Issue**: [`TeamRecord._extract_name()`](pm99_editor/models.py:77-141) is not compatible with team file structure
+**Issue**: [`TeamRecord._extract_name()`](app/models.py:77-141) is not compatible with team file structure
 
 **Solution**: Analyze actual team record structure and rewrite name extraction
 ```python
@@ -102,7 +102,7 @@ def get_team_league(team_id: int) -> Tuple[str, str]:
 ```
 
 ### Phase 3: Implement Leagues Tab UI
-Once teams load correctly, add UI in [`pm99_editor/gui.py`](pm99_editor/gui.py):
+Once teams load correctly, add UI in [`app/gui.py`](app/gui.py):
 
 ```python
 def create_leagues_tab(self):
@@ -256,7 +256,8 @@ def detect_league_from_name(team_name: str) -> Tuple[str, str]:
 
 ## Files to Modify
 
-1. [`pm99_editor/models.py`](pm99_editor/models.py) - Fix TeamRecord._extract_name()
-2. [`pm99_editor/loaders.py`](pm99_editor/loaders.py) - Verify all teams loading
-3. [`pm99_editor/gui.py`](pm99_editor/gui.py) - Add Leagues tab UI
-4. New file: `pm99_editor/league_definitions.py` - Hardcoded league structure
+1. [`app/models.py`](app/models.py) - Fix TeamRecord._extract_name()
+2. [`app/loaders.py`](app/loaders.py) - Verify all teams loading
+3. [`app/gui.py`](app/gui.py) - Add Leagues tab UI
+4. New file: `app/league_definitions.py` - Hardcoded league structure
+

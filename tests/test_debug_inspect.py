@@ -1,7 +1,7 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 import struct
-from pm99_editor.models import PlayerRecord, FDIHeader, DirectoryEntry
-from pm99_editor.xor import decode_entry
+from app.models import PlayerRecord, FDIHeader, DirectoryEntry
+from app.xor import decode_entry
 
 def _build_fdi_from_records(records):
     header = FDIHeader(signature=b'DMFIv1.0', record_count=len(records), version=700, max_offset=0, dir_size=len(records)*8)

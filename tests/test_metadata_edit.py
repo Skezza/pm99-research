@@ -1,8 +1,8 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """Unit test for metadata field editing (position, nationality, DOB, height, attributes)."""
 
-from pm99_editor.io import FDIFile
-from pm99_editor.models import PlayerRecord
+from app.io import FDIFile
+from app.models import PlayerRecord
 
 def test_metadata_edit_roundtrip(players_fdi_path):
     """Load the FDI fixture, find 'Hierro', modify metadata, serialize and re-parse, assert changes persisted."""

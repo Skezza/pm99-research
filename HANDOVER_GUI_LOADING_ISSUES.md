@@ -1,4 +1,4 @@
-# Handover: GUI Loading Issues Investigation
+﻿# Handover: GUI Loading Issues Investigation
 
 ## Overview
 The Premier Manager 99 Database Editor GUI has persistent issues with loading Coaches and Teams tabs. Despite implemented fixes, the tabs are not displaying data correctly. This handover provides context for further investigation.
@@ -28,7 +28,7 @@ The Premier Manager 99 Database Editor GUI has persistent issues with loading Co
 - Test if directory scanning works correctly
 
 **Files to Examine**:
-- `pm99_editor/io.py` - FDIFile class
+- `app/io.py` - FDIFile class
 - `DBDAT/ENT98030.FDI` - Coach file directory
 - `DBDAT/EQ98030.FDI` - Team file directory
 
@@ -42,9 +42,9 @@ The Premier Manager 99 Database Editor GUI has persistent issues with loading Co
 - Compare decoded output with expected plaintext
 
 **Files to Examine**:
-- `pm99_editor/xor.py` - Decoding functions
-- `pm99_editor/coach_models.py` - Coach parsing logic
-- `pm99_editor/models.py` - Team parsing logic
+- `app/xor.py` - Decoding functions
+- `app/coach_models.py` - Coach parsing logic
+- `app/models.py` - Team parsing logic
 
 ### 3. GUI Loading Logic
 **Problem**: The GUI loading functions may not be properly integrating the parsing results.
@@ -56,7 +56,7 @@ The Premier Manager 99 Database Editor GUI has persistent issues with loading Co
 - Debug the threading/async loading mechanisms
 
 **Files to Examine**:
-- `pm99_editor/gui.py` - Loading and population functions
+- `app/gui.py` - Loading and population functions
 - Check console output for error messages during loading
 
 ### 4. Data Format Understanding
@@ -77,7 +77,7 @@ The Premier Manager 99 Database Editor GUI has persistent issues with loading Co
 
 ### Step 1: Verify Directory Loading
 ```python
-from pm99_editor.io import FDIFile
+from app.io import FDIFile
 fdi = FDIFile('DBDAT/ENT98030.FDI')
 fdi.load()
 print(f"Directory entries: {len(fdi.directory)}")
@@ -87,7 +87,7 @@ for i, entry in enumerate(fdi.directory[:5]):
 
 ### Step 2: Test Individual Record Decoding
 ```python
-from pm99_editor.xor import decode_entry
+from app.xor import decode_entry
 data = open('DBDAT/ENT98030.FDI', 'rb').read()
 decoded, length = decode_entry(data, 0x402)  # First data offset
 print(f"Decoded length: {length}")
@@ -96,7 +96,7 @@ print(f"First 100 bytes: {decoded[:100]}")
 
 ### Step 3: Test Coach Parsing
 ```python
-from pm99_editor.coach_models import parse_coaches_from_record
+from app.coach_models import parse_coaches_from_record
 coaches = parse_coaches_from_record(decoded)
 print(f"Found {len(coaches)} coaches")
 for c in coaches[:3]:
@@ -125,9 +125,9 @@ def populate_coach_tree(self):
 4. **GUI Issues**: If data flows correctly but display fails, fix tree population
 
 ## Files Modified Recently
-- `pm99_editor/coach_models.py` - Coach parsing improvements
-- `pm99_editor/models.py` - Team name extraction improvements
-- `pm99_editor/gui.py` - Sequential scanning and selection fixes
+- `app/coach_models.py` - Coach parsing improvements
+- `app/models.py` - Team name extraction improvements
+- `app/gui.py` - Sequential scanning and selection fixes
 - `test_gui_loading.py` - Test script for verification
 
 ## Next Steps

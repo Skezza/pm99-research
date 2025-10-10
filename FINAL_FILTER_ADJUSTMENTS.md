@@ -1,4 +1,4 @@
-# Final Filter Adjustments - Summary
+﻿# Final Filter Adjustments - Summary
 
 ## Changes Made
 
@@ -92,7 +92,7 @@ The blocklist approach is necessary because there's no structural way to disting
 
 ## Files Modified
 
-**[`pm99_editor/loaders.py`](pm99_editor/loaders.py)**
+**[`app/loaders.py`](app/loaders.py)**
 - Lines 119-136: Relaxed team 3-letter prefix filter
 - Lines 147-152: Removed overly strict team filters
 - Lines 284-295: Added ~50 player names to coach blocklist
@@ -100,7 +100,7 @@ The blocklist approach is necessary because there's no structural way to disting
 
 ## Next Steps
 
-1. Test in GUI: `python -m pm99_editor.gui`
+1. Test in GUI: `python -m app.gui`
 2. Navigate to Teams tab - should see 50-70+ teams
 3. Navigate to Coaches tab - should see clean coach names only
 4. If any players/locations still appear, add them to blocklist

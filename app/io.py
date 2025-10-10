@@ -1,4 +1,4 @@
-"""
+﻿"""
 File I/O operations for Premier Manager 99 database files
 """
 
@@ -7,15 +7,18 @@ import struct
 import re
 from typing import List, Tuple, Optional
 from .models import PlayerRecord, FDIHeader, DirectoryEntry
-from pm99_editor.xor import decode_entry
+from app.xor import decode_entry
 
 # Scanner implementation is packaged to avoid importing the GUI monolith.
 # Import the scanner from the package rather than the top-level script.
-from pm99_editor.scanner import find_player_records
-# Use the package-local writer (placeholder implementation exists in pm99_editor.file_writer)
-from pm99_editor.file_writer import save_modified_records
+from app.scanner import find_player_records
+# Use the package-local writer (placeholder implementation exists in app.file_writer)
+from app.file_writer import save_modified_records, write_name_only_record, create_backup
+from app.settings import SAVE_NAME_ONLY, ALLOW_FULL_RECORD_REWRITE_ON_EXPANSION
 import struct
 import re
+import shutil
+import logging
 
 def _scan_decoded_for_players(decoded: bytes, entry_offset: int):
     """
@@ -356,16 +359,96 @@ class FDIFile:
         return None
     
     def save(self, output_path: str = None):
-        """Save modified records to file"""
+        """Save modified records to file
+        
+        Behaviour:
+        - If SAVE_NAME_ONLY is True, attempt a conservative per-record name-only update.
+          Only records flagged with `name_dirty` will be persisted; any other modified
+          records will abort the save to avoid accidental corruption.
+        - If SAVE_NAME_ONLY is False, fall back to the existing full modified-record
+          in-memory rewrite using `save_modified_records`.
+        """
         output_path = output_path or self.file_path
         output_path = Path(output_path)
         
-        # Create backup
+        # No changes -> nothing to do
+        if not getattr(self, 'modified_records', None):
+            return
+        
+        # Conservative name-only save path
+        if SAVE_NAME_ONLY:
+            backup_path = None
+            try:
+                # Create a single backup copy before attempting any writes
+                backup_path = create_backup(str(output_path))
+                
+                # Apply each modified record as a conservative name-only write
+                for offset, record in list(self.modified_records.items()):
+                    # Ensure offset looks valid
+                    if not isinstance(offset, int):
+                        raise RuntimeError(f"Unsupported modified_records key (expected offset int): {offset!r}")
+                    # Only permit name-only edits under the conservative mode
+                    if not getattr(record, 'name_dirty', False):
+                        raise RuntimeError(
+                            "Non-name changes detected while SAVE_NAME_ONLY is enabled; aborting save to avoid corruption."
+                        )
+                    
+                    # Decode the existing entry to extract the original name
+                    decoded_tuple = None
+                    try:
+                        decoded_tuple = decode_entry(self.file_data, offset)
+                    except Exception:
+                        decoded_tuple = None
+                    if not decoded_tuple:
+                        raise RuntimeError(f"Failed to decode entry at offset 0x{offset:x}")
+                    decoded, _ = decoded_tuple
+                    
+                    # Build old and new display names
+                    try:
+                        orig_rec = PlayerRecord.from_bytes(decoded, offset)
+                        orig_name = getattr(orig_rec, 'name', None) or (
+                            f"{getattr(orig_rec, 'given_name','') or ''} {getattr(orig_rec,'surname','') or ''}".strip()
+                        )
+                    except Exception:
+                        orig_name = ""
+                    
+                    new_name = getattr(record, 'name', None) or (
+                        f"{getattr(record,'given_name','') or ''} {getattr(record,'surname','') or ''}".strip()
+                    )
+                    
+                    if not new_name or orig_name == new_name:
+                        # Nothing to do for this record
+                        continue
+                    
+                    success = write_name_only_record(str(output_path), offset, orig_name, new_name)
+                    if not success:
+                        # Restore backup and abort
+                        if backup_path:
+                            try:
+                                shutil.copy2(backup_path, output_path)
+                            except Exception:
+                                pass
+                        raise RuntimeError(f"Safe name-only write failed for record at offset 0x{offset:x}; aborted.")
+                
+                # All writes succeeded; refresh in-memory file_data and clear modified set
+                try:
+                    self.file_data = output_path.read_bytes()
+                except Exception:
+                    # If the file was written by helpers, ensure file_data reflects latest content
+                    self.file_data = Path(str(output_path)).read_bytes()
+                self.modified_records.clear()
+                return
+            except Exception:
+                # Ensure we rethrow after attempting to restore backup (already attempted above where possible)
+                raise
+        
+        # Default (legacy) behaviour: full rewrite of modified records in-memory
+        # Create backup by renaming original file to .backup and write new bytes afterwards
         backup_path = output_path.with_suffix(f"{output_path.suffix}.backup")
         output_path.rename(backup_path)
         
-        # Save modified data
-        new_data = save_modified_records(output_path, self.file_data, self.modified_records)
+        # Save modified data using the existing batch writer
+        new_data = save_modified_records(output_path, self.file_data, [(o, r) for o, r in self.modified_records.items()])
         output_path.write_bytes(new_data)
     
     def add_record(self, record: PlayerRecord):

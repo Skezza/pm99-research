@@ -1,4 +1,4 @@
-# Developer Guide — Tests, Scripts, CLI
+﻿# Developer Guide — Tests, Scripts, CLI
 
 Purpose
 Concise engineering playbook for extending, testing, and safely shipping changes to the PM99 database editor and its documentation.
@@ -8,23 +8,23 @@ Engineers contributing code or docs. If you are just using the editor, read [doc
 
 Repository layout (operational view)
 - CLI and entrypoints
-  - Entry: [cli.main()](../pm99_editor/cli.py:89)
-  - Commands: [cli.cmd_list()](../pm99_editor/cli.py:10), [cli.cmd_search()](../pm99_editor/cli.py:22), [cli.cmd_rename()](../pm99_editor/cli.py:38), [cli.cmd_info()](../pm99_editor/cli.py:74)
+  - Entry: [cli.main()](../app/cli.py:89)
+  - Commands: [cli.cmd_list()](../app/cli.py:10), [cli.cmd_search()](../app/cli.py:22), [cli.cmd_rename()](../app/cli.py:38), [cli.cmd_info()](../app/cli.py:74)
 - I/O and record scanning
-  - Class: [FDIFile](../pm99_editor/io.py:15)
-  - Load: [FDIFile.load()](../pm99_editor/io.py:31)
-  - Directory parse: [FDIFile._parse_directory()](../pm99_editor/io.py:47)
-  - Section scan and decode: [FDIFile._iter_records()](../pm99_editor/io.py:63)
-  - Convenience: [FDIFile.find_by_id()](../pm99_editor/io.py:211), [FDIFile.find_by_name()](../pm99_editor/io.py:229), [FDIFile.list_players()](../pm99_editor/io.py:338)
+  - Class: [FDIFile](../app/io.py:15)
+  - Load: [FDIFile.load()](../app/io.py:31)
+  - Directory parse: [FDIFile._parse_directory()](../app/io.py:47)
+  - Section scan and decode: [FDIFile._iter_records()](../app/io.py:63)
+  - Convenience: [FDIFile.find_by_id()](../app/io.py:211), [FDIFile.find_by_name()](../app/io.py:229), [FDIFile.list_players()](../app/io.py:338)
 - Models and serialization
-  - Player structure: [PlayerRecord](../pm99_editor/models.py:13)
-  - Parser: [PlayerRecord.from_bytes()](../pm99_editor/models.py:63)
-  - Serializer overlay: [PlayerRecord.to_bytes()](../pm99_editor/models.py:281)
-  - Header & directory: [FDIHeader.from_bytes()](../pm99_editor/models.py:389), [DirectoryEntry.from_bytes()](../pm99_editor/models.py:434)
+  - Player structure: [PlayerRecord](../app/models.py:13)
+  - Parser: [PlayerRecord.from_bytes()](../app/models.py:63)
+  - Serializer overlay: [PlayerRecord.to_bytes()](../app/models.py:281)
+  - Header & directory: [FDIHeader.from_bytes()](../app/models.py:389), [DirectoryEntry.from_bytes()](../app/models.py:434)
 - Writer utilities
-  - Backups: [file_writer.create_backup()](../pm99_editor/file_writer.py:17)
-  - Decoded text helper: [file_writer.replace_text_in_decoded()](../pm99_editor/file_writer.py:32)
-  - Safe record write + directory fixups: [file_writer.write_fdi_record()](../pm99_editor/file_writer.py:102)
+  - Backups: [file_writer.create_backup()](../app/file_writer.py:17)
+  - Decoded text helper: [file_writer.replace_text_in_decoded()](../app/file_writer.py:32)
+  - Safe record write + directory fixups: [file_writer.write_fdi_record()](../app/file_writer.py:102)
 - GUI application
   - App entry: [main()](../pm99_database_editor.py:1189)
 
@@ -38,18 +38,18 @@ Running the CLI locally
 Examples:
 ```
 # Inspect header and counts
-python -m pm99_editor info DBDAT/JUG98030.FDI
+python -m app info DBDAT/JUG98030.FDI
 
 # List first 20 players
-python -m pm99_editor list DBDAT/JUG98030.FDI --limit 20
+python -m app list DBDAT/JUG98030.FDI --limit 20
 
 # Search by name
-python -m pm99_editor search DBDAT/JUG98030.FDI "Ronaldo"
+python -m app search DBDAT/JUG98030.FDI "Ronaldo"
 
 # Rename by record id (same-length recommended)
-python -m pm99_editor rename DBDAT/JUG98030.FDI --id 123 --name "Cristiano Ronaldo"
+python -m app rename DBDAT/JUG98030.FDI --id 123 --name "Cristiano Ronaldo"
 ```
-Internals for reference: [cli.main()](../pm99_editor/cli.py:89), [FDIFile.load()](../pm99_editor/io.py:31), [FDIFile._iter_records()](../pm99_editor/io.py:63).
+Internals for reference: [cli.main()](../app/cli.py:89), [FDIFile.load()](../app/io.py:31), [FDIFile._iter_records()](../app/io.py:63).
 
 Test suite
 Invoke:
@@ -70,17 +70,17 @@ The scripts/ directory contains exploratory tools used during reverse engineerin
   - Player/coach parsing probes, record mappers, text extraction
   - Validation utilities for positions and attributes
 - When using scripts:
-  - Cross-check results with library calls (source of truth lives in [FDIFile](../pm99_editor/io.py:15) and [PlayerRecord](../pm99_editor/models.py:13))
+  - Cross-check results with library calls (source of truth lives in [FDIFile](../app/io.py:15) and [PlayerRecord](../app/models.py:13))
   - If a script reveals a stable rule, migrate it into the library and document in [docs/DATA_FORMATS.md](./DATA_FORMATS.md)
 
 Safe write path
 Preferred approach to persist a modified record:
 1) Parse and modify via model overlay
-- Parse via library enumeration (e.g., [FDIFile._iter_records()](../pm99_editor/io.py:63) → [PlayerRecord.from_bytes()](../pm99_editor/models.py:63))
+- Parse via library enumeration (e.g., [FDIFile._iter_records()](../app/io.py:63) → [PlayerRecord.from_bytes()](../app/models.py:63))
 - Update fields on the model (position, nationality, DOB, attributes)
-- Build decoded payload overlay via [PlayerRecord.to_bytes()](../pm99_editor/models.py:281)
+- Build decoded payload overlay via [PlayerRecord.to_bytes()](../app/models.py:281)
 2) Write through file_writer
-- Use [file_writer.write_fdi_record()](../pm99_editor/file_writer.py:102) with the decoded payload and section offset
+- Use [file_writer.write_fdi_record()](../app/file_writer.py:102) with the decoded payload and section offset
 - This backs up the file and adjusts subsequent directory offsets and header.max_offset
 3) Validate with CLI/tests
 - Re-load and confirm the change is visible
@@ -89,11 +89,11 @@ Preferred approach to persist a modified record:
 Extending the parser (adding or hardening a field)
 Follow this checklist:
 - Identify anchor/bounds:
-  - For decoded “clean” records, locate the name-end anchor `0x61 0x61 0x61 0x61` using [PlayerRecord._find_name_end()](../pm99_editor/models.py:261)
+  - For decoded “clean” records, locate the name-end anchor `0x61 0x61 0x61 0x61` using [PlayerRecord._find_name_end()](../app/models.py:261)
   - Determine the stable offset window relative to the anchor or the tail window (attributes)
 - Update model read/write:
-  - Read logic: [PlayerRecord.from_bytes()](../pm99_editor/models.py:63)
-  - Write logic: [PlayerRecord.to_bytes()](../pm99_editor/models.py:281)
+  - Read logic: [PlayerRecord.from_bytes()](../app/models.py:63)
+  - Write logic: [PlayerRecord.to_bytes()](../app/models.py:281)
   - Validate ranges and never write outside conservative bounds (e.g., ensure metadata offsets are < attribute start)
 - Add tests:
   - Unit test cases in tests/ targeting the new field semantics
@@ -108,13 +108,13 @@ Heuristics guardrails
 - Do not write if you cannot find the name-end anchor (keep original bytes)
 - Attributes only within the tail window `len-19 .. len-7`
 - Only write values in valid ranges (e.g., position 0..3). Prefer not to coerce silently.
-- If a structure differs, preserve unknown bytes by overlaying on [PlayerRecord.raw_data](../pm99_editor/models.py:59)
+- If a structure differs, preserve unknown bytes by overlaying on [PlayerRecord.raw_data](../app/models.py:59)
 
 Debugging tips
-- Print header/directory values via the CLI ([cli.cmd_info()](../pm99_editor/cli.py:74)) for sanity checks
+- Print header/directory values via the CLI ([cli.cmd_info()](../app/cli.py:74)) for sanity checks
 - When a modified record is not visible:
-  - Confirm [PlayerRecord.to_bytes()](../pm99_editor/models.py:281) actually changed the intended offsets (print diff in a test)
-  - Validate [file_writer.write_fdi_record()](../pm99_editor/file_writer.py:102) adjusted directory offsets as expected
+  - Confirm [PlayerRecord.to_bytes()](../app/models.py:281) actually changed the intended offsets (print diff in a test)
+  - Validate [file_writer.write_fdi_record()](../app/file_writer.py:102) adjusted directory offsets as expected
 - Use Latin-1 when decoding text bytes for investigation
 - Keep a copy of the original file; compare with a hex diff if needed
 
@@ -129,34 +129,34 @@ Documentation policy (canonical vs legacy)
 Code style and review checklist
 - Tests: `pytest -q` passes locally
 - Safety:
-  - Writes go through [file_writer.write_fdi_record()](../pm99_editor/file_writer.py:102) or [FDIFile.save()](../pm99_editor/io.py:269)
+  - Writes go through [file_writer.write_fdi_record()](../app/file_writer.py:102) or [FDIFile.save()](../app/io.py:269)
   - Unknown bytes preserved; anchor checks in place
 - Docs:
   - Update [docs/DATA_FORMATS.md](./DATA_FORMATS.md) for any new or changed byte rule
   - Update [docs/CHANGELOG.md](./CHANGELOG.md) for user-facing or structural changes
 - References:
-  - Prefer linking to concrete code anchors: e.g., [FDIFile._iter_records()](../pm99_editor/io.py:63) instead of broad descriptions
+  - Prefer linking to concrete code anchors: e.g., [FDIFile._iter_records()](../app/io.py:63) instead of broad descriptions
 
 Appendix: common tasks
 
 List a player’s parsed record in a REPL
 ```
 python -q
->>> from pm99_editor.io import FDIFile
+>>> from app.io import FDIFile
 >>> f = FDIFile("DBDAT/JUG98030.FDI"); f.load()
 >>> f.records[0]
 ```
-See: [FDIFile](../pm99_editor/io.py:15), [PlayerRecord](../pm99_editor/models.py:13)
+See: [FDIFile](../app/io.py:15), [PlayerRecord](../app/models.py:13)
 
 Prepare and persist a targeted decoded text replacement (advanced)
-- Generate a modified decoded payload with [file_writer.replace_text_in_decoded()](../pm99_editor/file_writer.py:32)
-- Persist via [file_writer.write_fdi_record()](../pm99_editor/file_writer.py:102)
+- Generate a modified decoded payload with [file_writer.replace_text_in_decoded()](../app/file_writer.py:32)
+- Persist via [file_writer.write_fdi_record()](../app/file_writer.py:102)
 
 Where to raise questions
 - Start with canonical docs in this folder
 - Cross-check with out/ artifacts if you need historical context
 - Use code anchors:
-  - Scan: [FDIFile._iter_records()](../pm99_editor/io.py:63)
-  - Parse: [PlayerRecord.from_bytes()](../pm99_editor/models.py:63)
-  - Write: [file_writer.write_fdi_record()](../pm99_editor/file_writer.py:102)
-  - CLI: [cli.main()](../pm99_editor/cli.py:89)
+  - Scan: [FDIFile._iter_records()](../app/io.py:63)
+  - Parse: [PlayerRecord.from_bytes()](../app/models.py:63)
+  - Write: [file_writer.write_fdi_record()](../app/file_writer.py:102)
+  - CLI: [cli.main()](../app/cli.py:89)

@@ -1,7 +1,7 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """Unit test: verify name-end marker and decoded metadata for Hierro."""
 
-from pm99_editor.io import FDIFile
+from app.io import FDIFile
 
 def test_hierro_name_end_and_metadata(players_fdi_path):
     fdi = FDIFile(players_fdi_path)

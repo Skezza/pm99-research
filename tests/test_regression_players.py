@@ -1,7 +1,7 @@
-import pytest
+﻿import pytest
 from pathlib import Path
 
-from pm99_editor.io import FDIFile
+from app.io import FDIFile
 
 def normalize_name(s: str) -> str:
     return " ".join(s.upper().split())

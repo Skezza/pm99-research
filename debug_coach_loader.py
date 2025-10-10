@@ -1,8 +1,8 @@
-"""Debug coach loader to see what's happening."""
+﻿"""Debug coach loader to see what's happening."""
 
 from pathlib import Path
-from pm99_editor.loaders import decode_entry
-from pm99_editor.coach_models import parse_coaches_from_record
+from app.loaders import decode_entry
+from app.coach_models import parse_coaches_from_record
 
 coach_file = "DBDAT/ENT98030.FDI"
 data = Path(coach_file).read_bytes()

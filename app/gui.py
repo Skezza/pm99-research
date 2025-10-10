@@ -1,8 +1,8 @@
-# Make gui.py runnable either as a package (python -m pm99_editor.gui) or directly (python pm99_editor/gui.py)
+﻿# Make gui.py runnable either as a package (python -m app.gui) or directly (python app/gui.py)
 # This tries relative imports first; if that fails (no package context), it adjusts sys.path
 import os, sys
 try:
-    # When executed as a package: python -m pm99_editor.gui
+    # When executed as a package: python -m app.gui
     from .models import PlayerRecord, TeamRecord, CoachRecord
     from .io import FDIFile
     from .file_writer import save_modified_records
@@ -11,14 +11,14 @@ try:
     from .pkf import PKFDecoderError, PKFFile
     from .pkf_searcher import PKFSearcher, SearchResult
 except Exception:
-    # When executed directly: python pm99_editor/gui.py
+    # When executed directly: python app/gui.py
     sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-    from pm99_editor.models import PlayerRecord, TeamRecord, CoachRecord
-    from pm99_editor.io import FDIFile
-    from pm99_editor.file_writer import save_modified_records
-    from pm99_editor.xor import xor_decode
-    from pm99_editor.loaders import load_teams, load_coaches
-    from pm99_editor.pkf import PKFDecoderError, PKFFile
+    from app.models import PlayerRecord, TeamRecord, CoachRecord
+    from app.io import FDIFile
+    from app.file_writer import save_modified_records
+    from app.xor import xor_decode
+    from app.loaders import load_teams, load_coaches
+    from app.pkf import PKFDecoderError, PKFFile
 
 # Ensure common helpers are available when run as a script
 from pathlib import Path
@@ -30,13 +30,14 @@ Uses the modular package structure
 
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
-from pm99_editor.models import PlayerRecord, TeamRecord, CoachRecord
-from pm99_editor.io import FDIFile
-from pm99_editor.file_writer import save_modified_records
-from pm99_editor.xor import xor_decode
-from pm99_editor.loaders import load_teams, load_coaches
-from pm99_editor.pkf import PKFDecoderError, PKFFile
-from pm99_editor.pkf_searcher import PKFSearcher, SearchResult
+from app.models import PlayerRecord, TeamRecord, CoachRecord
+from app.io import FDIFile
+from app.file_writer import save_modified_records
+from app.xor import xor_decode
+from app.loaders import load_teams, load_coaches
+from app.pkf import PKFDecoderError, PKFFile
+from app.pkf_searcher import PKFSearcher, SearchResult
+from app.settings import SAVE_NAME_ONLY
 from datetime import datetime
 import re
 from collections import defaultdict
@@ -152,6 +153,12 @@ class PM99DatabaseEditor:
         tools_menu.add_command(label="Load PKF and Count Records...", command=self.load_pkf_and_count)
 
         self.root.bind('<Control-s>', lambda e: self.save_database())
+        if SAVE_NAME_ONLY:
+            try:
+                banner = ttk.Label(self.root, text="SAFE MODE: Only player names will be saved. Other edits are disabled.", foreground='darkred')
+                banner.pack(fill=tk.X)
+            except Exception:
+                pass
         
         # Main layout
         main_paned = ttk.PanedWindow(self.root, orient=tk.HORIZONTAL)
@@ -289,7 +296,7 @@ class PM99DatabaseEditor:
         self.league_country_var = tk.StringVar(value="All")
         
         try:
-            from pm99_editor.league_definitions import get_all_countries
+            from app.league_definitions import get_all_countries
             countries = ["All"] + get_all_countries()
         except:
             countries = ["All"]
@@ -351,24 +358,30 @@ class PM99DatabaseEditor:
         # Name (editable - given name and surname)
         ttk.Label(info_frame, text="Given Name:", font=('TkDefaultFont', 10, 'bold')).grid(row=0, column=0, sticky=tk.W, pady=5)
         self.given_name_var = tk.StringVar()
-        ttk.Entry(info_frame, textvariable=self.given_name_var, width=20).grid(row=0, column=1, sticky=tk.W, padx=10, pady=5)
+        # store widget reference so we can enable/disable in safe mode
+        self.given_entry = ttk.Entry(info_frame, textvariable=self.given_name_var, width=20)
+        self.given_entry.grid(row=0, column=1, sticky=tk.W, padx=10, pady=5)
         ttk.Label(info_frame, text="(max 12 chars)", font=('TkDefaultFont', 8)).grid(row=0, column=2, sticky=tk.W)
         
         ttk.Label(info_frame, text="Surname:", font=('TkDefaultFont', 10, 'bold')).grid(row=1, column=0, sticky=tk.W, pady=5)
         self.surname_var = tk.StringVar()
-        ttk.Entry(info_frame, textvariable=self.surname_var, width=20).grid(row=1, column=1, sticky=tk.W, padx=10, pady=5)
+        # store widget reference so we can enable/disable in safe mode
+        self.surname_entry = ttk.Entry(info_frame, textvariable=self.surname_var, width=20)
+        self.surname_entry.grid(row=1, column=1, sticky=tk.W, padx=10, pady=5)
         ttk.Label(info_frame, text="(max 12 chars)", font=('TkDefaultFont', 8)).grid(row=1, column=2, sticky=tk.W)
         
         # Team ID
         ttk.Label(info_frame, text="Team ID:").grid(row=2, column=0, sticky=tk.W, pady=5)
         self.team_id_var = tk.IntVar()
-        ttk.Spinbox(info_frame, from_=0, to=65535, textvariable=self.team_id_var, width=10).grid(row=2, column=1, sticky=tk.W, padx=10, pady=5)
+        self.team_id_spinbox = ttk.Spinbox(info_frame, from_=0, to=65535, textvariable=self.team_id_var, width=10)
+        self.team_id_spinbox.grid(row=2, column=1, sticky=tk.W, padx=10, pady=5)
         ttk.Label(info_frame, text="(0-65535)", font=('TkDefaultFont', 8)).grid(row=2, column=2, sticky=tk.W)
         
         # Squad Number
         ttk.Label(info_frame, text="Squad #:").grid(row=3, column=0, sticky=tk.W, pady=5)
         self.squad_var = tk.IntVar()
-        ttk.Spinbox(info_frame, from_=0, to=255, textvariable=self.squad_var, width=10).grid(row=3, column=1, sticky=tk.W, padx=10, pady=5)
+        self.squad_spinbox = ttk.Spinbox(info_frame, from_=0, to=255, textvariable=self.squad_var, width=10)
+        self.squad_spinbox.grid(row=3, column=1, sticky=tk.W, padx=10, pady=5)
         ttk.Label(info_frame, text="(0-255)", font=('TkDefaultFont', 8)).grid(row=3, column=2, sticky=tk.W)
         
         # Position
@@ -382,7 +395,8 @@ class PM99DatabaseEditor:
         # Nationality (editor uses numeric ID mapping - mapping TBD)
         ttk.Label(info_frame, text="Nationality ID:").grid(row=5, column=0, sticky=tk.W, pady=5)
         self.nationality_var = tk.IntVar()
-        ttk.Spinbox(info_frame, from_=0, to=255, textvariable=self.nationality_var, width=8).grid(row=5, column=1, sticky=tk.W, padx=10, pady=5)
+        self.nationality_spinbox = ttk.Spinbox(info_frame, from_=0, to=255, textvariable=self.nationality_var, width=8)
+        self.nationality_spinbox.grid(row=5, column=1, sticky=tk.W, padx=10, pady=5)
         ttk.Label(info_frame, text="(ID, mapping TBD)", font=('TkDefaultFont', 8)).grid(row=5, column=2, sticky=tk.W)
         
         # Date of Birth (day/month/year)
@@ -392,17 +406,21 @@ class PM99DatabaseEditor:
         self.dob_year_var = tk.IntVar()
         dob_frame = ttk.Frame(info_frame)
         dob_frame.grid(row=6, column=1, sticky=tk.W, padx=10, pady=5)
-        ttk.Spinbox(dob_frame, from_=1, to=31, width=4, textvariable=self.dob_day_var).pack(side=tk.LEFT)
+        self.dob_day_spinbox = ttk.Spinbox(dob_frame, from_=1, to=31, width=4, textvariable=self.dob_day_var)
+        self.dob_day_spinbox.pack(side=tk.LEFT)
         ttk.Label(dob_frame, text="/").pack(side=tk.LEFT)
-        ttk.Spinbox(dob_frame, from_=1, to=12, width=4, textvariable=self.dob_month_var).pack(side=tk.LEFT)
+        self.dob_month_spinbox = ttk.Spinbox(dob_frame, from_=1, to=12, width=4, textvariable=self.dob_month_var)
+        self.dob_month_spinbox.pack(side=tk.LEFT)
         ttk.Label(dob_frame, text="/").pack(side=tk.LEFT)
-        ttk.Spinbox(dob_frame, from_=1900, to=2100, width=6, textvariable=self.dob_year_var).pack(side=tk.LEFT)
+        self.dob_year_spinbox = ttk.Spinbox(dob_frame, from_=1900, to=2100, width=6, textvariable=self.dob_year_var)
+        self.dob_year_spinbox.pack(side=tk.LEFT)
         ttk.Label(info_frame, text="(day/month/year)", font=('TkDefaultFont', 8)).grid(row=6, column=2, sticky=tk.W)
         
         # Height
         ttk.Label(info_frame, text="Height (cm):").grid(row=7, column=0, sticky=tk.W, pady=5)
         self.height_var = tk.IntVar()
-        ttk.Spinbox(info_frame, from_=50, to=250, textvariable=self.height_var, width=8).grid(row=7, column=1, sticky=tk.W, padx=10, pady=5)
+        self.height_spinbox = ttk.Spinbox(info_frame, from_=50, to=250, textvariable=self.height_var, width=8)
+        self.height_spinbox.grid(row=7, column=1, sticky=tk.W, padx=10, pady=5)
         ttk.Label(info_frame, text="cm", font=('TkDefaultFont', 8)).grid(row=7, column=2, sticky=tk.W)
         
         # Attributes
@@ -1781,28 +1799,41 @@ class PM99DatabaseEditor:
         # Clear and rebuild attributes
         for widget in self.attr_container.winfo_children():
             widget.destroy()
-
+ 
         self.attr_vars = []
-
+ 
         attrs = getattr(record, 'attributes', [])
         if not isinstance(attrs, (list, tuple)):
             attrs = list(attrs) if attrs else []
         for i, attr_val in enumerate(attrs):
             frame = ttk.Frame(self.attr_container)
             frame.pack(fill=tk.X, pady=2)
-
+ 
             label_text = self.attr_labels[i] if i < len(self.attr_labels) else f"Attribute {i}"
             ttk.Label(frame, text=label_text, width=18).pack(side=tk.LEFT, padx=5)
-
+ 
             var = tk.IntVar(value=attr_val)
             self.attr_vars.append(var)
-
-            ttk.Spinbox(frame, from_=0, to=100, textvariable=var, width=8).pack(side=tk.LEFT, padx=5)
-            ttk.Scale(frame, from_=0, to=100, variable=var, orient=tk.HORIZONTAL, length=200).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
-
+ 
+            # Create spinbox and scale but disable them in safe-name-only mode
+            spin_state = 'disabled' if SAVE_NAME_ONLY else 'normal'
+            spin = ttk.Spinbox(frame, from_=0, to=100, textvariable=var, width=8, state=spin_state)
+            spin.pack(side=tk.LEFT, padx=5)
+ 
+            scale = ttk.Scale(frame, from_=0, to=100, variable=var, orient=tk.HORIZONTAL, length=200)
+            scale.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+            if SAVE_NAME_ONLY:
+                try:
+                    scale.state(['disabled'])
+                except Exception:
+                    try:
+                        scale.configure(state='disabled')
+                    except Exception:
+                        pass
+ 
             val_label = ttk.Label(frame, text=str(attr_val), width=4, font=('TkDefaultFont', 9, 'bold'))
             val_label.pack(side=tk.RIGHT, padx=5)
-
+ 
             def make_updater(lbl, v):
                 return lambda *args: lbl.config(text=str(v.get()))
             var.trace('w', make_updater(val_label, var))
@@ -1811,18 +1842,18 @@ class PM99DatabaseEditor:
         """Apply changes to current record"""
         if not self.current_record:
             return
-
+ 
         offset, record = self.current_record
-
+ 
         try:
             changes = []
-
+ 
             # Player name (given name and surname)
             new_given = self.given_name_var.get().strip()
             new_surname = self.surname_var.get().strip()
             old_given = getattr(record, 'given_name', '') or ''
             old_surname = getattr(record, 'surname', '') or ''
-
+ 
             if new_given != old_given:
                 try:
                     record.set_given_name(new_given)
@@ -1830,7 +1861,7 @@ class PM99DatabaseEditor:
                 except Exception as e:
                     messagebox.showerror("Invalid Name", f"Given name error: {e}")
                     return
-
+ 
             if new_surname != old_surname:
                 try:
                     record.set_surname(new_surname)
@@ -1838,7 +1869,89 @@ class PM99DatabaseEditor:
                 except Exception as e:
                     messagebox.showerror("Invalid Name", f"Surname error: {e}")
                     return
-
+ 
+            # If running in safe name-only mode, do not apply any other edits.
+            if SAVE_NAME_ONLY:
+                # Detect any attempted non-name edits so we can inform the user they are ignored.
+                non_name_changes = []
+                try:
+                    new_team_id = int(self.team_id_var.get() or 0)
+                except Exception:
+                    new_team_id = 0
+                if new_team_id != getattr(record, 'team_id', 0):
+                    non_name_changes.append("Team ID")
+ 
+                try:
+                    new_squad = int(self.squad_var.get() or 0)
+                except Exception:
+                    new_squad = 0
+                if new_squad != getattr(record, 'squad_number', 0):
+                    non_name_changes.append("Squad #")
+ 
+                pos_name = self.position_var.get()
+                pos_map = {"Goalkeeper": 0, "Defender": 1, "Midfielder": 2, "Forward": 3}
+                new_pos = pos_map.get(pos_name, 0)
+                if new_pos != getattr(record, 'position', 0):
+                    non_name_changes.append("Position")
+ 
+                try:
+                    new_nat = int(self.nationality_var.get() or 0)
+                except Exception:
+                    new_nat = 0
+                if new_nat != getattr(record, 'nationality_id', 0):
+                    non_name_changes.append("Nationality")
+ 
+                try:
+                    new_day = int(self.dob_day_var.get() or 1)
+                    new_month = int(self.dob_month_var.get() or 1)
+                    new_year = int(self.dob_year_var.get() or 1970)
+                except Exception:
+                    new_day, new_month, new_year = 1, 1, 1970
+                old_dob = getattr(record, 'dob', None)
+                if old_dob is None or (new_day, new_month, new_year) != old_dob:
+                    non_name_changes.append("DOB")
+ 
+                try:
+                    new_height = int(self.height_var.get() or 175)
+                except Exception:
+                    new_height = 175
+                if new_height != getattr(record, 'height', None):
+                    non_name_changes.append("Height")
+ 
+                # Attributes
+                for i, var in enumerate(self.attr_vars):
+                    try:
+                        new_val = int(var.get())
+                    except Exception:
+                        continue
+                    if i < len(getattr(record, 'attributes', [])) and new_val != record.attributes[i]:
+                        non_name_changes.append(f"Attribute {i}")
+                        break
+ 
+                if non_name_changes:
+                    messagebox.showwarning(
+                        "Safe Mode: Non-name edits ignored",
+                        "This editor is running in SAFE MODE (name-only saves). The following changes will be ignored:\n\n"
+                        + ", ".join(non_name_changes)
+                    )
+ 
+                if changes:
+                    # Only name modifications staged
+                    self.modified_records[offset] = record
+                    change_text = '\n'.join(changes[:10])
+                    if len(changes) > 10:
+                        change_text += f"\n... and {len(changes)-10} more changes"
+ 
+                    self.status_var.set(f"✓ {len(changes)} name change(s) applied to {getattr(record, 'name', '')}")
+                    messagebox.showinfo(
+                        "Success",
+                        f"Name changes applied to {getattr(record, 'name', '')}:\n\n{change_text}\n\nSave database to persist changes (Ctrl+S)"
+                    )
+                else:
+                    messagebox.showinfo("Info", "No name changes to apply")
+                return
+ 
+            # Legacy (full) behaviour when safe-mode is not enabled: apply all edits
             # Team ID
             try:
                 new_team_id = int(self.team_id_var.get() or 0)
@@ -1850,7 +1963,7 @@ class PM99DatabaseEditor:
                     changes.append(f"Team ID: {getattr(record, 'team_id', '')} → {new_team_id}")
                 except Exception:
                     pass
-
+ 
             # Squad number
             try:
                 new_squad = int(self.squad_var.get() or 0)
@@ -1862,7 +1975,7 @@ class PM99DatabaseEditor:
                     changes.append(f"Squad #: {getattr(record, 'squad_number', '')} → {new_squad}")
                 except Exception:
                     pass
-
+ 
             # Position
             pos_name = self.position_var.get()
             pos_map = {"Goalkeeper": 0, "Defender": 1, "Midfielder": 2, "Forward": 3}
@@ -1877,7 +1990,7 @@ class PM99DatabaseEditor:
                     changes.append(f"Position: {old_pos_name} → {pos_name}")
                 except Exception:
                     pass
-
+ 
             # Metadata: Nationality, DOB, Height
             try:
                 new_nat = int(self.nationality_var.get() or 0)
@@ -1891,7 +2004,7 @@ class PM99DatabaseEditor:
                     changes.append(f"Nationality ID: {old_nat_display} → {new_nat}")
                 except Exception:
                     pass
-
+ 
             # DOB
             try:
                 new_day = int(self.dob_day_var.get() or 1)
@@ -1907,7 +2020,7 @@ class PM99DatabaseEditor:
                     changes.append(f"DOB: {old_dob_display} → {new_day}/{new_month}/{new_year}")
                 except Exception:
                     pass
-
+ 
             # Height
             try:
                 new_height = int(self.height_var.get() or 175)
@@ -1921,7 +2034,7 @@ class PM99DatabaseEditor:
                     changes.append(f"Height: {old_height_display} → {new_height} cm")
                 except Exception:
                     pass
-
+ 
             # Attributes
             for i, var in enumerate(self.attr_vars):
                 try:
@@ -1935,18 +2048,18 @@ class PM99DatabaseEditor:
                         changes.append(f"{self.attr_labels[i]}: {old_val} → {new_val}")
                     except Exception:
                         pass
-
+ 
             if changes:
                 self.modified_records[offset] = record
                 change_text = '\n'.join(changes[:10])
                 if len(changes) > 10:
                     change_text += f"\n... and {len(changes)-10} more changes"
-
+ 
                 self.status_var.set(f"✓ {len(changes)} change(s) applied to {getattr(record, 'name', '')}")
                 messagebox.showinfo("Success", f"Changes applied to {getattr(record, 'name', '')}:\n\n{change_text}\n\nSave database to persist changes (Ctrl+S)")
             else:
                 messagebox.showinfo("Info", "No changes to apply")
-
+ 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to apply changes:\n{str(e)}")
 
@@ -2031,10 +2144,14 @@ class PM99DatabaseEditor:
             if n_players:
                 player_backup = Path(self.file_path + f'.backup_{timestamp}')
                 player_backup.write_bytes(self.file_data)
-                modified_list = [(o, r) for o, r in self.modified_records.items()]
-                new_data = save_modified_records(self.file_path, self.file_data, modified_list)
-                Path(self.file_path).write_bytes(new_data)
-                self.file_data = new_data
+                # Use FDIFile save which honors SAVE_NAME_ONLY conservative behaviour
+                fdi = FDIFile(self.file_path)
+                fdi.file_data = self.file_data
+                # copy modified records into the FDIFile instance
+                fdi.modified_records = {o: r for o, r in self.modified_records.items()}
+                fdi.save()
+                # Refresh in-memory file data and clear staged modifications
+                self.file_data = Path(self.file_path).read_bytes()
                 self.modified_records.clear()
                 backups.append(str(player_backup))
 
