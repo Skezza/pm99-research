@@ -10,6 +10,11 @@ try:
     from .loaders import load_teams, load_coaches
     from .pkf import PKFDecoderError, PKFFile
     from .pkf_searcher import PKFSearcher, SearchResult
+    from .exporters import (
+        generate_player_table_text,
+        generate_coach_table_text,
+        generate_team_table_text,
+    )
 except Exception:
     # When executed directly: python pm99_editor/gui.py
     sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -19,6 +24,11 @@ except Exception:
     from pm99_editor.xor import xor_decode
     from pm99_editor.loaders import load_teams, load_coaches
     from pm99_editor.pkf import PKFDecoderError, PKFFile
+    from pm99_editor.exporters import (
+        generate_player_table_text,
+        generate_coach_table_text,
+        generate_team_table_text,
+    )
 
 # Ensure common helpers are available when run as a script
 from pathlib import Path
@@ -37,6 +47,11 @@ from pm99_editor.xor import xor_decode
 from pm99_editor.loaders import load_teams, load_coaches
 from pm99_editor.pkf import PKFDecoderError, PKFFile
 from pm99_editor.pkf_searcher import PKFSearcher, SearchResult
+from pm99_editor.exporters import (
+    generate_player_table_text,
+    generate_coach_table_text,
+    generate_team_table_text,
+)
 from datetime import datetime
 import re
 from collections import defaultdict
@@ -200,9 +215,12 @@ class PM99DatabaseEditor:
         
         self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        
+
         self.tree.bind('<<TreeviewSelect>>', self.on_select)
-        
+
+        export_player_btn = ttk.Button(player_tab, text="Export Players", command=self.export_players)
+        export_player_btn.pack(pady=(5, 0))
+
         # Count label
         self.count_label = ttk.Label(player_tab, text="Players: 0")
         self.count_label.pack(pady=(5, 0))
@@ -2641,40 +2659,50 @@ class PM99DatabaseEditor:
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save:\n{str(e)}")
     
+    def export_players(self):
+        """Export the visible player table to the clipboard."""
+        if not hasattr(self, 'filtered_records'):
+            return
+
+        export_text = generate_player_table_text(
+            getattr(self, 'filtered_records', []),
+            team_lookup=getattr(self, 'team_lookup', {}),
+        )
+
+        self.root.clipboard_clear()
+        self.root.clipboard_append(export_text)
+        messagebox.showinfo(
+            "Export Complete",
+            f"Exported {len(getattr(self, 'filtered_records', []))} players to clipboard",
+        )
+
     def export_coaches(self):
         """Export coach list to clipboard"""
         if not hasattr(self, 'filtered_coach_records'):
             return
-        coach_names = []
-        for offset, coach in self.filtered_coach_records:
-            display = getattr(coach, 'full_name', str(coach))
-            coach_names.append(display)
-        export_text = '\n'.join(coach_names)
+
+        export_text = generate_coach_table_text(getattr(self, 'filtered_coach_records', []))
+
         self.root.clipboard_clear()
         self.root.clipboard_append(export_text)
-        messagebox.showinfo("Export Complete", f"Exported {len(coach_names)} coaches to clipboard")
+        messagebox.showinfo(
+            "Export Complete",
+            f"Exported {len(getattr(self, 'filtered_coach_records', []))} coaches to clipboard",
+        )
 
     def export_teams(self):
         """Export team list to clipboard with offset and team_id for debugging"""
         if not hasattr(self, 'filtered_team_records'):
             return
-        team_lines = []
-        for offset, team in self.filtered_team_records:
-            name = getattr(team, 'name', None) or "Unknown Team"
-            team_id = getattr(team, 'team_id', 0)
-            league = getattr(team, 'league', 'Unknown')
-            # Format: offset | team_id | name | league
-            team_lines.append(f"0x{offset:08x} | {team_id:5d} | {name:<50s} | {league}")
-        
-        # Add header
-        header = f"{'Offset':<12} | {'ID':<5} | {'Name':<50} | League\n" + "="*100
-        export_text = header + '\n' + '\n'.join(team_lines)
-        
+
+        export_text = generate_team_table_text(getattr(self, 'filtered_team_records', []))
+
         self.root.clipboard_clear()
         self.root.clipboard_append(export_text)
-        messagebox.showinfo("Export Complete",
-                          f"Exported {len(team_lines)} teams to clipboard\n\n" +
-                          "Format: Offset | Team ID | Name | League")
+        messagebox.showinfo(
+            "Export Complete",
+            f"Exported {len(getattr(self, 'filtered_team_records', []))} teams to clipboard",
+        )
 
     def open_file(self):
         """Open different database file"""
