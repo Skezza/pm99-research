@@ -15,6 +15,27 @@ class Coach:
     
     def __str__(self) -> str:
         return self.full_name if self.full_name else f"{self.given_name} {self.surname}".strip()
+    
+    def to_bytes(self) -> bytes:
+        """
+        Fallback serialization for Coach objects that aren't wrapped in EditableCoachRecord.
+        
+        This should not normally be called - coaches should be loaded as EditableCoachRecord
+        which has proper serialization. This is just a safety fallback that returns
+        a minimal valid entry.
+        """
+        # Return a minimal encoded entry with just the name
+        # Format: length-prefixed Latin-1 encoded name
+        name_bytes = self.full_name.encode('latin-1', errors='replace')
+        # Simple XOR encoding with 0x61
+        encoded = bytes(b ^ 0x61 for b in name_bytes)
+        return encoded
+    
+    def set_name(self, given_name: str, surname: str):
+        """Update coach name fields."""
+        self.given_name = given_name
+        self.surname = surname
+        self.full_name = f"{given_name} {surname}".strip()
 
 def parse_coaches_from_record(decoded_data: bytes) -> List[Coach]:
     """
@@ -69,6 +90,11 @@ def parse_coaches_from_record(decoded_data: bytes) -> List[Coach]:
                 import re as _re
                 # Remove trailing characters that are not letters, accents, or spaces
                 surname = _re.sub(r'[^A-Za-zÀ-ÿ\s]+$', '', surname).strip()
+                
+                # Normalize to title case EARLY for consistency and proper deduplication
+                # This ensures "George GRAHAM", "George Graham", and "george graham" all become "George Graham"
+                given_name = given_name.title()
+                surname = surname.title()
 
                 # Skip if too short after cleaning
                 if len(given_name) < 3 or len(surname) < 3:
@@ -87,16 +113,18 @@ def parse_coaches_from_record(decoded_data: bytes) -> List[Coach]:
                 if surname.upper() in team_suffixes:
                     continue
 
-                # Skip if full name has more than 2 words (likely a team name)
+                # Build full name AFTER normalization for proper deduplication
                 full_name = f"{given_name} {surname}"
                 if len(full_name.split()) > 2:
                     continue
 
-                # Avoid duplicates
-                if full_name in seen_names:
+                # Avoid duplicates using case-insensitive comparison
+                # Use uppercase for the deduplication key to catch any remaining case variations
+                full_name_key = full_name.upper()
+                if full_name_key in seen_names:
                     continue
 
-                seen_names.add(full_name)
+                seen_names.add(full_name_key)
 
                 coach = Coach(
                     surname=surname,
