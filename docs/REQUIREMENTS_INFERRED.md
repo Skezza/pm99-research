@@ -19,4 +19,4 @@ Based on the current code, tests, and documentation, the Premier Manager 99 edit
 
 ## Outstanding needs
 - Keep canonical documentation (architecture, data formats, editor usage) synchronised with implementation changes so references in `README.md` remain trustworthy.
-- Test execution depends on proprietary sample data (`DBDAT/*.FDI`), indicating a requirement to distribute fixtures, provide a fetch script, or expose a flag that forces failures when data is missing (see [docs/Bugs/MISSING_DBDAT_FIXTURES.md](Bugs/MISSING_DBDAT_FIXTURES.md)).
+- Test execution depends on proprietary sample data (`DBDAT/*.FDI`), indicating a requirement to distribute fixtures, provide a fetch script, or expose a flag that forces failures when data is missing so contributors notice the gap early.

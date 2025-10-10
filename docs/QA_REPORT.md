@@ -20,4 +20,4 @@ The suite completes successfully when the proprietary `DBDAT` databases are abse
 All three rely on `DBDAT/*.FDI` fixtures and emit informative skip messages if the assets are not present.
 
 ## Follow-up
-Bundled fixtures (or a documented fetch step) would allow CI to exercise the skipped integration suites. See [docs/Bugs/MISSING_DBDAT_FIXTURES.md](docs/Bugs/MISSING_DBDAT_FIXTURES.md) for remediation ideas.
+Bundled fixtures (or a documented fetch step) would allow CI to exercise the skipped integration suites. Until the proprietary `DBDAT` databases can be redistributed, document the acquisition steps alongside the skip rationale so contributors can run the integration checks locally.
