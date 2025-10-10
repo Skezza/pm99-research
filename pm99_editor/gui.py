@@ -9,6 +9,11 @@ try:
     from .xor import xor_decode
     from .loaders import load_teams, load_coaches
     from .pkf import PKFDecoderError, PKFFile
+    from .exporters import (
+        generate_player_table_text,
+        generate_coach_table_text,
+        generate_team_table_text,
+    )
 except Exception:
     # When executed directly: python pm99_editor/gui.py
     sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -18,6 +23,11 @@ except Exception:
     from pm99_editor.xor import xor_decode
     from pm99_editor.loaders import load_teams, load_coaches
     from pm99_editor.pkf import PKFDecoderError, PKFFile
+    from pm99_editor.exporters import (
+        generate_player_table_text,
+        generate_coach_table_text,
+        generate_team_table_text,
+    )
 
 # Ensure common helpers are available when run as a script
 from pathlib import Path
@@ -35,6 +45,11 @@ from pm99_editor.file_writer import save_modified_records
 from pm99_editor.xor import xor_decode
 from pm99_editor.loaders import load_teams, load_coaches
 from pm99_editor.pkf import PKFDecoderError, PKFFile
+from pm99_editor.exporters import (
+    generate_player_table_text,
+    generate_coach_table_text,
+    generate_team_table_text,
+)
 from datetime import datetime
 import re
 from collections import defaultdict
@@ -182,9 +197,12 @@ class PM99DatabaseEditor:
         
         self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        
+
         self.tree.bind('<<TreeviewSelect>>', self.on_select)
-        
+
+        export_player_btn = ttk.Button(player_tab, text="Export Players", command=self.export_players)
+        export_player_btn.pack(pady=(5, 0))
+
         # Count label
         self.count_label = ttk.Label(player_tab, text="Players: 0")
         self.count_label.pack(pady=(5, 0))
@@ -1979,40 +1997,143 @@ class PM99DatabaseEditor:
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save:\n{str(e)}")
     
+    def export_players(self):
+        """Export the visible player table to the clipboard."""
+        if not hasattr(self, 'filtered_records'):
+            return
+
+        level = self._prompt_export_level(
+            title="Export Players",
+            description="Choose how much player data to copy to the clipboard:",
+            options=[
+                ("Visible list (offsets, teams, squad #)", "summary"),
+                ("Full detail (include attributes)", "detailed"),
+            ],
+        )
+        if level is None:
+            return
+
+        export_text = generate_player_table_text(
+            getattr(self, 'filtered_records', []),
+            team_lookup=getattr(self, 'team_lookup', {}),
+            level=level,
+        )
+
+        self.root.clipboard_clear()
+        self.root.clipboard_append(export_text)
+        messagebox.showinfo(
+            "Export Complete",
+            f"Exported {len(getattr(self, 'filtered_records', []))} players to clipboard",
+        )
+
     def export_coaches(self):
         """Export coach list to clipboard"""
         if not hasattr(self, 'filtered_coach_records'):
             return
-        coach_names = []
-        for offset, coach in self.filtered_coach_records:
-            display = getattr(coach, 'full_name', str(coach))
-            coach_names.append(display)
-        export_text = '\n'.join(coach_names)
+
+        level = self._prompt_export_level(
+            title="Export Coaches",
+            description="Choose the coach export format:",
+            options=[
+                ("Visible list (offsets & names)", "summary"),
+                ("Full detail (include additional fields if available)", "detailed"),
+            ],
+        )
+        if level is None:
+            return
+
+        export_text = generate_coach_table_text(
+            getattr(self, 'filtered_coach_records', []),
+            level=level,
+        )
+
         self.root.clipboard_clear()
         self.root.clipboard_append(export_text)
-        messagebox.showinfo("Export Complete", f"Exported {len(coach_names)} coaches to clipboard")
+        messagebox.showinfo(
+            "Export Complete",
+            f"Exported {len(getattr(self, 'filtered_coach_records', []))} coaches to clipboard",
+        )
 
     def export_teams(self):
         """Export team list to clipboard with offset and team_id for debugging"""
         if not hasattr(self, 'filtered_team_records'):
             return
-        team_lines = []
-        for offset, team in self.filtered_team_records:
-            name = getattr(team, 'name', None) or "Unknown Team"
-            team_id = getattr(team, 'team_id', 0)
-            league = getattr(team, 'league', 'Unknown')
-            # Format: offset | team_id | name | league
-            team_lines.append(f"0x{offset:08x} | {team_id:5d} | {name:<50s} | {league}")
-        
-        # Add header
-        header = f"{'Offset':<12} | {'ID':<5} | {'Name':<50} | League\n" + "="*100
-        export_text = header + '\n' + '\n'.join(team_lines)
-        
+
+        level = self._prompt_export_level(
+            title="Export Teams",
+            description="Choose how much team data to copy to the clipboard:",
+            options=[
+                ("Visible list (offsets, stadium data)", "summary"),
+                ("Full detail (include squad breakdown)", "detailed"),
+            ],
+        )
+        if level is None:
+            return
+
+        export_text = generate_team_table_text(
+            getattr(self, 'filtered_team_records', []),
+            level=level,
+            player_records=getattr(self, 'all_records', []),
+            team_lookup=getattr(self, 'team_lookup', {}),
+        )
+
         self.root.clipboard_clear()
         self.root.clipboard_append(export_text)
-        messagebox.showinfo("Export Complete",
-                          f"Exported {len(team_lines)} teams to clipboard\n\n" +
-                          "Format: Offset | Team ID | Name | League")
+        messagebox.showinfo(
+            "Export Complete",
+            f"Exported {len(getattr(self, 'filtered_team_records', []))} teams to clipboard",
+        )
+
+    def _prompt_export_level(self, title, description, options):
+        """Prompt the user to choose an export detail level."""  # pragma: no cover - GUI interaction
+
+        if not options:
+            return None
+
+        dialog = tk.Toplevel(self.root)
+        dialog.title(title)
+        dialog.transient(self.root)
+        dialog.grab_set()
+
+        ttk.Label(dialog, text=description, wraplength=320, padding=(10, 10, 10, 0)).pack(anchor=tk.W)
+
+        choice_var = tk.StringVar(value=options[0][0])
+        combo = ttk.Combobox(
+            dialog,
+            values=[opt[0] for opt in options],
+            textvariable=choice_var,
+            state="readonly",
+            width=38,
+        )
+        combo.pack(padx=10, pady=10, fill=tk.X)
+        combo.focus_set()
+
+        result = {"value": None}
+
+        def resolve_selection(value):
+            for label, key in options:
+                if label == value:
+                    return key
+            return None
+
+        def on_ok():
+            result["value"] = resolve_selection(choice_var.get())
+            dialog.destroy()
+
+        def on_cancel():
+            dialog.destroy()
+
+        button_frame = ttk.Frame(dialog, padding=(10, 0, 10, 10))
+        button_frame.pack(fill=tk.X)
+
+        ttk.Button(button_frame, text="Cancel", command=on_cancel).pack(side=tk.RIGHT, padx=(5, 0))
+        ttk.Button(button_frame, text="Export", command=on_ok).pack(side=tk.RIGHT)
+
+        dialog.bind("<Return>", lambda event: on_ok())
+        dialog.bind("<Escape>", lambda event: on_cancel())
+
+        self.root.wait_window(dialog)
+        return result["value"]
 
     def open_file(self):
         """Open different database file"""
