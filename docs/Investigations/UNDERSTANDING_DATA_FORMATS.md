@@ -108,7 +108,7 @@ References and further reading
 - Detailed player field mapping (narrative): [docs/PLAYER_FIELD_MAP.md](./PLAYER_FIELD_MAP.md)
 - Reverse engineering handover (binary-level story): [docs/REVERSE_ENGINEERING_HANDOVER.md](./REVERSE_ENGINEERING_HANDOVER.md)
 - Final report (historical narrative): [docs/REVERSE_ENGINEERING_FINAL_REPORT.md](./REVERSE_ENGINEERING_FINAL_REPORT.md)
-- Legacy schema notes (Ghidra-centric, historical): [out/schema_players.md](../out/schema_players.md) — superseded by this document and the code references above
+- Legacy schema notes (Ghidra-centric, historical): [docs/archive/schema_players.md](../archive/schema_players.md) — superseded by this document and the code references above
 
 Related code index
 - Models

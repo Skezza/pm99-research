@@ -1,7 +1,7 @@
 ﻿# Reverse Engineering Report — Condensed Narrative
 
 Purpose
-A single, high-signal account of what is known, why it is believed, and how it is implemented in code. This is the canonical summary; verbose session logs remain in out/ as artifacts.
+A single, high-signal account of what is known, why it is believed, and how it is implemented in code. This is the canonical summary; verbose session logs remain in docs/archive/ as artifacts.
 
 Scope
 - Container format (FDI header, directory)
@@ -94,10 +94,10 @@ Next actions (ordered)
 - Document any newly confirmed offsets in [docs/DATA_FORMATS.md](./DATA_FORMATS.md) and add unit tests
 
 References (legacy artifacts)
-- Loader and decode summary: [../out/README.md](../out/README.md)
-- Cross‑binary triangulation: [../out/triangulation.md](../out/triangulation.md)
-- Verify snapshots: [../out/verify.txt](../out/verify.txt)
-- Historical Ghidra schema notes: [../out/schema_players.md](../out/schema_players.md) — superseded by code + this report
+- Loader and decode summary: [../archive/README.md](../archive/README.md)
+- Cross‑binary triangulation: [../archive/triangulation.md](../archive/triangulation.md)
+- Verify snapshots: [../archive/verify.txt](../archive/verify.txt)
+- Historical Ghidra schema notes: [../archive/schema_players.md](../archive/schema_players.md) — superseded by code + this report
 
 Relationship to other canonical docs
 - Formats and byte rules: [docs/DATA_FORMATS.md](./DATA_FORMATS.md)
@@ -111,4 +111,4 @@ Status and ownership
 
 Versioning
 - Track user‑visible documentation changes in [docs/CHANGELOG.md](./CHANGELOG.md)
-- Keep legacy narratives unchanged in out/ for provenance
+- Keep legacy narratives unchanged in docs/archive/ for provenance

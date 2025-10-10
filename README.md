@@ -1,7 +1,7 @@
 ﻿# Premier Manager 99 — Database Editor and Reverse Engineering
 
 Purpose
-One‑stop entrypoint for working with Premier Manager 99 database files: inspect, search and make safe edits. Canonical docs now live in [docs/](docs/) and the legacy investigation trail remains in [out/](out/) as artifacts.
+One‑stop entrypoint for working with Premier Manager 99 database files: inspect, search and make safe edits. Canonical docs now live in [docs/](docs/) and the legacy investigation trail remains in [docs/archive/](docs/archive/) as artifacts.
 
 Quick start
 Requirements: Python 3.8+; run from repo root. Database files are under [DBDAT/](DBDAT/).
@@ -58,11 +58,11 @@ Canonical documentation (start here)
 
 Legacy investigation artifacts (kept for reference)
 The following remain for traceability and will be gradually folded into concise canonical docs:
-- Loader and decode summary: [out/README.md](out/README.md)
-- Binary triangulation and struct notes: [out/triangulation.md](out/triangulation.md), [out/struct_notes.md](out/struct_notes.md), [out/verify.txt](out/verify.txt)
-- Handover bundles and status reports: [out/COMPREHENSIVE_HANDOVER.md](out/COMPREHENSIVE_HANDOVER.md), [out/FINAL_HANDOVER.md](out/FINAL_HANDOVER.md), [out/FINAL_FINDINGS.md](out/FINAL_FINDINGS.md), [out/FINAL_STATUS.md](out/FINAL_STATUS.md), [out/COMPLETION_NOTES.md](out/COMPLETION_NOTES.md), [out/PROJECT_SUMMARY.md](out/PROJECT_SUMMARY.md), [out/HANDOVER_FINAL.md](out/HANDOVER_FINAL.md), [out/handover.md](out/handover.md)
-- Editor success notes: [out/SUCCESS_COMPLETE_COACH_EDITOR.md](out/SUCCESS_COMPLETE_COACH_EDITOR.md), [out/PLAYER_EDITOR_SUCCESS.md](out/PLAYER_EDITOR_SUCCESS.md)
-- Field schemas and roadmap: [out/schema_players.md](out/schema_players.md), [out/FULL_EDITOR_ROADMAP.md](out/FULL_EDITOR_ROADMAP.md), [out/USAGE.md](out/USAGE.md), [out/editor_roadmap.md](out/editor_roadmap.md), [out/ENHANCEMENT_PLAN.md](out/ENHANCEMENT_PLAN.md)
+- Loader and decode summary: [docs/archive/README.md](docs/archive/README.md)
+- Binary triangulation and struct notes: [docs/archive/triangulation.md](docs/archive/triangulation.md), [docs/archive/struct_notes.md](docs/archive/struct_notes.md), [docs/archive/verify.txt](docs/archive/verify.txt)
+- Handover bundles and status reports: [docs/archive/COMPREHENSIVE_HANDOVER.md](docs/archive/COMPREHENSIVE_HANDOVER.md), [docs/archive/FINAL_HANDOVER.md](docs/archive/FINAL_HANDOVER.md), [docs/archive/FINAL_FINDINGS.md](docs/archive/FINAL_FINDINGS.md), [docs/archive/FINAL_STATUS.md](docs/archive/FINAL_STATUS.md), [docs/archive/COMPLETION_NOTES.md](docs/archive/COMPLETION_NOTES.md), [docs/archive/PROJECT_SUMMARY.md](docs/archive/PROJECT_SUMMARY.md), [docs/archive/HANDOVER_FINAL.md](docs/archive/HANDOVER_FINAL.md), [docs/archive/handover.md](docs/archive/handover.md)
+- Editor success notes: [docs/archive/SUCCESS_COMPLETE_COACH_EDITOR.md](docs/archive/SUCCESS_COMPLETE_COACH_EDITOR.md), [docs/archive/PLAYER_EDITOR_SUCCESS.md](docs/archive/PLAYER_EDITOR_SUCCESS.md)
+- Field schemas and roadmap: [docs/archive/schema_players.md](docs/archive/schema_players.md), [docs/archive/FULL_EDITOR_ROADMAP.md](docs/archive/FULL_EDITOR_ROADMAP.md), [docs/archive/USAGE.md](docs/archive/USAGE.md), [docs/archive/editor_roadmap.md](docs/archive/editor_roadmap.md), [docs/archive/ENHANCEMENT_PLAN.md](docs/archive/ENHANCEMENT_PLAN.md)
 
 Status at a glance
 Parsing and writing are intentionally conservative. Known‑good reading/writing paths are encapsulated in:
@@ -87,8 +87,8 @@ See the [FDIFile](app/io.py:15) implementation for available helpers.
 Contributing and documentation cleanup
 This repository previously contained overlapping handovers and AI‑generated notes. The new structure adopts:
 - Canonical docs under [docs/](docs/) with concise, maintained topics
-- Artifact trail kept under [out/](out/)
-- Future consolidation target: migrate field/schema specifics from [out/schema_players.md](out/schema_players.md) into a single developer‑facing spec
+- Artifact trail kept under [docs/archive/](docs/archive/)
+- Future consolidation target: migrate field/schema specifics from [docs/archive/schema_players.md](docs/archive/schema_players.md) into a single developer‑facing spec
 
 Where to go next
 - Getting started guide: [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)
