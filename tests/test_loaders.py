@@ -1,4 +1,4 @@
-"""
+﻿"""
 Tests for the shared loaders module.
 
 These tests verify that the team and coach loaders correctly:
@@ -10,7 +10,7 @@ These tests verify that the team and coach loaders correctly:
 
 import pytest
 from pathlib import Path
-from pm99_editor.loaders import load_teams, load_coaches
+from app.loaders import load_teams, load_coaches
 
 
 def test_load_teams():

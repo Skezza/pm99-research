@@ -1,6 +1,6 @@
-"""Test for the eager loader that ensures DB FDI/PKF files are loaded into memory."""
+﻿"""Test for the eager loader that ensures DB FDI/PKF files are loaded into memory."""
 import pytest
-from pm99_editor.datastore import DataStore, resolve_db_root
+from app.datastore import DataStore, resolve_db_root
 
 
 def test_eager_load_db_files():

@@ -1,6 +1,6 @@
-import types
+﻿import types
 
-from pm99_editor.exporters import (
+from app.exporters import (
     generate_player_table_text,
     generate_coach_table_text,
     generate_team_table_text,
@@ -64,3 +64,4 @@ def test_format_table_handles_empty_rows():
     table = format_table(["A", "B"], [])
     assert table.startswith("A | B")
     assert "\n" in table
+

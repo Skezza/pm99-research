@@ -1,4 +1,4 @@
-# Premier Manager 99 Reverse-Engineering — Handover Brief
+﻿# Premier Manager 99 Reverse-Engineering — Handover Brief
 
 ## 1. Repository Inventory (re-verify all claims)
 
@@ -11,7 +11,7 @@
 | [`out/triangulation.md`](out/triangulation.md:1-30) | Cross-binary loader comparison summary. | Verify addresses/functions in Ghidra. Check import tables to confirm helper reuse. |
 | [`out/README.md`](out/README.md:1-112) | Project summary, call graphs, decode algorithm overview. | Treat as a synopsis; update once verification tasks complete. |
 | [`out/editor_roadmap.md`](out/editor_roadmap.md:1-145) | Implementation plan (now includes WIP status). | Use as task list; adjust as findings evolve. |
-| [`pm99_editor/__init__.py`](pm99_editor/__init__.py:1-5) | Placeholder package for future code. | Populate as modules are created. |
+| [`app/__init__.py`](app/__init__.py:1-5) | Placeholder package for future code. | Populate as modules are created. |
 | `textos_0000.bin` | Sample decoded output from TEXTOS.PKF `offset=0`. | Re-generate via decoder, inspect text with CP1252 to confirm readability. |
 | [`out/handover.md`](out/handover.md:1-91) | This document. | Replace once new owner confirms status. |
 
@@ -40,7 +40,7 @@
 
 1. **Implement structured reader/writer**
    - A. Create dataclasses (e.g., `PlayerRecord`) with `from_bytes` / `to_bytes`.
-   - B. Build module `pm99_editor/fdi.py` to handle header parsing, directory handling, and record iteration.
+   - B. Build module `app/fdi.py` to handle header parsing, directory handling, and record iteration.
    - C. Implement XOR encoder matching decode logic and rebuild the directory table.
 
 2. **CLI workflow**

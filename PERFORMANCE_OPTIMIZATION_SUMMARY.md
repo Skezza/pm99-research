@@ -1,4 +1,4 @@
-# Player Database Import Performance Optimization
+﻿# Player Database Import Performance Optimization
 
 ## Summary
 
@@ -14,7 +14,7 @@ Successfully optimized the player database import process, achieving **70-80% pe
 - Sequential post-directory scan
 
 **After:** 1 coordinated single-pass scan
-- All scanning logic merged into optimized [`find_player_records()`](pm99_editor/scanner.py:51)
+- All scanning logic merged into optimized [`find_player_records()`](app/scanner.py:51)
 - Processes separated records and embedded records in same pass
 
 ### 2. Early Hash-Based Deduplication ✅
@@ -69,13 +69,13 @@ def _normalize_name(name: str) -> str:
 
 ## Files Modified
 
-1. [`pm99_editor/scanner.py`](pm99_editor/scanner.py)
+1. [`app/scanner.py`](app/scanner.py)
    - Merged two-pass scanning into single coordinated pass
    - Added early hash-based deduplication
    - Pre-compiled regex patterns
    - Added helper functions for normalization and confidence scoring
 
-2. [`pm99_editor/io.py`](pm99_editor/io.py)
+2. [`app/io.py`](app/io.py)
    - Simplified `FDIFile.load()` method
    - Removed redundant scanning passes
    - Leverages optimized scanner for all record discovery
@@ -105,7 +105,7 @@ def _normalize_name(name: str) -> str:
 The optimizations are transparent to existing code:
 
 ```python
-from pm99_editor.io import FDIFile
+from app.io import FDIFile
 
 # Same API, much faster performance
 fdi = FDIFile("DBDAT/JUG98030.FDI")

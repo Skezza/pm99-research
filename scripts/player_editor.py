@@ -1,4 +1,4 @@
-"""
+﻿"""
 Player Editor for Premier Manager 99
 Demonstrates:
 1. Load JUG98030.FDI
@@ -14,9 +14,9 @@ Usage:
 import sys
 from pathlib import Path
 from typing import List
-from pm99_editor.player_models import Player, parse_all_players
-from pm99_editor.file_writer import create_backup, replace_text_in_decoded, write_fdi_record
-from pm99_editor.xor import decode_entry
+from app.player_models import Player, parse_all_players
+from app.file_writer import create_backup, replace_text_in_decoded, write_fdi_record
+from app.xor import decode_entry
 
 PLAYER_FILE = 'DBDAT/JUG98030.FDI'
 

@@ -1,4 +1,4 @@
-# Player Name Renaming - Technical Analysis
+﻿# Player Name Renaming - Technical Analysis
 
 ## Current State
 
@@ -68,7 +68,7 @@ From [`file_writer.py`](file_writer.py:103-178):
 
 ### Phase 1: Model Layer (SAFE)
 
-**File:** [`pm99_editor/models.py`](models.py)
+**File:** [`app/models.py`](models.py)
 
 Add to `PlayerRecord` class:
 
@@ -197,7 +197,7 @@ def _rebuild_name_region(self):
 
 ### Phase 2: GUI Layer (SIMPLE)
 
-**File:** [`pm99_editor/gui.py`](gui.py)
+**File:** [`app/gui.py`](gui.py)
 
 **Changes needed:**
 

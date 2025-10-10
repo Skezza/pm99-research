@@ -1,10 +1,10 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 import pytest
-from pm99_editor.io import FDIFile
-from pm99_editor.coach_models import parse_coaches_from_record
-from pm99_editor.models import TeamRecord
-from pm99_editor.file_writer import save_modified_records
-from pm99_editor.xor import decode_entry
+from app.io import FDIFile
+from app.coach_models import parse_coaches_from_record
+from app.models import TeamRecord
+from app.file_writer import save_modified_records
+from app.xor import decode_entry
 
 def test_coach_parsing(coaches_fdi_path):
     f = FDIFile(coaches_fdi_path)

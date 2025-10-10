@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 from pathlib import Path
 import sys
 # Ensure repository root is on sys.path so scripts can import package modules when run directly
@@ -6,7 +6,7 @@ root = Path(__file__).resolve().parents[1]
 if str(root) not in sys.path:
     sys.path.insert(0, str(root))
 
-from pm99_editor.io import FDIFile
+from app.io import FDIFile
 import binascii
 
 def inspect():

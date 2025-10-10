@@ -1,4 +1,4 @@
-# Balanced Filtering Fix - Summary
+﻿# Balanced Filtering Fix - Summary
 
 ## Problems Identified from GUI Testing
 
@@ -130,7 +130,7 @@ Should NOT show:
 
 ## Files Modified
 
-1. **[`pm99_editor/loaders.py`](pm99_editor/loaders.py)**
+1. **[`app/loaders.py`](app/loaders.py)**
    - Lines 131-149: Relaxed team embedded garbage detection
    - Lines 282-339: Expanded coach phrase blocklist to ~120 patterns
 
@@ -139,7 +139,7 @@ Should NOT show:
 Please test the fixes in the GUI:
 
 ```bash
-python -m pm99_editor.gui
+python -m app.gui
 ```
 
 ### Teams Tab Checklist:

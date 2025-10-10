@@ -1,9 +1,9 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 import struct
 import pytest
 
-from pm99_editor.xor import decode_entry, encode_entry, read_string, write_string
-from pm99_editor.models import FDIHeader, DirectoryEntry
+from app.xor import decode_entry, encode_entry, read_string, write_string
+from app.models import FDIHeader, DirectoryEntry
 
 SEPARATOR = bytes([0xdd, 0x63, 0x60])
 

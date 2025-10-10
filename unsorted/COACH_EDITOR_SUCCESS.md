@@ -1,4 +1,4 @@
-# Coach Editor - Proof of Concept SUCCESS ✓
+﻿# Coach Editor - Proof of Concept SUCCESS ✓
 
 ## Achievement
 
@@ -46,7 +46,7 @@ This was discovered by analyzing the simpler coaches file first, which revealed 
 
 ## Implementation
 
-### Coach Parser (`pm99_editor/coach_models.py`)
+### Coach Parser (`app/coach_models.py`)
 ```python
 def parse_coaches_from_record(decoded_data: bytes) -> List[Coach]:
     """Extract coach names using regex patterns"""
@@ -97,7 +97,7 @@ The player file (JUG98030.FDI) uses a DIFFERENT structure:
 ## Files Created
 
 ### New Code
-- `pm99_editor/coach_models.py` - Coach data structures and parser
+- `app/coach_models.py` - Coach data structures and parser
 - `coach_editor.py` - CLI application
 - `test_coach_parser.py` - Parser verification
 

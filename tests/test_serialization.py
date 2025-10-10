@@ -1,8 +1,8 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """Unit test for PlayerRecord serialization round-trip (converted from script)."""
 
-from pm99_editor.io import FDIFile
-from pm99_editor.models import PlayerRecord
+from app.io import FDIFile
+from app.models import PlayerRecord
 
 def test_hierro_serialization_roundtrip(players_fdi_path):
     """Load the FDI fixture, find 'Hierro', serialize and re-parse, assert key fields preserved."""

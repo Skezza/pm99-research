@@ -1,11 +1,11 @@
-# Completion Notes for PM99 Editor
+﻿# Completion Notes for PM99 Editor
 
 ## Current Status: Framework Complete, Parser Needs Refinement
 
 ### What's Working ✓
 
 1. **XOR Algorithm** - Perfectly verified
-   - [`decode_entry()`](pm99_editor/xor.py:14-36) matches MANAGPRE.EXE behavior
+   - [`decode_entry()`](app/xor.py:14-36) matches MANAGPRE.EXE behavior
    - Tested on multiple offsets, all match [`verify.txt`](out/verify.txt)
 
 2. **File Structure** - Fully understood
@@ -22,7 +22,7 @@
 
 **Player Field Parser** - The critical missing piece
 
-Current output shows "Unknown Player" because the parser stub at [`models.py:50`](pm99_editor/models.py:50) doesn't extract fields.
+Current output shows "Unknown Player" because the parser stub at [`models.py:50`](app/models.py:50) doesn't extract fields.
 
 ## The Parsing Challenge
 
@@ -53,7 +53,7 @@ Based on Ghidra analysis, here's what happens:
 
 ## Why Current Parser Fails
 
-The stub at [`models.py:from_bytes()`](pm99_editor/models.py:50) tries to:
+The stub at [`models.py:from_bytes()`](app/models.py:50) tries to:
 1. Call `decode_entry(data, offset)` once
 2. Parse the result as if it's the complete record
 

@@ -1,10 +1,10 @@
-"""Test the loader directly with debug output."""
+﻿"""Test the loader directly with debug output."""
 
 from pathlib import Path
 
 import pytest
 
-from pm99_editor.loaders import load_coaches
+from app.loaders import load_coaches
 
 COACH_FILE = Path("DBDAT/ENT98030.FDI")
 
@@ -24,8 +24,8 @@ else:
     
     # Add inline debugging
     from pathlib import Path
-    from pm99_editor.loaders import decode_entry
-    from pm99_editor.coach_models import parse_coaches_from_record
+    from app.loaders import decode_entry
+    from app.coach_models import parse_coaches_from_record
     
     data = COACH_FILE.read_bytes()
     pos = 0x1504  # Known good offset from earlier debug

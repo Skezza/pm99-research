@@ -1,9 +1,9 @@
-"""Debug script to see if BARTRAM and JONES are parsed but lost."""
+﻿"""Debug script to see if BARTRAM and JONES are parsed but lost."""
 
 from pathlib import Path
 import struct
-from pm99_editor.xor import xor_decode
-from pm99_editor.models import PlayerRecord
+from app.xor import xor_decode
+from app.models import PlayerRecord
 
 file_path = Path('DBDAT/JUG98030.FDI')
 file_data = file_path.read_bytes()

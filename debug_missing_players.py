@@ -1,9 +1,9 @@
-"""Debug script to find missing canonical players in specific sections."""
+﻿"""Debug script to find missing canonical players in specific sections."""
 
 from pathlib import Path
 import struct
-from pm99_editor.xor import xor_decode
-from pm99_editor.models import PlayerRecord
+from app.xor import xor_decode
+from app.models import PlayerRecord
 
 # Missing players
 missing = ['Vince BARTRAM', 'Dennis BERGKAMP', 'Lee JONES']

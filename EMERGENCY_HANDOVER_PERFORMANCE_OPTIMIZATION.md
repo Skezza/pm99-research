@@ -1,4 +1,4 @@
-# EMERGENCY HANDOVER: Player Database Import Optimization
+﻿# EMERGENCY HANDOVER: Player Database Import Optimization
 
 **Date:** 2025-10-09  
 **Status:** ⚠️ FUNCTIONAL BUT PERFORMANCE ISSUE  
@@ -15,11 +15,11 @@
 ### ⚠️ Current Issue
 **Performance degradation**: Load time increased from 3.19s to ~30s (10x slower)
 
-**Root cause**: Changed `elif` to `if` on line 107 of `pm99_editor/scanner.py`, causing double-processing of sections that have both separated AND embedded records.
+**Root cause**: Changed `elif` to `if` on line 107 of `app/scanner.py`, causing double-processing of sections that have both separated AND embedded records.
 
 ## Files Modified
 
-### 1. `pm99_editor/scanner.py` (PRIMARY CHANGE)
+### 1. `app/scanner.py` (PRIMARY CHANGE)
 **Key changes:**
 - Line 21-23: Pre-compiled regex pattern `_EMBEDDED_PATTERN`
 - Line 26-28: `_normalize_name()` helper
@@ -29,7 +29,7 @@
 - Line 107: **CRITICAL** - Changed `elif` to `if` to catch embedded players in sections with separators
 - Line 183: Removed surname-based deduplication (was causing false positives)
 
-### 2. `pm99_editor/io.py`
+### 2. `app/io.py`
 - Line 95-175: Simplified `load()` method to use optimized scanner
 - Removed 3 redundant scanning passes
 
@@ -113,7 +113,7 @@ OR use early deduplication more aggressively to skip processing of duplicate nam
 4. **Update documentation** with final performance numbers
 
 ## Critical Files to Review
-- `pm99_editor/scanner.py` lines 84-107 (separated vs embedded logic)
+- `app/scanner.py` lines 84-107 (separated vs embedded logic)
 - `test_performance_improvements.py` (performance verification)
 - `tests/test_regression_players.py` (canonical player verification)
 

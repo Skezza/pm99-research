@@ -1,9 +1,9 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 import os, sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from pathlib import Path
-from pm99_editor.io import FDIFile
-from pm99_editor.models import PlayerRecord
+from app.io import FDIFile
+from app.models import PlayerRecord
 
 def main():
     p = Path('DBDAT/JUG98030.FDI')

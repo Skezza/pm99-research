@@ -1,10 +1,10 @@
-# Player Name Renaming Implementation Summary
+﻿# Player Name Renaming Implementation Summary
 
 **Status:** ✅ **FEATURE IMPLEMENTED** - Ready for Testing
 
 ## What Was Implemented
 
-### 1. Model Layer (`pm99_editor/models.py`)
+### 1. Model Layer (`app/models.py`)
 
 Added three new methods to `PlayerRecord` class:
 
@@ -30,7 +30,7 @@ Added three new methods to `PlayerRecord` class:
 - Names > 12 characters rejected (matches game's binary format limits)
 - Whitespace automatically trimmed
 
-### 2. GUI Layer (`pm99_editor/gui.py`)
+### 2. GUI Layer (`app/gui.py`)
 
 #### Before (Read-Only):
 ```python
@@ -180,10 +180,10 @@ Game enforces 12-character limit per name component. This is hardcoded in binary
 
 ## Files Changed
 
-1. **`pm99_editor/models.py`**
+1. **`app/models.py`**
    - Lines 1090-1156: Added `set_given_name()`, `set_surname()`, `set_name()`
 
-2. **`pm99_editor/gui.py`**
+2. **`app/gui.py`**
    - Lines 360-377: Replaced read-only label with Entry widgets
    - Lines 365-409: Adjusted row numbers for subsequent fields
    - Lines 1567-1577: Updated `display_record()` to populate name vars
@@ -273,6 +273,6 @@ The implementation provides:
 
 - `PLAYER_NAME_RENAMING_ANALYSIS.md` - Original technical analysis
 - `GHIDRA_VALIDATION_FINDINGS.md` - Game code validation results  
-- `pm99_editor/models.py` - PlayerRecord implementation
-- `pm99_editor/gui.py` - GUI implementation
-- `pm99_editor/file_writer.py` - Variable-length record handling
+- `app/models.py` - PlayerRecord implementation
+- `app/gui.py` - GUI implementation
+- `app/file_writer.py` - Variable-length record handling

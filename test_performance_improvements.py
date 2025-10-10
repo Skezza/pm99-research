@@ -1,11 +1,11 @@
-"""Test performance improvements for player database loading."""
+﻿"""Test performance improvements for player database loading."""
 
 import time
 from pathlib import Path
 
 import pytest
 
-from pm99_editor.io import FDIFile
+from app.io import FDIFile
 
 def test_player_loading():
     """Test that player loading works with optimizations."""
@@ -13,7 +13,7 @@ def test_player_loading():
     # Find the player database file
     player_file = Path("DBDAT/JUG98030.FDI")
     if not player_file.exists():
-        player_file = Path("pm99_editor/DBDAT/JUG98030.FDI")
+        player_file = Path("app/DBDAT/JUG98030.FDI")
     
     if not player_file.exists():
         pytest.skip("Required data file not found: DBDAT/JUG98030.FDI")

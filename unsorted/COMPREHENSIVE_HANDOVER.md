@@ -1,4 +1,4 @@
-# Premier Manager 99 - Comprehensive Handover Document
+﻿# Premier Manager 99 - Comprehensive Handover Document
 
 **Date**: October 3, 2025  
 **Project**: Premier Manager 99 Reverse Engineering  
@@ -79,7 +79,7 @@ copy DBDAT\ENT98030.FDI.backup DBDAT\ENT98030.FDI
 
 ### ✅ Complete Python Framework
 
-**Location**: `pm99_editor/`
+**Location**: `app/`
 
 **Modules**:
 1. `xor.py` - XOR-0x61 encode/decode utilities (100% verified)
@@ -218,7 +218,7 @@ int decode_string(int *file_ptr, uint *output_buffer) {
 }
 ```
 
-**Python Implementation**: [`pm99_editor/xor.py`](pm99_editor/xor.py)
+**Python Implementation**: [`app/xor.py`](app/xor.py)
 
 ### Coach File Structure
 
@@ -268,7 +268,7 @@ premier-manager-ninety-nine2nd/
 ├── coach_editor.py              ← Main coach editor CLI
 ├── test_coach_parser.py         ← Parser tests
 │
-├── pm99_editor/                 ← Core framework
+├── app/                 ← Core framework
 │   ├── __init__.py
 │   ├── __main__.py
 │   ├── xor.py                   ← XOR utilities (verified)
@@ -308,8 +308,8 @@ premier-manager-ninety-nine2nd/
 
 **Code**:
 6. `coach_editor.py` - Working example
-7. `pm99_editor/xor.py` - Core algorithm
-8. `pm99_editor/coach_models.py` - Parser implementation
+7. `app/xor.py` - Core algorithm
+8. `app/coach_models.py` - Parser implementation
 
 ---
 
@@ -399,7 +399,7 @@ cp DBDAT/ENT98030.FDI.backup DBDAT/ENT98030.FDI
    ```
 
 5. **Integrate**
-   - Add to `pm99_editor/models.py`
+   - Add to `app/models.py`
    - Update CLI
    - Test rename functionality
 
@@ -594,8 +594,8 @@ All documentation in `out/` directory:
 
 **Code Reference**:
 - `coach_editor.py` - Working example
-- `pm99_editor/xor.py` - Core algorithm
-- `pm99_editor/coach_models.py` - Parser
+- `app/xor.py` - Core algorithm
+- `app/coach_models.py` - Parser
 
 ### Questions?
 

@@ -1,7 +1,7 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 Embedded player detection tests:
-- Verifies CLI pipeline (pm99_editor/io.py) detects players inside large sections without separators
+- Verifies CLI pipeline (app/io.py) detects players inside large sections without separators
 - Ensures team_id normalization (>5000 -> 0) for embedded-derived records to avoid misleading values
 """
 
@@ -12,7 +12,7 @@ import pytest
 # Ensure project root is on sys.path for module resolution when running tests directly
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from pm99_editor.io import FDIFile
+from app.io import FDIFile
 
 
 @pytest.mark.integration

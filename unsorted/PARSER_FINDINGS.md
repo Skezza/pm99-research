@@ -1,4 +1,4 @@
-# Parser Investigation Findings
+﻿# Parser Investigation Findings
 
 ## What We Know for Certain ✓
 
@@ -117,12 +117,12 @@ Gap between:
 ## Current Implementation Status
 
 ### Working Components ✓
-- [`pm99_editor/xor.py`](pm99_editor/xor.py) - XOR utilities (100% correct)
-- [`pm99_editor/io.py`](pm99_editor/io.py) - File header parsing (correct)
-- [`pm99_editor/cli.py`](pm99_editor/cli.py) - User interface (complete)
+- [`app/xor.py`](app/xor.py) - XOR utilities (100% correct)
+- [`app/io.py`](app/io.py) - File header parsing (correct)
+- [`app/cli.py`](app/cli.py) - User interface (complete)
 
 ### Blocked Component ❌
-- [`pm99_editor/models.py:PlayerRecord.from_bytes()`](pm99_editor/models.py:50) - **Stub only**
+- [`app/models.py:PlayerRecord.from_bytes()`](app/models.py:50) - **Stub only**
   - Cannot parse fields without knowing exact byte layout
   - Need to map file structure first
 

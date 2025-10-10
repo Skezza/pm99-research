@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 Test GUI loading of coaches and teams
 """
@@ -6,10 +6,10 @@ import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), ".")))
 
-from pm99_editor.io import FDIFile
-from pm99_editor.models import TeamRecord
-from pm99_editor.coach_models import parse_coaches_from_record
-from pm99_editor.xor import decode_entry
+from app.io import FDIFile
+from app.models import TeamRecord
+from app.coach_models import parse_coaches_from_record
+from app.xor import decode_entry
 from pathlib import Path
 import pytest
 

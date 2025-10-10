@@ -1,4 +1,4 @@
-"""Tests for the conservative PKF parser."""
+﻿"""Tests for the conservative PKF parser."""
 
 import struct
 from pathlib import Path
@@ -6,7 +6,7 @@ from typing import Iterable, Sequence
 
 import pytest
 
-from pm99_editor.pkf import (
+from app.pkf import (
     ArchiveStringMatch,
     ArchiveStringSearcher,
     PKFDecoderError,
@@ -14,8 +14,8 @@ from pm99_editor.pkf import (
     PKFStringMatch,
     PKFStringSearcher,
 )
-from pm99_editor.models import FDIHeader
-from pm99_editor.xor import encode_entry
+from app.models import FDIHeader
+from app.xor import encode_entry
 
 
 def build_toc32_pkf(chunks):
@@ -198,3 +198,4 @@ def test_archive_string_searcher_records_missing_paths(tmp_path: Path):
 
     assert matches == []
     assert searcher.errors and searcher.errors[0][0] == missing
+

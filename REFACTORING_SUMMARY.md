@@ -1,22 +1,22 @@
-# Refactoring Summary: Shared Loaders Module
+﻿# Refactoring Summary: Shared Loaders Module
 
 ## Overview
-Successfully refactored the team and coach loading logic from the GUI into a shared [`pm99_editor/loaders.py`](pm99_editor/loaders.py) module that can be used by both the GUI and tests, eliminating code duplication and improving maintainability.
+Successfully refactored the team and coach loading logic from the GUI into a shared [`app/loaders.py`](app/loaders.py) module that can be used by both the GUI and tests, eliminating code duplication and improving maintainability.
 
 ## Problem
 The original implementation had duplicate loading logic in two places:
-1. **GUI worker functions** ([`pm99_editor/gui.py`](pm99_editor/gui.py:246-318) for teams, [`pm99_editor/gui.py`](pm99_editor/gui.py:634-708) for coaches)
+1. **GUI worker functions** ([`app/gui.py`](app/gui.py:246-318) for teams, [`app/gui.py`](app/gui.py:634-708) for coaches)
 2. **Test files** (various debug and test scripts)
 
 This violated DRY (Don't Repeat Yourself) principles and made maintenance difficult - any fix had to be applied in multiple places.
 
 ## Solution
 
-### Created New Module: [`pm99_editor/loaders.py`](pm99_editor/loaders.py)
+### Created New Module: [`app/loaders.py`](app/loaders.py)
 Extracted loading logic into two main functions:
 
-1. **[`load_teams(file_path)`](pm99_editor/loaders.py:40-155)** - Loads and filters team records
-2. **[`load_coaches(file_path)`](pm99_editor/loaders.py:158-242)** - Loads and filters coach records
+1. **[`load_teams(file_path)`](app/loaders.py:40-155)** - Loads and filters team records
+2. **[`load_coaches(file_path)`](app/loaders.py:158-242)** - Loads and filters coach records
 
 Both functions:
 - Skip the corrupted FDI directory structure
@@ -24,17 +24,17 @@ Both functions:
 - Apply strict validation filters
 - Return `List[Tuple[int, Record]]` (offset, record pairs)
 
-### Updated GUI: [`pm99_editor/gui.py`](pm99_editor/gui.py)
+### Updated GUI: [`app/gui.py`](app/gui.py)
 Simplified the GUI worker functions to use the shared loaders:
 
-**Teams** ([`pm99_editor/gui.py`](pm99_editor/gui.py:246-249)):
+**Teams** ([`app/gui.py`](app/gui.py:246-249)):
 ```python
 def worker():
     # Use shared loader with strict validation
     parsed = load_teams(self.team_file_path)
 ```
 
-**Coaches** ([`pm99_editor/gui.py`](pm99_editor/gui.py:634-637)):
+**Coaches** ([`app/gui.py`](app/gui.py:634-637)):
 ```python
 def worker():
     # Use shared loader with strict validation
@@ -54,7 +54,7 @@ All tests pass ✓
 ## Benefits
 
 ### 1. **Single Source of Truth**
-- Loading logic exists in one place: [`pm99_editor/loaders.py`](pm99_editor/loaders.py)
+- Loading logic exists in one place: [`app/loaders.py`](app/loaders.py)
 - Bug fixes and improvements only need to be made once
 - Consistent behavior across GUI and tests
 
@@ -74,7 +74,7 @@ All tests pass ✓
 
 ## Validation Filters Implemented
 
-### Teams ([`pm99_editor/loaders.py`](pm99_editor/loaders.py:75-132))
+### Teams ([`app/loaders.py`](app/loaders.py:75-132))
 - Length: 4-60 characters
 - Must start with uppercase letter
 - Must contain at least one letter
@@ -83,7 +83,7 @@ All tests pass ✓
 - Reject garbage prefixes unless they contain team words
 - Deduplication by name
 
-### Coaches ([`pm99_editor/loaders.py`](pm99_editor/loaders.py:185-237))
+### Coaches ([`app/loaders.py`](app/loaders.py:185-237))
 - Length: 6-40 characters
 - Must start with uppercase and contain space
 - Minimum 2 name parts
@@ -109,13 +109,13 @@ All tests pass ✓
 ## Files Modified
 
 1. **Created:**
-   - [`pm99_editor/loaders.py`](pm99_editor/loaders.py) - Shared loading logic (242 lines)
+   - [`app/loaders.py`](app/loaders.py) - Shared loading logic (242 lines)
    - [`tests/test_loaders.py`](tests/test_loaders.py) - Comprehensive test suite (195 lines)
 
 2. **Modified:**
-   - [`pm99_editor/gui.py`](pm99_editor/gui.py) - Simplified to use shared loaders
+   - [`app/gui.py`](app/gui.py) - Simplified to use shared loaders
      - Removed ~140 lines of duplicate loading logic
-     - Added imports for [`load_teams`](pm99_editor/loaders.py:40), [`load_coaches`](pm99_editor/loaders.py:158)
+     - Added imports for [`load_teams`](app/loaders.py:40), [`load_coaches`](app/loaders.py:158)
 
 3. **Supporting files created during development:**
    - `debug_coach_loader.py` - Debug script (can be deleted)

@@ -1,6 +1,6 @@
-# Premier Manager 99 Data Formats
+﻿# Premier Manager 99 Data Formats
 
-This document captures the canonical format rules that the codebase implements today. When new structures are reverse engineered, update this file alongside the parsers in [`pm99_editor/models.py`](../pm99_editor/models.py), [`pm99_editor/io.py`](../pm99_editor/io.py), and [`pm99_editor/file_writer.py`](../pm99_editor/file_writer.py).
+This document captures the canonical format rules that the codebase implements today. When new structures are reverse engineered, update this file alongside the parsers in [`app/models.py`](../app/models.py), [`app/io.py`](../app/io.py), and [`app/file_writer.py`](../app/file_writer.py).
 
 ## FDI container files
 Premier Manager 99 ships multiple `.FDI` databases. The editor currently focuses on:
@@ -73,7 +73,7 @@ Edits replace text slices inside the `raw_data` buffer; the GUI keeps offsets so
 The current implementation leaves `coach_id` as `0` because the source material has not revealed a stable identifier yet.
 
 ## PKF archives
-Some GUI tooling surfaces PKF container files. [`PKFFile`](../pm99_editor/pkf.py) uses the same XOR helpers to decode entries and presents:
+Some GUI tooling surfaces PKF container files. [`PKFFile`](../app/pkf.py) uses the same XOR helpers to decode entries and presents:
 - Archive header with entry count and offsets.
 - Individual entries that can be previewed with `_format_hex_preview()` inside the GUI's PKF viewer.
 
@@ -84,3 +84,4 @@ Some GUI tooling surfaces PKF container files. [`PKFFile`](../pm99_editor/pkf.py
 - When increasing payload sizes, directory offsets and `header.max_offset` must be updated (handled automatically by `file_writer.write_fdi_record()` and `save_modified_records()`).
 
 Keep tests such as [`tests/test_core_io_decoding.py`](../tests/test_core_io_decoding.py) and [`tests/test_serialization.py`](../tests/test_serialization.py) updated whenever new insights refine these rules.
+

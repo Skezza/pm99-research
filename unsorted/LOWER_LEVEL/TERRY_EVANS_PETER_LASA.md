@@ -1,4 +1,4 @@
-
+﻿
 ---
 
 ## Quick Start Guide
@@ -58,12 +58,12 @@ python player_editor.py rename "Mikel LASA" "Peter LASA"
 - [`player_editor.py`](player_editor.py) - Player management CLI ✓
 
 ### Core Framework
-- [`pm99_editor/xor.py`](pm99_editor/xor.py) - XOR utilities (verified 100%)
-- [`pm99_editor/coach_models.py`](pm99_editor/coach_models.py) - Coach parser
-- [`pm99_editor/player_models.py`](pm99_editor/player_models.py) - Player parser (NEW)
-- [`pm99_editor/file_writer.py`](pm99_editor/file_writer.py) - Safe file I/O
-- [`pm99_editor/io.py`](pm99_editor/io.py) - File operations
-- [`pm99_editor/cli.py`](pm99_editor/cli.py) - Interface utilities
+- [`app/xor.py`](app/xor.py) - XOR utilities (verified 100%)
+- [`app/coach_models.py`](app/coach_models.py) - Coach parser
+- [`app/player_models.py`](app/player_models.py) - Player parser (NEW)
+- [`app/file_writer.py`](app/file_writer.py) - Safe file I/O
+- [`app/io.py`](app/io.py) - File operations
+- [`app/cli.py`](app/cli.py) - Interface utilities
 
 ### Analysis Scripts
 - [`analyze_player_file.py`](analyze_player_file.py) - Comprehensive player file analysis

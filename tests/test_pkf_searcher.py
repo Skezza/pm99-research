@@ -1,4 +1,4 @@
-"""
+﻿"""
 Tests for PKF String Searcher functionality
 """
 
@@ -7,8 +7,8 @@ from pathlib import Path
 import tempfile
 import shutil
 
-from pm99_editor.pkf_searcher import PKFSearcher, SearchResult
-from pm99_editor.pkf import PKFFile
+from app.pkf_searcher import PKFSearcher, SearchResult
+from app.pkf import PKFFile
 
 
 @pytest.fixture
@@ -200,7 +200,7 @@ def test_invalid_regex():
 def test_xor_search(temp_pkf_dir):
     """Test XOR-decoded search."""
     # Create a PKF with XOR-encoded data
-    from pm99_editor.xor import xor_decode
+    from app.xor import xor_decode
     
     test_data = b"Secret message encoded with XOR"
     xor_key = 0x5A
