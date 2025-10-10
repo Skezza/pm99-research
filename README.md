@@ -4,7 +4,8 @@ This repository contains a Python toolchain for inspecting and editing the *Prem
 
 ## Quick start
 - **Python**: 3.8 or later.
-- **Sample data**: copy the game files into [`DBDAT/`](DBDAT/).
+- **Sample data**: copy the game files into [`DBDAT/`](DBDAT/) (include the `.FDI` databases and any `.PKF` asset archives you
+  want to inspect; keep the automatically generated `.FDI.backup` files for safety).
 - Run commands from the repository root.
 
 ### Common CLI tasks
@@ -54,6 +55,23 @@ Additional Ghidra breadcrumbs worth keeping close:
 - **Attribute tail**: `FUN_004afd80` copies ten bytes straight into the in-memory struct (order: Passing, Shooting, Tackling, Speed, Stamina, Heading, Dribbling, Aggression, Positioning, Form). Keep unknown trailing bytes intact; the executable simply memcpys them after the attribute array.
 - **Section framing**: every chunk starts with a 2-byte little-endian length prefix followed by bytes XOR’d with `0x61`. [`pm99_editor/xor.py`](pm99_editor/xor.py) mirrors the in-game routine that decodes in 4/2/1 byte chunks and appends a null terminator.
 - **FDI container layout**: `FDIFile.load()` reads the header/directory (offsets `0x24`/`0x26`) but treats them as hints. Real data is discovered by sequentially scanning from `0x400` with `_iter_records()`, matching the retail executable’s loop.
+
+#### FDI container layout (ASCII map)
+
+```
+0x0000  ┌────────────────────────────────────────────────────────┐
+        │ 36-byte header (version, record counts, padding)       │
+0x0024  ├──────────────┬──────────────┬──────────────────────────┤
+        │ dir offset   │ entry count  │ reserved header bytes    │
+0x0028  └──────────────┴──────────────┴──────────────────────────┘
+0x0400  ┌────────────────────────────────────────────────────────┐
+        │ XOR chunk #0                                           │
+        │   0x0000: little-endian length prefix                  │
+        │   0x0002: payload bytes XOR’d with 0x61                │
+        ├────────────────────────────────────────────────────────┤
+        │ XOR chunk #1 (repeat until EOF)                        │
+        └────────────────────────────────────────────────────────┘
+```
 ### Player record field map
 
 The executable walks each player payload sequentially. Treat the following structure as authoritative when reading or writing:
@@ -76,6 +94,26 @@ The executable walks each player payload sequentially. Treat the following struc
 | 14 | 10 | Attribute block | `[Passing, Shooting, Tackling, Speed, Stamina, Heading, Dribbling, Aggression, Positioning, Form]`. |
 
 The six-byte metadata core (steps 7–12) was verified against CAÑIZARES and ZAMORANO: the day/month/year/height fields round-trip perfectly and nationality differs between Spain/Chile. Keep capturing examples to confirm the weight byte and to build a nationality lookup table for the CLI and GUI.
+
+```
+cursor →
+┌───────────┬──────────────────────┬──────────────────────────────────────────────┐
+│ Byte span │ Field                │ Notes                                       │
+├───────────┼──────────────────────┼──────────────────────────────────────────────┤
+│ 0x0000-01 │ team_id              │ `<H` little-endian                           │
+│ 0x0002    │ squad_number         │ raw byte                                    │
+│ 0x0003…   │ given name           │ uint16 length + XOR payload (0x61 key)      │
+│ …         │ surname              │ immediately follows given name              │
+│ marker    │ 0x61 0x61 0x61 0x61  │ terminator emitted by encoder               │
+│ +0x07     │ position             │ XOR 0x61; 0=GK,1=DEF,2=MID,3=FWD             │
+│ +0x08     │ nationality          │ XOR 0x61; 0..255 table index                │
+│ +0x09-0B  │ birth day/month/year │ day & month single bytes, year `<H`         │
+│ +0x0C     │ height               │ centimetres after XOR                       │
+│ +0x0D     │ weight               │ leave untouched until mapping stabilises    │
+│ tail-0x13 │ contract/extra bytes │ preserve verbatim                           │
+│ tail-0x0A │ attribute block      │ 10 stats (`Passing`…`Form`) + 2 raw bytes   │
+└───────────┴──────────────────────┴──────────────────────────────────────────────┘
+```
 
 #### Hex walkthrough (Santiago CAÑIZARES, Real Madrid)
 
@@ -131,6 +169,22 @@ Legacy notes referenced `name_end + 7/8/...` offsets and “double-XOR” termin
   - `python test_performance_improvements.py` — expect <5s on `JUG98030.FDI`.
   - `python -m pytest tests/test_regression_players.py::test_canonical_players_present` — ensures Vince Bartram, Lee Jones, and the other canonical fixtures remain discoverable while tuning heuristics.
 
+#### Optimization highlights (single-pass scanner)
+- Consolidated the legacy four-pass workflow into `scanner.find_player_records()` so separated and embedded chunks are decoded in one sweep.
+- Added streaming hash-based deduplication keyed by normalized uppercase names; higher-confidence candidates (aligned team id, complete attribute array) automatically displace noisy variants.
+- Pre-compiled the embedded-record regex and hoisted string normalization helpers to module scope to avoid per-record allocations.
+- Simplified `FDIFile.load()` to ~70 lines that delegate to the scanner; duplicate directory and embedded scans were deleted.
+
+#### Benchmark targets
+- Retail `JUG98030.FDI` loads **6,076 players in ~3.2 s** (~0.52 ms per record) after the refactor, representing a 70–80 % improvement over the 10–15 s baseline.
+- Memory footprint drops ~50–60 % because duplicate `PlayerRecord` instances never materialise.
+- Track regressions with `python test_performance_improvements.py`; treat >5 s as a regression that needs investigation.
+
+#### Future tuning ideas
+- Lazy-load records or memory-map the FDI files for huge custom databases.
+- Cache parsed payloads between runs when editing the same save repeatedly.
+- Explore multiprocessing for scanning when CPU-bound experiments resurface.
+
 ## Filtering rules for teams & coaches
 `pm99_editor/loaders.py` centralises parsing for both datasets so the CLI, GUI, and tests stay aligned. The heuristics stabilised after multiple rounds documented in the filtering markdowns:
 
@@ -143,11 +197,27 @@ Legacy notes referenced `name_end + 7/8/...` offsets and “double-XOR” termin
 - Token sanity check flags entries where most words are ≤2 characters unless we detect known abbreviations.
 - **Expected result**: GUI Teams tab should list roughly 50–70 legitimate clubs rather than the 2–3 items we saw during over-filtered iterations.
 
+#### Manual QA checkpoints
+- `python -m pm99_editor.gui` → Teams tab should now list 50–70 clubs spanning Premier League, La Liga, Serie A, Bundesliga, etc.; coaches tab should settle around 80–120 genuine manager names.
+- Confirm the Teams tab contains major sides such as Arsenal, Manchester United, Real Madrid, Barcelona, Milan, Juventus, Ajax, and Bayern Munich.
+- Ensure garbage markers (`TvaManchester United`, `ZorrillawHvaReal`, trailing `aaaa`) no longer appear.
+- Coaches tab must not list player names (Boa Morte, Stan Collymore), stadiums (Goodison Park, Elland Road), locations (Durham School), or slogans (“League Champions”).
+- Keep the quick regression loop handy: `python -m pytest tests/test_loaders.py -v` and `python test_garbage_filters.py` should both pass after any heuristic tweak.
+
 ### Coach filters (strict pass)
 - Require 6–40 characters, two tokens minimum, uppercase initials per token, ≥85% ASCII, and ≤60% `'a'` characters overall.
 - Apply the ~120 item blocklist built from the “Enhanced Filtering” docs: league/division names, cup names, stadiums, slogans, job titles, biographies, and ~50 known player names (Boa Morte, Stan Collymore, Jamie Redknapp, etc.).
 - Reject tokens containing digits or punctuation beyond hyphen/apostrophe; these were common in stadium lines.
 - **Expected result**: GUI Coaches tab should settle between 80–120 human names with no stadiums or marketing phrases.
+
+#### Blocklist coverage snapshots
+- **Leagues & divisions** (~30 patterns): “Premier League”, “Scottish First”, “Italian Second”, etc.
+- **Cups & competitions** (~25 patterns): “League Cup”, “European Cup”, “Champions League”, “Charity Shield”…
+- **Stadiums & locations** (~25 patterns): “Old Trafford”, “Goodison Park”, “Elland Road”, “Highfield Road”, “Shepshed Charterhouse”, “Filbert Street”.
+- **Teams & nicknames** (~20 patterns): “Real Madrid”, “Queens Park”, “Bristol Rovers”, “The Hammers”.
+- **People descriptors** (~10 patterns): “Scottish Footballer”, “French Football”, “Second World”.
+- **Job titles & phrases** (~15 patterns): “Head Coach”, “Technical Advisor”, “National Team”, “Cup Champion”, “League Champions”.
+- **Known players** (~50 names): Boa Morte, Rui Barros, Mark Hateley, Stan Collymore, Jamie Redknapp, Bryan Robson, Fabrizio Ravanelli, Roberto Baggio, Keith Gillespie, Marcus Stewart, Wayne Allison, and more; expand this list whenever the GUI surfaces a stray player.
 
 ### Validation commands
 - `python test_garbage_filters.py` — 19/19 garbage samples rejected.
@@ -163,16 +233,46 @@ Legacy notes referenced `name_end + 7/8/...` offsets and “double-XOR” termin
   - Double-click handler launching the existing editor with the selected team record.
   Complete this after the team-name parser is reliable so hierarchy counts stay meaningful.
 
+#### League metadata reference
+- England splits into four 20-team divisions mapped by `team_id` ranges: Premier League `3712–3731`, First Division `3732–3751`, Second Division `3752–3771`, Third Division `3772–3791`.
+- `EQ98030.FDI` stores team data across two large XOR sections at offsets `0x0201` (~11 KB) and `0x2f04` (~42 KB); expect 88 total sections covering **543** teams spanning 40+ countries.
+- Pair the league notebook with `league_definitions.get_team_league()` and `get_country_leagues()` to populate country filters and highlight the correct division as users browse.
+
+#### GUI investigation checklist
+- Expect the sequential scan to surface ~4,891 coach entries and ~2,391 team entries; if the GUI still shows “Unknown”, print diagnostics inside `load_coaches()` / `populate_coach_tree()` to confirm the records arriving from `load_coaches()`.
+- Verify the FDI directory hints at offsets `0x24`/`0x26` match the values we decode; when they don’t, fall back to the sequential walk exactly as `FDIFile.load()` already does.
+- Reproduce the problem from the shell:
+  ```python
+  from pm99_editor.io import FDIFile
+  fdi = FDIFile('DBDAT/ENT98030.FDI'); fdi.load()
+  print(len(fdi.directory))
+  ```
+  and compare against GUI counts to catch regressions in header handling.
+- When investigating coach parsing differences, decode a single section manually with `decode_entry()` and feed it into `parse_coaches_from_record()` to isolate parsing bugs from GUI threading issues.
+- Keep console logging inside `populate_coach_tree()`/`populate_team_tree()` until the Tk trees consistently show the decoded names and offsets.
+
 ## Historical investigations & guardrails
 - **Legacy name parsing heuristics**: the Tkinter editor (`pm99_database_editor.py`) recovers full names from buffers that look like `HierrouaFernando Ruiz HIERROeagdenaaw`. It splits on `[a-z~@\x7f]{1,2}a(?=[A-Z])`, scores candidates (all-caps surnames + multi-word given names get priority), trims garbage suffixes (`POPESCUe` → `POPESCU`), and runs Latin-1 decoding with `errors="ignore"` so accents survive.
+- Scoring weights favour post-separator candidates (+200 points), boost uppercase density (+2 per capital letter), penalise short given names (−50 under four characters), and reward longer overall names (+1 per character). Mixed-case patterns (`FREDDY Eusebio RINCON`, `José Santiago CAÑIZARES`) are matched via dedicated regexes to avoid truncating multi-word given names.
+- Garbage cleanup strips ≥3 trailing lowercase characters so entries like `PROSINECKIk` or `HIERROeagden` normalise cleanly, and a deduper groups records by surname, keeping variants with non-default team ids or non-goalkeeper positions.
 - **Critical parser fix retrospective**: synthetic tests once masked a broken CLI parser. Keep integration tests pointed at real FDI samples and prefer the sequential offsets validated by Ghidra rather than reviving `name_end` calculations.
 - **Team database breakthrough**: investigations on `EQ98030.FDI` confirmed 543 teams split across 88 XOR sections. Scripts such as `map_team_record_structure.py` and `team_file_deep_analysis.py` map the stadium text trailing each club. Pin the team-id field so GUI lookups can eventually join players and teams.
 - **Open questions**: the contract block after height/weight and several trailing bytes remain unmapped. Preserve them in `raw_data` until Ghidra or live instrumentation clarifies their purpose. Nationality code tables and weight semantics still need correlation against in-game data.
+- **Record variants**: historical sessions flagged two player record families — compact 65–85 byte entries used by the editor and much larger biography blobs (~600 B). The sequential parser here targets the compact form; keep the distinction in mind when inspecting stray long sections.
+
+## Roadmap & future enhancements
+- **Serialization parity**: `PlayerRecord.to_bytes()` still needs a safe implementation that edits the sequential payload in-place while preserving unknown trailer bytes, mirroring the legacy GUI writer.
+- **Nationality & weight mapping**: build a lookup table for the 0–255 nationality codes and validate the weight byte against reliable rosters before exposing it in the CLI/GUI.
+- **Unified data store**: the “Eager Implementation Plan” proposed a `DataStore`/`PKFFile` abstraction plus CLI flags such as `--db-root`/`--mode` to toggle between read-only and editing sessions.
+- **Full editor roadmap**: planned milestones include variable-length name editing with automatic padding, a full team editor (name + stadium), roster transfer tooling, bulk operations (batch attribute edits), and guardrails for finances once team fields are mapped.
+- **Player stats correlation**: the archived template requests in-game stat captures (attribute order, imperial height/weight, screenshot references) to cross-validate our decoded numeric ranges.
+- **Leagues notebook**: after the team-name parser stabilises, add the Tk `Notebook` tab outlined above (country combo box, search filter, hierarchical tree with league parents and team rows, double-click to jump into the existing editor).
 
 ## Repository layout & maintenance
 - [`pm99_editor/`](pm99_editor/) — core library, CLI, loaders, and models.
 - [`pm99_database_editor.py`](pm99_database_editor.py) — legacy GUI prototype (still functional; contains heuristic parsing and dedup logic).
 - [`scripts/`](scripts/) — exploratory tools from reverse engineering sessions. Treat results as hypotheses until migrated into the library.
+- Script naming conventions follow the archived index: `analyze_*` for exploratory dumps, `debug_*` for focused repro scripts, `find_*`/`locate_*` for search helpers, and `parse_*` for format experiments.
 - [`tests/`](tests/) — pytest suite; extend it whenever rules or encodings change.
 - [`DBDAT/`](DBDAT/) & [`data/`](data/) — game assets and fixtures. Work on copies, keep `.backup` files generated by the writer, and never ship original game files.
 

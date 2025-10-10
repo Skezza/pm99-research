@@ -1,33 +1,32 @@
-# Legacy Documentation Gap Report
+# Legacy Documentation Coverage
 
-This report summarizes the surviving markdown files from commit `5c3d5a6` whose contents were **not** fully migrated into the consolidated `README.md`. Items marked as “Historical/Outdated” describe approaches that conflict with the current sequential parser; keep them only for provenance.
+This log cross-references the deleted markdown notes (snapshot `5c3d5a6`) with the consolidated `README.md`. Use it as a checklist when verifying that historical discoveries remain documented.
 
-| Source file | Key information not in README | Relevance |
+## Migrated into `README.md`
+
+| Source file | Preserved highlights | README anchors |
 | --- | --- | --- |
-| `BALANCED_FILTERING_FIX.md` | GUI before/after counts (Teams tab 1 → ~50–70, Coaches tab cleanup), detailed garbage categories, manual QA checklist. | Still relevant for regression testing. |
-| `FINAL_FILTER_ADJUSTMENTS.md` | ~50-name coach blocklist, rationale for relaxed prefix heuristics, GUI spot-check guidance. | Still relevant; blocklist entries should live near loader code. |
-| `GHIDRA_VALIDATION_NOTES.md` | Header table (36-byte header, offsets 0x24/0x26) and note that the coach loader calls `FUN_00677e30` sequentially. | Relevant, supplements current Ghidra summary. |
-| `HANDOVER_GUI_LOADING_ISSUES.md` | Counts from sequential scans (4,891 coaches / 2,391 teams), debugging checklist for `load_coaches()` / `populate_coach_tree()`, sample code for directory inspection. | Relevant when tackling GUI “Unknown coach/team” defects. |
-| `LEAGUES_TAB_COMPLETE_SUMMARY.md` | Exact English division ID ranges (3712–3731 etc.), proposed Tk layout, Leagues tab testing checklist. | Relevant for GUI backlog. |
-| `LEAGUES_TAB_FINAL_PLAN.md` | EQ98030 section offsets (0x201, 0x2f04), hard-coded league dictionary sample, alternative keyword-detection idea. | Relevant for future implementation notes. |
-| `LEAGUES_TAB_IMPLEMENTATION_PLAN.md` | Reminder that loaders already read the two XOR sections, ideas like league statistics panel and `team_id` reassignment helper. | Relevant feature backlog. |
-| `PERFORMANCE_OPTIMIZATION_SUMMARY.md` | Benchmark (6,076 players in 3.19 s, 70–80% faster), regex snippet, future optimization ideas (lazy load, mmap). | Relevant for performance baselines. |
-| `REFACTORING_SUMMARY.md` | Pre/post record counts (teams 2,391→~116; coaches 4,891→~300), mention of helper scripts to retire. | Relevant for historical metrics & cleanup TODOs. |
-| `data/README.md` | Mentions `.PKF` assets alongside `.FDI` and `.backup`. | Relevant; README only notes backups. |
-| `docs/Bugs/NAME_PARSING_FIXES.md` | Detailed scoring heuristics, before/after name examples, scripts `test_name_fixes.py` & `analyze_player_names.py`. | Relevant background for legacy GUI parser. |
-| `docs/Bugs/PLAYER_RECORD_PARSER_BUG.md` | CLI command transcripts (9,086 players listed), outstanding tasks (serializer NotImplemented, nationality mapping, weight field). | Relevant TODO log. |
-| `docs/Bugs/UNKNOWN_POSITION.md` | Distinction between “small” vs “biography” records, helper scripts (`analyze_small_record_structure.py`, `validate_known_players.py`). | Relevant context despite marker focus. |
-| `docs/EAGER_IMPLEMENTATION_PLAN.md` | Proposed `DataStore`/`PKFFile` APIs, CLI flags (`--db-root`, `--mode`), memory guardrails. | Relevant future project plan. |
-| `docs/PLAYER_STATS_TEMPLATE.md` | Template requesting in-game stats (attributes in display order, height/weight in imperial units). | Relevant if correlation work resumes. |
-| `docs/enhancement_plans/ENHANCEMENT_PLAN.md` | Multi-phase roadmap (variable-length names, team editor, transfers, batch ops) with effort estimates. | Relevant planning artifact. |
-| `docs/enhancement_plans/FULL_EDITOR_ROADMAP.md` | Requirements for full player editor, record-boundary analysis strategies. | Relevant planning artifact. |
-| `docs/Investigations/TEAM_FILE_BREAKTHROUGH.md` | Team coverage summary (543 teams, 88 XOR sections, geography list) and script inventory. | Relevant discovery recap. |
-| `docs/README.md` | Historical documentation index noting which files were canonical vs archived. | Relevant for provenance. |
-| `scripts/README.md` | High-level taxonomy of scripts (`analyze_*`, `debug_*`, etc.). | Relevant orientation aid. |
+| `BALANCED_FILTERING_FIX.md` | Expected GUI counts, manual QA steps, garbage rejection examples. | *Filtering rules for teams & coaches* → “Manual QA checkpoints”. |
+| `FINAL_FILTER_ADJUSTMENTS.md` | Player-name blocklist (~50 entries) plus league/stadium/phrase categories. | *Filtering rules for teams & coaches* → “Blocklist coverage snapshots”. |
+| `GHIDRA_VALIDATION_NOTES.md` | Header offsets, XOR routine disassembly, container overview. | *Binary format & reverse-engineering findings* → “Ghidra cross-reference” + “FDI container layout (ASCII map)”. |
+| `HANDOVER_GUI_LOADING_ISSUES.md` | Loader counts (4,891 coaches / 2,391 teams) and step-by-step debugging workflow. | *GUI status & outstanding work* → “GUI investigation checklist”. |
+| `LEAGUES_TAB_COMPLETE_SUMMARY.md`, `LEAGUES_TAB_FINAL_PLAN.md`, `LEAGUES_TAB_IMPLEMENTATION_PLAN.md` | English division ID ranges, planned notebook layout, section offsets. | *GUI status & outstanding work* → “League metadata reference” + Leagues tab bullet list. |
+| `PERFORMANCE_OPTIMIZATION_SUMMARY.md` | Single-pass scanner refactor, benchmark numbers (6,076 players / 3.2 s), future tuning ideas. | *Loader performance & scanning heuristics* → “Optimization highlights”, “Benchmark targets”, “Future tuning ideas”. |
+| `REFACTORING_SUMMARY.md` | Shared loader module benefits, duplication removal, test coverage. | *Loader performance & scanning heuristics* (intro bullets) and *Filtering rules* (shared loader expectations). |
+| `data/README.md` | `.FDI`, `.PKF`, and `.FDI.backup` file guidance. | *Quick start* → sample data bullet. |
+| `docs/Bugs/NAME_PARSING_FIXES.md` | Separator regex, scoring weights, garbage cleanup, dedupe strategy. | *Historical investigations & guardrails* → expanded name-parsing notes. |
+| `docs/Bugs/PLAYER_RECORD_PARSER_BUG.md` | Validation commands, outstanding serializer/nationality/weight TODOs. | *Binary format* (player field map + hex walkthrough) and *Roadmap & future enhancements* → serialization/nationality bullets. |
+| `docs/Bugs/UNKNOWN_POSITION.md` | Position offset discovery, attribute window, distinction between small vs biography records. | *Player record field map* (ASCII diagram) and *Historical investigations & guardrails* → “Record variants”. |
+| `docs/EAGER_IMPLEMENTATION_PLAN.md` | Proposed `DataStore`/`PKFFile` abstractions and CLI flag ideas. | *Roadmap & future enhancements* → “Unified data store”. |
+| `docs/PLAYER_STATS_TEMPLATE.md` | Request for in-game stat captures to cross-validate decoded attributes. | *Roadmap & future enhancements* → “Player stats correlation”. |
+| `docs/enhancement_plans/ENHANCEMENT_PLAN.md`, `docs/enhancement_plans/FULL_EDITOR_ROADMAP.md` | Multi-phase roadmap: variable-length editing, team editor, transfers, batch ops. | *Roadmap & future enhancements* → “Full editor roadmap”. |
+| `docs/Investigations/TEAM_FILE_BREAKTHROUGH.md` | 543-team discovery, 88 XOR sections, global coverage notes. | *Binary format* → “Team record markers” + *GUI status* → “League metadata reference”. |
+| `docs/README.md` | Reminder that scripts/docs acted as exploratory scratch pads. | *Repository layout & maintenance* → `scripts/` bullet and maintenance guidance. |
+| `scripts/README.md` | Script naming taxonomy (`analyze_*`, `debug_*`, etc.). | *Repository layout & maintenance* → expanded `scripts/` note. |
 
-## Historical / Outdated (retain only for provenance)
+## Historical / Outdated (retain externally if needed)
 
-These files describe the deprecated marker-based parser (`name_end + 7`) or other superseded heuristics.
+The following notes describe superseded marker-based parsers or speculative field guesses. Their core facts now live in the README, but the prose still reflects deprecated approaches:
 
 * `PLAYER_NAME_RENAMING_ANALYSIS.md`, `PLAYER_NAME_RENAMING_IMPLEMENTATION.md`
 * `docs/Investigations/SESSION_COMPLETE_SUMMARY.md`
@@ -43,10 +42,7 @@ These files describe the deprecated marker-based parser (`name_end + 7`) or othe
 * `docs/reverse_engineering/PLAYER_REVERSE_ENGINEERING.md`
 * `docs/reverse_engineering/REVERSE_ENGINEERING_REPORT.md`
 
-Most of their factual highlights (double-XOR discovery, metadata offsets, outstanding TODOs) now live in the README, but the surrounding guidance still reflects the retired anchor-first implementation.
+## Next verification pass
 
-## Suggested migration actions
-
-1. **Decide on relevancy:** For each row above, confirm whether the information should be merged into the README, moved into code comments/tests, or archived permanently.
-2. **Update live docs:** When adopting an item, fold the precise details (e.g., performance baselines, blocklist members, league ranges) into the appropriate README section.
-3. **Archive obsolete guidance:** Keep the “Historical / Outdated” files outside the repo or mark them as superseded to avoid regression to `name_end` heuristics.
+1. Update the README whenever fresh byte-level discoveries land so this table stays short.
+2. When reviving any historical note above, port the actionable facts into the relevant README section rather than restoring the original markdown.
