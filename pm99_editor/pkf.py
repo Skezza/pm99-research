@@ -17,7 +17,11 @@ from __future__ import annotations
 import struct
 from dataclasses import dataclass, field
 from collections.abc import Iterable as IterableABC
+from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple, Union
+
+from .models import DirectoryEntry, FDIHeader
+from .xor import decode_entry
 
 Decoder = Callable[[bytes], Any]
 
@@ -335,6 +339,44 @@ class PKFStringMatch:
     needle: str
 
 
+def _normalise_patterns(
+    patterns: Union[str, bytes, Iterable[Union[str, bytes]]],
+    *,
+    encoding: str,
+    errors: str,
+    case_sensitive: bool,
+) -> List[Tuple[bytes, bytes, str]]:
+    """Convert user-provided patterns into comparable byte triples."""
+
+    if isinstance(patterns, (str, bytes, bytearray)):
+        items: Iterable[Union[str, bytes, bytearray]] = [patterns]
+    elif isinstance(patterns, IterableABC):
+        items = list(patterns)
+        if not items:
+            raise ValueError("patterns iterable must not be empty")
+    else:
+        raise TypeError("patterns must be str, bytes or an iterable of those")
+
+    normalised: List[Tuple[bytes, bytes, str]] = []
+    for item in items:
+        if isinstance(item, str):
+            encoded = item.encode(encoding, errors=errors)
+            label = item
+        elif isinstance(item, (bytes, bytearray)):
+            encoded = bytes(item)
+            label = encoded.decode(encoding, errors=errors)
+        else:
+            raise TypeError("patterns must only contain str or bytes entries")
+
+        if not encoded:
+            raise ValueError("search strings must be non-empty")
+
+        comparator = encoded if case_sensitive else encoded.lower()
+        normalised.append((encoded, comparator, label))
+
+    return normalised
+
+
 class PKFStringSearcher:
     """Search for ASCII strings inside PKF entries."""
 
@@ -356,33 +398,12 @@ class PKFStringSearcher:
     ) -> List[Tuple[bytes, bytes, str]]:
         """Convert user-provided patterns into comparable byte triples."""
 
-        if isinstance(patterns, (str, bytes, bytearray)):
-            items: Iterable[Union[str, bytes, bytearray]] = [patterns]
-        elif isinstance(patterns, IterableABC):
-            items = list(patterns)
-            if not items:
-                raise ValueError("patterns iterable must not be empty")
-        else:
-            raise TypeError("patterns must be str, bytes or an iterable of those")
-
-        normalised: List[Tuple[bytes, bytes, str]] = []
-        for item in items:
-            if isinstance(item, str):
-                encoded = item.encode(self._encoding, errors=self._errors)
-                label = item
-            elif isinstance(item, (bytes, bytearray)):
-                encoded = bytes(item)
-                label = encoded.decode(self._encoding, errors=self._errors)
-            else:
-                raise TypeError("patterns must only contain str or bytes entries")
-
-            if not encoded:
-                raise ValueError("search strings must be non-empty")
-
-            comparator = encoded if self._case_sensitive else encoded.lower()
-            normalised.append((encoded, comparator, label))
-
-        return normalised
+        return _normalise_patterns(
+            patterns,
+            encoding=self._encoding,
+            errors=self._errors,
+            case_sensitive=self._case_sensitive,
+        )
 
     def search(
         self, patterns: Union[str, bytes, Iterable[Union[str, bytes]]]
@@ -432,10 +453,239 @@ class PKFStringSearcher:
         return grouped
 
 
+@dataclass(frozen=True)
+class ArchiveStringMatch:
+    """Represent a string occurrence discovered during multi-file scanning."""
+
+    path: Path
+    file_type: str
+    entry_index: Optional[int]
+    entry_offset: int
+    match_offset: int
+    absolute_offset: int
+    needle: str
+
+
+class ArchiveStringSearcher:
+    """Batch string searcher for PKF and FDI assets on disk."""
+
+    def __init__(
+        self,
+        *,
+        encoding: str = "latin-1",
+        errors: str = "ignore",
+        case_sensitive: bool = False,
+        recursive: bool = True,
+        include_pkf: bool = True,
+        include_fdi: bool = True,
+    ) -> None:
+        self._encoding = encoding
+        self._errors = errors
+        self._case_sensitive = case_sensitive
+        self._recursive = recursive
+        self._include_pkf = include_pkf
+        self._include_fdi = include_fdi
+        self.errors: List[Tuple[Path, str]] = []
+
+    def search(
+        self,
+        roots: Iterable[Union[str, Path]],
+        patterns: Union[str, bytes, Iterable[Union[str, bytes]]],
+    ) -> List[ArchiveStringMatch]:
+        """Scan directories/files for PKF/FDI matches of ``patterns``."""
+
+        normalised = _normalise_patterns(
+            patterns,
+            encoding=self._encoding,
+            errors=self._errors,
+            case_sensitive=self._case_sensitive,
+        )
+        matches: List[ArchiveStringMatch] = []
+        self.errors.clear()
+
+        for root in roots:
+            root_path = Path(root)
+            if not root_path.exists():
+                self.errors.append((root_path, "Path does not exist"))
+                continue
+
+            if root_path.is_dir():
+                paths = self._discover_files(root_path)
+            else:
+                paths = [root_path]
+
+            for file_path in paths:
+                suffix = file_path.suffix.lower()
+                try:
+                    if suffix == ".pkf" and self._include_pkf:
+                        matches.extend(self._scan_pkf(file_path, normalised))
+                    elif suffix == ".fdi" and self._include_fdi:
+                        matches.extend(self._scan_fdi(file_path, normalised))
+                except Exception as exc:  # pragma: no cover - defensive
+                    self.errors.append((file_path, str(exc)))
+
+        matches.sort(key=lambda m: (str(m.path).lower(), m.absolute_offset, m.needle))
+        return matches
+
+    def search_grouped(
+        self,
+        roots: Iterable[Union[str, Path]],
+        patterns: Union[str, bytes, Iterable[Union[str, bytes]]],
+    ) -> Dict[str, List[ArchiveStringMatch]]:
+        """Grouped variant of :meth:`search` keyed by the needle label."""
+
+        grouped: Dict[str, List[ArchiveStringMatch]] = {}
+        for match in self.search(roots, patterns):
+            grouped.setdefault(match.needle, []).append(match)
+        return grouped
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+    def _discover_files(self, root: Path) -> List[Path]:
+        pattern = "**/*" if self._recursive else "*"
+        candidates: List[Path] = []
+        for child in root.glob(pattern):
+            if child.is_file() and child.suffix.lower() in {".pkf", ".fdi"}:
+                if child.suffix.lower() == ".pkf" and not self._include_pkf:
+                    continue
+                if child.suffix.lower() == ".fdi" and not self._include_fdi:
+                    continue
+                candidates.append(child)
+        return sorted(candidates)
+
+    def _scan_pkf(
+        self, path: Path, normalised: List[Tuple[bytes, bytes, str]]
+    ) -> List[ArchiveStringMatch]:
+        raw = path.read_bytes()
+        pkf = PKFFile.from_bytes(path.name, raw)
+        patterns = [original for original, _cmp, _label in normalised]
+        searcher = PKFStringSearcher(
+            pkf,
+            encoding=self._encoding,
+            errors=self._errors,
+            case_sensitive=self._case_sensitive,
+        )
+        matches = searcher.search(patterns)
+        return [
+            ArchiveStringMatch(
+                path=path,
+                file_type="PKF",
+                entry_index=match.entry_index,
+                entry_offset=match.entry_offset,
+                match_offset=match.match_offset,
+                absolute_offset=match.absolute_offset,
+                needle=match.needle,
+            )
+            for match in matches
+        ]
+
+    def _scan_fdi(
+        self, path: Path, normalised: List[Tuple[bytes, bytes, str]]
+    ) -> List[ArchiveStringMatch]:
+        data = path.read_bytes()
+        try:
+            header = FDIHeader.from_bytes(data)
+        except Exception:
+            return self._search_blob(
+                path,
+                data,
+                normalised,
+                file_type="FDI",
+                entry_index=None,
+                entry_offset=0,
+                base_offset=0,
+            )
+
+        dir_start = 0x20
+        count = (header.dir_size // 8) if header.dir_size else 0
+        entries: List[DirectoryEntry] = []
+        for idx in range(count):
+            pos = dir_start + idx * 8
+            try:
+                entry = DirectoryEntry.from_bytes(data, pos)
+            except Exception:
+                continue
+            if entry.offset == 0:
+                continue
+            entries.append(entry)
+
+        if not entries:
+            return self._search_blob(
+                path,
+                data,
+                normalised,
+                file_type="FDI",
+                entry_index=None,
+                entry_offset=0,
+                base_offset=0,
+            )
+
+        matches: List[ArchiveStringMatch] = []
+        for entry in entries:
+            try:
+                decoded, _encoded_length = decode_entry(data, entry.offset)
+            except Exception:
+                continue
+
+            base_offset = entry.offset + 2  # Skip length prefix
+            matches.extend(
+                self._search_blob(
+                    path,
+                    decoded,
+                    normalised,
+                    file_type="FDI",
+                    entry_index=entry.index,
+                    entry_offset=entry.offset,
+                    base_offset=base_offset,
+                )
+            )
+
+        return matches
+
+    def _search_blob(
+        self,
+        path: Path,
+        blob: bytes,
+        normalised: List[Tuple[bytes, bytes, str]],
+        *,
+        file_type: str,
+        entry_index: Optional[int],
+        entry_offset: int,
+        base_offset: int,
+    ) -> List[ArchiveStringMatch]:
+        haystack = blob
+        haystack_cmp = haystack if self._case_sensitive else haystack.lower()
+        results: List[ArchiveStringMatch] = []
+
+        for _original, comparator, label in normalised:
+            search_start = 0
+            while True:
+                idx = haystack_cmp.find(comparator, search_start)
+                if idx == -1:
+                    break
+                results.append(
+                    ArchiveStringMatch(
+                        path=path,
+                        file_type=file_type,
+                        entry_index=entry_index,
+                        entry_offset=entry_offset,
+                        match_offset=idx,
+                        absolute_offset=base_offset + idx,
+                        needle=label,
+                    )
+                )
+                search_start = idx + 1
+
+        return results
+
+
 __all__ = [
     "PKFDecoderError",
     "PKFEntry",
     "PKFFile",
     "PKFStringMatch",
     "PKFStringSearcher",
+    "ArchiveStringMatch",
+    "ArchiveStringSearcher",
 ]
