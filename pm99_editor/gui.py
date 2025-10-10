@@ -8,17 +8,8 @@ try:
     from .file_writer import save_modified_records
     from .xor import xor_decode
     from .loaders import load_teams, load_coaches
-<<<<<<< HEAD
-    from .pkf import PKFDecoderError, PKFFile, PKFStringMatch
-=======
     from .pkf import PKFDecoderError, PKFFile
     from .pkf_searcher import PKFSearcher, SearchResult
-    from .exporters import (
-        generate_player_table_text,
-        generate_coach_table_text,
-        generate_team_table_text,
-    )
->>>>>>> main
 except Exception:
     # When executed directly: python pm99_editor/gui.py
     sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -27,12 +18,10 @@ except Exception:
     from pm99_editor.file_writer import save_modified_records
     from pm99_editor.xor import xor_decode
     from pm99_editor.loaders import load_teams, load_coaches
-<<<<<<< HEAD
-    from pm99_editor.pkf import PKFDecoderError, PKFFile, PKFStringMatch
+    from pm99_editor.pkf import PKFDecoderError, PKFFile
 
 # Ensure common helpers are available when run as a script
 from pathlib import Path
-from typing import List, Union
 
 """
 Modern GUI application for Premier Manager 99 Database Editor
@@ -46,26 +35,13 @@ from pm99_editor.io import FDIFile
 from pm99_editor.file_writer import save_modified_records
 from pm99_editor.xor import xor_decode
 from pm99_editor.loaders import load_teams, load_coaches
-from pm99_editor.pkf import PKFDecoderError, PKFFile, PKFStringMatch
-=======
-    from pm99_editor.pkf import PKFDecoderError, PKFFile
-    from pm99_editor.exporters import (
-        generate_player_table_text,
-        generate_coach_table_text,
-        generate_team_table_text,
-    )
-
-# Ensure common helpers are available when run as a script
-from pathlib import Path
->>>>>>> main
+from pm99_editor.pkf import PKFDecoderError, PKFFile
+from pm99_editor.pkf_searcher import PKFSearcher, SearchResult
 from datetime import datetime
 import re
 from collections import defaultdict
 import threading
-import importlib
 
-import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
 
 def _format_hex_preview(data: bytes, width: int = 16, start_offset: int = 0, max_lines: int = 1000) -> tuple[str, bool]:
     """Return a hex dump for ``data`` suitable for text display with pagination support.
@@ -99,26 +75,6 @@ def _format_hex_preview(data: bytes, width: int = 16, start_offset: int = 0, max
         lines.append(f"… ({len(data) - end_offset} more bytes)")
 
     return "\n".join(lines), has_more
-
-
-def _format_hex_preview(data: bytes, width: int = 16, limit: int = 256) -> str:
-    """Return a short hex dump for ``data`` suitable for text display."""
-
-    if not data:
-        return "(empty payload)"
-
-    snippet = data[:limit]
-    lines = []
-    for offset in range(0, len(snippet), width):
-        chunk = snippet[offset : offset + width]
-        hex_part = " ".join(f"{byte:02X}" for byte in chunk)
-        ascii_part = "".join(chr(byte) if 32 <= byte < 127 else "." for byte in chunk)
-        lines.append(f"{offset:04X}  {hex_part:<{width * 3 - 1}}  {ascii_part}")
-
-    if len(data) > limit:
-        lines.append(f"… ({len(data) - limit} more bytes)")
-
-    return "\n".join(lines)
 
 class PM99DatabaseEditor:
     """Modern GUI application for editing Premier Manager 99 database files"""
@@ -192,11 +148,8 @@ class PM99DatabaseEditor:
         tools_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Tools", menu=tools_menu)
         tools_menu.add_command(label="Open PKF Viewer...", command=self.open_pkf_viewer)
-<<<<<<< HEAD
-=======
         tools_menu.add_command(label="PKF String Searcher...", command=self.open_pkf_searcher)
         tools_menu.add_command(label="Load PKF and Count Records...", command=self.load_pkf_and_count)
->>>>>>> main
 
         self.root.bind('<Control-s>', lambda e: self.save_database())
         
@@ -247,12 +200,9 @@ class PM99DatabaseEditor:
         
         self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
+        
         self.tree.bind('<<TreeviewSelect>>', self.on_select)
-
-        export_player_btn = ttk.Button(player_tab, text="Export Players", command=self.export_players)
-        export_player_btn.pack(pady=(5, 0))
-
+        
         # Count label
         self.count_label = ttk.Label(player_tab, text="Players: 0")
         self.count_label.pack(pady=(5, 0))
@@ -389,7 +339,7 @@ class PM99DatabaseEditor:
         self.league_count_label = ttk.Label(league_tab, text="Leagues: 0")
         self.league_count_label.pack(pady=(5,0), padx=5)
 
-        
+        # End of restored local GUI file
         # Right: Editor
         right_frame = ttk.Frame(main_paned)
         main_paned.add(right_frame, weight=2)
@@ -488,12 +438,12 @@ class PM99DatabaseEditor:
         ttk.Button(button_frame, text="💾 Apply Changes", command=self.apply_changes,
                   style='Accent.TButton').pack(side=tk.LEFT, padx=5)
         ttk.Button(button_frame, text="🔄 Reset", command=self.reset_current).pack(side=tk.LEFT, padx=5)
-
+ 
         # Team overlay panel (hidden by default) - will replace the right-hand editor when the Teams tab is active
         # Parent is the same right_frame used by the player editor; we will place() this overlay to sit on top.
         self.team_overlay = ttk.Frame(right_frame)
         self.team_overlay_active = False
-
+        
         # Team panel variables (overlay)
         self.team_panel_name_var = tk.StringVar()
         self.team_panel_id_var = tk.IntVar()
@@ -501,40 +451,40 @@ class PM99DatabaseEditor:
         self.team_panel_capacity_var = tk.IntVar()
         self.team_panel_car_var = tk.IntVar()
         self.team_panel_pitch_var = tk.StringVar()
-
+ 
         team_panel = ttk.LabelFrame(self.team_overlay, text="Team Details", padding="10")
         team_panel.pack(fill=tk.X, pady=(0,5))
-
+ 
         ttk.Label(team_panel, text="Team Name:", font=('TkDefaultFont', 10, 'bold')).grid(row=0, column=0, sticky=tk.W, pady=5)
         ttk.Entry(team_panel, textvariable=self.team_panel_name_var, width=40).grid(row=0, column=1, columnspan=2, sticky=tk.W, padx=10, pady=5)
-
+ 
         ttk.Label(team_panel, text="Team ID:").grid(row=1, column=0, sticky=tk.W, pady=5)
         ttk.Spinbox(team_panel, from_=0, to=65535, textvariable=self.team_panel_id_var, width=10).grid(row=1, column=1, sticky=tk.W, padx=10, pady=5)
-
+ 
         ttk.Label(team_panel, text="Stadium:").grid(row=2, column=0, sticky=tk.W, pady=5)
         ttk.Entry(team_panel, textvariable=self.team_panel_stadium_var, width=60).grid(row=2, column=1, columnspan=2, sticky=tk.W, padx=10, pady=5)
-
+ 
         ttk.Label(team_panel, text="Capacity:").grid(row=3, column=0, sticky=tk.W, pady=5)
         ttk.Spinbox(team_panel, from_=0, to=1000000, textvariable=self.team_panel_capacity_var, width=14).grid(row=3, column=1, sticky=tk.W, padx=10, pady=5)
-
+ 
         ttk.Label(team_panel, text="Car Park:").grid(row=4, column=0, sticky=tk.W, pady=5)
         ttk.Spinbox(team_panel, from_=0, to=200000, textvariable=self.team_panel_car_var, width=14).grid(row=4, column=1, sticky=tk.W, padx=10, pady=5)
-
+ 
         ttk.Label(team_panel, text="Pitch quality:").grid(row=5, column=0, sticky=tk.W, pady=5)
         self.team_panel_pitch_combo = ttk.Combobox(team_panel, textvariable=self.team_panel_pitch_var, state='readonly', width=16)
         self.team_panel_pitch_combo['values'] = ['GOOD', 'EXCELLENT', 'AVERAGE', 'POOR', 'UNKNOWN']
         self.team_panel_pitch_combo.grid(row=5, column=1, sticky=tk.W, padx=10, pady=5)
-
+ 
         # Roster toggle + frame (collapsible)
         roster_toggle_frame = ttk.Frame(self.team_overlay)
         roster_toggle_frame.pack(fill=tk.X)
         self.team_panel_roster_visible = False
         self.team_panel_roster_toggle_btn = ttk.Button(roster_toggle_frame, text="Show squad lineup", command=self._toggle_roster)
         self.team_panel_roster_toggle_btn.pack(side=tk.LEFT, padx=5, pady=5)
-
+ 
         self.team_panel_roster_frame = ttk.LabelFrame(self.team_overlay, text="Squad Lineup", padding="5")
         # roster is not packed initially (collapsed)
-
+ 
         # Enhanced roster tree with all attributes (PM99 style)
         roster_cols = ('num', 'name', 'en', 'sp', 'st', 'ag', 'qu', 'fi', 'mo', 'av', 'role', 'pos')
         self.team_roster_tree = ttk.Treeview(self.team_panel_roster_frame, columns=roster_cols, show='headings', selectmode='browse', height=20)
@@ -571,42 +521,42 @@ class PM99DatabaseEditor:
         self.team_roster_tree.configure(yscrollcommand=roster_scroll.set)
         self.team_roster_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         roster_scroll.pack(side=tk.RIGHT, fill=tk.Y)
-
+ 
         # Team action buttons (overlay)
         team_btn_frame = ttk.Frame(self.team_overlay, padding="10")
         team_btn_frame.pack(fill=tk.X)
         ttk.Button(team_btn_frame, text="💾 Save Team", command=self.apply_team_changes, style='Accent.TButton').pack(side=tk.LEFT, padx=5)
         ttk.Button(team_btn_frame, text="🔄 Reset Team", command=self.reset_team_editor).pack(side=tk.LEFT, padx=5)
-
+ 
         # Start hidden (we use .place() to show/hide so player editor remains intact beneath)
         self.team_overlay.place_forget()
-
+ 
         # Coach overlay panel (hidden by default) - will replace the right-hand editor when the Coaches tab is active
         # Parent is the same right_frame used by the player editor; we will place() this overlay to sit on top.
         self.coach_overlay = ttk.Frame(right_frame)
         self.coach_overlay_active = False
-
+ 
         # Coach panel variables (overlay)
         self.coach_panel_given_var = tk.StringVar()
         self.coach_panel_surname_var = tk.StringVar()
         self.coach_panel_full_var = tk.StringVar()
-
+ 
         coach_panel = ttk.LabelFrame(self.coach_overlay, text="Coach Information", padding="10")
         coach_panel.pack(fill=tk.X, pady=(0,5))
-
+ 
         ttk.Label(coach_panel, text="Given Name:", font=('TkDefaultFont', 10, 'bold')).grid(row=0, column=0, sticky=tk.W, pady=5)
         ttk.Entry(coach_panel, textvariable=self.coach_panel_given_var, width=30).grid(row=0, column=1, sticky=tk.W, padx=10, pady=5)
         ttk.Label(coach_panel, text="(max 12 chars)", font=('TkDefaultFont', 8)).grid(row=0, column=2, sticky=tk.W)
-
+ 
         ttk.Label(coach_panel, text="Surname:", font=('TkDefaultFont', 10, 'bold')).grid(row=1, column=0, sticky=tk.W, pady=5)
         ttk.Entry(coach_panel, textvariable=self.coach_panel_surname_var, width=30).grid(row=1, column=1, sticky=tk.W, padx=10, pady=5)
         ttk.Label(coach_panel, text="(max 12 chars)", font=('TkDefaultFont', 8)).grid(row=1, column=2, sticky=tk.W)
-
+ 
         ttk.Label(coach_panel, text="Full Name:", font=('TkDefaultFont', 10)).grid(row=2, column=0, sticky=tk.W, pady=5)
         full_name_entry = ttk.Entry(coach_panel, textvariable=self.coach_panel_full_var, width=30, state='readonly')
         full_name_entry.grid(row=2, column=1, sticky=tk.W, padx=10, pady=5)
         ttk.Label(coach_panel, text="(auto-generated)", font=('TkDefaultFont', 8)).grid(row=2, column=2, sticky=tk.W)
-
+ 
         # Link given name and surname to update full name
         def update_coach_full_name(*args):
             given = self.coach_panel_given_var.get().strip()
@@ -615,31 +565,387 @@ class PM99DatabaseEditor:
         
         self.coach_panel_given_var.trace('w', update_coach_full_name)
         self.coach_panel_surname_var.trace('w', update_coach_full_name)
-
+ 
         # Coach attributes info frame (placeholder for future attributes)
         coach_attr_frame = ttk.LabelFrame(self.coach_overlay, text="Coach Details", padding="10")
         coach_attr_frame.pack(fill=tk.BOTH, expand=True, pady=(5,0))
-
+ 
         info_text = ttk.Label(coach_attr_frame, text="Coach attributes are not yet available in this editor.\nCurrently only name editing is supported.",
                              justify=tk.LEFT, font=('TkDefaultFont', 9))
         info_text.pack(pady=20)
-
+ 
         # Coach action buttons (overlay)
         coach_btn_frame = ttk.Frame(self.coach_overlay, padding="10")
         coach_btn_frame.pack(fill=tk.X)
         ttk.Button(coach_btn_frame, text="💾 Save Coach", command=self.apply_coach_changes, style='Accent.TButton').pack(side=tk.LEFT, padx=5)
         ttk.Button(coach_btn_frame, text="🔄 Reset Coach", command=self.reset_coach_editor).pack(side=tk.LEFT, padx=5)
-
+ 
         # Start hidden (we use .place() to show/hide so player editor remains intact beneath)
         self.coach_overlay.place_forget()
-
+ 
         # Status bar
         self.status_var = tk.StringVar(value="Ready")
         ttk.Label(self.root, textvariable=self.status_var, relief=tk.SUNKEN, anchor=tk.W).pack(side=tk.BOTTOM, fill=tk.X)
+ 
+    def filter_coaches(self, *args):
+        """Filter coaches by search string and repopulate coach tree."""
+        query = self.coach_search_var.get().strip().lower()
+        if not getattr(self, 'coach_records', None):
+            self.filtered_coach_records = []
+        elif not query:
+            self.filtered_coach_records = self.coach_records.copy()
+        else:
+            out = []
+            for o, c in self.coach_records:
+                name = getattr(c, 'name', None) or f"{getattr(c, 'given_name', '')} {getattr(c, 'surname', '')}".strip()
+                if query in name.lower():
+                    out.append((o, c))
+            self.filtered_coach_records = out
+        try:
+            self.populate_coach_tree()
+        except Exception:
+            pass
+
+    def populate_coach_tree(self):
+        """Populate coach tree view from filtered_coach_records."""
+        self.coach_tree.delete(*self.coach_tree.get_children())
+        for offset, coach in getattr(self, 'filtered_coach_records', []) or []:
+            name = getattr(coach, 'name', None) or f"{getattr(coach, 'given_name', '')} {getattr(coach, 'surname', '')}".strip()
+            try:
+                display_offset = f"0x{offset:08X}"
+            except Exception:
+                display_offset = str(offset)
+            self.coach_tree.insert('', tk.END, values=(name, display_offset), tags=(str(offset),))
+        try:
+            self.coach_count_label.config(text=f"Coaches: {len(getattr(self, 'filtered_coach_records', []))}")
+        except Exception:
+            pass
+
+    def on_select_coach(self, event):
+        """Handle coach selection from coach tree."""
+        sel = self.coach_tree.selection()
+        if not sel:
+            return
+        item = self.coach_tree.item(sel[0])
+        try:
+            offset = int(item['tags'][0])
+        except Exception:
+            # Fallback: try parse hex string in values
+            try:
+                val = item['values'][1]
+                offset = int(val, 16) if isinstance(val, str) and val.startswith("0x") else None
+            except Exception:
+                offset = None
+        if offset is None:
+            return
+        for o, c in getattr(self, 'coach_records', []):
+            if o == offset:
+                self.current_coach = (o, c)
+                self.coach_panel_given_var.set(getattr(c, 'given_name', '') or '')
+                self.coach_panel_surname_var.set(getattr(c, 'surname', '') or '')
+                full = getattr(c, 'name', '') or f"{getattr(c, 'given_name','') or ''} {getattr(c, 'surname','') or ''}".strip()
+                self.coach_panel_full_var.set(full)
+                self._show_coach_overlay()
+                break
+
+    def _on_coach_double(self, event):
+        """Double-click coach => open coach overlay for editing."""
+        self.on_select_coach(event)
+        self._show_coach_overlay()
+
+    def export_coaches(self):
+        """Export coaches to CSV."""
+        if not getattr(self, 'coach_records', None):
+            messagebox.showinfo("Export Coaches", "No coaches to export")
+            return
+        filename = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv"), ("All files", "*.*")])
+        if not filename:
+            return
+        try:
+            import csv
+            with open(filename, 'w', newline='', encoding='utf-8') as fh:
+                writer = csv.writer(fh)
+                writer.writerow(['Offset', 'Given Name', 'Surname', 'Full Name'])
+                for offset, coach in self.coach_records:
+                    writer.writerow([f"0x{offset:08X}", getattr(coach, 'given_name', ''), getattr(coach, 'surname', ''), getattr(coach, 'name', '')])
+            messagebox.showinfo("Export Coaches", f"Exported {len(self.coach_records)} coaches to {filename}")
+        except Exception as e:
+            messagebox.showerror("Export Coaches", f"Export failed:\n{e}")
+
+    def filter_teams(self, *args):
+        """Filter teams by search string and repopulate team tree."""
+        query = self.team_search_var.get().strip().lower()
+        if not getattr(self, 'team_records', None):
+            self.filtered_team_records = []
+        elif not query:
+            self.filtered_team_records = self.team_records.copy()
+        else:
+            out = []
+            for o, t in self.team_records:
+                name = getattr(t, 'name', '') or ''
+                tid = str(getattr(t, 'team_id', ''))
+                if query in name.lower() or query in tid.lower():
+                    out.append((o, t))
+            self.filtered_team_records = out
+        try:
+            self.populate_team_tree()
+        except Exception:
+            pass
+
+    def populate_team_tree(self):
+        """Populate the team tree view from filtered_team_records."""
+        self.team_tree.delete(*self.team_tree.get_children())
+        for offset, team in getattr(self, 'filtered_team_records', []) or []:
+            name = getattr(team, 'name', '') or ''
+            team_id = getattr(team, 'team_id', '')
+            try:
+                display_offset = f"0x{offset:08X}"
+            except Exception:
+                display_offset = str(offset)
+            self.team_tree.insert('', tk.END, values=(name, team_id, display_offset), tags=(str(offset),))
+        try:
+            self.team_count_label.config(text=f"Teams: {len(getattr(self, 'filtered_team_records', []))}")
+        except Exception:
+            pass
+    def filter_leagues(self, *args):
+        """Filter leagues by the league search box and repopulate the league tree."""
+        try:
+            query = self.league_search_var.get().strip().lower()
+        except Exception:
+            query = ""
+        # Store last query for possible use by populate_league_tree (non-breaking)
+        self._league_search_query = query
+        try:
+            self.populate_league_tree()
+        except Exception:
+            # Swallow UI update errors; they will be visible when interacting with the app
+            pass
+
+    def on_select_team(self, event):
+        """Handle team selection from team tree."""
+        sel = self.team_tree.selection()
+        if not sel:
+            return
+        item = self.team_tree.item(sel[0])
+        try:
+            offset = int(item['tags'][0])
+        except Exception:
+            try:
+                val = item['values'][2]
+                offset = int(val, 16) if isinstance(val, str) and val.startswith("0x") else None
+            except Exception:
+                offset = None
+        if offset is None:
+            return
+        for o, team in getattr(self, 'team_records', []):
+            if o == offset:
+                self.current_team = (o, team)
+                self.team_panel_name_var.set(getattr(team, 'name', '') or '')
+                self.team_panel_id_var.set(getattr(team, 'team_id', 0) or 0)
+                self.team_panel_stadium_var.set(getattr(team, 'stadium', '') or '')
+                self.team_panel_capacity_var.set(getattr(team, 'capacity', 0) or 0)
+                self.team_panel_car_var.set(getattr(team, 'car_park', 0) or 0)
+                self.team_panel_pitch_var.set(getattr(team, 'pitch_quality', 'UNKNOWN') or 'UNKNOWN')
+                # clear roster display
+                self.team_roster_tree.delete(*self.team_roster_tree.get_children())
+                self._show_team_overlay()
+                break
+
+    def _on_team_double(self, event):
+        """Double-click team => open team overlay."""
+        self.on_select_team(event)
+        self._show_team_overlay()
+
+    def export_teams(self):
+        """Export teams to CSV."""
+        if not getattr(self, 'team_records', None):
+            messagebox.showinfo("Export Teams", "No teams to export")
+            return
+        filename = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv"), ("All files", "*.*")])
+        if not filename:
+            return
+        try:
+            import csv
+            with open(filename, 'w', newline='', encoding='utf-8') as fh:
+                writer = csv.writer(fh)
+                writer.writerow(['Offset', 'Team ID', 'Team Name', 'Stadium', 'Capacity'])
+                for offset, team in self.team_records:
+                    writer.writerow([f"0x{offset:08X}", getattr(team, 'team_id', ''), getattr(team, 'name', ''), getattr(team, 'stadium', ''), getattr(team, 'capacity', '')])
+            messagebox.showinfo("Export Teams", f"Exported {len(self.team_records)} teams to {filename}")
+        except Exception as e:
+            messagebox.showerror("Export Teams", f"Export failed:\n{e}")
+
+    def on_select_league(self, event):
+        """Handle selection in league tree (basic placeholder)."""
+        sel = self.league_tree.selection()
+        if not sel:
+            return
+        item = self.league_tree.item(sel[0])
+        # Simple feedback: show selected node text
+        text = item.get('text') or (item.get('values') or [''])[0]
+        self.status_var.set(f"Selected: {text}")
+
+    def on_league_doubleclick(self, event):
+        """Double-click league node - placeholder action."""
+        self.on_select_league(event)
+        messagebox.showinfo("League", "Double-clicked league/team node (placeholder)")
+
+    def _toggle_roster(self):
+        """Show/hide the team roster frame in the team overlay."""
+        try:
+            if self.team_panel_roster_visible:
+                self.team_panel_roster_frame.pack_forget()
+                self.team_panel_roster_visible = False
+                self.team_panel_roster_toggle_btn.config(text="Show squad lineup")
+            else:
+                self.team_panel_roster_frame.pack(fill=tk.BOTH, expand=True)
+                self.team_panel_roster_visible = True
+                self.team_panel_roster_toggle_btn.config(text="Hide squad lineup")
+        except Exception:
+            pass
+
+    def apply_team_changes(self):
+        """Apply changes made in the team editor (placeholder)."""
+        if not getattr(self, 'current_team', None):
+            return
+        # Attempt to apply a few basic fields back to the team object if methods exist
+        offset, team = self.current_team
+        try:
+            if hasattr(team, 'set_name'):
+                team.set_name(self.team_panel_name_var.get())
+            if hasattr(team, 'set_team_id'):
+                team.set_team_id(int(self.team_panel_id_var.get() or 0))
+            self.modified_team_records[offset] = team
+            self.status_var.set("✓ Team changes staged (save to persist)")
+            messagebox.showinfo("Team Editor", "Team changes staged. Use Save Database to persist.")
+        except Exception as e:
+            messagebox.showerror("Team Editor", f"Failed to apply team changes: {e}")
+
+    def reset_team_editor(self):
+        """Reset team editor overlay to original team values."""
+        if getattr(self, 'current_team', None):
+            self.team_panel_name_var.set(getattr(self.current_team[1], 'name', '') or '')
+            self.team_panel_id_var.set(getattr(self.current_team[1], 'team_id', 0) or 0)
+            self.team_panel_stadium_var.set(getattr(self.current_team[1], 'stadium', '') or '')
+            self.team_panel_capacity_var.set(getattr(self.current_team[1], 'capacity', 0) or 0)
+            self.team_panel_car_var.set(getattr(self.current_team[1], 'car_park', 0) or 0)
+            self.team_panel_pitch_var.set(getattr(self.current_team[1], 'pitch_quality', 'UNKNOWN') or 'UNKNOWN')
+            self.status_var.set("Team editor reset to original values")
+
+    def apply_coach_changes(self):
+        """Apply coach name changes (placeholder)."""
+        if not getattr(self, 'current_coach', None):
+            return
+        offset, coach = self.current_coach
+        try:
+            if hasattr(coach, 'set_given_name'):
+                coach.set_given_name(self.coach_panel_given_var.get())
+            if hasattr(coach, 'set_surname'):
+                coach.set_surname(self.coach_panel_surname_var.get())
+            self.modified_coach_records[offset] = coach
+            self.status_var.set("✓ Coach changes staged (save to persist)")
+            messagebox.showinfo("Coach Editor", "Coach changes staged. Use Save Database to persist.")
+        except Exception as e:
+            messagebox.showerror("Coach Editor", f"Failed to apply coach changes: {e}")
+
+    def reset_coach_editor(self):
+        """Reset coach editor overlay to original values."""
+        if getattr(self, 'current_coach', None):
+            self.coach_panel_given_var.set(getattr(self.current_coach[1], 'given_name', '') or '')
+            self.coach_panel_surname_var.set(getattr(self.current_coach[1], 'surname', '') or '')
+            self.coach_panel_full_var.set(getattr(self.current_coach[1], 'name', '') or '')
+            self.status_var.set("Coach editor reset to original values")
+
+    def _show_team_overlay(self):
+        """Show the team overlay UI on the editor pane."""
+        try:
+            if not self.team_overlay_active:
+                self.team_overlay.place(relx=0, rely=0, relwidth=1, relheight=1)
+                self.team_overlay_active = True
+        except Exception:
+            pass
+
+    def _hide_team_overlay(self):
+        """Hide the team overlay UI."""
+        try:
+            if self.team_overlay_active:
+                self.team_overlay.place_forget()
+                self.team_overlay_active = False
+        except Exception:
+            pass
+
+    def _show_coach_overlay(self):
+        """Show the coach overlay UI."""
+        try:
+            if not self.coach_overlay_active:
+                self.coach_overlay.place(relx=0, rely=0, relwidth=1, relheight=1)
+                self.coach_overlay_active = True
+        except Exception:
+            pass
+
+    def _hide_coach_overlay(self):
+        """Hide the coach overlay UI."""
+        try:
+            if self.coach_overlay_active:
+                self.coach_overlay.place_forget()
+                self.coach_overlay_active = False
+        except Exception:
+            pass
+
+    def _clear_coach_overlay(self):
+        """Clear coach overlay fields and hide it."""
+        try:
+            self.coach_panel_given_var.set('')
+            self.coach_panel_surname_var.set('')
+            self.coach_panel_full_var.set('')
+            self._hide_coach_overlay()
+        except Exception:
+            pass
+
+    def load_coaches(self):
+        """Lazy-load coach records (called when switching to Coaches tab)."""
+        try:
+            self.status_var.set("Loading coaches...")
+            self.root.update_idletasks()
+            parsed = load_coaches(self.coach_file_path)
+            self.coach_records = parsed
+            self.coaches_loaded = True
+            self.filtered_coach_records = self.coach_records.copy()
+            self.populate_coach_tree()
+            self.coach_count_label.config(text=f"Coaches: {len(self.coach_records)}")
+            self.status_var.set("Coaches loaded")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to load coaches:\n{e}")
+            self.status_var.set("Error loading coaches")
+
+    def build_team_lookup(self):
+        """Build team id -> name mapping for displaying team names in player list."""
+        self.team_lookup = {}
+        try:
+            for offset, t in getattr(self, 'team_records', []):
+                tid = getattr(t, 'team_id', None)
+                if tid is not None:
+                    self.team_lookup[int(tid)] = getattr(t, 'name', '')
+        except Exception:
+            self.team_lookup = {}
+
+    def populate_league_tree(self):
+        """Populate a simple leagues/teams hierarchy for the Leagues tab."""
+        self.league_tree.delete(*self.league_tree.get_children())
+        country = self.league_country_var.get()
+        for offset, team in getattr(self, 'team_records', []):
+            team_country = getattr(team, 'country', 'Unknown')
+            if country != "All" and team_country != country:
+                continue
+            node = self.league_tree.insert('', tk.END, text=getattr(team, 'name', ''), values=(getattr(team, 'team_id', ''), getattr(team, 'stadium', ''), getattr(team, 'capacity', '')))
+        try:
+            self.league_count_label.config(text=f"Leagues: {len(self.team_records)}")
+        except Exception:
+            pass
 
     def open_pkf_viewer(self) -> None:
         """Open a PKF archive in a lightweight inspection window."""
-
+ 
         initial_dir = str(self._pkf_last_dir)
         file_path = filedialog.askopenfilename(
             title="Select PKF file",
@@ -648,7 +954,7 @@ class PM99DatabaseEditor:
         )
         if not file_path:
             return
-
+ 
         chosen_path = Path(file_path)
         try:
             data = chosen_path.read_bytes()
@@ -656,31 +962,26 @@ class PM99DatabaseEditor:
             messagebox.showerror("PKF Viewer", f"Failed to read file:\n{exc}")
             self.status_var.set("Error reading PKF file")
             return
-
+ 
         try:
             pkf_file = PKFFile.from_bytes(chosen_path.name, data)
         except Exception as exc:
             messagebox.showerror("PKF Viewer", f"Failed to parse PKF file:\n{exc}")
             self.status_var.set("Error parsing PKF file")
             return
-
+ 
         self._pkf_last_dir = chosen_path.parent
         self._show_pkf_viewer_window(chosen_path, pkf_file, data)
         self.status_var.set(f"Opened PKF viewer for {chosen_path.name} ({len(pkf_file)} entries)")
-
+ 
     def _show_pkf_viewer_window(self, file_path: Path, pkf_file: PKFFile, raw_bytes: bytes) -> None:
         """Render the PKF inspection window."""
-
+ 
         viewer = tk.Toplevel(self.root)
         viewer.title(f"PKF Viewer — {file_path.name}")
-<<<<<<< HEAD
-        viewer.geometry("820x540")
-        viewer.minsize(640, 420)
-=======
         viewer.geometry("1000x700")
         viewer.minsize(800, 500)
->>>>>>> main
-
+ 
         header = ttk.Frame(viewer, padding=(10, 10, 10, 0))
         header.pack(fill=tk.X)
         ttk.Label(header, text=str(file_path), font=("TkDefaultFont", 10, "bold")).pack(anchor=tk.W)
@@ -688,29 +989,25 @@ class PM99DatabaseEditor:
             header,
             text=f"{len(pkf_file)} entries · format: {pkf_file.format_hint} · {len(raw_bytes)} bytes",
         ).pack(anchor=tk.W)
-
-<<<<<<< HEAD
-        paned = ttk.PanedWindow(viewer, orient=tk.HORIZONTAL)
-        paned.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-=======
+ 
         # Controls frame
         controls_frame = ttk.Frame(viewer, padding=(10, 5, 10, 10))
         controls_frame.pack(fill=tk.X)
-
+ 
         # Data transformation controls
         transform_frame = ttk.LabelFrame(controls_frame, text="Data Transformation", padding="5")
         transform_frame.pack(side=tk.LEFT, padx=(0, 10))
-
+ 
         # XOR controls
         ttk.Label(transform_frame, text="XOR Key:").grid(row=0, column=0, sticky=tk.W, padx=5)
         xor_key_var = tk.StringVar(value="0x00")
         xor_key_entry = ttk.Entry(transform_frame, textvariable=xor_key_var, width=10)
         xor_key_entry.grid(row=0, column=1, padx=5)
-
+ 
         xor_enabled_var = tk.BooleanVar(value=False)
         ttk.Checkbutton(transform_frame, text="Apply XOR", variable=xor_enabled_var,
                        command=lambda: update_preview(tree.selection()[0] if tree.selection() else None)).grid(row=0, column=2, padx=5)
-
+ 
         # Additional transformations
         ttk.Label(transform_frame, text="Encoding:").grid(row=1, column=0, sticky=tk.W, padx=5)
         encoding_var = tk.StringVar(value="raw")
@@ -718,50 +1015,49 @@ class PM99DatabaseEditor:
                                      values=["raw", "utf-8", "cp1252", "latin1"], width=8, state="readonly")
         encoding_combo.grid(row=1, column=1, padx=5)
         encoding_combo.bind("<<ComboboxSelected>>", lambda e: update_preview(tree.selection()[0] if tree.selection() else None))
-
+ 
         bit_ops_var = tk.StringVar(value="none")
         ttk.Label(transform_frame, text="Bit Ops:").grid(row=1, column=2, sticky=tk.W, padx=5)
         bit_ops_combo = ttk.Combobox(transform_frame, textvariable=bit_ops_var,
                                     values=["none", "reverse_bits", "swap_endian"], width=12, state="readonly")
         bit_ops_combo.grid(row=1, column=3, padx=5)
         bit_ops_combo.bind("<<ComboboxSelected>>", lambda e: update_preview(tree.selection()[0] if tree.selection() else None))
-
+ 
         # Pagination controls
         pagination_frame = ttk.LabelFrame(controls_frame, text="View Options", padding="5")
         pagination_frame.pack(side=tk.LEFT, padx=(0, 10))
-
+ 
         ttk.Label(pagination_frame, text="Lines per page:").grid(row=0, column=0, sticky=tk.W, padx=5)
         lines_per_page_var = tk.IntVar(value=50)
         lines_spinbox = ttk.Spinbox(pagination_frame, from_=10, to=1000, textvariable=lines_per_page_var, width=8)
         lines_spinbox.grid(row=0, column=1, padx=5)
-
+ 
         current_page_var = tk.IntVar(value=1)
         ttk.Label(pagination_frame, text="Page:").grid(row=0, column=2, sticky=tk.W, padx=5)
         page_spinbox = ttk.Spinbox(pagination_frame, from_=1, to=9999, textvariable=current_page_var, width=6)
         page_spinbox.grid(row=0, column=3, padx=5)
-
+ 
         ttk.Button(pagination_frame, text="Go", command=lambda: update_preview(tree.selection()[0] if tree.selection() else None)).grid(row=0, column=4, padx=5)
-
+ 
         paned = ttk.PanedWindow(viewer, orient=tk.HORIZONTAL)
         paned.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
->>>>>>> main
-
+ 
         # Left: entry listing
         list_frame = ttk.Frame(paned)
         paned.add(list_frame, weight=1)
-
+ 
         columns = ("offset", "length")
         tree = ttk.Treeview(list_frame, columns=columns, show="headings", selectmode="browse")
         tree.heading("offset", text="Offset")
         tree.heading("length", text="Length")
         tree.column("offset", width=110, anchor=tk.W)
         tree.column("length", width=80, anchor=tk.E)
-
+ 
         tree_scroll = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=tree.yview)
         tree.configure(yscrollcommand=tree_scroll.set)
         tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         tree_scroll.pack(side=tk.RIGHT, fill=tk.Y)
-
+ 
         entries = pkf_file.list_entries()
         entry_map = {str(entry.index): entry for entry in entries}
         for entry in entries:
@@ -771,17 +1067,17 @@ class PM99DatabaseEditor:
                 iid=str(entry.index),
                 values=(f"0x{entry.offset:08X}", f"{entry.length} bytes"),
             )
-
+ 
         # Right: preview pane
         preview_frame = ttk.Frame(paned)
         paned.add(preview_frame, weight=2)
-
+ 
         info_label = ttk.Label(preview_frame, text="Select an entry to preview", padding=(0, 0, 0, 5))
         info_label.pack(anchor=tk.W)
-
+ 
         text_container = ttk.Frame(preview_frame)
         text_container.pack(fill=tk.BOTH, expand=True)
-
+ 
         preview = tk.Text(text_container, wrap="none", font=("Courier New", 10))
         preview.grid(row=0, column=0, sticky="nsew")
         y_scroll = ttk.Scrollbar(text_container, orient=tk.VERTICAL, command=preview.yview)
@@ -791,139 +1087,14 @@ class PM99DatabaseEditor:
         preview.configure(yscrollcommand=y_scroll.set, xscrollcommand=x_scroll.set)
         preview.insert("1.0", "Select an entry to view its hex preview.")
         preview.configure(state="disabled")
-
+ 
         text_container.rowconfigure(0, weight=1)
         text_container.columnconfigure(0, weight=1)
-
-<<<<<<< HEAD
-        search_matches: List[PKFStringMatch] = []
-
-        search_frame = ttk.LabelFrame(preview_frame, text="String search", padding=(6, 6))
-        search_frame.pack(fill=tk.BOTH, expand=False, pady=(10, 0))
-
-        instructions = ttk.Label(
-            search_frame,
-            text="Enter one or more strings separated by commas or new lines.",
-        )
-        instructions.pack(anchor=tk.W)
-
-        search_input = tk.Text(search_frame, height=2, width=20)
-        search_input.pack(fill=tk.X, pady=(4, 6))
-
-        options_frame = ttk.Frame(search_frame)
-        options_frame.pack(fill=tk.X, pady=(0, 6))
-
-        case_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(options_frame, text="Case sensitive", variable=case_var).pack(
-            side=tk.LEFT
-        )
-
-        def parse_patterns(raw: str) -> Union[str, List[str]]:
-            tokens = [part.strip() for part in re.split(r"[\n,]+", raw) if part.strip()]
-            if not tokens:
-                raise ValueError("Enter at least one search string")
-            return tokens[0] if len(tokens) == 1 else tokens
-
-        results_columns = ("entry", "match_offset", "absolute_offset", "needle")
-        results_tree = ttk.Treeview(
-            search_frame,
-            columns=results_columns,
-            show="headings",
-            height=6,
-        )
-        results_tree.heading("entry", text="Entry")
-        results_tree.heading("match_offset", text="Entry offset")
-        results_tree.heading("absolute_offset", text="File offset")
-        results_tree.heading("needle", text="Needle")
-        results_tree.column("entry", width=70, anchor=tk.CENTER)
-        results_tree.column("match_offset", width=110, anchor=tk.W)
-        results_tree.column("absolute_offset", width=120, anchor=tk.W)
-        results_tree.column("needle", width=160, anchor=tk.W)
-
-        results_scroll = ttk.Scrollbar(
-            search_frame, orient=tk.VERTICAL, command=results_tree.yview
-        )
-        results_tree.configure(yscrollcommand=results_scroll.set)
-
-        results_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        results_scroll.pack(side=tk.RIGHT, fill=tk.Y)
-
-        def run_search() -> None:
-            raw = search_input.get("1.0", tk.END).strip()
-            try:
-                patterns = parse_patterns(raw)
-            except ValueError as exc:
-                messagebox.showinfo("PKF String Search", str(exc))
-                return
-
-            try:
-                matches = pkf_file.search_strings(
-                    patterns,
-                    case_sensitive=case_var.get(),
-                )
-            except (TypeError, ValueError) as exc:
-                messagebox.showerror("PKF String Search", str(exc))
-                return
-
-            for child in results_tree.get_children():
-                results_tree.delete(child)
-
-            search_matches.clear()
-            search_matches.extend(matches)
-
-            if not matches:
-                self.status_var.set("No string matches found")
-                return
-
-            seen_entries = set()
-            for idx, match in enumerate(matches):
-                seen_entries.add(match.entry_index)
-                results_tree.insert(
-                    "",
-                    tk.END,
-                    iid=f"match-{idx}",
-                    values=(
-                        match.entry_index,
-                        f"0x{match.match_offset:08X}",
-                        f"0x{match.absolute_offset:08X}",
-                        match.needle,
-                    ),
-                )
-
-            self.status_var.set(
-                f"Found {len(matches)} match(es) across {len(seen_entries)} entr"
-                "ies"
-            )
-
-        ttk.Button(options_frame, text="Search", command=run_search).pack(side=tk.RIGHT)
-
-        def on_result_select(event) -> None:  # pragma: no cover - UI interaction
-            selection = results_tree.selection()
-            if not selection:
-                return
-            match_id = selection[0]
-            try:
-                index = int(match_id.split("-", 1)[1])
-            except (IndexError, ValueError):
-                return
-            if not (0 <= index < len(search_matches)):
-                return
-            match = search_matches[index]
-            entry_id = str(match.entry_index)
-            if entry_id in entry_map:
-                tree.selection_set(entry_id)
-                tree.focus(entry_id)
-                tree.see(entry_id)
-                update_preview(entry_id)
-
-        results_tree.bind("<<TreeviewSelect>>", on_result_select)
-
-        def update_preview(selected_entry_id: str) -> None:
-=======
+ 
         def get_transformed_data(raw_data: bytes) -> bytes:
             """Apply transformations to the data."""
             data = raw_data
-
+ 
             # Apply XOR if enabled
             if xor_enabled_var.get():
                 try:
@@ -936,7 +1107,7 @@ class PM99DatabaseEditor:
                 except (ValueError, TypeError):
                     # Invalid key, show original data
                     pass
-
+ 
             # Apply bit operations
             bit_op = bit_ops_var.get()
             if bit_op == "reverse_bits":
@@ -945,42 +1116,24 @@ class PM99DatabaseEditor:
                 # Swap endianness of 16-bit words
                 if len(data) % 2 == 0:
                     data = b''.join(data[i+1:i+2] + data[i:i+1] for i in range(0, len(data), 2))
-
+ 
             return data
-
+ 
         def _reverse_bits_byte(self, byte: int) -> int:
             """Reverse the bits in a byte."""
             return int('{:08b}'.format(byte)[::-1], 2)
-
+ 
         def update_preview(selected_entry_id: str) -> None:
             if not selected_entry_id:
                 return
-
->>>>>>> main
+ 
             entry = entry_map.get(selected_entry_id)
             if entry is None:
                 return
-
-<<<<<<< HEAD
-            label = f"Entry {entry.index}"
-            if entry.name:
-                label += f" ({entry.name})"
-            info_label.configure(
-                text=f"{label} · offset 0x{entry.offset:08X} · {entry.length} bytes"
-            )
-
-            lines = [
-                _format_hex_preview(entry.raw_bytes),
-            ]
-
-            try:
-                decoded = pkf_file.decode_entry(entry.index)
-            except PKFDecoderError as exc:
-                lines.extend(["", f"Decoder error: {exc}"])
-=======
+ 
             # Apply transformations
             transformed_data = get_transformed_data(entry.raw_bytes)
-
+ 
             label = f"Entry {entry.index}"
             if entry.name:
                 label += f" ({entry.name})"
@@ -991,13 +1144,13 @@ class PM99DatabaseEditor:
             info_label.configure(
                 text=f"{label} · offset 0x{entry.offset:08X} · {len(transformed_data)} bytes{transform_str}"
             )
-
+ 
             # Calculate pagination
             lines_per_page = lines_per_page_var.get()
             bytes_per_line = 16
             current_page = max(1, current_page_var.get())
             start_offset = (current_page - 1) * lines_per_page * bytes_per_line
-
+ 
             # Format with pagination
             formatted_text, has_more = _format_hex_preview(
                 transformed_data,
@@ -1005,14 +1158,14 @@ class PM99DatabaseEditor:
                 start_offset=start_offset,
                 max_lines=lines_per_page
             )
-
+ 
             lines = [formatted_text]
-
+ 
             # Add page info
             total_pages = max(1, (len(transformed_data) + bytes_per_line * lines_per_page - 1) // (bytes_per_line * lines_per_page))
             current_page_var.set(min(current_page, total_pages))
             lines.append(f"\nPage {current_page_var.get()} of {total_pages}")
-
+ 
             # Try to decode with selected encoding
             encoding = encoding_var.get()
             if encoding != "raw":
@@ -1023,34 +1176,30 @@ class PM99DatabaseEditor:
                     lines.extend(["", f"Decoding error ({encoding}): {exc}"])
                 except Exception as exc:
                     lines.extend(["", f"Error: {exc}"])
-
+ 
             try:
                 decoded = pkf_file.decode_payload(transformed_data)
             except PKFDecoderError as exc:
                 if encoding == "raw":  # Only show decoder error if not showing encoding
                     lines.extend(["", f"Decoder error: {exc}"])
->>>>>>> main
             else:
                 if not isinstance(decoded, (bytes, bytearray)):
                     lines.extend(["", "Decoded payload:", str(decoded)])
-
+ 
             preview.configure(state="normal")
             preview.delete("1.0", tk.END)
             preview.insert("1.0", "\n".join(lines))
             preview.configure(state="disabled")
-
+ 
         def on_tree_select(event) -> None:  # pragma: no cover - UI interaction
             selection = tree.selection()
             if not selection:
                 return
-<<<<<<< HEAD
-=======
             current_page_var.set(1)  # Reset to first page on selection change
->>>>>>> main
             update_preview(selection[0])
-
+ 
         tree.bind("<<TreeviewSelect>>", on_tree_select)
-
+ 
         # Auto-select first entry if available
         children = tree.get_children()
         if children:
@@ -1058,9 +1207,7 @@ class PM99DatabaseEditor:
             tree.selection_set(first)
             tree.focus(first)
             update_preview(first)
-
-<<<<<<< HEAD
-=======
+ 
     def open_pkf_searcher(self) -> None:
         """Open PKF String Searcher tool window."""
         searcher_window = tk.Toplevel(self.root)
@@ -1384,10 +1531,10 @@ class PM99DatabaseEditor:
                 messagebox.showerror("Export Error", f"Export failed:\n{str(e)}")
         
         results_tree.bind("<<TreeviewSelect>>", on_result_select)
-
+ 
         # Bind Enter key to search
         query_entry.bind("<Return>", lambda e: perform_search())
-
+ 
     def load_pkf_and_count(self) -> None:
         """Load one or more PKF files and display the count of records (entries) from how many files."""
         initial_dir = str(self._pkf_last_dir)
@@ -1398,7 +1545,7 @@ class PM99DatabaseEditor:
         )
         if not file_paths:
             return
-
+ 
         # Show progress dialog
         progress = tk.Toplevel(self.root)
         progress.title("Loading PKF files...")
@@ -1410,11 +1557,11 @@ class PM99DatabaseEditor:
         progressbar.pack(pady=10, padx=20, fill=tk.X)
         progress_label = ttk.Label(progress, text="Starting...")
         progress_label.pack(pady=5)
-
+ 
         total_records = 0
         loaded_files = 0
         errors = []
-
+ 
         def worker():
             nonlocal total_records, loaded_files, errors
             for i, file_path in enumerate(file_paths):
@@ -1433,35 +1580,34 @@ class PM99DatabaseEditor:
             progressbar.config(value=len(file_paths))
             progress_label.config(text="Complete")
             self.root.after(0, finalize)
-
+ 
         def finalize():
             progress.destroy()
             if loaded_files == 0:
                 messagebox.showerror("PKF Loader", "Failed to load any PKF files:\n" + "\n".join(errors))
                 self.status_var.set("Error loading PKF files")
                 return
-
+ 
             message = f"Loaded {loaded_files} PKF file(s)\n\nTotal records (entries): {total_records}"
             if errors:
                 message += f"\n\nErrors ({len(errors)}):\n" + "\n".join(errors)
-
+ 
             messagebox.showinfo("PKF Record Count", message)
             self.status_var.set(f"PKF loaded: {loaded_files} file(s) ({total_records} total records)")
-
+ 
         threading.Thread(target=worker, daemon=True).start()
-
->>>>>>> main
+ 
     def load_database(self):
         """Load the database file asynchronously to avoid blocking the UI."""
         # Update status immediately and create a progress dialog on main thread
         self.status_var.set("Loading database...")
         self.root.update_idletasks()
-
+ 
         if not Path(self.file_path).exists():
             messagebox.showerror("Error", f"File not found: {self.file_path}")
             self.status_var.set("File not found")
             return
-
+ 
         progress = tk.Toplevel(self.root)
         progress.title("Loading Database...")
         progress.geometry("300x100")
@@ -1470,7 +1616,7 @@ class PM99DatabaseEditor:
         progress_label.pack(pady=10)
         progressbar = ttk.Progressbar(progress, mode='determinate', maximum=3)  # Players, Coaches, Teams
         progressbar.pack(pady=10, padx=20, fill=tk.X)
-
+ 
         def worker():
             try:
                 # Load players
@@ -1481,24 +1627,24 @@ class PM99DatabaseEditor:
                 fdi.load()
                 # Prefer the offset-aware structure when available
                 records = getattr(fdi, 'records_with_offsets', [(None, r) for r in getattr(fdi, 'records', [])])
-
+ 
                 # Load coaches
                 self.root.after(0, lambda: progress_label.config(text="Loading coaches from ENT98030.FDI..."))
                 self.root.after(0, lambda: progressbar.config(value=1))
                 parsed_coaches = load_coaches(self.coach_file_path)
-
+ 
                 # Load teams
                 self.root.after(0, lambda: progress_label.config(text="Loading teams from EQ98030.FDI..."))
                 self.root.after(0, lambda: progressbar.config(value=2))
                 parsed_teams = load_teams(self.team_file_path)
-
+ 
                 # Schedule UI update on main thread
                 self.root.after(0, lambda: self._on_db_loaded_full(progress, progressbar, fdi, records, parsed_coaches, parsed_teams))
             except Exception as e:
                 self.root.after(0, lambda: self._on_db_load_failed(progress, progressbar, e))
-
+ 
         threading.Thread(target=worker, daemon=True).start()
-
+ 
     def _on_db_loaded_full(self, progress, progressbar, fdi, records, coaches, teams):
         """Callback run on the UI thread when full database load completes successfully."""
         try:
@@ -1506,18 +1652,18 @@ class PM99DatabaseEditor:
             progress.destroy()
         except Exception:
             pass
-
+ 
         self.fdi_file = fdi
         self.all_records = records
         self.filtered_records = self.all_records.copy()
         self.populate_tree()
-
+ 
         # Set coaches
         self.coach_records = coaches
         self.coaches_loaded = True
         self.filtered_coach_records = self.coach_records.copy()
         self.populate_coach_tree()
-
+ 
         # Set teams
         self.team_records = teams
         self.teams_loaded = True
@@ -1529,14 +1675,14 @@ class PM99DatabaseEditor:
         except Exception:
             self.team_lookup = {}
         self.populate_team_tree()
-
+ 
         total_players = len(self.all_records)
         total_coaches = len(self.coach_records)
         total_teams = len(self.team_records)
-
+ 
         self.status_var.set(f"✓ Loaded database: {total_players} players, {total_coaches} coaches, {total_teams} teams")
         messagebox.showinfo("Success", f"Loaded database:\n{total_players} players\n{total_coaches} coaches\n{total_teams} teams")
-
+ 
     def _on_db_load_failed(self, progress, progressbar, error):
         """Callback run on the UI thread when background load fails."""
         try:
@@ -1544,7 +1690,7 @@ class PM99DatabaseEditor:
             progress.destroy()
         except Exception:
             pass
-
+ 
         messagebox.showerror("Error", f"Failed to load database:\n{error}")
         self.status_var.set("Error loading database")
     
@@ -1558,7 +1704,7 @@ class PM99DatabaseEditor:
                 given = getattr(record, 'given_name', '') or ''
                 surname = getattr(record, 'surname', '') or ''
                 display = f"{given} {surname}".strip()
-
+ 
             # Show team ID and resolved team name when available
             try:
                 tid = getattr(record, 'team_id', None)
@@ -1571,7 +1717,7 @@ class PM99DatabaseEditor:
                 team_display = f"{tid} - {team_name}"
             else:
                 team_display = f"{tid}" if tid is not None else ""
-
+ 
             self.tree.insert('', tk.END, values=(
                 display,
                 team_display,
@@ -1581,988 +1727,248 @@ class PM99DatabaseEditor:
         
         self.count_label.config(text=f"Players: {len(self.filtered_records)} / {len(self.all_records)}")
     
-    # ----------------------------
-    # Coaches: lazy loading & UI
-    # ----------------------------
-    def load_coaches(self):
-        """Load coaches from the ENT98030.FDI file asynchronously."""
-        if getattr(self, 'coaches_loaded', False):
-            return
-
-        self.status_var.set("Loading coaches...")
-        self.root.update_idletasks()
-
-        if not Path(self.coach_file_path).exists():
-            messagebox.showerror("Error", f"Coaches file not found: {self.coach_file_path}")
-            self.status_var.set("Coaches file not found")
-            return
-
-        progress = tk.Toplevel(self.root)
-        progress.title("Loading coaches...")
-        progress.geometry("300x80")
-        progress.transient(self.root)
-        ttk.Label(progress, text="Scanning coaches file...").pack(pady=10)
-        progressbar = ttk.Progressbar(progress, mode='indeterminate')
-        progressbar.pack(pady=10)
-        progressbar.start()
-
-        def worker():
-            # Use shared loader with strict validation
-            parsed_coaches = load_coaches(self.coach_file_path)
-            self.root.after(0, lambda: self._on_coaches_loaded(progress, progressbar, None, parsed_coaches))
-
-        threading.Thread(target=worker, daemon=True).start()
-
-    def _on_coaches_loaded(self, progress, progressbar, fdi, coaches):
-        try:
-            progressbar.stop()
-            progress.destroy()
-        except Exception:
-            pass
-
-        self.coach_records = coaches
-        self.coaches_loaded = True
-        self.filtered_coach_records = self.coach_records.copy()
-        self.populate_coach_tree()
-
-        self.status_var.set(f"✓ Loaded {len(self.coach_records)} coaches")
-
-    def _on_coaches_load_failed(self, progress, progressbar, error):
-        try:
-            progressbar.stop()
-            progress.destroy()
-        except Exception:
-            pass
-
-        messagebox.showerror("Error", f"Failed to load coaches:\n{error}")
-        self.status_var.set("Error loading coaches")
-
-    def populate_coach_tree(self):
-        """Populate coach tree from loaded coach_records / filtered_coach_records.
-        If any entries appear as 'Unknown Coach' or 'Parse Error' we load the
-        decoded blobs for diagnostics and print a short hex/ascii preview to stdout.
-        """
-        if not hasattr(self, 'coach_tree'):
-            return
-        self.coach_tree.delete(*self.coach_tree.get_children())
-
-        # Quick check whether we need to load decoded blobs for debugging
-        need_debug = False
-        for _offset, _coach in getattr(self, 'filtered_coach_records', []):
-            display_check = getattr(_coach, 'full_name', str(_coach))
-            if display_check in ('Unknown Coach', 'Parse Error', ''):
-                need_debug = True
-                break
-
-        decoded_map = {}
-        if need_debug:
-            try:
-                fdi = FDIFile(self.coach_file_path)
-                fdi.load()
-                for entry, decoded, length in fdi.iter_decoded_directory_entries():
-                    decoded_map[entry.offset] = (decoded, length, entry.tag)
-            except Exception as e:
-                print(f"[COACH DEBUG] Failed to load {self.coach_file_path} for diagnostics: {e}")
-
-        for offset, coach in getattr(self, 'filtered_coach_records', []):
-            display = getattr(coach, 'full_name', str(coach))
-
-            # If parsing returned a placeholder, show a short preview and emit diagnostics
-            if display in ('Unknown Coach', 'Parse Error', ''):
-                if offset in decoded_map:
-                    decoded, length, tag = decoded_map[offset]
-                    try:
-                        tag_char = chr(tag) if 32 <= tag < 127 else '?'
-                    except Exception:
-                        tag_char = '?'
-                    hex_preview = decoded[:64].hex()
-                    ascii_preview = ''.join(chr(b) if 32 <= b < 127 else '.' for b in decoded[:64])
-                    print(f"[COACH] offset=0x{offset:x}, tag=0x{tag:x} ('{tag_char}'), decoded_len={length}")
-                    print(f"  hex: {hex_preview}")
-                    print(f"  ascii: {ascii_preview}")
-                    display = f"{display} - preview: {ascii_preview[:40]}"
-                else:
-                    display = f"{display} - (no decoded data)"
-
-            self.coach_tree.insert('', tk.END, values=(display, f"0x{offset:x}"), tags=(str(offset),))
-
-        self.coach_count_label.config(text=f"Coaches: {len(getattr(self, 'filtered_coach_records', []))} / {len(getattr(self, 'coach_records', []))}")
-
-    def _on_coach_double(self, event):
-        """Handle double-click on a coach row to open the editor (when editable)."""
-        selection = self.coach_tree.selection()
+    def on_select(self, event):
+        """Handle player selection"""
+        selection = self.tree.selection()
         if not selection:
             return
-        item = self.coach_tree.item(selection[0])
+
+        # Get record from tag
+        item = self.tree.item(selection[0])
         try:
             offset = int(item['tags'][0])
         except Exception:
             return
-        for o, c in self.coach_records:
+
+        # Find the record
+        for o, r in self.all_records:
             if o == offset:
-                if not hasattr(c, 'to_bytes') and not hasattr(c, 'set_name'):
-                    messagebox.showinfo("Not editable", "This coach entry cannot be edited in the GUI.")
-                    return
-                self.open_coach_editor(o, c)
+                self.current_record = (o, r)
+                self.display_record(r)
                 break
 
-    def _on_team_double(self, event):
-        """Handle double-click on a team row to open the team editor."""
-        selection = self.team_tree.selection()
-        if not selection:
-            return
-        item = self.team_tree.item(selection[0])
+    def display_record(self, record: PlayerRecord):
+        """Display record in editor"""
+        # Populate name fields
+        given = getattr(record, 'given_name', '') or ''
+        surname = getattr(record, 'surname', '') or ''
+        self.given_name_var.set(given)
+        self.surname_var.set(surname)
+
+        self.team_id_var.set(getattr(record, 'team_id', 0) or 0)
+        self.squad_var.set(getattr(record, 'squad_number', 0) or 0)
         try:
-            offset = int(item['tags'][0])
+            self.position_var.set(record.get_position_name())
         except Exception:
-            return
-        for o, t in self.team_records:
-            if o == offset:
-                self.open_team_editor(o, t)
-                break
+            self.position_var.set('')
 
-    def open_coach_editor(self, offset, coach):
-        """Open modal dialog to edit coach (given name / surname)."""
-        dlg = tk.Toplevel(self.root)
-        dlg.title("Edit Coach")
-        dlg.transient(self.root)
-        dlg.grab_set()
+        # Metadata fields (nationality, DOB, height)
+        self.nationality_var.set(getattr(record, 'nationality_id', 0) or 0)
 
-        ttk.Label(dlg, text="Given name:").grid(row=0, column=0, sticky=tk.W, padx=8, pady=6)
-        given_var = tk.StringVar(value=getattr(coach, 'given_name', '') or '')
-        given_entry = ttk.Entry(dlg, textvariable=given_var, width=30)
-        given_entry.grid(row=0, column=1, padx=8, pady=6)
-
-        ttk.Label(dlg, text="Surname:").grid(row=1, column=0, sticky=tk.W, padx=8, pady=6)
-        surname_var = tk.StringVar(value=getattr(coach, 'surname', '') or getattr(coach, 'full_name', '').split()[-1] if getattr(coach, 'full_name', '') else '')
-        surname_entry = ttk.Entry(dlg, textvariable=surname_var, width=30)
-        surname_entry.grid(row=1, column=1, padx=8, pady=6)
-
-        def on_save():
-            g = given_var.get().strip()
-            s = surname_var.get().strip()
-            try:
-                # Only structured coach records that provide to_bytes/set_name are editable
-                if not hasattr(coach, 'to_bytes') and not hasattr(coach, 'set_name'):
-                    messagebox.showinfo("Not editable", "This coach entry cannot be edited in the GUI.")
-                    return
-
-                # Prefer structured setter when available
-                if hasattr(coach, 'set_name'):
-                    coach.set_name(g, s)
-                else:
-                    # Best-effort: update attributes and rely on to_bytes when present
-                    try:
-                        coach.given_name = g
-                        coach.surname = s
-                        coach.full_name = f"{g} {s}".strip()
-                    except Exception:
-                        pass
-
-                self.modified_coach_records[offset] = coach
-                self.populate_coach_tree()
-                self.status_var.set(f"✓ Updated coach: {getattr(coach, 'full_name', str(coach))}")
-                dlg.destroy()
-            except Exception as e:
-                messagebox.showerror("Error", f"Failed to update coach: {e}")
-
-        btn_frame = ttk.Frame(dlg)
-        btn_frame.grid(row=2, column=0, columnspan=2, pady=(8,12))
-        ttk.Button(btn_frame, text="Save", command=on_save).pack(side=tk.LEFT, padx=6)
-        ttk.Button(btn_frame, text="Cancel", command=dlg.destroy).pack(side=tk.LEFT, padx=6)
-
-    def open_team_editor(self, offset, team):
-        """Open modal dialog to edit team name, team_id and stadium metadata."""
-        dlg = tk.Toplevel(self.root)
-        dlg.title("Edit Team")
-        dlg.transient(self.root)
-        dlg.grab_set()
-    
-        # Team name
-        ttk.Label(dlg, text="Team Name:").grid(row=0, column=0, sticky=tk.W, padx=8, pady=6)
-        name_var = tk.StringVar(value=getattr(team, 'name', '') or '')
-        ttk.Entry(dlg, textvariable=name_var, width=40).grid(row=0, column=1, padx=8, pady=6, columnspan=2)
-    
-        # Team ID
-        ttk.Label(dlg, text="Team ID (optional):").grid(row=1, column=0, sticky=tk.W, padx=8, pady=6)
-        id_var = tk.IntVar(value=getattr(team, 'team_id', 0) or 0)
-        ttk.Spinbox(dlg, from_=0, to=65535, textvariable=id_var, width=12).grid(row=1, column=1, sticky=tk.W, padx=8, pady=6)
-    
-        # Stadium name (single-line; stadium descriptions are typically short)
-        ttk.Label(dlg, text="Stadium:").grid(row=2, column=0, sticky=tk.W, padx=8, pady=6)
-        stadium_var = tk.StringVar(value=getattr(team, 'stadium', '') or '')
-        ttk.Entry(dlg, textvariable=stadium_var, width=60).grid(row=2, column=1, padx=8, pady=6, columnspan=2)
-    
-        # Capacity
-        ttk.Label(dlg, text="Capacity:").grid(row=3, column=0, sticky=tk.W, padx=8, pady=6)
-        cap_val = getattr(team, 'stadium_capacity', 0) or 0
-        cap_var = tk.IntVar(value=cap_val)
-        ttk.Spinbox(dlg, from_=0, to=1000000, textvariable=cap_var, width=14).grid(row=3, column=1, sticky=tk.W, padx=8, pady=6)
-        ttk.Label(dlg, text="(seats)").grid(row=3, column=2, sticky=tk.W)
-    
-        # Car park
-        ttk.Label(dlg, text="Car Park (spaces):").grid(row=4, column=0, sticky=tk.W, padx=8, pady=6)
-        car_val = getattr(team, 'car_park', 0) or 0
-        car_var = tk.IntVar(value=car_val)
-        ttk.Spinbox(dlg, from_=0, to=200000, textvariable=car_var, width=14).grid(row=4, column=1, sticky=tk.W, padx=8, pady=6)
-    
-        # Pitch quality
-        ttk.Label(dlg, text="Pitch quality:").grid(row=5, column=0, sticky=tk.W, padx=8, pady=6)
-        pitch_var = tk.StringVar(value=(getattr(team, 'pitch', '') or '').upper())
-        pitch_combo = ttk.Combobox(dlg, textvariable=pitch_var, state='readonly', width=16)
-        pitch_combo['values'] = ['GOOD', 'EXCELLENT', 'AVERAGE', 'POOR', 'UNKNOWN']
-        pitch_combo.grid(row=5, column=1, sticky=tk.W, padx=8, pady=6)
-    
-        def on_save():
-            new_name = name_var.get().strip()
-            try:
-                # Name
-                if hasattr(team, 'set_name'):
-                    team.set_name(new_name)
-                else:
-                    team.name = new_name
-    
-                # Team ID (best-effort)
-                try:
-                    new_id = int(id_var.get())
-                    if new_id:
-                        team.team_id = new_id
-                except Exception:
-                    pass
-    
-                # Stadium text
-                new_stadium = stadium_var.get().strip()
-                if new_stadium:
-                    if hasattr(team, 'set_stadium_name'):
-                        team.set_stadium_name(new_stadium)
-                    else:
-                        team.stadium = new_stadium
-    
-                # Capacity (only apply if > 0)
-                try:
-                    c = int(cap_var.get())
-                    if c and hasattr(team, 'set_capacity'):
-                        team.set_capacity(c)
-                except Exception:
-                    pass
-    
-                # Car park
-                try:
-                    cp = int(car_var.get())
-                    if cp and hasattr(team, 'set_car_park'):
-                        team.set_car_park(cp)
-                except Exception:
-                    pass
-    
-                # Pitch
-                p = (pitch_var.get() or '').strip().upper()
-                if p and hasattr(team, 'set_pitch'):
-                    team.set_pitch(p)
-    
-                # Mark modified and refresh UI
-                self.modified_team_records[offset] = team
-                self.populate_team_tree()
-                try:
-                    self.build_team_lookup()
-                    self.populate_tree()
-                except Exception:
-                    pass
-    
-                self.status_var.set(f"✓ Updated team: {getattr(team,'name','')}")
-                dlg.destroy()
-            except Exception as e:
-                messagebox.showerror("Error", f"Failed to update team: {e}")
-    
-        btn_frame = ttk.Frame(dlg)
-        btn_frame.grid(row=6, column=0, columnspan=3, pady=(8,12))
-        ttk.Button(btn_frame, text="Save", command=on_save).pack(side=tk.LEFT, padx=6)
-        ttk.Button(btn_frame, text="Cancel", command=dlg.destroy).pack(side=tk.LEFT, padx=6)
-
-    def populate_team_tree(self):
-        """Populate team tree from loaded team_records / filtered_team_records.
-        When teams show as 'Unknown Team' or 'Parse Error' this will attempt to
-        decode the entry and print diagnostics (hex/ascii preview) to stdout.
-        """
-        if not hasattr(self, 'team_tree'):
-            return
-        self.team_tree.delete(*self.team_tree.get_children())
-
-        # Determine if we need to load decoded blobs for diagnostics
-        need_debug = False
-        for _offset, _team in getattr(self, 'filtered_team_records', []):
-            display_check = getattr(_team, 'name', None) or "Unknown Team"
-            if display_check in ('Unknown Team', 'Parse Error', ''):
-                need_debug = True
-                break
-
-        decoded_map = {}
-        if need_debug:
-            try:
-                fdi = FDIFile(self.team_file_path)
-                fdi.load()
-                for entry, decoded, length in fdi.iter_decoded_directory_entries():
-                    decoded_map[entry.offset] = (decoded, length, entry.tag)
-            except Exception as e:
-                print(f"[TEAM DEBUG] Failed to load {self.team_file_path} for diagnostics: {e}")
-
-        for offset, team in getattr(self, 'filtered_team_records', []):
-            name = getattr(team, 'name', None) or "Unknown Team"
-            # If parsing returned a placeholder, show a short preview and emit diagnostics
-            if name in ('Unknown Team', 'Parse Error', ''):
-                if offset in decoded_map:
-                    decoded, length, tag = decoded_map[offset]
-                    try:
-                        tag_char = chr(tag) if 32 <= tag < 127 else '?'
-                    except Exception:
-                        tag_char = '?'
-                    hex_preview = decoded[:64].hex()
-                    ascii_preview = ''.join(chr(b) if 32 <= b < 127 else '.' for b in decoded[:64])
-                    print(f"[TEAM] offset=0x{offset:x}, tag=0x{tag:x} ('{tag_char}'), decoded_len={length}")
-                    print(f"  hex: {hex_preview}")
-                    print(f"  ascii: {ascii_preview}")
-                    name = f"{name} - preview: {ascii_preview[:40]}"
-                else:
-                    name = f"{name} - (no decoded data)"
-
-            team_id = getattr(team, 'team_id', 0)
-            self.team_tree.insert('', tk.END, values=(name, team_id if team_id else '', f"0x{offset:x}"), tags=(str(offset),))
-
-        self.team_count_label.config(text=f"Teams: {len(getattr(self, 'filtered_team_records', []))} / {len(getattr(self, 'team_records', []))}")
-
-    def build_team_lookup(self):
-        """Build mapping from team_id to team_name from parsed team_records."""
-        self.team_lookup = {}
-        for offset, team in getattr(self, 'team_records', []):
-            try:
-                tid = getattr(team, 'team_id', 0)
-                name = getattr(team, 'name', None)
-                if tid and name:
-                    self.team_lookup[int(tid)] = name
-            except Exception:
-                continue
-        # Fallback: if no mapping discovered, attempt to correlate by scanning team bytes (slow)
-        if not self.team_lookup:
-            try:
-                from pm99_editor.correlate import correlate_teams_players
-                mapping, _ = correlate_teams_players(self.file_path, self.team_file_path)
-                for k, v in mapping.items():
-                    try:
-                        self.team_lookup[int(k)] = v
-                    except Exception:
-                        continue
-            except Exception:
-                pass
-
-    def filter_teams(self, *args):
-        """Filter teams by search box"""
-        search = self.team_search_var.get().lower()
-        if search:
-            self.filtered_team_records = [(o, t) for o, t in self.team_records if search in (getattr(t, 'name','').lower())]
+        if getattr(record, 'dob', None):
+            day, month, year = record.dob
+            self.dob_day_var.set(day)
+            self.dob_month_var.set(month)
+            self.dob_year_var.set(year)
         else:
-            self.filtered_team_records = self.team_records.copy()
-        self.populate_team_tree()
+            # sensible defaults
+            self.dob_day_var.set(1)
+            self.dob_month_var.set(1)
+            self.dob_year_var.set(1970)
 
-    def populate_league_tree(self):
-        """Populate league tree with hierarchical Country -> League -> Teams structure"""
-        if not hasattr(self, 'league_tree'):
+        self.height_var.set(getattr(record, 'height', 175) or 175)
+
+        # Clear and rebuild attributes
+        for widget in self.attr_container.winfo_children():
+            widget.destroy()
+
+        self.attr_vars = []
+
+        attrs = getattr(record, 'attributes', [])
+        if not isinstance(attrs, (list, tuple)):
+            attrs = list(attrs) if attrs else []
+        for i, attr_val in enumerate(attrs):
+            frame = ttk.Frame(self.attr_container)
+            frame.pack(fill=tk.X, pady=2)
+
+            label_text = self.attr_labels[i] if i < len(self.attr_labels) else f"Attribute {i}"
+            ttk.Label(frame, text=label_text, width=18).pack(side=tk.LEFT, padx=5)
+
+            var = tk.IntVar(value=attr_val)
+            self.attr_vars.append(var)
+
+            ttk.Spinbox(frame, from_=0, to=100, textvariable=var, width=8).pack(side=tk.LEFT, padx=5)
+            ttk.Scale(frame, from_=0, to=100, variable=var, orient=tk.HORIZONTAL, length=200).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+
+            val_label = ttk.Label(frame, text=str(attr_val), width=4, font=('TkDefaultFont', 9, 'bold'))
+            val_label.pack(side=tk.RIGHT, padx=5)
+
+            def make_updater(lbl, v):
+                return lambda *args: lbl.config(text=str(v.get()))
+            var.trace('w', make_updater(val_label, var))
+
+    def apply_changes(self):
+        """Apply changes to current record"""
+        if not self.current_record:
             return
-        
-        # Clear existing items
-        for item in self.league_tree.get_children():
-            self.league_tree.delete(item)
-        
-        # Get country filter
-        country_filter = self.league_country_var.get() if hasattr(self, 'league_country_var') else "All"
-        search_text = self.league_search_var.get().lower() if hasattr(self, 'league_search_var') else ""
-        
+
+        offset, record = self.current_record
+
         try:
-            from pm99_editor.league_definitions import get_team_league
-        except:
-            get_team_league = None
-        
-        # Group teams by (country, league)
-        structure = defaultdict(lambda: defaultdict(list))
-        
-        for offset, team in getattr(self, 'filtered_team_records', []):
-            # Apply search filter
-            team_name = getattr(team, 'name', 'Unknown Team')
-            if search_text and search_text not in team_name.lower():
-                continue
-            
-            # Get country and league
-            if get_team_league:
-                country, league_name = get_team_league(team.team_id)
-                if not country:
-                    country = "Unknown"
-                if not league_name:
-                    league_name = "Unknown League"
-            else:
-                country = "Unknown"
-                league_name = getattr(team, 'league', 'Unknown League')
-            
-            # Apply country filter
-            if country_filter != "All" and country != country_filter:
-                continue
-            
-            structure[country][league_name].append((offset, team))
-        
-        # Build tree: Country -> League -> Teams
-        total_leagues = 0
-        for country in sorted(structure.keys()):
-            # Add country node
-            country_id = self.league_tree.insert('', tk.END, text=country,
-                                                  values=('', '', f"{sum(len(teams) for teams in structure[country].values())} teams"),
-                                                  tags=('country',))
-            
-            # Add league nodes under country
-            for league_name in sorted(structure[country].keys()):
-                teams = structure[country][league_name]
-                total_leagues += 1
-                
-                # Add league node
-                league_id = self.league_tree.insert(country_id, tk.END, text=league_name,
-                                                     values=('', '', f"{len(teams)} teams"),
-                                                     tags=('league',))
-                
-                # Add team nodes under league
-                for offset, team in sorted(teams, key=lambda x: getattr(x[1], 'name', '')):
-                    team_name = getattr(team, 'name', 'Unknown Team')
-                    team_id = getattr(team, 'team_id', 0)
-                    stadium = getattr(team, 'stadium', '')
-                    capacity = getattr(team, 'stadium_capacity', None)
-                    capacity_str = f"{capacity:,}" if capacity else ""
-                    
-                    self.league_tree.insert(league_id, tk.END, text=team_name,
-                                           values=(team_id if team_id else '', stadium, capacity_str),
-                                           tags=('team', str(offset)))
-        
-        # Style the tree
-        try:
-            self.league_tree.tag_configure('country', font=('TkDefaultFont', 10, 'bold'))
-            self.league_tree.tag_configure('league', font=('TkDefaultFont', 9, 'bold'))
-        except:
-            pass
-        
-        self.league_count_label.config(text=f"Leagues: {total_leagues}")
+            changes = []
 
-    def filter_leagues(self, *args):
-        """Filter leagues by search box"""
-        search = self.league_search_var.get().lower()
-        if search:
-            # Filter teams first
-            filtered_teams = [(o, t) for o, t in self.team_records if search in (getattr(t, 'name','').lower()) or search in (getattr(t, 'league','').lower())]
-            self.filtered_team_records = filtered_teams
-        else:
-            self.filtered_team_records = self.team_records.copy()
-        self.populate_league_tree()
+            # Player name (given name and surname)
+            new_given = self.given_name_var.get().strip()
+            new_surname = self.surname_var.get().strip()
+            old_given = getattr(record, 'given_name', '') or ''
+            old_surname = getattr(record, 'surname', '') or ''
 
-    def on_select_league(self, event):
-        """Handle selection in the league tree"""
-        selection = self.league_tree.selection()
-        if not selection:
-            return
-
-        item = self.league_tree.item(selection[0])
-        tags = item['tags']
-        if not tags:
-            return
-
-        # Check what was selected
-        tag = tags[0]
-        if tag == 'country':
-            country_name = item['text']
-            self.status_var.set(f"Selected country: {country_name}")
-        elif tag == 'league':
-            league_name = item['text']
-            self.status_var.set(f"Selected league: {league_name}")
-        elif tag == 'team':
-            # Team selected - show in status
-            team_name = item['text']
-            try:
-                offset = int(tags[1]) if len(tags) > 1 else 0
-                self.status_var.set(f"Selected team: {team_name} (double-click to edit)")
-            except:
-                self.status_var.set(f"Selected team: {team_name}")
-    
-    def on_league_doubleclick(self, event):
-        """Handle double-click in league tree - edit team if team is selected"""
-        selection = self.league_tree.selection()
-        if not selection:
-            return
-        
-        item = self.league_tree.item(selection[0])
-        tags = item['tags']
-        if not tags:
-            return
-        
-        # Only handle team double-clicks
-        if 'team' not in tags:
-            # If it's a country or league, expand/collapse it
-            current_open = self.league_tree.item(selection[0], 'open')
-            self.league_tree.item(selection[0], open=not current_open)
-            return
-        
-        # Find offset from tags
-        try:
-            offset = int(tags[1]) if len(tags) > 1 else None
-            if offset is None:
-                return
-        except:
-            return
-        
-        # Find and edit the team
-        for o, t in self.team_records:
-            if o == offset:
-                self.open_team_editor(o, t)
-                break
-
-    def on_select_team(self, event):
-        """Handle team selection in the team tree"""
-        selection = self.team_tree.selection()
-        if not selection:
-            return
-
-        item = self.team_tree.item(selection[0])
-        try:
-            offset = int(item['tags'][0])
-        except Exception:
-            return
-
-        for o, t in self.team_records:
-            if o == offset:
+            if new_given != old_given:
                 try:
-                    self._show_team_overlay()
-                    self._populate_team_overlay(t)
-                    name = getattr(t, 'name', 'Unknown Team')
-                    self.status_var.set(f"Selected team: {name}")
-                except Exception:
-                    pass
-                break
-
-    def _toggle_roster(self):
-        """Toggle roster panel visibility in the team overlay."""
-        try:
-            if self.team_panel_roster_visible:
-                self.team_panel_roster_frame.pack_forget()
-                self.team_panel_roster_visible = False
-                self.team_panel_roster_toggle_btn.config(text="Show squad lineup")
-            else:
-                self.team_panel_roster_frame.pack(fill=tk.BOTH, expand=True, pady=(5,5))
-                self.team_panel_roster_visible = True
-                self.team_panel_roster_toggle_btn.config(text="Hide squad lineup")
-        except Exception:
-            pass
-
-    def _populate_roster_tree_with_team(self, team):
-        """Populate roster tree for given TeamRecord with PM99-style lineup (Starting XI, Subs, Reserves)."""
-        try:
-            # Clear existing items
-            for it in self.team_roster_tree.get_children():
-                self.team_roster_tree.delete(it)
-        except Exception:
-            pass
-        
-        try:
-            tid = getattr(team, 'team_id', None)
-            # Search all_records list for players with matching team_id
-            players = []
-            for o, r in getattr(self, 'all_records', []):
-                try:
-                    if getattr(r, 'team_id', None) == tid:
-                        players.append((o, r))
-                except Exception:
-                    continue
-            
-            # Sort by squad number
-            players.sort(key=lambda x: getattr(x[1], 'squad_number', 99))
-            
-            # Insert section headers and players
-            section_tags = {
-                'starting': ('STARTING XI', '#e8f4f8', 'bold'),
-                'subs': ('SUBSTITUTES', '#fff4e6', 'bold'),
-                'reserves': ('RESERVES', '#f0f0f0', 'bold')
-            }
-            
-            for off, rec in players:
-                squad_num = getattr(rec, 'squad_number', 0)
-                
-                # Determine section
-                if squad_num >= 1 and squad_num <= 11:
-                    section = 'starting'
-                elif squad_num >= 12 and squad_num <= 16:
-                    section = 'subs'
-                elif squad_num >= 17 and squad_num <= 20:
-                    section = 'reserves'
-                else:
-                    continue  # Skip players outside squad range
-                
-                # Get player name
-                display = getattr(rec, 'name', None)
-                if not display:
-                    given = getattr(rec, 'given_name', '') or ''
-                    surname = getattr(rec, 'surname', '') or ''
-                    display = f"{given} {surname}".strip()
-                
-                # Get position
-                pos_abbr = self._get_position_abbr(rec.get_position_name() if hasattr(rec, 'get_position_name') else 'Unknown')
-                
-                # Get role based on position and squad number
-                role = self._get_player_role(rec, squad_num)
-                
-                # Get attributes (12 attributes total)
-                attrs = getattr(rec, 'attributes', [50] * 12)
-                if len(attrs) < 12:
-                    attrs = list(attrs) + [50] * (12 - len(attrs))
-                
-                # Calculate average (first 10 attributes for average)
-                avg = sum(attrs[:10]) // 10 if attrs else 50
-                
-                # Map attributes to display columns
-                # Based on PM99: EN SP ST AG QU FI MO AV
-                # attrs[0-11] map to various skills
-                en = attrs[0] if len(attrs) > 0 else 50  # Energy/Pace
-                sp = attrs[1] if len(attrs) > 1 else 50  # Speed
-                st = attrs[2] if len(attrs) > 2 else 50  # Stamina
-                ag = attrs[3] if len(attrs) > 3 else 50  # Agility/Aggression
-                qu = attrs[4] if len(attrs) > 4 else 50  # Quality
-                fi = attrs[5] if len(attrs) > 5 else 50  # Fitness
-                mo = attrs[6] if len(attrs) > 6 else 50  # Morale
-                
-                try:
-                    item_id = self.team_roster_tree.insert('', tk.END,
-                        values=(squad_num, display, en, sp, st, ag, qu, fi, mo, avg, role, pos_abbr),
-                        tags=(section, str(off)))
-                    
-                    # Apply section-specific styling
-                    if section == 'starting':
-                        self.team_roster_tree.item(item_id, tags=(section, str(off)))
-                    elif section == 'subs':
-                        self.team_roster_tree.item(item_id, tags=(section, str(off)))
-                    elif section == 'reserves':
-                        self.team_roster_tree.item(item_id, tags=(section, str(off)))
-                        
+                    record.set_given_name(new_given)
+                    changes.append(f"Given Name: {old_given} → {new_given}")
                 except Exception as e:
-                    logger.debug(f"Failed to insert player {display}: {e}")
-                    continue
-            
-            # Configure tag colors for different sections
-            try:
-                self.team_roster_tree.tag_configure('starting', background='#e8f4f8')
-                self.team_roster_tree.tag_configure('subs', background='#fff4e6')
-                self.team_roster_tree.tag_configure('reserves', background='#f0f0f0')
-            except Exception:
-                pass
-                
-        except Exception as e:
-            logger.debug(f"Failed to populate roster: {e}")
-            pass
-    
-    def _get_position_abbr(self, position_name):
-        """Get position abbreviation for display."""
-        abbr_map = {
-            'Goalkeeper': 'GOAL',
-            'Defender': 'DEF',
-            'Midfielder': 'MID',
-            'Forward': 'FOR',
-            'Unknown': 'UNK'
-        }
-        return abbr_map.get(position_name, 'UNK')
-    
-    def _get_player_role(self, player, squad_num):
-        """Determine player role based on position and squad number."""
-        pos_name = player.get_position_name() if hasattr(player, 'get_position_name') else 'Unknown'
-        
-        if squad_num == 1:
-            return '🟢'  # Goalkeeper indicator
-        elif squad_num >= 2 and squad_num <= 11:
-            return '⚪'  # Starting XI indicator
-        else:
-            return '🔵'  # Sub/Reserve indicator
+                    messagebox.showerror("Invalid Name", f"Given name error: {e}")
+                    return
 
-    def _populate_team_overlay(self, team):
-        """Set overlay vars and roster for selected TeamRecord."""
-        try:
-            if not getattr(self, 'team_overlay_active', False):
-                self._show_team_overlay()
-            self.team_panel_name_var.set(getattr(team, 'name', '') or '')
-            self.team_panel_id_var.set(getattr(team, 'team_id', 0) or 0)
-            self.team_panel_stadium_var.set(getattr(team, 'stadium', '') or '')
-            self.team_panel_capacity_var.set(getattr(team, 'stadium_capacity', 0) or 0)
-            self.team_panel_car_var.set(getattr(team, 'car_park', 0) or 0)
-            self.team_panel_pitch_var.set((getattr(team, 'pitch', '') or '').upper() or 'UNKNOWN')
-            if self.team_panel_roster_visible:
-                self._toggle_roster()
-            else:
-                self.team_panel_roster_toggle_btn.config(text="Show squad lineup")
-            self._populate_roster_tree_with_team(team)
-        except Exception:
-            pass
-
-    def _clear_team_overlay(self):
-        """Reset overlay fields to default/blank state and collapse the roster."""
-        try:
-            self.team_panel_name_var.set("")
-            self.team_panel_id_var.set(0)
-            self.team_panel_stadium_var.set("")
-            self.team_panel_capacity_var.set(0)
-            self.team_panel_car_var.set(0)
-            self.team_panel_pitch_var.set("UNKNOWN")
-            for item in self.team_roster_tree.get_children():
-                self.team_roster_tree.delete(item)
-            if self.team_panel_roster_visible:
-                self._toggle_roster()
-            else:
-                self.team_panel_roster_toggle_btn.config(text="Show squad lineup")
-        except Exception:
-            pass
-
-    def _show_team_overlay(self):
-        """Display the team overlay panel, hiding the underlying player editor."""
-        try:
-            if not getattr(self, 'team_overlay_active', False):
-                self._clear_team_overlay()
-                self.team_overlay.place(relx=0, rely=0, relwidth=1, relheight=1)
-                self.team_overlay_active = True
-        except Exception:
-            pass
-
-    def _hide_team_overlay(self):
-        """Hide the team overlay panel and restore the player editor."""
-        try:
-            if getattr(self, 'team_overlay_active', False):
-                self.team_overlay.place_forget()
-                self.team_overlay_active = False
-                self._clear_team_overlay()
-        except Exception:
-            pass
-
-    def apply_team_changes(self):
-        """Apply edits from the team overlay back to the TeamRecord and mark modified."""
-        try:
-            selection = self.team_tree.selection()
-            if not selection:
-                messagebox.showinfo("Info", "No team selected")
-                return
-            item = self.team_tree.item(selection[0])
-            offset = int(item['tags'][0])
-            for o, t in self.team_records:
-                if o == offset:
-                    new_name = self.team_panel_name_var.get().strip()
-                    if hasattr(t, 'set_name'):
-                        t.set_name(new_name)
-                    else:
-                        t.name = new_name
-                    try:
-                        new_id = int(self.team_panel_id_var.get())
-                        if new_id:
-                            t.team_id = new_id
-                    except Exception:
-                        pass
-                    new_stad = self.team_panel_stadium_var.get().strip()
-                    if new_stad:
-                        if hasattr(t, 'set_stadium_name'):
-                            t.set_stadium_name(new_stad)
-                        else:
-                            t.stadium = new_stad
-                    try:
-                        c = int(self.team_panel_capacity_var.get())
-                        if c and hasattr(t, 'set_capacity'):
-                            t.set_capacity(c)
-                    except Exception:
-                        pass
-                    try:
-                        cp = int(self.team_panel_car_var.get())
-                        if cp and hasattr(t, 'set_car_park'):
-                            t.set_car_park(cp)
-                    except Exception:
-                        pass
-                    p = (self.team_panel_pitch_var.get() or '').strip().upper()
-                    if p and hasattr(t, 'set_pitch'):
-                        t.set_pitch(p)
-                    self.modified_team_records[o] = t
-                    self.populate_team_tree()
-                    try:
-                        self.build_team_lookup()
-                        self.populate_tree()
-                    except Exception:
-                        pass
-                    self.status_var.set(f"✓ Updated team: {getattr(t, 'name', '')}")
-                    break
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to save team changes: {e}")
-
-    def reset_team_editor(self):
-        """Reset team overlay fields to current TeamRecord values."""
-        try:
-            selection = self.team_tree.selection()
-            if not selection:
-                return
-            item = self.team_tree.item(selection[0])
-            offset = int(item['tags'][0])
-            for o, t in self.team_records:
-                if o == offset:
-                    self.team_panel_name_var.set(getattr(t, 'name', '') or '')
-                    self.team_panel_id_var.set(getattr(t, 'team_id', 0) or 0)
-                    self.team_panel_stadium_var.set(getattr(t, 'stadium', '') or '')
-                    self.team_panel_capacity_var.set(getattr(t, 'stadium_capacity', 0) or 0)
-                    self.team_panel_car_var.set(getattr(t, 'car_park', 0) or 0)
-                    self.team_panel_pitch_var.set((getattr(t, 'pitch', '') or '').upper() or 'UNKNOWN')
-                    self._populate_roster_tree_with_team(t)
-                    break
-        except Exception:
-            pass
-
-    def _show_coach_overlay(self):
-        """Display the coach overlay panel, hiding the underlying player editor."""
-        try:
-            if not getattr(self, 'coach_overlay_active', False):
-                self._clear_coach_overlay()
-                self.coach_overlay.place(relx=0, rely=0, relwidth=1, relheight=1)
-                self.coach_overlay_active = True
-        except Exception:
-            pass
-
-    def _hide_coach_overlay(self):
-        """Hide the coach overlay panel and restore the player editor."""
-        try:
-            if getattr(self, 'coach_overlay_active', False):
-                self.coach_overlay.place_forget()
-                self.coach_overlay_active = False
-                self._clear_coach_overlay()
-        except Exception:
-            pass
-
-    def _clear_coach_overlay(self):
-        """Reset overlay fields to default/blank state."""
-        try:
-            self.coach_panel_given_var.set("")
-            self.coach_panel_surname_var.set("")
-            self.coach_panel_full_var.set("")
-        except Exception:
-            pass
-
-    def _populate_coach_overlay(self, coach):
-        """Set overlay vars for selected CoachRecord."""
-        try:
-            if not getattr(self, 'coach_overlay_active', False):
-                self._show_coach_overlay()
-            
-            given = getattr(coach, 'given_name', '') or ''
-            surname = getattr(coach, 'surname', '') or ''
-            
-            # If we only have full_name, try to split it
-            if not given and not surname:
-                full_name = getattr(coach, 'full_name', '')
-                if full_name:
-                    parts = full_name.split(maxsplit=1)
-                    given = parts[0] if len(parts) > 0 else ''
-                    surname = parts[1] if len(parts) > 1 else ''
-            
-            self.coach_panel_given_var.set(given)
-            self.coach_panel_surname_var.set(surname)
-        except Exception:
-            pass
-
-    def apply_coach_changes(self):
-        """Apply edits from the coach overlay back to the CoachRecord and mark modified."""
-        try:
-            selection = self.coach_tree.selection()
-            if not selection:
-                messagebox.showinfo("Info", "No coach selected")
-                return
-            
-            item = self.coach_tree.item(selection[0])
-            offset = int(item['tags'][0])
-            
-            for o, c in self.coach_records:
-                if o == offset:
-                    new_given = self.coach_panel_given_var.get().strip()
-                    new_surname = self.coach_panel_surname_var.get().strip()
-                    
-                    # Validate names
-                    if not new_given or not new_surname:
-                        messagebox.showwarning("Invalid Input", "Both given name and surname are required")
-                        return
-                    
-                    if len(new_given) > 12 or len(new_surname) > 12:
-                        messagebox.showwarning("Invalid Input", "Names must be 12 characters or less")
-                        return
-                    
-                    # Apply changes
-                    try:
-                        if hasattr(c, 'set_name'):
-                            c.set_name(new_given, new_surname)
-                        else:
-                            # Fallback for coaches without set_name method
-                            c.given_name = new_given
-                            c.surname = new_surname
-                            c.full_name = f"{new_given} {new_surname}".strip()
-                        
-                        self.modified_coach_records[o] = c
-                        self.populate_coach_tree()
-                        self.status_var.set(f"✓ Updated coach: {getattr(c, 'full_name', '')}")
-                    except Exception as e:
-                        messagebox.showerror("Error", f"Failed to update coach: {e}")
-                    break
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to save coach changes: {e}")
-
-    def reset_coach_editor(self):
-        """Reset coach overlay fields to current CoachRecord values."""
-        try:
-            selection = self.coach_tree.selection()
-            if not selection:
-                return
-            
-            item = self.coach_tree.item(selection[0])
-            offset = int(item['tags'][0])
-            
-            for o, c in self.coach_records:
-                if o == offset:
-                    self._populate_coach_overlay(c)
-                    break
-        except Exception:
-            pass
-
-    def filter_coaches(self, *args):
-        """Filter coaches by search box"""
-        search = self.coach_search_var.get().lower()
-        if search:
-            self.filtered_coach_records = [(o, c) for o, c in self.coach_records if search in (getattr(c, 'full_name', str(c)).lower())]
-        else:
-            self.filtered_coach_records = self.coach_records.copy()
-        self.populate_coach_tree()
-
-    def on_select_coach(self, event):
-        """Handle coach selection in the coach tree"""
-        selection = self.coach_tree.selection()
-        if not selection:
-            return
-
-        item = self.coach_tree.item(selection[0])
-        try:
-            offset = int(item['tags'][0])
-        except Exception:
-            self.status_var.set("Error: Invalid coach selection")
-            return
-
-        # Find the coach record and populate the overlay
-        coach_found = False
-        for o, c in getattr(self, 'coach_records', []):
-            if o == offset:
-                display = getattr(c, 'full_name', str(c))
+            if new_surname != old_surname:
                 try:
-                    self._show_coach_overlay()
-                    self._populate_coach_overlay(c)
-                    self.status_var.set(f"Selected coach: {display}")
+                    record.set_surname(new_surname)
+                    changes.append(f"Surname: {old_surname} → {new_surname}")
+                except Exception as e:
+                    messagebox.showerror("Invalid Name", f"Surname error: {e}")
+                    return
+
+            # Team ID
+            try:
+                new_team_id = int(self.team_id_var.get() or 0)
+            except Exception:
+                new_team_id = 0
+            if new_team_id != getattr(record, 'team_id', 0):
+                try:
+                    record.set_team_id(new_team_id)
+                    changes.append(f"Team ID: {getattr(record, 'team_id', '')} → {new_team_id}")
                 except Exception:
                     pass
-                coach_found = True
-                break
 
-        if not coach_found:
-            self.status_var.set(f"Error: Coach at offset 0x{offset:x} not found")
+            # Squad number
+            try:
+                new_squad = int(self.squad_var.get() or 0)
+            except Exception:
+                new_squad = 0
+            if new_squad != getattr(record, 'squad_number', 0):
+                try:
+                    record.set_squad_number(new_squad)
+                    changes.append(f"Squad #: {getattr(record, 'squad_number', '')} → {new_squad}")
+                except Exception:
+                    pass
 
+            # Position
+            pos_name = self.position_var.get()
+            pos_map = {"Goalkeeper": 0, "Defender": 1, "Midfielder": 2, "Forward": 3}
+            new_pos = pos_map.get(pos_name, 0)
+            if new_pos != getattr(record, 'position', 0):
+                try:
+                    old_pos_name = record.get_position_name()
+                except Exception:
+                    old_pos_name = ''
+                try:
+                    record.set_position(new_pos)
+                    changes.append(f"Position: {old_pos_name} → {pos_name}")
+                except Exception:
+                    pass
+
+            # Metadata: Nationality, DOB, Height
+            try:
+                new_nat = int(self.nationality_var.get() or 0)
+            except Exception:
+                new_nat = 0
+            old_nat = getattr(record, 'nationality_id', None)
+            old_nat_display = old_nat if old_nat is not None else 'None'
+            if new_nat != (old_nat if old_nat is not None else 0):
+                try:
+                    record.set_nationality(new_nat)
+                    changes.append(f"Nationality ID: {old_nat_display} → {new_nat}")
+                except Exception:
+                    pass
+
+            # DOB
+            try:
+                new_day = int(self.dob_day_var.get() or 1)
+                new_month = int(self.dob_month_var.get() or 1)
+                new_year = int(self.dob_year_var.get() or 1970)
+            except Exception:
+                new_day, new_month, new_year = 1, 1, 1970
+            old_dob = getattr(record, 'dob', None)
+            if old_dob is None or (new_day, new_month, new_year) != old_dob:
+                try:
+                    record.set_dob(new_day, new_month, new_year)
+                    old_dob_display = f"{old_dob[0]}/{old_dob[1]}/{old_dob[2]}" if old_dob else "None"
+                    changes.append(f"DOB: {old_dob_display} → {new_day}/{new_month}/{new_year}")
+                except Exception:
+                    pass
+
+            # Height
+            try:
+                new_height = int(self.height_var.get() or 175)
+            except Exception:
+                new_height = 175
+            old_height = getattr(record, 'height', None)
+            if old_height is None or new_height != old_height:
+                try:
+                    record.set_height(new_height)
+                    old_height_display = old_height if old_height is not None else 'None'
+                    changes.append(f"Height: {old_height_display} → {new_height} cm")
+                except Exception:
+                    pass
+
+            # Attributes
+            for i, var in enumerate(self.attr_vars):
+                try:
+                    new_val = int(var.get())
+                except Exception:
+                    continue
+                if i < len(getattr(record, 'attributes', [])) and new_val != record.attributes[i]:
+                    old_val = record.attributes[i]
+                    try:
+                        record.set_attribute(i, new_val)
+                        changes.append(f"{self.attr_labels[i]}: {old_val} → {new_val}")
+                    except Exception:
+                        pass
+
+            if changes:
+                self.modified_records[offset] = record
+                change_text = '\n'.join(changes[:10])
+                if len(changes) > 10:
+                    change_text += f"\n... and {len(changes)-10} more changes"
+
+                self.status_var.set(f"✓ {len(changes)} change(s) applied to {getattr(record, 'name', '')}")
+                messagebox.showinfo("Success", f"Changes applied to {getattr(record, 'name', '')}:\n\n{change_text}\n\nSave database to persist changes (Ctrl+S)")
+            else:
+                messagebox.showinfo("Info", "No changes to apply")
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to apply changes:\n{str(e)}")
+
+    def reset_current(self):
+        """Reset current player to original values"""
+        if self.current_record:
+            self.display_record(self.current_record[1])
+            self.status_var.set("Reset to original values")
+
+    def filter_records(self, *args):
+        """Filter players by search"""
+        search = self.search_var.get().lower()
+        if search:
+            try:
+                self.filtered_records = [(o, r) for o, r in self.all_records if search in (getattr(r, 'name','').lower())]
+            except Exception:
+                # Fallback: some records may not expose a name attribute in the expected way
+                self.filtered_records = [(o, r) for o, r in self.all_records if search in str(getattr(r, 'name', '')).lower()]
+        else:
+            self.filtered_records = self.all_records.copy()
+        self.populate_tree()
+ 
     def on_tab_changed(self, event):
         """Handle notebook tab changes (lazy-load coaches/teams)"""
         try:
@@ -2592,197 +1998,6 @@ class PM99DatabaseEditor:
             # Players tab or other tab
             self._hide_team_overlay()
             self._hide_coach_overlay()
-    
-    def filter_records(self, *args):
-        """Filter players by search"""
-        search = self.search_var.get().lower()
-        if search:
-            self.filtered_records = [(o, r) for o, r in self.all_records if search in r.name.lower()]
-        else:
-            self.filtered_records = self.all_records.copy()
-        self.populate_tree()
-    
-    def on_select(self, event):
-        """Handle player selection"""
-        selection = self.tree.selection()
-        if not selection:
-            return
-        
-        # Get record from tag
-        item = self.tree.item(selection[0])
-        offset = int(item['tags'][0])
-        
-        # Find the record
-        for o, r in self.all_records:
-            if o == offset:
-                self.current_record = (o, r)
-                self.display_record(r)
-                break
-    
-    def display_record(self, record: PlayerRecord):
-        """Display record in editor"""
-        # Populate name fields
-        given = getattr(record, 'given_name', '') or ''
-        surname = getattr(record, 'surname', '') or ''
-        self.given_name_var.set(given)
-        self.surname_var.set(surname)
-        
-        self.team_id_var.set(record.team_id)
-        self.squad_var.set(record.squad_number)
-        self.position_var.set(record.get_position_name())
-        
-        # Metadata fields (nationality, DOB, height)
-        self.nationality_var.set(record.nationality_id if getattr(record, 'nationality_id', None) is not None else 0)
-        
-        if getattr(record, 'dob', None):
-            day, month, year = record.dob
-            self.dob_day_var.set(day)
-            self.dob_month_var.set(month)
-            self.dob_year_var.set(year)
-        else:
-            # sensible defaults
-            self.dob_day_var.set(1)
-            self.dob_month_var.set(1)
-            self.dob_year_var.set(1970)
-        
-        self.height_var.set(record.height if getattr(record, 'height', None) is not None else 175)
-        
-        # Clear and rebuild attributes
-        for widget in self.attr_container.winfo_children():
-            widget.destroy()
-        
-        self.attr_vars = []
-        
-        for i, attr_val in enumerate(record.attributes):
-            frame = ttk.Frame(self.attr_container)
-            frame.pack(fill=tk.X, pady=2)
-            
-            label_text = self.attr_labels[i] if i < len(self.attr_labels) else f"Attribute {i}"
-            ttk.Label(frame, text=label_text, width=18).pack(side=tk.LEFT, padx=5)
-            
-            var = tk.IntVar(value=attr_val)
-            self.attr_vars.append(var)
-            
-            ttk.Spinbox(frame, from_=0, to=100, textvariable=var, width=8).pack(side=tk.LEFT, padx=5)
-            ttk.Scale(frame, from_=0, to=100, variable=var, orient=tk.HORIZONTAL, length=200).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
-            
-            val_label = ttk.Label(frame, text=str(attr_val), width=4, font=('TkDefaultFont', 9, 'bold'))
-            val_label.pack(side=tk.RIGHT, padx=5)
-            
-            def make_updater(lbl, v):
-                return lambda *args: lbl.config(text=str(v.get()))
-            var.trace('w', make_updater(val_label, var))
-    
-    def apply_changes(self):
-        """Apply changes to current record"""
-        if not self.current_record:
-            return
-        
-        offset, record = self.current_record
-        
-        try:
-            changes = []
-            
-            # Player name (given name and surname)
-            new_given = self.given_name_var.get().strip()
-            new_surname = self.surname_var.get().strip()
-            old_given = getattr(record, 'given_name', '') or ''
-            old_surname = getattr(record, 'surname', '') or ''
-            
-            if new_given != old_given:
-                try:
-                    record.set_given_name(new_given)
-                    changes.append(f"Given Name: {old_given} → {new_given}")
-                except ValueError as e:
-                    messagebox.showerror("Invalid Name", f"Given name error: {e}")
-                    return
-            
-            if new_surname != old_surname:
-                try:
-                    record.set_surname(new_surname)
-                    changes.append(f"Surname: {old_surname} → {new_surname}")
-                except ValueError as e:
-                    messagebox.showerror("Invalid Name", f"Surname error: {e}")
-                    return
-            
-            # Team ID
-            new_team_id = self.team_id_var.get()
-            if new_team_id != record.team_id:
-                record.set_team_id(new_team_id)
-                changes.append(f"Team ID: {record.team_id} → {new_team_id}")
-            
-            # Squad number
-            new_squad = self.squad_var.get()
-            if new_squad != record.squad_number:
-                record.set_squad_number(new_squad)
-                changes.append(f"Squad #: {record.squad_number} → {new_squad}")
-            
-            # Position
-            pos_name = self.position_var.get()
-            pos_map = {"Goalkeeper": 0, "Defender": 1, "Midfielder": 2, "Forward": 3}
-            new_pos = pos_map.get(pos_name, 0)
-            if new_pos != record.position:
-                old_pos_name = record.get_position_name()
-                record.set_position(new_pos)
-                changes.append(f"Position: {old_pos_name} → {pos_name}")
-            
-            # Metadata: Nationality, DOB, Height
-            # Nationality ID
-            new_nat = self.nationality_var.get()
-            old_nat = getattr(record, 'nationality_id', None)
-            old_nat_display = old_nat if old_nat is not None else 'None'
-            old_nat_comp = old_nat if old_nat is not None else 0
-            if new_nat != old_nat_comp:
-                record.set_nationality(new_nat)
-                changes.append(f"Nationality ID: {old_nat_display} → {new_nat}")
-            
-            # DOB
-            new_day = self.dob_day_var.get()
-            new_month = self.dob_month_var.get()
-            new_year = self.dob_year_var.get()
-            old_dob = getattr(record, 'dob', None)
-            old_dob_comp = old_dob if old_dob is not None else None
-            if old_dob_comp is None or (new_day, new_month, new_year) != old_dob_comp:
-                record.set_dob(new_day, new_month, new_year)
-                old_dob_display = f"{old_dob[0]}/{old_dob[1]}/{old_dob[2]}" if old_dob else "None"
-                changes.append(f"DOB: {old_dob_display} → {new_day}/{new_month}/{new_year}")
-            
-            # Height
-            new_height = self.height_var.get()
-            old_height = getattr(record, 'height', None)
-            if old_height is None or new_height != old_height:
-                record.set_height(new_height)
-                old_height_display = old_height if old_height is not None else 'None'
-                changes.append(f"Height: {old_height_display} → {new_height} cm")
-            
-            # Attributes
-            for i, var in enumerate(self.attr_vars):
-                new_val = var.get()
-                if new_val != record.attributes[i]:
-                    old_val = record.attributes[i]
-                    record.set_attribute(i, new_val)
-                    changes.append(f"{self.attr_labels[i]}: {old_val} → {new_val}")
-            
-            if changes:
-                self.modified_records[offset] = record
-                change_text = '\n'.join(changes[:10])  # Show first 10 changes
-                if len(changes) > 10:
-                    change_text += f"\n... and {len(changes)-10} more changes"
-                
-                self.status_var.set(f"✓ {len(changes)} change(s) applied to {record.name}")
-                messagebox.showinfo("Success", f"Changes applied to {record.name}:\n\n{change_text}\n\nSave database to persist changes (Ctrl+S)")
-            else:
-                messagebox.showinfo("Info", "No changes to apply")
-        
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to apply changes:\n{str(e)}")
-    
-    def reset_current(self):
-        """Reset current player to original values"""
-        if self.current_record:
-            self.display_record(self.current_record[1])
-            self.status_var.set("Reset to original values")
-    
     def save_database(self):
         """Save modified database (players, coaches, teams)."""
         n_players = len(getattr(self, 'modified_records', {}))
@@ -2801,8 +2016,10 @@ class PM99DatabaseEditor:
         if n_teams:
             parts.append(f"{n_teams} team(s) → {self.team_file_path}")
 
-        result = messagebox.askyesno("Confirm Save",
-            "Save the following changes?\n\n" + "\n".join(parts) + "\n\nA backup will be created for each file.")
+        result = messagebox.askyesno(
+            "Confirm Save",
+            "Save the following changes?\n\n" + "\n".join(parts) + "\n\nA backup will be created for each file."
+        )
         if not result:
             return
 
@@ -2850,52 +2067,6 @@ class PM99DatabaseEditor:
 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save:\n{str(e)}")
-    
-    def export_players(self):
-        """Export the visible player table to the clipboard."""
-        if not hasattr(self, 'filtered_records'):
-            return
-
-        export_text = generate_player_table_text(
-            getattr(self, 'filtered_records', []),
-            team_lookup=getattr(self, 'team_lookup', {}),
-        )
-
-        self.root.clipboard_clear()
-        self.root.clipboard_append(export_text)
-        messagebox.showinfo(
-            "Export Complete",
-            f"Exported {len(getattr(self, 'filtered_records', []))} players to clipboard",
-        )
-
-    def export_coaches(self):
-        """Export coach list to clipboard"""
-        if not hasattr(self, 'filtered_coach_records'):
-            return
-
-        export_text = generate_coach_table_text(getattr(self, 'filtered_coach_records', []))
-
-        self.root.clipboard_clear()
-        self.root.clipboard_append(export_text)
-        messagebox.showinfo(
-            "Export Complete",
-            f"Exported {len(getattr(self, 'filtered_coach_records', []))} coaches to clipboard",
-        )
-
-    def export_teams(self):
-        """Export team list to clipboard with offset and team_id for debugging"""
-        if not hasattr(self, 'filtered_team_records'):
-            return
-
-        export_text = generate_team_table_text(getattr(self, 'filtered_team_records', []))
-
-        self.root.clipboard_clear()
-        self.root.clipboard_append(export_text)
-        messagebox.showinfo(
-            "Export Complete",
-            f"Exported {len(getattr(self, 'filtered_team_records', []))} teams to clipboard",
-        )
-
     def open_file(self):
         """Open different database file"""
         filename = filedialog.askopenfilename(
@@ -2904,9 +2075,13 @@ class PM99DatabaseEditor:
         )
         if filename:
             self.file_path = filename
-            self.modified_records.clear()
+            # Clear tracked modifications for the previous file
+            try:
+                self.modified_records.clear()
+            except Exception:
+                self.modified_records = {}
+            # Reload database for the newly chosen file
             self.load_database()
-
 def main():
     root = tk.Tk()
     
@@ -2920,6 +2095,6 @@ def main():
     
     app = PM99DatabaseEditor(root)
     root.mainloop()
-
+ 
 if __name__ == "__main__":
     main()
