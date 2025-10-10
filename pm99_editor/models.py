@@ -806,71 +806,62 @@ class PlayerRecord:
     
     @staticmethod
     def _extract_name(data: bytes) -> str:
-        """Extract player name from bytes 5-45 using Latin-1 encoding."""
-        import re
+        """Extract player name from two length-prefixed XOR-encoded strings.
+        
+        Format: [uint16 len1][XOR-encoded given name][uint16 len2][XOR-encoded surname]
+        """
+        from pm99_editor.xor import read_string
+        import struct
+        
         try:
-            name_region = data[5:45]
-            text = name_region.decode('latin-1', errors='ignore')
+            # Names start at byte 5 (after team_id and squad_number)
+            pos = 5
             
-            # Pattern: [abbreviated]<separator>[FULL NAME]
-            # Separators: 2 chars like }a, ta, ua, va, wa, xa, ya, za
-            separator_pattern = r'[a-z~@\x7f]{1,2}a(?=[A-Z])'
-            parts = re.split(separator_pattern, text)
+            # Read first string (given name)
+            if pos + 2 > len(data):
+                return "Parse Error"
             
-            candidates = []
-            for part_idx, part in enumerate(parts):
-                if len(part) < 8:
-                    continue
+            given_name, consumed1 = read_string(data, pos)
+            pos += consumed1
+            
+            # Read second string (surname)
+            if pos + 2 > len(data):
+                # Only got given name
+                return given_name if given_name else "Unknown Player"
+            
+            surname, consumed2 = read_string(data, pos)
+            
+            # Combine names
+            full_name = f"{given_name} {surname}".strip()
+            
+            # Validate we got something reasonable
+            if len(full_name) >= 3:
+                return full_name
+            
+            return "Unknown Player"
+            
+        except Exception as e:
+            logger.debug(f"Name extraction error: {e}")
+            # Fallback to old parsing method for backwards compatibility
+            try:
+                import re
+                name_region = data[5:45]
+                text = name_region.decode('latin-1', errors='ignore')
                 
-                # Multiple name patterns
+                # Simple pattern matching as fallback
                 patterns = [
-                    r'([A-ZÀ-ÿ][a-zà-ÿ]{2,15}\s+[A-ZÀ-ÿ][a-zà-ÿ]{2,15})\s+([A-ZÀ-ÿ]{3,20})',
-                    r'([A-ZÀ-ÿ]{3,15}\s+[A-ZÀ-ÿ][a-zà-ÿ]{2,15})\s+([A-ZÀ-ÿ]{3,20})',
-                    r'([A-ZÀ-ÿ]{3,15}\s+[A-ZÀ-ÿ]{3,15})\s+([A-ZÀ-ÿ][a-zà-ÿ]{3,20})',
                     r'([A-ZÀ-ÿ][a-zà-ÿ]{2,15})\s+([A-ZÀ-ÿ]{3,20})',
                     r'([A-ZÀ-ÿ][a-zà-ÿ]{2,15})\s+([A-ZÀ-ÿ][a-zà-ÿ]{3,20})'
                 ]
                 
-                for pattern_idx, pattern in enumerate(patterns):
-                    for match in re.finditer(pattern, part):
-                        given = match.group(1).strip()
-                        surname = match.group(2).strip()
-                        
-                        if len(given) < 3:
-                            continue
-                        
-                        # Clean surname
-                        clean_surname = ''
-                        for word in surname.split():
-                            if word.isupper() or (word[0].isupper() and all(c.isupper() or c.islower() or not c.isalpha() for c in word)):
-                                valid_part = ''
-                                for i, c in enumerate(word):
-                                    if i > 0 and c.islower():
-                                        rest = word[i:]
-                                        if len(rest) >= 3 and all(c.islower() or not c.isalpha() for c in rest):
-                                            break
-                                    valid_part += c
-                                if valid_part and len(valid_part) >= 3:
-                                    clean_surname += valid_part + ' '
-                        
-                        clean_surname = clean_surname.strip()
-                        if clean_surname and len(clean_surname) >= 3:
-                            full_name = f"{given} {clean_surname}".strip()
-                            if 8 <= len(full_name) <= 40 and ' ' in full_name and len(given) >= 3:
-                                score = (part_idx * 200) + ((3 - pattern_idx) * 30)
-                                score += sum(1 for c in full_name if c.isupper()) * 2
-                                score += len(full_name)
-                                if len(given) < 4:
-                                    score -= 50
-                                candidates.append((score, full_name))
-            
-            if candidates:
-                candidates.sort(reverse=True)
-                return candidates[0][1]
-            
-            return "Unknown Player"
-        except:
-            return "Parse Error"
+                for pattern in patterns:
+                    match = re.search(pattern, text)
+                    if match:
+                        return f"{match.group(1)} {match.group(2)}".strip()
+                
+                return "Unknown Player"
+            except:
+                return "Parse Error"
     
     @staticmethod
     def _find_name_end(data: bytes) -> Optional[int]:
@@ -960,41 +951,33 @@ class PlayerRecord:
             self.raw_data = decoded
         else:
             # Construct a canonical decoded record from fields (sized so attributes align).
+            from pm99_editor.xor import write_string
+            
             header = struct.pack("<H", self.team_id) + bytes([self.squad_number]) + b'\x00\x00'
 
-            # Build name as Proper-case given name(s) + UPPERCASE surname to match parser heuristics.
-            given = (self.given_name or "").strip()
-            surname = (self.surname or "").strip()
-            full_name = (given.title() + " " + surname.upper()).strip()
-            name_bytes = full_name.encode('latin-1', errors='ignore')
+            # Encode names as two separate length-prefixed XOR strings (matches game format)
+            given = (self.given_name or "Unknown").strip()
+            surname = (self.surname or "Player").strip()
+            
+            given_encoded = write_string(given)
+            surname_encoded = write_string(surname)
 
-            # Ensure name region is long enough so the parser can find the end marker
-            if len(name_bytes) < 16:
-                name_bytes = name_bytes + b' ' * (16 - len(name_bytes))
+            # Metadata placeholder (position, nationality, DOB, height, etc.)
+            # These will be written properly by the caller or remain zero
+            metadata = b'\x00' * 14
 
-            marker = bytes([0x61]) * 4
-            filler_before_pos = b'\x00' * 3
-            pos_byte = bytes([(self.position_primary ^ 0x61) & 0xFF])
-
-            core = header + name_bytes + marker + filler_before_pos + pos_byte
-
-            # Attributes: take up to 12, pad to 12
+            # Attributes: take up to 12, pad to 12, XOR encode
             attrs = list(self.skills)[:12]
             while len(attrs) < 12:
                 attrs.append(50)
             attr_encoded = bytes([a ^ 0x61 for a in attrs])
 
-            # Choose a conservative total length so attr region lands at total_length - 19
-            total_length = max(len(core) + len(attr_encoded) + 7, 80)
-            attr_start = total_length - 19
-            if len(core) > attr_start:
-                total_length = len(core) + len(attr_encoded) + 7
-                attr_start = total_length - 19
-
-            pre_attr = b'\x00' * (attr_start - len(core))
+            # Build complete record
+            core = header + given_encoded + surname_encoded + metadata + attr_encoded
+            
+            # Add trailing padding to ensure minimum size
             trailing = b'\x00' * 7
-
-            decoded = core + pre_attr + attr_encoded + trailing
+            decoded = core + trailing
 
         # If this instance was created programmatically (no raw_data) we return a fully-encoded
         # FDI entry (length-prefixed + XOR) because some callers/tests construct files by
@@ -1014,57 +997,74 @@ class PlayerRecord:
         self.name_dirty = True
 
     def _rebuild_name_region(self):
-        """Rebuild the raw_data name region ensuring metadata/attributes remain aligned."""
+        """Rebuild the raw_data name region ensuring metadata/attributes remain aligned.
+        
+        CRITICAL: Names are stored as TWO separate length-prefixed XOR-encoded strings,
+        NOT as a single Latin-1 string with markers. This matches the game's parser.
+        """
         if self.raw_data is None:
             self.name_dirty = False
             return
 
+        from pm99_editor.xor import write_string
+        
         data = bytearray(self.raw_data)
-
+        
+        # Find where names currently end (after both encoded strings)
         name_start = 5
         attr_start = len(data) - 19 if len(data) >= 19 else len(data)
-        marker = bytes([0x61]) * 4
-        min_metadata_len = 14  # Allows offsets up to name_end + 13 (height)
-
+        
+        # Encode given name and surname as separate length-prefixed XOR strings
         given = (self.given_name or "").strip()
         surname = (self.surname or "").strip()
-        formatted_name = f"{given.title()} {surname.upper()}".strip()
+        
+        # Use CP1252 encoding (game's charset) and XOR encoding
+        given_encoded = write_string(given)
+        surname_encoded = write_string(surname)
+        
+        # Find where old name data ended to preserve metadata
+        # We need to find the end of the second encoded string
         try:
-            new_name_bytes = formatted_name.encode('latin-1')
-        except Exception:
-            new_name_bytes = formatted_name.encode('latin-1', errors='replace')
-
-        old_name_end = self._find_name_end_in_data(bytes(data))
-        if old_name_end is None or old_name_end < name_start:
-            fallback_end = attr_start - (min_metadata_len + len(marker))
-            old_name_end = max(name_start, fallback_end)
-
-        old_name_len = max(old_name_end - name_start, 0)
-
-        min_name_bytes = max(16, old_name_len)
-        if len(new_name_bytes) < min_name_bytes:
-            new_name_bytes = new_name_bytes + b" " * (min_name_bytes - len(new_name_bytes))
-
-        metadata_start = min(attr_start, old_name_end + len(marker))
+            # Try to decode current structure to find where names end
+            import struct
+            pos = name_start
+            # Skip first string (given name)
+            if pos + 2 <= len(data):
+                len1 = struct.unpack_from("<H", data, pos)[0]
+                pos += 2 + len1
+            # Skip second string (surname)
+            if pos + 2 <= len(data):
+                len2 = struct.unpack_from("<H", data, pos)[0]
+                pos += 2 + len2
+            old_names_end = pos
+        except:
+            # Fallback: assume reasonable space for metadata
+            old_names_end = attr_start - 20
+        
+        # Extract metadata and attributes blocks to preserve
+        metadata_start = old_names_end
         metadata_block = data[metadata_start:attr_start]
         attributes_block = data[attr_start:]
-
-        metadata_len = max(len(metadata_block), min_metadata_len)
-        if len(metadata_block) < metadata_len:
-            metadata_block = metadata_block + b"\x00" * (metadata_len - len(metadata_block))
-
+        
+        # Ensure minimum metadata space (for position, nationality, DOB, height, etc.)
+        min_metadata_len = 14
+        if len(metadata_block) < min_metadata_len:
+            metadata_block = metadata_block + b"\x00" * (min_metadata_len - len(metadata_block))
+        
+        # Ensure attributes block is complete
         if len(attributes_block) < 19:
             attributes_block = attributes_block + b"\x00" * (19 - len(attributes_block))
-
+        
+        # Reconstruct record: header + encoded names + metadata + attributes
         header = data[:name_start]
-
+        
         new_data = bytearray()
         new_data += header
-        new_data += new_name_bytes
-        new_data += marker
+        new_data += given_encoded
+        new_data += surname_encoded
         new_data += metadata_block
         new_data += attributes_block
-
+        
         self.raw_data = bytes(new_data)
         self.name_dirty = False
 
