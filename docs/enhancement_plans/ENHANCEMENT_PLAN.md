@@ -57,7 +57,7 @@ def modify_player_name_variable(record, new_given, new_surname):
 - Validate each field's location in real data
 - Some fields may be in different record sections
 
-**Implementation**: Use existing schema from [`out/schema_players.md`](out/schema_players.md)
+**Implementation**: Use existing schema from [`../archive/schema_players.md`](../archive/schema_players.md)
 
 **Time**: 6-8 hours  
 **Priority**: HIGH
