@@ -1,4 +1,4 @@
-# PKF String Searcher
+﻿# PKF String Searcher
 
 A powerful tool for searching strings and patterns across PKF (archive) files in Premier Manager 99. This tool helps with debugging, reverse engineering, and data analysis.
 
@@ -54,34 +54,34 @@ Access via **Tools → PKF String Searcher** in the main application.
 
 ```bash
 # Basic text search
-python -m pm99_editor.cli pkf-search SIMULDAT "player_name"
+python -m app.cli pkf-search SIMULDAT "player_name"
 
 # Case-sensitive search
-python -m pm99_editor.cli pkf-search . "Beckham" --case-sensitive
+python -m app.cli pkf-search . "Beckham" --case-sensitive
 
 # Regex search
-python -m pm99_editor.cli pkf-search data/ --mode regex "team.*\d+"
+python -m app.cli pkf-search data/ --mode regex "team.*\d+"
 
 # Hex search
-python -m pm99_editor.cli pkf-search . --mode hex "48656C6C6F"
+python -m app.cli pkf-search . --mode hex "48656C6C6F"
 
 # XOR-decoded search
-python -m pm99_editor.cli pkf-search SIMULDAT "secret" --xor 0x5A
+python -m app.cli pkf-search SIMULDAT "secret" --xor 0x5A
 
 # Export to CSV
-python -m pm99_editor.cli pkf-search . "search" --export results.csv
+python -m app.cli pkf-search . "search" --export results.csv
 
 # Custom encoding
-python -m pm99_editor.cli pkf-search . "text" --encoding cp1252
+python -m app.cli pkf-search . "text" --encoding cp1252
 
 # Limit results and context
-python -m pm99_editor.cli pkf-search . "pattern" --limit 100 --context 64
+python -m app.cli pkf-search . "pattern" --limit 100 --context 64
 
 # Non-recursive search
-python -m pm99_editor.cli pkf-search data/ "test" --no-recursive
+python -m app.cli pkf-search data/ "test" --no-recursive
 
 # Custom file pattern
-python -m pm99_editor.cli pkf-search . "query" --file-pattern "*.PKF"
+python -m app.cli pkf-search . "query" --file-pattern "*.PKF"
 ```
 
 ### CLI Arguments
@@ -105,7 +105,7 @@ python -m pm99_editor.cli pkf-search . "query" --file-pattern "*.PKF"
 
 ```python
 from pathlib import Path
-from pm99_editor.pkf_searcher import PKFSearcher
+from app.pkf_searcher import PKFSearcher
 
 # Create searcher
 searcher = PKFSearcher(
@@ -142,7 +142,7 @@ for result in results:
 Search for specific player names across all PKF archives to locate player data structures.
 
 ```bash
-python -m pm99_editor.cli pkf-search SIMULDAT "Beckham" --encoding utf-8
+python -m app.cli pkf-search SIMULDAT "Beckham" --encoding utf-8
 ```
 
 ### 2. Locate Numeric Patterns
@@ -150,28 +150,28 @@ Find specific numeric values (e.g., salaries, prices) using hex search.
 
 ```bash
 # Search for value 1000 (0x03E8 in hex, little-endian: E8 03 00 00)
-python -m pm99_editor.cli pkf-search . --mode hex "E8030000"
+python -m app.cli pkf-search . --mode hex "E8030000"
 ```
 
 ### 3. Debug XOR Encoding
 Test XOR decoding keys to find obfuscated strings.
 
 ```bash
-python -m pm99_editor.cli pkf-search data/ "team" --xor 0x5A
+python -m app.cli pkf-search data/ "team" --xor 0x5A
 ```
 
 ### 4. Find File References
 Use regex to locate file path patterns.
 
 ```bash
-python -m pm99_editor.cli pkf-search . --mode regex "\\.TGA|\\.BMP"
+python -m app.cli pkf-search . --mode regex "\\.TGA|\\.BMP"
 ```
 
 ### 5. Cross-File Validation
 Search for team IDs across multiple archives to verify data consistency.
 
 ```bash
-python -m pm99_editor.cli pkf-search . --mode hex "0100" --export team_refs.csv
+python -m app.cli pkf-search . --mode hex "0100" --export team_refs.csv
 ```
 
 ## Output Format
@@ -300,6 +300,6 @@ Potential improvements for future versions:
 
 ## See Also
 
-- [`pkf.py`](../pm99_editor/pkf.py) - PKF file format parser
-- [`pkf_searcher.py`](../pm99_editor/pkf_searcher.py) - Core search engine
+- [`pkf.py`](../app/pkf.py) - PKF file format parser
+- [`pkf_searcher.py`](../app/pkf_searcher.py) - Core search engine
 - [PKF Viewer Documentation](PKF_VIEWER.md) - PKF archive inspection tool

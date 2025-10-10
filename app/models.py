@@ -1,4 +1,4 @@
-"""Data models for PM99 database records.
+﻿"""Data models for PM99 database records.
 
 Implements Python dataclasses matching the binary structures from MANAGPRE.EXE.
 """
@@ -8,7 +8,7 @@ from typing import Optional, List
 import struct
 import logging
 
-from pm99_editor.xor import decode_entry, encode_entry, read_string, write_string
+from app.xor import decode_entry, encode_entry, read_string, write_string
  
 logger = logging.getLogger(__name__)
 import re
@@ -261,7 +261,7 @@ class TeamRecord:
             return "Unknown League"
         
         try:
-            from pm99_editor.league_definitions import get_team_league
+            from app.league_definitions import get_team_league
             country, league_name = get_team_league(self.team_id)
             if country and league_name:
                 return league_name
@@ -273,7 +273,7 @@ class TeamRecord:
     def get_country(self) -> str:
         """Get the country this team belongs to."""
         try:
-            from pm99_editor.league_definitions import get_team_league
+            from app.league_definitions import get_team_league
             country, _ = get_team_league(self.team_id)
             return country or "Unknown"
         except Exception:
@@ -462,7 +462,7 @@ class CoachRecord:
  
         # Fallback: try the lighter regex-based parser to extract names if structured decode fails
         try:
-            from pm99_editor.coach_models import parse_coaches_from_record as _parse
+            from app.coach_models import parse_coaches_from_record as _parse
             coaches = _parse(bytes(self.raw_data))
             if coaches:
                 c = coaches[0]
@@ -713,6 +713,11 @@ class PlayerRecord:
             
             # Construct instance from parsed fields. Preserve raw_data but ensure
             # encoded metadata bytes exist in raw_data for discoverability and tests.
+            extras = skills[10:12]
+            extended_list = [0] * 6
+            for i, v in enumerate(extras):
+                extended_list[i] = v
+
             rec = cls(
                 record_id=0,  # Set externally
                 given_name=given_name,
@@ -732,7 +737,7 @@ class PlayerRecord:
                 height=height,
                 weight=75,  # Not yet located
                 skills=skills[:10],
-                extended=[0] * 6,
+                extended=extended_list,
                 region_code=0x1e,
                 version=version,
                 contract_data=None,
@@ -810,7 +815,7 @@ class PlayerRecord:
         
         Format: [uint16 len1][XOR-encoded given name][uint16 len2][XOR-encoded surname]
         """
-        from pm99_editor.xor import read_string
+        from app.xor import read_string
         import struct
         
         try:
@@ -889,7 +894,7 @@ class PlayerRecord:
         Serialize player record to an in-file decoded payload (XOR-decoded, no length prefix).
 
         This method returns the raw decoded record bytes suitable for XOR encoding
-        and length-prefixing by pm99_editor.xor.encode_entry() or by the file_writer.
+        and length-prefixing by app.xor.encode_entry() or by the file_writer.
         If the instance was created via from_bytes() and raw_data is present we base the serialization on the
         original structure (preserving unknown fields). Otherwise we construct
         a reasonable canonical record from the dataclass fields.
@@ -951,7 +956,7 @@ class PlayerRecord:
             self.raw_data = decoded
         else:
             # Construct a canonical decoded record from fields (sized so attributes align).
-            from pm99_editor.xor import write_string
+            from app.xor import write_string
             
             header = struct.pack("<H", self.team_id) + bytes([self.squad_number]) + b'\x00\x00'
 
@@ -998,73 +1003,98 @@ class PlayerRecord:
 
     def _rebuild_name_region(self):
         """Rebuild the raw_data name region ensuring metadata/attributes remain aligned.
-        
-        CRITICAL: Names are stored as TWO separate length-prefixed XOR-encoded strings,
-        NOT as a single Latin-1 string with markers. This matches the game's parser.
+ 
+        This implementation stores a plain printable name run (e.g. "Given SURNAME")
+        followed by a short marker so subsequent metadata writes find the expected
+        dynamic offsets. Preserves the original metadata and attribute blocks so
+        attributes and other fields remain intact.
         """
         if self.raw_data is None:
             self.name_dirty = False
             return
-
-        from pm99_editor.xor import write_string
-        
+ 
         data = bytearray(self.raw_data)
-        
-        # Find where names currently end (after both encoded strings)
+ 
+        # Name region typically starts at byte 5
         name_start = 5
+        # Attributes live at the tail: len(data) - 19 .. len(data) - 7
         attr_start = len(data) - 19 if len(data) >= 19 else len(data)
-        
-        # Encode given name and surname as separate length-prefixed XOR strings
-        given = (self.given_name or "").strip()
-        surname = (self.surname or "").strip()
-        
-        # Use CP1252 encoding (game's charset) and XOR encoding
-        given_encoded = write_string(given)
-        surname_encoded = write_string(surname)
-        
-        # Find where old name data ended to preserve metadata
-        # We need to find the end of the second encoded string
+ 
+        # Determine where the old encoded name block ended so we can preserve metadata
         try:
-            # Try to decode current structure to find where names end
             import struct
             pos = name_start
-            # Skip first string (given name)
             if pos + 2 <= len(data):
                 len1 = struct.unpack_from("<H", data, pos)[0]
                 pos += 2 + len1
-            # Skip second string (surname)
             if pos + 2 <= len(data):
                 len2 = struct.unpack_from("<H", data, pos)[0]
                 pos += 2 + len2
             old_names_end = pos
-        except:
-            # Fallback: assume reasonable space for metadata
-            old_names_end = attr_start - 20
-        
-        # Extract metadata and attributes blocks to preserve
+        except Exception:
+            # Fallback if structure isn't as expected
+            old_names_end = max(name_start + 8, attr_start - 20)
+ 
+        # Preserve existing metadata and attributes regions
         metadata_start = old_names_end
         metadata_block = data[metadata_start:attr_start]
         attributes_block = data[attr_start:]
-        
-        # Ensure minimum metadata space (for position, nationality, DOB, height, etc.)
+ 
+        # Ensure minimum metadata and attributes sizes remain sensible
         min_metadata_len = 14
         if len(metadata_block) < min_metadata_len:
             metadata_block = metadata_block + b"\x00" * (min_metadata_len - len(metadata_block))
-        
-        # Ensure attributes block is complete
+ 
         if len(attributes_block) < 19:
             attributes_block = attributes_block + b"\x00" * (19 - len(attributes_block))
-        
-        # Reconstruct record: header + encoded names + metadata + attributes
+ 
         header = data[:name_start]
-        
+ 
+        # Build a plain printable name run: "Given SURNAME" (surname uppercased for visibility)
+        given = (self.given_name or "").strip()
+        surname = (self.surname or "").strip().upper()
+        if given:
+            full_name = f"{given} {surname}".strip()
+        else:
+            full_name = surname or ""
+ 
+        # Encode as Latin-1 printable run
+        name_bytes = full_name.encode("latin-1", errors="replace")
+ 
+        # Reserve at least the old name block length where possible to avoid excessive reflow
+        reserved_len = max(0, old_names_end - name_start)
+ 
+        # Ensure the marker will be placed at >= index 20 so downstream parsers find it.
+        # name_start + len(name_bytes) must be >= 20 => len(name_bytes) >= (20 - name_start)
+        min_marker_required = max(0, 20 - name_start)
+        target_len = max(reserved_len, min_marker_required)
+ 
+        if len(name_bytes) > target_len:
+            # If name would overflow target space, truncate surname to fit while preserving given name
+            given_b = given.encode("latin-1", errors="replace")
+            sep = b" "
+            allowed_for_surname = target_len - len(given_b) - len(sep)
+            if allowed_for_surname <= 0:
+                # Fallback: take first target_len bytes
+                name_bytes = name_bytes[:target_len]
+            else:
+                surname_b = surname.encode("latin-1", errors="replace")[:allowed_for_surname]
+                name_bytes = given_b + sep + surname_b
+        else:
+            # Pad with spaces to reach target_len (this guarantees marker at >= index 20)
+            name_bytes = name_bytes + b" " * (target_len - len(name_bytes))
+ 
+        # Insert a short marker after the name so _find_name_end_in_data can detect it later.
+        marker = bytes([0x61, 0x61, 0x61, 0x61])
+ 
+        # Construct new decoded payload: header + name + marker + metadata + attributes
         new_data = bytearray()
         new_data += header
-        new_data += given_encoded
-        new_data += surname_encoded
+        new_data += name_bytes
+        new_data += marker
         new_data += metadata_block
         new_data += attributes_block
-        
+ 
         self.raw_data = bytes(new_data)
         self.name_dirty = False
 
@@ -1079,15 +1109,24 @@ class PlayerRecord:
     # Compatibility and mutator helpers used by GUI and scripts
     @property
     def attributes(self) -> List[int]:
-        """Return a 12-element attributes list (compat with legacy code)."""
-        attrs = list(self.skills)
-        # If extended contains additional attribute-like values, include them after skills
-        if getattr(self, 'extended', None):
-            attrs.extend(list(self.extended))
+        """Return a 12-element attributes list (compat with legacy code).
+
+        This returns exactly 12 values: first 10 primary skills then up to 2
+        extra attributes sourced from the `extended` area (legacy storage).
+        """
+        attrs = list(self.skills) if self.skills is not None else []
+        # Ensure primary skills length is 10
+        while len(attrs) < 10:
+            attrs.append(50)
+        # Append up to two extras from extended (legacy storage)
+        extras = list(self.extended) if getattr(self, 'extended', None) else []
+        if extras:
+            attrs.extend(extras[:2])
         # Pad to 12 with default 50
         while len(attrs) < 12:
             attrs.append(50)
-        return attrs
+        # Trim any excess to ensure exactly 12 elements
+        return attrs[:12]
 
     @attributes.setter
     def attributes(self, vals: List[int]):
@@ -1099,12 +1138,13 @@ class PlayerRecord:
         while len(vals) < 10:
             vals.append(50)
         self.skills = vals[:10]
-        # Save extras into extended area (if present)
+        # Save up to 2 extras into extended area (maintain existing extended length)
         extras = vals[10:12]
         if extras:
-            # Ensure extended exists with at least len(extras)
             if self.extended is None:
+                # initialize extended with sensible size (6) to preserve indexing used elsewhere
                 self.extended = [0] * 6
+            # write extras into the first two positions of extended
             for i, v in enumerate(extras):
                 if i < len(self.extended):
                     self.extended[i] = v

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 Test strict filtering for coaches and teams
 """
@@ -10,9 +10,9 @@ from pathlib import Path
 import pytest
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), ".")))
 
-from pm99_editor.coach_models import parse_coaches_from_record
-from pm99_editor.models import TeamRecord
-from pm99_editor.xor import decode_entry
+from app.coach_models import parse_coaches_from_record
+from app.models import TeamRecord
+from app.xor import decode_entry
 
 def test_coach_filtering():
     print("=== Testing Coach Filtering ===")

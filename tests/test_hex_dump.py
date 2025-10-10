@@ -1,7 +1,7 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """Unit test: hex layout and name-end marker presence for Hierro"""
 
-from pm99_editor.io import FDIFile
+from app.io import FDIFile
 
 def test_hierro_hex_and_marker(players_fdi_path):
     fdi = FDIFile(players_fdi_path)

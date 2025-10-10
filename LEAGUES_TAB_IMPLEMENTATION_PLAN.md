@@ -1,4 +1,4 @@
-# Leagues Tab Implementation Plan
+﻿# Leagues Tab Implementation Plan
 
 ## Overview
 Add a Leagues tab to the PM99 Editor GUI that displays teams organized by their leagues. For England (the main focus of this English game), there are 4 leagues (divisions). For other nations, there's typically one national league per country.
@@ -15,7 +15,7 @@ The team loader now correctly:
 4. Parses TeamRecord objects from the data between separators
 
 ### Team Structure
-From [`TeamRecord`](pm99_editor/models.py:16-404):
+From [`TeamRecord`](app/models.py:16-404):
 - `team_id`: Integer ID extracted from record (3000-5000 range)
 - `name`: Team name extracted via heuristics
 - `stadium`: Stadium name (extracted)
@@ -23,7 +23,7 @@ From [`TeamRecord`](pm99_editor/models.py:16-404):
 - `league`: Computed from team_id ranges
 
 ### League Determination
-Currently implemented in [`TeamRecord._extract_league()`](pm99_editor/models.py:226-252):
+Currently implemented in [`TeamRecord._extract_league()`](app/models.py:226-252):
 ```python
 def _extract_league(self):
     """Extract league based on team_id ranges."""
@@ -54,7 +54,7 @@ def _extract_league(self):
 **Expected Outcome**: Confirm or adjust team_id ranges for each league
 
 ### Step 2: Update GUI with Leagues Tab
-**File**: [`pm99_editor/gui.py`](pm99_editor/gui.py)
+**File**: [`app/gui.py`](app/gui.py)
 
 **Changes**:
 1. Add new notebook tab after Teams tab:
@@ -169,11 +169,11 @@ Display league-wide statistics:
 
 ## File Changes Required
 
-### 1. [`pm99_editor/loaders.py`](pm99_editor/loaders.py) ✅ COMPLETE
+### 1. [`app/loaders.py`](app/loaders.py) ✅ COMPLETE
 - Fixed team loading to use proper section parsing
 - Teams now load from XOR-decoded sections with separator pattern
 
-### 2. [`pm99_editor/models.py`](pm99_editor/models.py) 
+### 2. [`app/models.py`](app/models.py) 
 **Potential Updates**:
 - Verify/adjust league ranges after Ghidra validation
 - Add method to change team's league (updates team_id to new range)
@@ -190,7 +190,7 @@ def set_league(self, new_league: str):
     # Update self.team_id
 ```
 
-### 3. [`pm99_editor/gui.py`](pm99_editor/gui.py)
+### 3. [`app/gui.py`](app/gui.py)
 **Major Changes**:
 - Add Leagues tab widget creation
 - Add leagues TreeView setup
@@ -198,7 +198,7 @@ def set_league(self, new_league: str):
 - Add league team editor integration
 - Add league filtering controls
 
-### 4. New file: `pm99_editor/league_editor.py` (Optional)
+### 4. New file: `app/league_editor.py` (Optional)
 **Purpose**: Separate league-specific UI logic
 - League statistics calculation
 - League filtering
@@ -267,3 +267,4 @@ def set_league(self, new_league: str):
 - ✅ Teams can be edited from Leagues tab
 - ✅ Changes persist when saved
 - ✅ League assignments validated via Ghidra
+

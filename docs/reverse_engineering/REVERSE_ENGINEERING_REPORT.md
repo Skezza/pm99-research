@@ -1,4 +1,4 @@
-# Reverse Engineering Report — Condensed Narrative
+﻿# Reverse Engineering Report — Condensed Narrative
 
 Purpose
 A single, high-signal account of what is known, why it is believed, and how it is implemented in code. This is the canonical summary; verbose session logs remain in docs/archive/ as artifacts.
@@ -19,18 +19,18 @@ Executive summary
 - Implementation is conservative: only write within verified bounds; preserve unknowns; adjust directory and header on disk writes.
 
 Source of truth in code
-- Section scanning and record enumeration: [FDIFile._iter_records()](../pm99_editor/io.py:63)
-- Record parse/serialize overlay: [PlayerRecord.from_bytes()](../pm99_editor/models.py:63), [PlayerRecord.to_bytes()](../pm99_editor/models.py:281)
-- Header and directory models: [FDIHeader.from_bytes()](../pm99_editor/models.py:389), [DirectoryEntry.from_bytes()](../pm99_editor/models.py:434)
-- Safe write path: [file_writer.write_fdi_record()](../pm99_editor/file_writer.py:102) with backups via [file_writer.create_backup()](../pm99_editor/file_writer.py:17)
-- CLI entry: [cli.main()](../pm99_editor/cli.py:89); GUI app entry: [main()](../pm99_database_editor.py:1189)
+- Section scanning and record enumeration: [FDIFile._iter_records()](../app/io.py:63)
+- Record parse/serialize overlay: [PlayerRecord.from_bytes()](../app/models.py:63), [PlayerRecord.to_bytes()](../app/models.py:281)
+- Header and directory models: [FDIHeader.from_bytes()](../app/models.py:389), [DirectoryEntry.from_bytes()](../app/models.py:434)
+- Safe write path: [file_writer.write_fdi_record()](../app/file_writer.py:102) with backups via [file_writer.create_backup()](../app/file_writer.py:17)
+- CLI entry: [cli.main()](../app/cli.py:89); GUI app entry: [main()](../pm99_database_editor.py:1189)
 
 Container format (observed)
 - Signature: "DMFIv1.0" at 0x00..0x07
 - record_count (uint32 LE) at 0x10; version (uint32 LE) at 0x14; max_offset (uint32 LE) at 0x18; dir_size (uint32 LE) at 0x1C
 - Directory table at 0x20, dir_size bytes long; entries are 8 bytes <offset:uint32, tag:uint16, index:uint16>
 - Sections at entry.offset, each: <len:uint16> + <payload_len XOR‑0x61>
-- On write, directory offsets after a changed record are shifted; max_offset recomputed. See [file_writer.write_fdi_record()](../pm99_editor/file_writer.py:102).
+- On write, directory offsets after a changed record are shifted; max_offset recomputed. See [file_writer.write_fdi_record()](../app/file_writer.py:102).
 
 Decode algorithm and enumeration
 - Section payload decode: decoded[i] = encoded[i] ^ 0x61
@@ -38,7 +38,7 @@ Decode algorithm and enumeration
   - Scan from 0x400
   - Read uint16 len, filter plausible size, decode payload
   - Split on separator dd 63 60 to yield candidate “clean” player records
-  - For each candidate 50..200 bytes, attempt [PlayerRecord.from_bytes()](../pm99_editor/models.py:63)
+  - For each candidate 50..200 bytes, attempt [PlayerRecord.from_bytes()](../app/models.py:63)
 - Heuristic second pass searches large sections for embedded players (name fragments + marker alignment) and accepts only plausible records (attributes within 0..100, position 0..3).
 
 Decoded player record layout (canonical)
@@ -47,7 +47,7 @@ Decoded player record layout (canonical)
   - +2 squad_number (uint8)
   - +5..~45 name region (Latin‑1); “Given SURNAME” reconstructed by robust pattern matching
 - Name‑end anchor:
-  - Marker “aaaa” (0x61 ×4) found by [PlayerRecord._find_name_end()](../pm99_editor/models.py:261)
+  - Marker “aaaa” (0x61 ×4) found by [PlayerRecord._find_name_end()](../app/models.py:261)
 - Anchor‑relative, double‑XOR metadata:
   - name_end + 7 → position_primary in {0,1,2,3}
   - name_end + 8 → nationality (0..255 code)
@@ -56,7 +56,7 @@ Decoded player record layout (canonical)
 - Tail‑relative attributes (double‑XOR):
   - Window len-19 .. len-7 (12 bytes); first 10 interpreted as skills; values 0..100
 - Unknown bytes:
-  - Preserved verbatim via [PlayerRecord.raw_data](../pm99_editor/models.py:59) and overlay write in [PlayerRecord.to_bytes()](../pm99_editor/models.py:281)
+  - Preserved verbatim via [PlayerRecord.raw_data](../app/models.py:59) and overlay write in [PlayerRecord.to_bytes()](../app/models.py:281)
 
 Validation and invariants
 - Write only if anchor is found and offsets fall before attribute window
@@ -72,7 +72,7 @@ Confirmed
 - Attributes window at tail, double‑XOR 0..100 values
 
 Heuristic but robust
-- Name reconstruction patterns in [PlayerRecord._extract_name()](../pm99_editor/models.py:192)
+- Name reconstruction patterns in [PlayerRecord._extract_name()](../app/models.py:192)
 - Embedded record detection in large sections (accepted only when attributes and position validate)
 - Nationality code range (0..255) without a complete mapping table yet
 
@@ -82,10 +82,10 @@ Limitations and cautions
 - Some historical documents claim different algorithms (e.g., conflicting “single vs double XOR” narratives). Treat this report and code anchors as canonical.
 
 Practical usage
-- Programmatic access via [FDIFile](../pm99_editor/io.py:15) and [PlayerRecord](../pm99_editor/models.py:13)
-- CLI for inspection and name edits by id in [cli.main()](../pm99_editor/cli.py:89)
+- Programmatic access via [FDIFile](../app/io.py:15) and [PlayerRecord](../app/models.py:13)
+- CLI for inspection and name edits by id in [cli.main()](../app/cli.py:89)
 - GUI application entry [main()](../pm99_database_editor.py:1189) for interactive workflows
-- Safe persistence via [file_writer.write_fdi_record()](../pm99_editor/file_writer.py:102)
+- Safe persistence via [file_writer.write_fdi_record()](../app/file_writer.py:102)
 
 Next actions (ordered)
 - Add a nationality mapping table; keep writing numeric codes until mapped

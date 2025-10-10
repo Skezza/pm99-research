@@ -1,4 +1,4 @@
-"""
+﻿"""
 Player Editor for Premier Manager 99 (packaged)
 Demonstrates:
 1. Load JUG98030.FDI
@@ -7,21 +7,21 @@ Demonstrates:
 4. Save back to file
 
 Usage (module):
-    python -m pm99_editor.scripts.player_editor list
-    python -m pm99_editor.scripts.player_editor search "Mikel"
-    python -m pm99_editor.scripts.player_editor rename "Mikel LASA" "Peter LASA"
+    python -m app.scripts.player_editor list
+    python -m app.scripts.player_editor search "Mikel"
+    python -m app.scripts.player_editor rename "Mikel LASA" "Peter LASA"
 
 Usage (script):
-    python pm99_editor/scripts/player_editor.py list
-    python pm99_editor/scripts/player_editor.py search "Mikel"
-    python pm99_editor/scripts/player_editor.py rename "Mikel LASA" "Peter LASA"
+    python app/scripts/player_editor.py list
+    python app/scripts/player_editor.py search "Mikel"
+    python app/scripts/player_editor.py rename "Mikel LASA" "Peter LASA"
 """
 import sys
 from pathlib import Path
 from typing import List
-from pm99_editor.player_models import Player, parse_all_players
-from pm99_editor.file_writer import create_backup, replace_text_in_decoded, write_fdi_record
-from pm99_editor.xor import decode_entry
+from app.player_models import Player, parse_all_players
+from app.file_writer import create_backup, replace_text_in_decoded, write_fdi_record
+from app.xor import decode_entry
 
 PLAYER_FILE = 'DBDAT/JUG98030.FDI'
 
@@ -54,7 +54,7 @@ def list_players(limit: int = 50):
         print(f"\n... and {len(players) - display_count} more players")
     
     print(f"\nTotal: {len(players)} players")
-    print(f"Use 'python -m pm99_editor.scripts.player_editor search NAME' to find specific players")
+    print(f"Use 'python -m app.scripts.player_editor search NAME' to find specific players")
 
 
 def search_players(search_term: str):
@@ -91,7 +91,7 @@ def rename_player(old_name: str, new_name: str):
     if not player:
         print(f"❌ Player '{old_name}' not found!")
         print(f"\nTry searching first:")
-        print(f"  python -m pm99_editor.scripts.player_editor search \"{old_name.split()[0]}\"")
+        print(f"  python -m app.scripts.player_editor search \"{old_name.split()[0]}\"")
         return
     
     print(f"\n🔍 Found: {player.full_name}")
@@ -135,7 +135,7 @@ def rename_player(old_name: str, new_name: str):
         print(f"    ✓ File updated successfully!")
         print(f"\n🎉 SUCCESS! Player renamed from '{old_name}' to '{new_name}'")
         print(f"\n📝 Next steps:")
-        print(f"    1. Run: python -m pm99_editor.scripts.player_editor search \"{new_name.split()[0]}\"")
+        print(f"    1. Run: python -m app.scripts.player_editor search \"{new_name.split()[0]}\"")
         print(f"    2. Verify the change")
         print(f"    3. Launch MANAGPRE.EXE to test in-game")
         print(f"\n    If something goes wrong, restore from: {backup}\n")
@@ -149,13 +149,13 @@ def main():
     if len(sys.argv) < 2:
         print("Premier Manager 99 - Player Editor")
         print("\nUsage:")
-        print("  python -m pm99_editor.scripts.player_editor list [limit]")
-        print("  python -m pm99_editor.scripts.player_editor search 'NAME'")
-        print("  python -m pm99_editor.scripts.player_editor rename 'OLD NAME' 'NEW NAME'")
+        print("  python -m app.scripts.player_editor list [limit]")
+        print("  python -m app.scripts.player_editor search 'NAME'")
+        print("  python -m app.scripts.player_editor rename 'OLD NAME' 'NEW NAME'")
         print("\nExamples:")
-        print("  python -m pm99_editor.scripts.player_editor list 100")
-        print("  python -m pm99_editor.scripts.player_editor search 'Mikel'")
-        print("  python -m pm99_editor.scripts.player_editor rename 'Mikel LASA' 'Peter LASA'")
+        print("  python -m app.scripts.player_editor list 100")
+        print("  python -m app.scripts.player_editor search 'Mikel'")
+        print("  python -m app.scripts.player_editor rename 'Mikel LASA' 'Peter LASA'")
         return
     
     command = sys.argv[1].lower()
@@ -165,12 +165,12 @@ def main():
         list_players(limit)
     elif command == 'search':
         if len(sys.argv) != 3:
-            print("Usage: python -m pm99_editor.scripts.player_editor search 'NAME'")
+            print("Usage: python -m app.scripts.player_editor search 'NAME'")
             return
         search_players(sys.argv[2])
     elif command == 'rename':
         if len(sys.argv) != 4:
-            print("Usage: python -m pm99_editor.scripts.player_editor rename 'OLD NAME' 'NEW NAME'")
+            print("Usage: python -m app.scripts.player_editor rename 'OLD NAME' 'NEW NAME'")
             return
         rename_player(sys.argv[2], sys.argv[3])
     else:

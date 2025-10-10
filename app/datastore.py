@@ -1,4 +1,4 @@
-"""
+﻿"""
 Eager in-memory datastore for PM99 DB files (FDI and PKF).
 It discovers files under a DB root and reads them into memory.
 """
@@ -11,6 +11,11 @@ from typing import Dict, Any, Optional, List, Tuple
 logger = logging.getLogger(__name__)
 
 DEFAULT_EAGER_MAX_BYTES = int(os.environ.get("PM99_EAGER_MAX_BYTES", "200000000"))  # 200MB
+# Opt-in eager-load cache (disabled by default).
+# Enable by setting environment variable PM99_EAGER_CACHE=1 in your test environment.
+DEFAULT_EAGER_CACHE_ENABLED = os.environ.get("PM99_EAGER_CACHE", "0") == "1"
+# Cache key is (db_root_path, eager_max_bytes) -> dict with keys: files, index, total_bytes
+_EAGER_CACHE: Dict[Tuple[str, int], Dict[str, Any]] = {}
 
 
 def resolve_db_root(preferred: Optional[str] = None) -> Path:
@@ -21,7 +26,7 @@ def resolve_db_root(preferred: Optional[str] = None) -> Path:
       1. preferred (if provided and exists)
       2. PM99_DB_ROOT environment variable
       3. ./DBDAT
-      4. ./pm99_editor/DBDAT
+      4. ./app/DBDAT
     """
     candidates: List[Path] = []
     if preferred:
@@ -29,7 +34,7 @@ def resolve_db_root(preferred: Optional[str] = None) -> Path:
     env = os.environ.get("PM99_DB_ROOT")
     if env:
         candidates.append(Path(env))
-    candidates.extend([Path("DBDAT"), Path("pm99_editor/DBDAT")])
+    candidates.extend([Path("DBDAT"), Path("app/DBDAT")])
 
     for c in candidates:
         try:
@@ -74,6 +79,24 @@ class DataStore:
         files = self.discover_files()
         logger.info("Discovered %d DB files under %s", len(files), self.db_root)
         accumulated = 0
+
+        # Opt-in eager-cache: return cached contents if available and enabled.
+        cache_key = (str(self.db_root), self.eager_max_bytes)
+        if DEFAULT_EAGER_CACHE_ENABLED:
+            cached = _EAGER_CACHE.get(cache_key)
+            if cached:
+                # Populate instance state from cache
+                self.files = cached.get("files", {})
+                self.index = cached.get("index", {})
+                self.total_bytes = cached.get("total_bytes", 0)
+                self.loaded = True
+                logger.info(
+                    "Loaded %d files (%d bytes) from eager cache",
+                    len(self.files),
+                    self.total_bytes,
+                )
+                return self.files
+
         for p in files:
             try:
                 data = p.read_bytes()
@@ -94,6 +117,18 @@ class DataStore:
         self.total_bytes = sum(item["size"] for item in self.index.values())
         self.loaded = True
         logger.info("Eager load complete: %d files, %d bytes", len(self.files), self.total_bytes)
+
+        # Populate cache if enabled (best-effort)
+        if DEFAULT_EAGER_CACHE_ENABLED:
+            try:
+                _EAGER_CACHE[cache_key] = {
+                    "files": self.files,
+                    "index": self.index,
+                    "total_bytes": self.total_bytes,
+                }
+            except Exception:
+                logger.exception("Failed to populate eager cache", exc_info=True)
+
         return self.files
 
     def get(self, key: str) -> Optional[bytes]:

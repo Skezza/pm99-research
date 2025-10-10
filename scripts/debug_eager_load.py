@@ -1,4 +1,4 @@
-"""Debug utility — eagerly loads PM99 FDI/PKF files into memory and prints a summary.
+﻿"""Debug utility — eagerly loads PM99 FDI/PKF files into memory and prints a summary.
 
 Usage:
     python scripts/debug_eager_load.py --db-root DBDAT --max-bytes 200000000
@@ -7,7 +7,7 @@ import argparse
 import logging
 import sys
 from pathlib import Path
-from pm99_editor.datastore import DataStore
+from app.datastore import DataStore
 
 LOG_FORMAT = "%(levelname)s: %(message)s"
 

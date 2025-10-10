@@ -1,19 +1,19 @@
-# Architecture Overview — Premier Manager 99 Database Editor
+﻿# Architecture Overview — Premier Manager 99 Database Editor
 
 ## Goals and scope
-The project provides safe tooling for inspecting and editing Premier Manager 99 database archives (`*.FDI`) without relying on the original game executable. The codebase is split between a reusable library (`pm99_editor`), command line tooling, and a Tk GUI. Tests and reverse-engineering notes live alongside these layers so newcomers can trace behaviour from documentation to implementation.
+The project provides safe tooling for inspecting and editing Premier Manager 99 database archives (`*.FDI`) without relying on the original game executable. The codebase is split between a reusable library (`app`), command line tooling, and a Tk GUI. Tests and reverse-engineering notes live alongside these layers so newcomers can trace behaviour from documentation to implementation.
 
 ## High-level component map
 | Component | Location | Responsibilities |
 | --- | --- | --- |
-| Core models & I/O | [`pm99_editor/models.py`](../pm99_editor/models.py), [`pm99_editor/io.py`](../pm99_editor/io.py) | Decode headers, directory entries, and player/coach/team records. Provide `FDIFile` for loading and exposing parsed records.
-| Persistence helpers | [`pm99_editor/file_writer.py`](../pm99_editor/file_writer.py) | Backup input files, encode modified records, and repair directory offsets/max offsets when payload lengths change.
-| XOR & scanners | [`pm99_editor/xor.py`](../pm99_editor/xor.py), [`pm99_editor/scanner.py`](../pm99_editor/scanner.py) | Implement single/double-XOR routines and heuristics that discover embedded player payloads when directory entries are incomplete.
-| Domain loaders | [`pm99_editor/loaders.py`](../pm99_editor/loaders.py), [`pm99_editor/coach_models.py`](../pm99_editor/coach_models.py), [`pm99_editor/player_models.py`](../pm99_editor/player_models.py) | Secondary parsers used by the GUI to decode teams, coaches, and correlated lookup data.
-| League metadata | [`pm99_editor/league_definitions.py`](../pm99_editor/league_definitions.py), [`pm99_editor/correlate.py`](../pm99_editor/correlate.py) | Provide country/league hierarchies and cross-file lookups powering the Leagues tab and roster overlays.
-| Command line | [`pm99_editor/cli.py`](../pm99_editor/cli.py) | Provides `list`, `search`, `rename`, and `info` commands that wrap the core library.
-| Desktop GUI | [`pm99_editor/gui.py`](../pm99_editor/gui.py) | Tkinter application with tabs for players, coaches, teams, and leagues, in-record editing widgets, a PKF archive viewer, and persistence via `save_modified_records()`.
-| Data helpers | [`pm99_editor/datastore.py`](../pm99_editor/datastore.py), [`pm99_editor/pkf.py`](../pm99_editor/pkf.py) | Shared caches plus PKF archive reader used by the PKF viewer dialog.
+| Core models & I/O | [`app/models.py`](../app/models.py), [`app/io.py`](../app/io.py) | Decode headers, directory entries, and player/coach/team records. Provide `FDIFile` for loading and exposing parsed records.
+| Persistence helpers | [`app/file_writer.py`](../app/file_writer.py) | Backup input files, encode modified records, and repair directory offsets/max offsets when payload lengths change.
+| XOR & scanners | [`app/xor.py`](../app/xor.py), [`app/scanner.py`](../app/scanner.py) | Implement single/double-XOR routines and heuristics that discover embedded player payloads when directory entries are incomplete.
+| Domain loaders | [`app/loaders.py`](../app/loaders.py), [`app/coach_models.py`](../app/coach_models.py), [`app/player_models.py`](../app/player_models.py) | Secondary parsers used by the GUI to decode teams, coaches, and correlated lookup data.
+| League metadata | [`app/league_definitions.py`](../app/league_definitions.py), [`app/correlate.py`](../app/correlate.py) | Provide country/league hierarchies and cross-file lookups powering the Leagues tab and roster overlays.
+| Command line | [`app/cli.py`](../app/cli.py) | Provides `list`, `search`, `rename`, and `info` commands that wrap the core library.
+| Desktop GUI | [`app/gui.py`](../app/gui.py) | Tkinter application with tabs for players, coaches, teams, and leagues, in-record editing widgets, a PKF archive viewer, and persistence via `save_modified_records()`.
+| Data helpers | [`app/datastore.py`](../app/datastore.py), [`app/pkf.py`](../app/pkf.py) | Shared caches plus PKF archive reader used by the PKF viewer dialog.
 | Tests & regression fixtures | [`tests/`](../tests/), [`scripts/`](../scripts/) | Encode unit, regression, and exploratory coverage around the decoding/writing pipeline and GUI smoke behaviour.
 
 ## Runtime data flow
@@ -24,14 +24,14 @@ The project provides safe tooling for inspecting and editing Premier Manager 99 
    Duplicate names are filtered by a case-insensitive key, producing both `records_with_offsets` (offset + model) and a flat `records` list for callers.
 3. **Augment** — The GUI lazily loads coaches (`ENT98030.FDI`) and teams (`EQ98030.FDI`) on demand via `load_coaches()` / `CoachRecord` and `load_teams()` / `TeamRecord`. League definitions are hydrated separately so the Leagues tab can group teams by country. The CLI only works with the player file requested by the user.
 4. **Surface** —
-   - CLI commands (`pm99_editor/cli.py`) instantiate `FDIFile`, then project the parsed records into table-style console output.
+   - CLI commands (`app/cli.py`) instantiate `FDIFile`, then project the parsed records into table-style console output.
    - The GUI populates search/filter state across notebook tabs, renders attribute fields, includes the Leagues hierarchy browser, and provides tooling such as the PKF viewer that reuses `_format_hex_preview()` to show raw bytes when needed.
 5. **Modify** — Edits made in the GUI set `PlayerRecord.modified` and cache the mutated instance keyed by original offset. Team and coach editors work similarly via `modified_team_records` / `modified_coach_records` mappings.
 6. **Persist** — `save_modified_records()` (GUI bulk writes) and `FDIFile.save()` (used by CLI helpers) re-encode the decoded payloads, update length prefixes, patch directory offsets when sizes shift, recompute `header.max_offset`, and create timestamped backups through `create_backup()` before rewriting the file.
 
 ## Key workflows
 ### Command-line usage
-* `pm99_editor/cli.py` registers subcommands under `python -m pm99_editor`.
+* `app/cli.py` registers subcommands under `python -m app`.
 * Each command (`cmd_list`, `cmd_search`, `cmd_rename`, `cmd_info`) loads an `FDIFile`, applies filtering, and prints tabular output. `cmd_rename` saves through `FDIFile.save()`, which wraps `save_modified_records()` to keep directory metadata consistent.
 
 ### GUI lifecycle
@@ -49,5 +49,6 @@ The project provides safe tooling for inspecting and editing Premier Manager 99 
 ## Extensibility guidelines
 * Keep canonical format rules synchronised between the `PlayerRecord` parsing helpers and the documentation in [`docs/DATA_FORMATS.md`](./DATA_FORMATS.md).
 * When introducing new record types or metadata, update serializers in `models.py` and persistence helpers in `file_writer.py`, then add regression coverage under `tests/`.
-* GUI enhancements should maintain separation between the UI layer (widgets, events) and parsing logic. Reuse `pm99_editor` helpers rather than duplicating decoding/encoding code inside the GUI.
+* GUI enhancements should maintain separation between the UI layer (widgets, events) and parsing logic. Reuse `app` helpers rather than duplicating decoding/encoding code inside the GUI.
 * New tooling or scripts should live under `scripts/` and lean on the CLI/library APIs to stay consistent with automated tests.
+

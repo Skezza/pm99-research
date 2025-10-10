@@ -1,8 +1,8 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """Regression tests for rebuilding player name regions during renames."""
 
-from pm99_editor.models import PlayerRecord
-from pm99_editor.xor import decode_entry
+from app.models import PlayerRecord
+from app.xor import decode_entry
 
 
 def test_player_name_growth_preserves_metadata_and_attributes():
@@ -66,3 +66,4 @@ def test_player_name_growth_preserves_metadata_and_attributes():
         reparsed.height,
         list(reparsed.skills[:10]),
     ) == orig_meta
+

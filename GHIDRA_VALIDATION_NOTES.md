@@ -1,7 +1,7 @@
-# Ghidra Validation - Premier Manager 99 FDI File Format
+﻿# Ghidra Validation - Premier Manager 99 FDI File Format
 
 ## Executive Summary
-✓ **All findings validated** - Our implementation in `pm99_editor/loaders.py` correctly replicates the game's loading logic.
+✓ **All findings validated** - Our implementation in `app/loaders.py` correctly replicates the game's loading logic.
 
 ## Key Ghidra Findings
 
@@ -177,6 +177,6 @@ Our multi-layer filtering approach is **essential for usable editor**, not prese
 ✓ **Sequential scanning:** VALIDATED  
 ✓ **Implementation correctness:** VALIDATED  
 
-All core assumptions in our `pm99_editor/loaders.py` implementation are **100% correct** based on Ghidra reverse engineering of the original game executable.
+All core assumptions in our `app/loaders.py` implementation are **100% correct** based on Ghidra reverse engineering of the original game executable.
 
 The filtering improvements we added are **necessary enhancements** to work around file corruption that the original game didn't handle properly.

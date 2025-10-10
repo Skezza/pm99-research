@@ -71,46 +71,67 @@ def encode_entry(data: bytes) -> bytes:
 
 def read_string(data: bytes, offset: int) -> Tuple[str, int]:
     """
-    Read and decode a null-terminated XOR-encrypted string.
+    Read and decode a length-prefixed string from the buffer at `offset`.
 
-    Args:
-        data: Raw file bytes
-        offset: Starting position (points to uint16 length)
+    Supports two formats:
+      - Raw length-prefixed bytes (2-byte LE length + CP1252 bytes) used inside
+        decoded payloads built in-memory.
+      - Encoded entry (length-prefixed + XOR'd payload) as stored on-disk.
 
-    Returns:
-        Tuple of (decoded_string, total_bytes_consumed)
+    The function tries the raw interpretation first and falls back to the encoded
+    entry interpretation when necessary. Returns (decoded_text, bytes_consumed).
     """
-    decoded, length = decode_entry(data, offset)
+    if offset + 2 > len(data):
+        raise ValueError("Offset out of bounds for read_string")
 
-    # Strip null terminator if present
+    # Inspect presumed raw length
+    possible_len = struct.unpack_from("<H", data, offset)[0]
+    raw_end = offset + 2 + possible_len
+    if raw_end <= len(data):
+        raw = data[offset + 2:raw_end]
+        try:
+            text = raw.decode('cp1252')
+            # Strip trailing null if present
+            if text and text.endswith('\x00'):
+                text = text[:-1]
+            return text, 2 + possible_len
+        except Exception:
+            # Fall through to encoded-entry interpretation
+            pass
+
+    # Fallback: treat as encoded entry in file-format (length + XOR'd payload)
+    decoded, length = decode_entry(data, offset)
     if decoded and decoded[-1] == 0:
         decoded = decoded[:-1]
-
-    # Decode as Windows-1252 (CP1252)
     try:
         text = decoded.decode('cp1252')
     except UnicodeDecodeError:
         text = decoded.decode('cp1252', errors='replace')
-
-    # Return string and total bytes consumed (2 for length + encoded length)
     return text, 2 + length
 
 
 def write_string(text: str) -> bytes:
     """
-    Encode a string for PM99 format (CP1252 + XOR).
+    Create a length-prefixed RAW string (CP1252) suitable for inclusion in a
+    decoded payload.
 
-    Args:
-        text: String to encode
-
-    Returns:
-        Encoded entry with length prefix
+    This returns: <uint16 length><raw bytes> (NO XOR). Callers that need the
+    on-disk representation should pass the assembled payload to
+    `encode_entry()` which will XOR the payload and prepend the file-level
+    length prefix.
     """
-    # Encode as Windows-1252
     raw = text.encode('cp1252')
+    return struct.pack("<H", len(raw)) + raw
 
-    # Apply XOR and add length prefix
-    return encode_entry(raw)
+
+def pack_string(text: str) -> bytes:
+    """
+    Return a length-prefixed raw byte sequence (CP1252 encoded) without XOR.
+    Use this when constructing decoded payloads that will later be XOR-encoded
+    by the caller (e.g. encode_entry()).
+    """
+    raw = text.encode('cp1252')
+    return struct.pack("<H", len(raw)) + raw
 
 
 # Compatibility aliases (legacy code sometimes uses xor_encode/xor_decode)

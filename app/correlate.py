@@ -1,4 +1,4 @@
-"""Utilities to correlate team IDs (from player records) with team names (from team records)."""
+﻿"""Utilities to correlate team IDs (from player records) with team names (from team records)."""
 
 import argparse
 import json
@@ -6,8 +6,8 @@ import logging
 from collections import defaultdict
 from typing import Dict, Tuple
 
-from pm99_editor.io import FDIFile
-from pm99_editor.models import TeamRecord
+from app.io import FDIFile
+from app.models import TeamRecord
 
 logger = logging.getLogger(__name__)
 

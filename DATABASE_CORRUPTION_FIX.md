@@ -1,4 +1,4 @@
-# Database Corruption Fix - Player Name Renaming
+﻿# Database Corruption Fix - Player Name Renaming
 
 ## Problem Summary
 
@@ -8,7 +8,7 @@ When renaming a player using the editor, the database would become corrupted and
 
 ### What We Thought Names Were
 
-The original implementation in [`PlayerRecord._rebuild_name_region()`](pm99_editor/models.py:1016) treated player names as a **single Latin-1 encoded string** with marker bytes:
+The original implementation in [`PlayerRecord._rebuild_name_region()`](app/models.py:1016) treated player names as a **single Latin-1 encoded string** with marker bytes:
 
 ```python
 # WRONG APPROACH
@@ -47,7 +47,7 @@ When we wrote plain Latin-1 bytes, the game tried to interpret them as length-pr
 
 ## The Fix
 
-### Changes to [`models.py`](pm99_editor/models.py)
+### Changes to [`models.py`](app/models.py)
 
 #### 1. Fixed Name Extraction (`_extract_name()`)
 
@@ -59,7 +59,7 @@ When we wrote plain Latin-1 bytes, the game tried to interpret them as length-pr
 @staticmethod
 def _extract_name(data: bytes) -> str:
     """Extract player name from two length-prefixed XOR-encoded strings."""
-    from pm99_editor.xor import read_string
+    from app.xor import read_string
     
     pos = 5  # Names start after team_id and squad_number
     
@@ -86,7 +86,7 @@ def _rebuild_name_region(self):
     CRITICAL: Names are stored as TWO separate length-prefixed XOR-encoded strings,
     NOT as a single Latin-1 string with markers.
     """
-    from pm99_editor.xor import write_string
+    from app.xor import write_string
     
     given = (self.given_name or "").strip()
     surname = (self.surname or "").strip()
@@ -179,7 +179,7 @@ The game uses a 32-bit XOR pattern: `0x61616161`
 - For 2-byte chunks: XOR with `0x6161`
 - For single bytes: XOR with `0x61`
 
-This is correctly implemented in [`pm99_editor/xor.py`](pm99_editor/xor.py):
+This is correctly implemented in [`app/xor.py`](app/xor.py):
 - `write_string()` - Encodes a string with length prefix and XOR
 - `read_string()` - Decodes a length-prefixed XOR string
 
@@ -221,7 +221,7 @@ len-7   | 7    | Trailing padding
 
 ## Files Modified
 
-1. [`pm99_editor/models.py`](pm99_editor/models.py)
+1. [`app/models.py`](app/models.py)
    - `PlayerRecord._extract_name()` - Line 807
    - `PlayerRecord._rebuild_name_region()` - Line 1016
    - `PlayerRecord.to_bytes()` - Line 961

@@ -1,4 +1,4 @@
-"""Scanner for embedded player records.
+﻿"""Scanner for embedded player records.
 
 Provides find_player_records(file_data) -> List[(offset, PlayerRecord)]
 so IO and tools can discover player records without importing the GUI.
@@ -12,8 +12,8 @@ import logging
 from typing import List, Tuple, Optional, Set, Dict
 from collections import defaultdict
 
-from pm99_editor.models import PlayerRecord
-from pm99_editor.xor import xor_decode
+from app.models import PlayerRecord
+from app.xor import xor_decode
 
 logger = logging.getLogger(__name__)
 

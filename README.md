@@ -1,4 +1,4 @@
-# Premier Manager 99 — Database Editor and Reverse Engineering
+﻿# Premier Manager 99 — Database Editor and Reverse Engineering
 
 Purpose
 One‑stop entrypoint for working with Premier Manager 99 database files: inspect, search and make safe edits. Canonical docs now live in [docs/](docs/) and the legacy investigation trail remains in [docs/archive/](docs/archive/) as artifacts.
@@ -7,45 +7,45 @@ Quick start
 Requirements: Python 3.8+; run from repo root. Database files are under [DBDAT/](DBDAT/).
 
 GUI tips
-- Launch the desktop editor via `python -m pm99_editor.gui`; the **Tools → Open PKF Viewer…** menu opens the new container inspector for `.PKF` archives with a built-in string searcher that accepts single needles or lists.
-- For offline investigation, `ArchiveStringSearcher` in [pm99_editor/pkf.py](pm99_editor/pkf.py) accepts a folder of `.PKF`/`.FDI` assets and a list of needles to report cross-file matches.
+- Launch the desktop editor via `python -m app.gui`; the **Tools → Open PKF Viewer…** menu opens the new container inspector for `.PKF` archives with a built-in string searcher that accepts single needles or lists.
+- For offline investigation, `ArchiveStringSearcher` in [app/pkf.py](app/pkf.py) accepts a folder of `.PKF`/`.FDI` assets and a list of needles to report cross-file matches.
 
 CLI examples
-The command line uses [pm99_editor/cli.py](pm99_editor/cli.py) via module entry. Core commands are implemented in [cli.cmd_list()](pm99_editor/cli.py:10), [cli.cmd_search()](pm99_editor/cli.py:22), [cli.cmd_rename()](pm99_editor/cli.py:38) and [cli.cmd_info()](pm99_editor/cli.py:74); the entry point is [cli.main()](pm99_editor/cli.py:89).
+The command line uses [app/cli.py](app/cli.py) via module entry. Core commands are implemented in [cli.cmd_list()](app/cli.py:10), [cli.cmd_search()](app/cli.py:22), [cli.cmd_rename()](app/cli.py:38) and [cli.cmd_info()](app/cli.py:74); the entry point is [cli.main()](app/cli.py:89).
 
 Inspect file header and counts
 Example reference: [DBDAT/JUG98030.FDI](DBDAT/JUG98030.FDI)
 ```
-python -m pm99_editor info DBDAT/JUG98030.FDI
+python -m app info DBDAT/JUG98030.FDI
 ```
 
 List first 20 players
 ```
-python -m pm99_editor list DBDAT/JUG98030.FDI --limit 20
+python -m app list DBDAT/JUG98030.FDI --limit 20
 ```
 
 Search by name
 ```
-python -m pm99_editor search DBDAT/JUG98030.FDI "Ronaldo"
+python -m app search DBDAT/JUG98030.FDI "Ronaldo"
 ```
 
 Rename by record id (same-length recommended)
 ```
-python -m pm99_editor rename DBDAT/JUG98030.FDI --id 123 --name "Cristiano Ronaldo"
+python -m app rename DBDAT/JUG98030.FDI --id 123 --name "Cristiano Ronaldo"
 ```
 
 Safety
 - Always work on copies of [DBDAT/JUG98030.FDI](DBDAT/JUG98030.FDI) and keep backups.
-- Writer creates backups via [file_writer.create_backup()](pm99_editor/file_writer.py:17) and adjusts directory offsets with [file_writer.write_fdi_record()](pm99_editor/file_writer.py:102).
+- Writer creates backups via [file_writer.create_backup()](app/file_writer.py:17) and adjusts directory offsets with [file_writer.write_fdi_record()](app/file_writer.py:102).
 
 Project layout
-- Core library: [pm99_editor/](pm99_editor/)
-  - File I/O wrapper [FDIFile](pm99_editor/io.py:15) with helpers: [FDIFile.load()](pm99_editor/io.py:31), [FDIFile.list_players()](pm99_editor/io.py:338), [FDIFile.find_by_name()](pm99_editor/io.py:229), [FDIFile.save()](pm99_editor/io.py:269)
-  - Models: [PlayerRecord](pm99_editor/models.py:13) with parser [PlayerRecord.from_bytes()](pm99_editor/models.py:63) and serializer [PlayerRecord.to_bytes()](pm99_editor/models.py:281)
-  - Header & directory: [FDIHeader.from_bytes()](pm99_editor/models.py:389), [DirectoryEntry.from_bytes()](pm99_editor/models.py:434)
-  - XOR helpers: [pm99_editor/xor.py](pm99_editor/xor.py)
-  - PKF containers: [pm99_editor/pkf.py](pm99_editor/pkf.py)
-- CLI: [pm99_editor/cli.py](pm99_editor/cli.py)
+- Core library: [app/](app/)
+  - File I/O wrapper [FDIFile](app/io.py:15) with helpers: [FDIFile.load()](app/io.py:31), [FDIFile.list_players()](app/io.py:338), [FDIFile.find_by_name()](app/io.py:229), [FDIFile.save()](app/io.py:269)
+  - Models: [PlayerRecord](app/models.py:13) with parser [PlayerRecord.from_bytes()](app/models.py:63) and serializer [PlayerRecord.to_bytes()](app/models.py:281)
+  - Header & directory: [FDIHeader.from_bytes()](app/models.py:389), [DirectoryEntry.from_bytes()](app/models.py:434)
+  - XOR helpers: [app/xor.py](app/xor.py)
+  - PKF containers: [app/pkf.py](app/pkf.py)
+- CLI: [app/cli.py](app/cli.py)
 - Tests: [tests/](tests/)
 - Analysis scripts: [scripts/](scripts/)
 - Game data used for development: [DBDAT/](DBDAT/)
@@ -66,9 +66,9 @@ The following remain for traceability and will be gradually folded into concise 
 
 Status at a glance
 Parsing and writing are intentionally conservative. Known‑good reading/writing paths are encapsulated in:
-- Parser: [PlayerRecord.from_bytes()](pm99_editor/models.py:63) with dynamic offsets (name end marker and attribute tail)
-- Safe writer: [file_writer.write_fdi_record()](pm99_editor/file_writer.py:102)
-- Header parsing: [FDIHeader.from_bytes()](pm99_editor/models.py:389)
+- Parser: [PlayerRecord.from_bytes()](app/models.py:63) with dynamic offsets (name end marker and attribute tail)
+- Safe writer: [file_writer.write_fdi_record()](app/file_writer.py:102)
+- Header parsing: [FDIHeader.from_bytes()](app/models.py:389)
 
 Development workflow
 - Run tests: from repo root execute
@@ -78,11 +78,11 @@ pytest -q
 - Explore records in a REPL
 ```
 python -q
->>> from pm99_editor.io import FDIFile
+>>> from app.io import FDIFile
 >>> f = FDIFile("DBDAT/JUG98030.FDI"); f.load()
 >>> f.records[0]
 ```
-See the [FDIFile](pm99_editor/io.py:15) implementation for available helpers.
+See the [FDIFile](app/io.py:15) implementation for available helpers.
 
 Contributing and documentation cleanup
 This repository previously contained overlapping handovers and AI‑generated notes. The new structure adopts:

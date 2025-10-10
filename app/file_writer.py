@@ -1,4 +1,4 @@
-"""
+﻿"""
 File writing utilities for FDI files
 Handles backup, modification, and safe writing
 """
@@ -8,8 +8,9 @@ import logging
 from pathlib import Path
 from typing import Tuple, List
 
-from pm99_editor.models import FDIHeader, DirectoryEntry
-from pm99_editor.xor import encode_entry, decode_entry
+from app.models import FDIHeader, DirectoryEntry
+from app.xor import encode_entry, decode_entry
+from app.settings import SAVE_NAME_ONLY, ALLOW_FULL_RECORD_REWRITE_ON_EXPANSION
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -177,6 +178,64 @@ def write_fdi_record(filepath: str, offset: int, new_data: bytes) -> bool:
         logger.exception("Error writing FDI record: %s", e)
         return False
 
+
+# Helper: conservative name-only write
+def write_name_only_record(filepath: str, offset: int, old_name: str, new_name: str) -> bool:
+    """
+    Attempt a conservative in-place update of a player name within a decoded entry payload.
+    - Uses `replace_text_in_decoded` to ensure changes do not expand/reflow fields unless safe.
+    - If the in-place replacement succeeds, delegates to `write_fdi_record` to persist the entry.
+    - If in-place replacement is unsafe, will fail unless `ALLOW_FULL_RECORD_REWRITE_ON_EXPANSION` is True,
+      in which case a best-effort full-record rewrite is attempted (risky).
+    Returns True on success, False otherwise.
+    """
+    try:
+        if not SAVE_NAME_ONLY:
+            logger.debug("write_name_only_record called while SAVE_NAME_ONLY is False; refusing to proceed.")
+            return False
+
+        path = Path(filepath)
+        if not path.exists():
+            raise FileNotFoundError(filepath)
+
+        raw = path.read_bytes()
+
+        # Decode entry at offset
+        decoded, length = decode_entry(raw, offset)
+        if decoded is None:
+            logger.debug("Failed to decode entry at offset 0x%X", offset)
+            return False
+
+        # Attempt safe replacement
+        modified_decoded, success = replace_text_in_decoded(decoded, old_name, new_name)
+        if success:
+            # Persist using the existing safe writer (handles encoding and directory adjustment)
+            return write_fdi_record(filepath, offset, modified_decoded)
+
+        # Not safe to update in-place
+        logger.warning(
+            "Name replacement not safe in-place at 0x%X: '%s' -> '%s'",
+            offset, old_name, new_name
+        )
+
+        if not ALLOW_FULL_RECORD_REWRITE_ON_EXPANSION:
+            # Fail-safe: do not attempt risky full-rewrite
+            return False
+
+        # Fallback: perform a best-effort full rewrite by replacing the bytes (first occurrence)
+        old_bytes = old_name.encode('latin1')
+        new_bytes = new_name.encode('latin1')
+        if old_bytes not in decoded:
+            logger.warning("Old name bytes not found in decoded payload; aborting full-rewrite fallback.")
+            return False
+
+        new_decoded = decoded.replace(old_bytes, new_bytes, 1)
+        logger.info("Attempting full-record rewrite at 0x%X to persist expanded name", offset)
+        return write_fdi_record(filepath, offset, new_decoded)
+
+    except Exception as e:
+        logger.exception("Error writing name-only record: %s", e)
+        return False
 
 def save_modified_records(file_path: str, file_data: bytes,
                           modified_records: List[tuple]) -> bytes:

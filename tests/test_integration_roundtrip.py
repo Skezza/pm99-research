@@ -1,12 +1,12 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 import struct
 from pathlib import Path
 import pytest
 
-from pm99_editor.models import PlayerRecord, FDIHeader, DirectoryEntry
-from pm99_editor.io import FDIFile
-from pm99_editor.file_writer import write_fdi_record
-from pm99_editor.xor import decode_entry
+from app.models import PlayerRecord, FDIHeader, DirectoryEntry
+from app.io import FDIFile
+from app.file_writer import write_fdi_record
+from app.xor import decode_entry
 
 
 def _build_fdi_from_records(records):

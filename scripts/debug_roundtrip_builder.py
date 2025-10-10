@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 Build an FDI from three PlayerRecord instances (like the integration test)
 and inspect whether the resulting file loads and contains "Zidane".
@@ -14,9 +14,9 @@ if str(root) not in sys.path:
 import struct
 import binascii
 
-from pm99_editor.models import PlayerRecord, FDIHeader, DirectoryEntry
-from pm99_editor.io import FDIFile
-from pm99_editor.xor import decode_entry
+from app.models import PlayerRecord, FDIHeader, DirectoryEntry
+from app.io import FDIFile
+from app.xor import decode_entry
 
 def build_and_inspect(tmp_path: Path = Path('.')):
     p1 = PlayerRecord(given_name="David", surname="Beckham", nationality=30, position_primary=3, position_secondary=3, birth_day=2, birth_month=5, birth_year=1975, height=180, weight=75, skills=[50]*10, version=700)
