@@ -1,8 +1,17 @@
 """Test the loader directly with debug output."""
 
+from pathlib import Path
+
+import pytest
+
 from pm99_editor.loaders import load_coaches
 
-coaches = load_coaches("DBDAT/ENT98030.FDI")
+COACH_FILE = Path("DBDAT/ENT98030.FDI")
+
+if not COACH_FILE.exists():
+    pytest.skip("Required data file not found: DBDAT/ENT98030.FDI", allow_module_level=True)
+
+coaches = load_coaches(str(COACH_FILE))
 print(f"Loaded {len(coaches)} coaches")
 
 if len(coaches) > 0:
@@ -18,7 +27,7 @@ else:
     from pm99_editor.loaders import decode_entry
     from pm99_editor.coach_models import parse_coaches_from_record
     
-    data = Path("DBDAT/ENT98030.FDI").read_bytes()
+    data = COACH_FILE.read_bytes()
     pos = 0x1504  # Known good offset from earlier debug
     
     decoded, length = decode_entry(data, pos)

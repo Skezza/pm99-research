@@ -11,10 +11,15 @@ from pm99_editor.models import TeamRecord
 from pm99_editor.coach_models import parse_coaches_from_record
 from pm99_editor.xor import decode_entry
 from pathlib import Path
+import pytest
 
 def test_coach_loading():
     print("=== Testing Coach Loading ===")
-    fdi = FDIFile('DBDAT/ENT98030.FDI')
+    coach_file = Path('DBDAT/ENT98030.FDI')
+    if not coach_file.exists():
+        pytest.skip("Required data file not found: DBDAT/ENT98030.FDI")
+
+    fdi = FDIFile(coach_file)
     fdi.load()
 
     coaches_found = []
@@ -27,7 +32,7 @@ def test_coach_loading():
     # Also try sequential scanning
     if not coaches_found:
         print("No coaches from directory, trying sequential scan...")
-        data = Path('DBDAT/ENT98030.FDI').read_bytes()
+        data = coach_file.read_bytes()
         pos = 0x400
         while pos < len(data) - 1000 and len(coaches_found) < 10:
             try:
@@ -47,7 +52,11 @@ def test_coach_loading():
 
 def test_team_loading():
     print("\n=== Testing Team Loading ===")
-    fdi = FDIFile('DBDAT/EQ98030.FDI')
+    team_file = Path('DBDAT/EQ98030.FDI')
+    if not team_file.exists():
+        pytest.skip("Required data file not found: DBDAT/EQ98030.FDI")
+
+    fdi = FDIFile(team_file)
     fdi.load()
 
     teams_found = []
@@ -63,7 +72,7 @@ def test_team_loading():
     # Also try sequential scanning
     if not teams_found:
         print("No teams from directory, trying sequential scan...")
-        data = Path('DBDAT/EQ98030.FDI').read_bytes()
+        data = team_file.read_bytes()
         pos = 0x400
         while pos < len(data) - 1000 and len(teams_found) < 10:
             try:
