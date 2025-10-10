@@ -118,6 +118,6 @@ The original editor assumed position at fixed **byte 42**, but this fails becaus
 
 ## References
 
-- Ghidra analysis: [`out/schema_players.md`](out/schema_players.md)
+- Ghidra analysis: [`../../archive/schema_players.md`](../../archive/schema_players.md)
 - Previous findings: [`REVERSE_ENGINEERING_HANDOVER.md`](REVERSE_ENGINEERING_HANDOVER.md)
 - Field map: [`PLAYER_FIELD_MAP.md`](PLAYER_FIELD_MAP.md)
