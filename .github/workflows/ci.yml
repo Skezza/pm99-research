@@ -1,0 +1,44 @@
+﻿name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Test (pytest + coverage)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.11, 3.10, 3.9, 3.8]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov codecov
+
+      - name: Run tests with coverage
+        run: |
+          pytest -q --maxfail=1 --disable-warnings --cov=app --cov-report=xml --cov-report=html
+
+      - name: Upload coverage report (HTML)
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: htmlcov
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.xml
+        if: ${{ secrets.CODECOV_TOKEN != '' }}

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 Debug FDI directory structure
 """
@@ -6,8 +6,8 @@ import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), ".")))
 
-from pm99_editor.io import FDIFile
-from pm99_editor.xor import decode_entry
+from app.io import FDIFile
+from app.xor import decode_entry
 from pathlib import Path
 
 def analyze_fdi_directory(file_path, file_type):

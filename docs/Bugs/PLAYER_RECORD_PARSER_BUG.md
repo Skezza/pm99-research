@@ -1,4 +1,4 @@
-# CRITICAL PARSER FIX - Session Report
+﻿# CRITICAL PARSER FIX - Session Report
 
 **Date:** 2025-10-04  
 **Status:** ✅ PARSER FIXED - CLI NOW FUNCTIONAL  
@@ -13,7 +13,7 @@ The handover claimed "15/15 tests passing" and a working CLI, but:
 - **CLI search returned NO results** for known players like Fernando Hierro
 - **Root cause:** TWO conflicting implementations existed:
   - ✅ **Working GUI** ([`app/pm99_database_editor.py`](../app/pm99_database_editor.py)) - 1184 lines, uses correct name-end marker parsing
-  - ❌ **Broken new package** ([`pm99_editor/`](../pm99_editor/)) - Used wrong XOR-string parsing approach from coach records
+  - ❌ **Broken new package** ([`app/`](../app/)) - Used wrong XOR-string parsing approach from coach records
 
 ### Why Tests Passed But Real Usage Failed
 - Unit tests used **synthetic test data** that matched the wrong parser
@@ -25,7 +25,7 @@ The handover claimed "15/15 tests passing" and a working CLI, but:
 
 ## 🔧 What Was Fixed
 
-### 1. Fixed [`pm99_editor/models.py`](../pm99_editor/models.py) - PlayerRecord Parser
+### 1. Fixed [`app/models.py`](../app/models.py) - PlayerRecord Parser
 
 **BEFORE (WRONG APPROACH):**
 ```python
@@ -56,7 +56,7 @@ attr_start = len(data) - 19
 attr_end = len(data) - 7
 ```
 
-### 2. Fixed [`pm99_editor/io.py`](../pm99_editor/io.py) - File Scanner
+### 2. Fixed [`app/io.py`](../app/io.py) - File Scanner
 
 **BEFORE (WRONG APPROACH):**
 ```python
@@ -117,17 +117,17 @@ Fixed offsets from record end:
 
 ### Before Fix
 ```bash
-$ python -m pm99_editor search DBDAT/JUG98030.FDI "Hierro"
+$ python -m app search DBDAT/JUG98030.FDI "Hierro"
 No players found matching 'Hierro'  # ❌ BROKEN
 ```
 
 ### After Fix
 ```bash
-$ python -m pm99_editor search DBDAT/JUG98030.FDI "Hierro"
+$ python -m app search DBDAT/JUG98030.FDI "Hierro"
 Found 1 player(s):
   Player #6: Fernando Ruiz HIERRO (Born: 01/01/1975, Pos: 0, Nation: 0)  # ✅ WORKS!
 
-$ python -m pm99_editor list DBDAT/JUG98030.FDI --limit 10
+$ python -m app list DBDAT/JUG98030.FDI --limit 10
 Player #0: José Santiago CAÑIZARES (Born: 18/12/1969, Pos: 3, Nation: 0)
 Player #1: Peter LASA (Born: 09/09/1971, Pos: 1, Nation: 1)
 Player #2: Manuel SANCHIS (Born: 01/01/1975, Pos: 0, Nation: 0)
@@ -144,20 +144,20 @@ Total: 9086 players  # ✅ PARSING 9,000+ PLAYERS!
 ## 📋 Files Modified
 
 ### Core Changes
-1. **[`pm99_editor/models.py`](../pm99_editor/models.py)**
+1. **[`app/models.py`](../app/models.py)**
    - Rewrote `PlayerRecord.from_bytes()` to use name-end marker approach
    - Added `_extract_name()`, `_find_name_end()`, `_extract_position()` static methods
    - Removed 140 lines of duplicate dead code (lines 197-288)
    - Marked `to_bytes()` as NotImplementedError (needs raw_data preservation approach)
 
-2. **[`pm99_editor/io.py`](../pm99_editor/io.py)**
+2. **[`app/io.py`](../app/io.py)**
    - Rewrote `_iter_records()` to scan file sections instead of directory entries
    - Removed 80+ lines of biography parsing code
    - Now matches working GUI's proven approach
 
 ### No Changes Needed
-- **[`pm99_editor/file_writer.py`](../pm99_editor/file_writer.py)** - Already correct, 15/15 tests passing
-- **[`pm99_editor/cli.py`](../pm99_editor/cli.py)** - Already correct, just needed working parser
+- **[`app/file_writer.py`](../app/file_writer.py)** - Already correct, 15/15 tests passing
+- **[`app/cli.py`](../app/cli.py)** - Already correct, just needed working parser
 
 ---
 
@@ -203,7 +203,7 @@ Total: 9086 players  # ✅ PARSING 9,000+ PLAYERS!
    - Compare with in-game values
 
 ### Low Priority
-7. **GUI Integration** - Make GUI use new `pm99_editor` package
+7. **GUI Integration** - Make GUI use new `app` package
    - Replace standalone parser with tested infrastructure
    - Use `file_writer.py` for safe saves instead of custom logic
 
@@ -267,12 +267,12 @@ Total: 9086 players  # ✅ PARSING 9,000+ PLAYERS!
 - [`app/pm99_database_editor.py`](../app/pm99_database_editor.py) lines 487-687 - Working file scanner
 
 **Fixed Implementation (Now Functional):**
-- [`pm99_editor/models.py`](../pm99_editor/models.py) lines 56-234 - Fixed parser
-- [`pm99_editor/io.py`](../pm99_editor/io.py) lines 63-118 - Fixed file scanner
+- [`app/models.py`](../app/models.py) lines 56-234 - Fixed parser
+- [`app/io.py`](../app/io.py) lines 63-118 - Fixed file scanner
 
 **Already Working (No Changes Needed):**
-- [`pm99_editor/file_writer.py`](../pm99_editor/file_writer.py) - Safe record rewrite
-- [`pm99_editor/xor.py`](../pm99_editor/xor.py) - XOR encoding/decoding
+- [`app/file_writer.py`](../app/file_writer.py) - Safe record rewrite
+- [`app/xor.py`](../app/xor.py) - XOR encoding/decoding
 
 ---
 

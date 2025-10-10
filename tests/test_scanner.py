@@ -1,5 +1,5 @@
-import pytest
-from pm99_editor.scanner import find_player_records
+﻿import pytest
+from app.scanner import find_player_records
 
 def test_find_player_records_returns_non_empty(players_fdi_path):
     data = players_fdi_path.read_bytes()

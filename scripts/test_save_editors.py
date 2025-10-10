@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """Tests for saving coach and team records using save_modified_records."""
 
 from __future__ import annotations
@@ -13,10 +13,10 @@ import pytest
 # Ensure package imports work when running as a standalone script
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from pm99_editor.coach_models import EditableCoachRecord, parse_coaches_from_record
-from pm99_editor.file_writer import save_modified_records
-from pm99_editor.io import FDIFile
-from pm99_editor.models import TeamRecord
+from app.coach_models import EditableCoachRecord, parse_coaches_from_record
+from app.file_writer import save_modified_records
+from app.io import FDIFile
+from app.models import TeamRecord
 
 
 def test_coach() -> None:
@@ -110,3 +110,4 @@ if __name__ == "__main__":
     except pytest.SkipTest as exc:
         print(exc)
         sys.exit(0)
+
