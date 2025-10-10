@@ -53,6 +53,7 @@ Canonical documentation (start here)
 - User guide: [docs/EDITOR_README.md](docs/EDITOR_README.md) — how to use the editor today
 - Data formats and field mapping: [docs/PLAYER_FIELD_MAP.md](docs/PLAYER_FIELD_MAP.md)
 - Reverse‑engineering summary: [docs/REVERSE_ENGINEERING_HANDOVER.md](docs/REVERSE_ENGINEERING_HANDOVER.md) and [docs/REVERSE_ENGINEERING_FINAL_REPORT.md](docs/REVERSE_ENGINEERING_FINAL_REPORT.md)
+- Deliverable impact walkthrough: [docs/DELIVERABLE_IMPACT.md](docs/DELIVERABLE_IMPACT.md)
 - Project docs index: [docs/README.md](docs/README.md)
 
 Legacy investigation artifacts (kept for reference)
