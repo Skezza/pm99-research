@@ -52,6 +52,8 @@ from pm99_editor.exporters import (
 )
 from datetime import datetime
 import re
+import shlex
+import copy
 from collections import defaultdict
 import threading
 
@@ -124,6 +126,7 @@ class PM99DatabaseEditor:
         self.team_records = []             # list of (offset, TeamRecord)
         self.filtered_team_records = []    # filtered view for search
         self.team_lookup = {}              # team_id -> team_name mapping (built after teams parsed)
+        self.undo_stack = []               # history of applied changes for undo support
 
         default_pkf_dir = Path("SIMULDAT") if Path("SIMULDAT").exists() else Path(".")
         self._pkf_last_dir = default_pkf_dir.resolve()
@@ -173,14 +176,20 @@ class PM99DatabaseEditor:
         
         self.search_var = tk.StringVar()
         self.search_var.trace('w', self.filter_records)
-        ttk.Entry(search_frame, textvariable=self.search_var).pack(fill=tk.X)
+        search_entry = ttk.Entry(search_frame, textvariable=self.search_var)
+        search_entry.pack(fill=tk.X)
+        ttk.Label(
+            search_frame,
+            text="Queries support filters like name:Zidane team:Juventus pos:mid squad:10",
+            font=('TkDefaultFont', 8)
+        ).pack(fill=tk.X, pady=(4, 0))
         
         # Player tree
         tree_frame = ttk.LabelFrame(player_tab, text="Players", padding="5")
         tree_frame.pack(fill=tk.BOTH, expand=True)
         
         columns = ('name', 'team', 'squad', 'pos')
-        self.tree = ttk.Treeview(tree_frame, columns=columns, show='headings', selectmode='browse')
+        self.tree = ttk.Treeview(tree_frame, columns=columns, show='headings', selectmode='extended')
         
         self.tree.heading('name', text='Name')
         self.tree.heading('team', text='Team ID')
@@ -206,6 +215,8 @@ class PM99DatabaseEditor:
         # Count label
         self.count_label = ttk.Label(player_tab, text="Players: 0")
         self.count_label.pack(pady=(5, 0))
+        self.selection_label = ttk.Label(player_tab, text="Selection: 0 players")
+        self.selection_label.pack(pady=(0, 5))
         
         # Coaches tab (read-only, populated lazily)
         coach_tab = ttk.Frame(notebook)
@@ -214,12 +225,18 @@ class PM99DatabaseEditor:
         coach_search_frame.pack(fill=tk.X, pady=(0,5))
         self.coach_search_var = tk.StringVar()
         self.coach_search_var.trace('w', self.filter_coaches)
-        ttk.Entry(coach_search_frame, textvariable=self.coach_search_var).pack(fill=tk.X)
+        coach_search_entry = ttk.Entry(coach_search_frame, textvariable=self.coach_search_var)
+        coach_search_entry.pack(fill=tk.X)
+        ttk.Label(
+            coach_search_frame,
+            text="Use filters like name:Ferguson given:Alex surname:Smith",
+            font=('TkDefaultFont', 8)
+        ).pack(fill=tk.X, pady=(4, 0))
         coach_list_frame = ttk.LabelFrame(coach_tab, text="Coaches", padding="5")
         coach_list_frame.pack(fill=tk.BOTH, expand=True)
 
         coach_columns = ('name', 'offset')
-        self.coach_tree = ttk.Treeview(coach_list_frame, columns=coach_columns, show='headings', selectmode='browse')
+        self.coach_tree = ttk.Treeview(coach_list_frame, columns=coach_columns, show='headings', selectmode='extended')
         self.coach_tree.heading('name', text='Name')
         self.coach_tree.heading('offset', text='Offset')
         self.coach_tree.column('name', width=220)
@@ -235,11 +252,16 @@ class PM99DatabaseEditor:
         self.coach_tree.bind('<Double-1>', self._on_coach_double)
 
         # Export button for coaches
-        export_coach_btn = ttk.Button(coach_tab, text="Export Coaches", command=self.export_coaches)
-        export_coach_btn.pack(pady=(5,0))
+        action_frame = ttk.Frame(coach_tab)
+        action_frame.pack(pady=(5,0))
+        export_coach_btn = ttk.Button(action_frame, text="Export Coaches", command=self.export_coaches)
+        export_coach_btn.pack(side=tk.LEFT, padx=4)
+        ttk.Button(action_frame, text="Bulk Update…", command=self.open_coach_bulk_editor).pack(side=tk.LEFT, padx=4)
 
         self.coach_count_label = ttk.Label(coach_tab, text="Coaches: 0")
         self.coach_count_label.pack(pady=(5,0))
+        self.coach_selection_label = ttk.Label(coach_tab, text="Selection: 0 coaches")
+        self.coach_selection_label.pack(pady=(0,5))
         
         # Teams tab (read-only, populated asynchronously)
         team_tab = ttk.Frame(notebook)
@@ -248,12 +270,18 @@ class PM99DatabaseEditor:
         team_search_frame.pack(fill=tk.X, pady=(0,5))
         self.team_search_var = tk.StringVar()
         self.team_search_var.trace('w', self.filter_teams)
-        ttk.Entry(team_search_frame, textvariable=self.team_search_var).pack(fill=tk.X)
+        team_search_entry = ttk.Entry(team_search_frame, textvariable=self.team_search_var)
+        team_search_entry.pack(fill=tk.X)
+        ttk.Label(
+            team_search_frame,
+            text="Try name:Barca league:LaLiga stadium:Camp Nou id:3450",
+            font=('TkDefaultFont', 8)
+        ).pack(fill=tk.X, pady=(4, 0))
         team_list_frame = ttk.LabelFrame(team_tab, text="Teams", padding="5")
         team_list_frame.pack(fill=tk.BOTH, expand=True)
 
         team_columns = ('name', 'team_id', 'offset')
-        self.team_tree = ttk.Treeview(team_list_frame, columns=team_columns, show='headings', selectmode='browse')
+        self.team_tree = ttk.Treeview(team_list_frame, columns=team_columns, show='headings', selectmode='extended')
         self.team_tree.heading('name', text='Team Name')
         self.team_tree.heading('team_id', text='Team ID')
         self.team_tree.heading('offset', text='Offset')
@@ -271,11 +299,16 @@ class PM99DatabaseEditor:
         self.team_tree.bind('<Double-1>', self._on_team_double)
 
         # Export button for teams
-        export_team_btn = ttk.Button(team_tab, text="Export Teams", command=self.export_teams)
-        export_team_btn.pack(pady=(5,0))
+        team_action_frame = ttk.Frame(team_tab)
+        team_action_frame.pack(pady=(5,0))
+        export_team_btn = ttk.Button(team_action_frame, text="Export Teams", command=self.export_teams)
+        export_team_btn.pack(side=tk.LEFT, padx=4)
+        ttk.Button(team_action_frame, text="Bulk Edit…", command=self.open_team_bulk_editor).pack(side=tk.LEFT, padx=4)
 
         self.team_count_label = ttk.Label(team_tab, text="Teams: 0")
         self.team_count_label.pack(pady=(5,0))
+        self.team_selection_label = ttk.Label(team_tab, text="Selection: 0 teams")
+        self.team_selection_label.pack(pady=(0,5))
 
         # Leagues tab (hierarchical: Country -> League -> Teams)
         league_tab = ttk.Frame(notebook)
@@ -494,6 +527,9 @@ class PM99DatabaseEditor:
         ttk.Button(button_frame, text="💾 Apply Changes", command=self.apply_changes,
                   style='Accent.TButton').pack(side=tk.LEFT, padx=5)
         ttk.Button(button_frame, text="🔄 Reset", command=self.reset_current).pack(side=tk.LEFT, padx=5)
+        ttk.Button(button_frame, text="📦 Apply to Selection", command=self.apply_changes_to_selection).pack(side=tk.LEFT, padx=5)
+        self.undo_button = ttk.Button(button_frame, text="↩ Undo Last", command=self.undo_last_change, state=tk.DISABLED)
+        self.undo_button.pack(side=tk.RIGHT, padx=5)
 
         # Team overlay panel (hidden by default) - will replace the right-hand editor when the Teams tab is active
         # Parent is the same right_frame used by the player editor; we will place() this overlay to sit on top.
@@ -829,6 +865,7 @@ class PM99DatabaseEditor:
             ), tags=(str(offset),))
         
         self.count_label.config(text=f"Players: {len(self.filtered_records)} / {len(self.all_records)}")
+        self._update_player_selection_label()
     
     # ----------------------------
     # Coaches: lazy loading & UI
@@ -936,6 +973,7 @@ class PM99DatabaseEditor:
             self.coach_tree.insert('', tk.END, values=(display, f"0x{offset:x}"), tags=(str(offset),))
 
         self.coach_count_label.config(text=f"Coaches: {len(getattr(self, 'filtered_coach_records', []))} / {len(getattr(self, 'coach_records', []))}")
+        self._update_coach_selection_label()
 
     def _on_coach_double(self, event):
         """Handle double-click on a coach row to open the editor (when editable)."""
@@ -970,6 +1008,103 @@ class PM99DatabaseEditor:
                 self.open_team_editor(o, t)
                 break
 
+    def open_coach_bulk_editor(self):
+        """Bulk-update selected coaches' names."""
+        selection = self.coach_tree.selection()
+        if not selection:
+            messagebox.showinfo("Info", "Select one or more coaches to update")
+            return
+
+        targets = []
+        for item in selection:
+            try:
+                offset = int(self.coach_tree.item(item)['tags'][0])
+            except Exception:
+                continue
+            coach = self._find_record_in_collection(self.coach_records, offset)
+            if coach is not None and (hasattr(coach, 'set_name') or hasattr(coach, 'to_bytes') or hasattr(coach, 'full_name')):
+                targets.append((offset, coach))
+
+        if not targets:
+            messagebox.showerror("Error", "No editable coaches were selected")
+            return
+
+        dlg = tk.Toplevel(self.root)
+        dlg.title("Bulk Update Coaches")
+        dlg.transient(self.root)
+        dlg.grab_set()
+
+        ttk.Label(dlg, text="New Given Name (leave blank to keep current)").grid(row=0, column=0, sticky=tk.W, padx=8, pady=6)
+        given_var = tk.StringVar()
+        ttk.Entry(dlg, textvariable=given_var, width=30).grid(row=0, column=1, padx=8, pady=6)
+
+        ttk.Label(dlg, text="New Surname (leave blank to keep current)").grid(row=1, column=0, sticky=tk.W, padx=8, pady=6)
+        surname_var = tk.StringVar()
+        ttk.Entry(dlg, textvariable=surname_var, width=30).grid(row=1, column=1, padx=8, pady=6)
+
+        ttk.Label(dlg, text=f"{len(targets)} coach(es) selected", font=('TkDefaultFont', 9, 'italic')).grid(row=2, column=0, columnspan=2, padx=8, pady=(0,8))
+
+        def on_apply():
+            new_given = given_var.get().strip()
+            new_surname = surname_var.get().strip()
+            if not new_given and not new_surname:
+                messagebox.showinfo("Info", "No updates specified")
+                return
+
+            snapshots = {}
+            summary = []
+
+            for offset, coach in targets:
+                snapshots[offset] = copy.deepcopy(coach)
+                old_given = getattr(coach, 'given_name', '') or ''
+                old_surname = getattr(coach, 'surname', '') or ''
+                target_given = new_given if new_given else old_given
+                target_surname = new_surname if new_surname else old_surname
+                old_display = (f"{old_given} {old_surname}").strip()
+                new_display = (f"{target_given} {target_surname}").strip()
+
+                if old_display == new_display:
+                    snapshots.pop(offset, None)
+                    continue
+
+                try:
+                    if hasattr(coach, 'set_name'):
+                        coach.set_name(target_given, target_surname)
+                    else:
+                        coach.given_name = target_given
+                        coach.surname = target_surname
+                        coach.full_name = new_display
+                except Exception as exc:
+                    self._restore_object_from_snapshot(coach, snapshots[offset])
+                    messagebox.showerror("Error", f"Failed to update coach {old_display or offset}: {exc}")
+                    return
+
+                self.modified_coach_records[offset] = coach
+                summary.append((old_display, new_display))
+
+            if not summary:
+                messagebox.showinfo("Info", "No coach records changed")
+                return
+
+            self._push_undo_entry('coach', snapshots)
+            self.populate_coach_tree()
+            self.status_var.set(f"✓ Updated {len(summary)} coach(es)")
+
+            preview = []
+            for old_name, new_name in summary[:5]:
+                preview.append(f"{old_name or '(blank)'} → {new_name}")
+            remaining = len(summary) - len(preview)
+            if remaining > 0:
+                preview.append(f"… plus {remaining} more coach(es)")
+
+            messagebox.showinfo("Success", "Bulk coach update applied:\n\n" + '\n'.join(preview))
+            dlg.destroy()
+
+        btn_frame = ttk.Frame(dlg)
+        btn_frame.grid(row=3, column=0, columnspan=2, pady=(8,12))
+        ttk.Button(btn_frame, text="Apply", command=on_apply).pack(side=tk.LEFT, padx=6)
+        ttk.Button(btn_frame, text="Cancel", command=dlg.destroy).pack(side=tk.LEFT, padx=6)
+
     def open_coach_editor(self, offset, coach):
         """Open modal dialog to edit coach (given name / surname)."""
         dlg = tk.Toplevel(self.root)
@@ -996,6 +1131,9 @@ class PM99DatabaseEditor:
                     messagebox.showinfo("Not editable", "This coach entry cannot be edited in the GUI.")
                     return
 
+                snapshot = copy.deepcopy(coach)
+                before_display = getattr(coach, 'full_name', f"{getattr(coach, 'given_name', '')} {getattr(coach, 'surname', '')}").strip()
+
                 # Prefer structured setter when available
                 if hasattr(coach, 'set_name'):
                     coach.set_name(g, s)
@@ -1008,6 +1146,12 @@ class PM99DatabaseEditor:
                     except Exception:
                         pass
 
+                after_display = getattr(coach, 'full_name', f"{g} {s}").strip()
+                if before_display == after_display:
+                    messagebox.showinfo("Info", "No changes to apply")
+                    return
+
+                self._push_undo_entry('coach', {offset: snapshot})
                 self.modified_coach_records[offset] = coach
                 self.populate_coach_tree()
                 self.status_var.set(f"✓ Updated coach: {getattr(coach, 'full_name', str(coach))}")
@@ -1065,50 +1209,84 @@ class PM99DatabaseEditor:
         def on_save():
             new_name = name_var.get().strip()
             try:
+                snapshot = copy.deepcopy(team)
+                changes = []
+
                 # Name
                 if hasattr(team, 'set_name'):
+                    old_name = getattr(team, 'name', '')
                     team.set_name(new_name)
                 else:
+                    old_name = getattr(team, 'name', '')
                     team.name = new_name
-    
+                if new_name != (old_name or ''):
+                    changes.append(f"Name: {old_name} → {new_name}")
+
                 # Team ID (best-effort)
                 try:
                     new_id = int(id_var.get())
                     if new_id:
+                        old_id = getattr(team, 'team_id', 0)
                         team.team_id = new_id
+                        if new_id != old_id:
+                            changes.append(f"Team ID: {old_id} → {new_id}")
                 except Exception:
                     pass
-    
+
                 # Stadium text
                 new_stadium = stadium_var.get().strip()
                 if new_stadium:
                     if hasattr(team, 'set_stadium_name'):
+                        old_stadium = getattr(team, 'stadium', '')
                         team.set_stadium_name(new_stadium)
                     else:
+                        old_stadium = getattr(team, 'stadium', '')
                         team.stadium = new_stadium
-    
+                    if new_stadium != (old_stadium or ''):
+                        changes.append(f"Stadium: {old_stadium} → {new_stadium}")
+
                 # Capacity (only apply if > 0)
                 try:
                     c = int(cap_var.get())
-                    if c and hasattr(team, 'set_capacity'):
-                        team.set_capacity(c)
+                    if c:
+                        old_capacity = getattr(team, 'stadium_capacity', 0) or 0
+                        if hasattr(team, 'set_capacity'):
+                            team.set_capacity(c)
+                        else:
+                            team.stadium_capacity = c
+                        if c != old_capacity:
+                            changes.append(f"Capacity: {old_capacity} → {c}")
                 except Exception:
                     pass
-    
+
                 # Car park
                 try:
                     cp = int(car_var.get())
-                    if cp and hasattr(team, 'set_car_park'):
-                        team.set_car_park(cp)
+                    if cp:
+                        old_car = getattr(team, 'car_park', 0) or 0
+                        if hasattr(team, 'set_car_park'):
+                            team.set_car_park(cp)
+                        else:
+                            team.car_park = cp
+                        if cp != old_car:
+                            changes.append(f"Car Park: {old_car} → {cp}")
                 except Exception:
                     pass
-    
+
                 # Pitch
                 p = (pitch_var.get() or '').strip().upper()
                 if p and hasattr(team, 'set_pitch'):
+                    old_pitch = (getattr(team, 'pitch', '') or '').upper()
                     team.set_pitch(p)
-    
+                    if p != old_pitch:
+                        changes.append(f"Pitch: {old_pitch or 'UNKNOWN'} → {p}")
+
+                if not changes:
+                    messagebox.showinfo("Info", "No changes to apply")
+                    return
+
                 # Mark modified and refresh UI
+                self._push_undo_entry('team', {offset: snapshot})
                 self.modified_team_records[offset] = team
                 self.populate_team_tree()
                 try:
@@ -1116,8 +1294,9 @@ class PM99DatabaseEditor:
                     self.populate_tree()
                 except Exception:
                     pass
-    
+
                 self.status_var.set(f"✓ Updated team: {getattr(team,'name','')}")
+                messagebox.showinfo("Success", "Changes applied:\n\n" + '\n'.join(changes[:10]))
                 dlg.destroy()
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to update team: {e}")
@@ -1125,6 +1304,177 @@ class PM99DatabaseEditor:
         btn_frame = ttk.Frame(dlg)
         btn_frame.grid(row=6, column=0, columnspan=3, pady=(8,12))
         ttk.Button(btn_frame, text="Save", command=on_save).pack(side=tk.LEFT, padx=6)
+        ttk.Button(btn_frame, text="Cancel", command=dlg.destroy).pack(side=tk.LEFT, padx=6)
+
+    def open_team_bulk_editor(self):
+        """Bulk edit selected teams (name, stadium, capacity, pitch)."""
+        selection = self.team_tree.selection()
+        if not selection:
+            messagebox.showinfo("Info", "Select one or more teams to update")
+            return
+
+        targets = []
+        for item in selection:
+            try:
+                offset = int(self.team_tree.item(item)['tags'][0])
+            except Exception:
+                continue
+            team = self._find_record_in_collection(self.team_records, offset)
+            if team is not None:
+                targets.append((offset, team))
+
+        if not targets:
+            messagebox.showerror("Error", "No teams could be resolved for bulk editing")
+            return
+
+        dlg = tk.Toplevel(self.root)
+        dlg.title("Bulk Edit Teams")
+        dlg.transient(self.root)
+        dlg.grab_set()
+
+        ttk.Label(dlg, text="Team Name (leave blank to keep current)").grid(row=0, column=0, sticky=tk.W, padx=8, pady=6)
+        name_var = tk.StringVar()
+        ttk.Entry(dlg, textvariable=name_var, width=40).grid(row=0, column=1, padx=8, pady=6)
+
+        ttk.Label(dlg, text="Stadium (leave blank to keep current)").grid(row=1, column=0, sticky=tk.W, padx=8, pady=6)
+        stadium_var = tk.StringVar()
+        ttk.Entry(dlg, textvariable=stadium_var, width=40).grid(row=1, column=1, padx=8, pady=6)
+
+        ttk.Label(dlg, text="Capacity (numeric, blank to keep)").grid(row=2, column=0, sticky=tk.W, padx=8, pady=6)
+        capacity_var = tk.StringVar()
+        ttk.Entry(dlg, textvariable=capacity_var, width=20).grid(row=2, column=1, padx=8, pady=6, sticky=tk.W)
+
+        ttk.Label(dlg, text="Car Park (numeric, blank to keep)").grid(row=3, column=0, sticky=tk.W, padx=8, pady=6)
+        car_var = tk.StringVar()
+        ttk.Entry(dlg, textvariable=car_var, width=20).grid(row=3, column=1, padx=8, pady=6, sticky=tk.W)
+
+        ttk.Label(dlg, text="Pitch quality").grid(row=4, column=0, sticky=tk.W, padx=8, pady=6)
+        pitch_var = tk.StringVar(value='Leave unchanged')
+        pitch_combo = ttk.Combobox(dlg, textvariable=pitch_var, state='readonly', width=20)
+        pitch_combo['values'] = ['Leave unchanged', 'GOOD', 'EXCELLENT', 'AVERAGE', 'POOR', 'UNKNOWN']
+        pitch_combo.grid(row=4, column=1, padx=8, pady=6, sticky=tk.W)
+
+        ttk.Label(dlg, text=f"{len(targets)} team(s) selected", font=('TkDefaultFont', 9, 'italic')).grid(row=5, column=0, columnspan=2, padx=8, pady=(0,8))
+
+        def on_apply():
+            name_text = name_var.get().strip()
+            stadium_text = stadium_var.get().strip()
+            capacity_text = capacity_var.get().strip()
+            car_text = car_var.get().strip()
+            pitch_choice = pitch_var.get().strip()
+
+            if not any([name_text, stadium_text, capacity_text, car_text, pitch_choice and pitch_choice != 'Leave unchanged']):
+                messagebox.showinfo("Info", "No updates specified")
+                return
+
+            snapshots = {}
+            summary = []
+
+            for offset, team in targets:
+                snapshots[offset] = copy.deepcopy(team)
+                changes = []
+
+                try:
+                    if name_text:
+                        old_name = getattr(team, 'name', '') or ''
+                        if name_text != old_name:
+                            if hasattr(team, 'set_name'):
+                                team.set_name(name_text)
+                            else:
+                                team.name = name_text
+                            changes.append(f"Name: {old_name} → {name_text}")
+
+                    if stadium_text:
+                        old_stadium = getattr(team, 'stadium', '') or ''
+                        if stadium_text != old_stadium:
+                            if hasattr(team, 'set_stadium_name'):
+                                team.set_stadium_name(stadium_text)
+                            else:
+                                team.stadium = stadium_text
+                            changes.append(f"Stadium: {old_stadium} → {stadium_text}")
+
+                    if capacity_text:
+                        try:
+                            new_capacity = int(capacity_text)
+                        except ValueError:
+                            messagebox.showerror("Error", f"Invalid capacity value: {capacity_text}")
+                            return
+                        old_capacity = getattr(team, 'stadium_capacity', 0) or 0
+                        if new_capacity != old_capacity:
+                            if hasattr(team, 'set_capacity'):
+                                team.set_capacity(new_capacity)
+                            else:
+                                team.stadium_capacity = new_capacity
+                            changes.append(f"Capacity: {old_capacity} → {new_capacity}")
+
+                    if car_text:
+                        try:
+                            new_car = int(car_text)
+                        except ValueError:
+                            messagebox.showerror("Error", f"Invalid car park value: {car_text}")
+                            return
+                        old_car = getattr(team, 'car_park', 0) or 0
+                        if new_car != old_car:
+                            if hasattr(team, 'set_car_park'):
+                                team.set_car_park(new_car)
+                            else:
+                                team.car_park = new_car
+                            changes.append(f"Car Park: {old_car} → {new_car}")
+
+                    if pitch_choice and pitch_choice != 'Leave unchanged':
+                        old_pitch = (getattr(team, 'pitch', '') or '').upper()
+                        if pitch_choice != old_pitch:
+                            if hasattr(team, 'set_pitch'):
+                                team.set_pitch(pitch_choice)
+                            else:
+                                team.pitch = pitch_choice
+                            changes.append(f"Pitch: {old_pitch or 'UNKNOWN'} → {pitch_choice}")
+
+                except Exception as exc:
+                    self._restore_object_from_snapshot(team, snapshots[offset])
+                    messagebox.showerror("Error", f"Failed to update team at offset 0x{offset:x}: {exc}")
+                    return
+
+                if changes:
+                    self.modified_team_records[offset] = team
+                    summary.append((team, changes))
+                else:
+                    snapshots.pop(offset, None)
+
+            if not summary:
+                messagebox.showinfo("Info", "No team records changed")
+                return
+
+            self._push_undo_entry('team', snapshots)
+            self.populate_team_tree()
+            try:
+                self.build_team_lookup()
+                self.populate_tree()
+            except Exception:
+                pass
+
+            if len(selection) == 1 and getattr(self, 'team_overlay_active', False):
+                try:
+                    self._populate_team_overlay(summary[0][0])
+                except Exception:
+                    pass
+
+            self.status_var.set(f"✓ Updated {len(summary)} team(s)")
+
+            preview = []
+            for team, changes in summary[:5]:
+                name = getattr(team, 'name', 'Unknown Team')
+                preview.append(f"{name}: {len(changes)} change(s)")
+            remaining = len(summary) - len(preview)
+            if remaining > 0:
+                preview.append(f"… plus {remaining} more team(s)")
+
+            messagebox.showinfo("Success", "Bulk team update applied:\n\n" + '\n'.join(preview))
+            dlg.destroy()
+
+        btn_frame = ttk.Frame(dlg)
+        btn_frame.grid(row=6, column=0, columnspan=2, pady=(8,12))
+        ttk.Button(btn_frame, text="Apply", command=on_apply).pack(side=tk.LEFT, padx=6)
         ttk.Button(btn_frame, text="Cancel", command=dlg.destroy).pack(side=tk.LEFT, padx=6)
 
     def populate_team_tree(self):
@@ -1177,6 +1527,7 @@ class PM99DatabaseEditor:
             self.team_tree.insert('', tk.END, values=(name, team_id if team_id else '', f"0x{offset:x}"), tags=(str(offset),))
 
         self.team_count_label.config(text=f"Teams: {len(getattr(self, 'filtered_team_records', []))} / {len(getattr(self, 'team_records', []))}")
+        self._update_team_selection_label()
 
     def build_team_lookup(self):
         """Build mapping from team_id to team_name from parsed team_records."""
@@ -1204,9 +1555,14 @@ class PM99DatabaseEditor:
 
     def filter_teams(self, *args):
         """Filter teams by search box"""
-        search = self.team_search_var.get().lower()
-        if search:
-            self.filtered_team_records = [(o, t) for o, t in self.team_records if search in (getattr(t, 'name','').lower())]
+        query = self.team_search_var.get().strip()
+        terms, field_map = self._parse_search_query(query)
+        if terms or field_map:
+            self.filtered_team_records = [
+                (o, t)
+                for o, t in self.team_records
+                if self._team_matches_search(t, terms, field_map)
+            ]
         else:
             self.filtered_team_records = self.team_records.copy()
         self.populate_team_tree()
@@ -1369,7 +1725,12 @@ class PM99DatabaseEditor:
         """Handle team selection in the team tree"""
         selection = self.team_tree.selection()
         if not selection:
+            self._update_team_selection_label()
             return
+
+        self._update_team_selection_label()
+        if len(selection) > 1:
+            self.status_var.set(f"{len(selection)} teams selected")
 
         item = self.team_tree.item(selection[0])
         try:
@@ -1383,7 +1744,8 @@ class PM99DatabaseEditor:
                     self._show_team_overlay()
                     self._populate_team_overlay(t)
                     name = getattr(t, 'name', 'Unknown Team')
-                    self.status_var.set(f"Selected team: {name}")
+                    if len(selection) == 1:
+                        self.status_var.set(f"Selected team: {name}")
                 except Exception:
                     pass
                 break
@@ -1596,38 +1958,72 @@ class PM99DatabaseEditor:
             offset = int(item['tags'][0])
             for o, t in self.team_records:
                 if o == offset:
+                    snapshot = copy.deepcopy(t)
+                    changes = []
                     new_name = self.team_panel_name_var.get().strip()
                     if hasattr(t, 'set_name'):
+                        old_name = getattr(t, 'name', '')
                         t.set_name(new_name)
                     else:
+                        old_name = getattr(t, 'name', '')
                         t.name = new_name
+                    if new_name != (old_name or ''):
+                        changes.append(f"Name: {old_name} → {new_name}")
                     try:
                         new_id = int(self.team_panel_id_var.get())
                         if new_id:
+                            old_id = getattr(t, 'team_id', 0)
                             t.team_id = new_id
+                            if new_id != old_id:
+                                changes.append(f"Team ID: {old_id} → {new_id}")
                     except Exception:
                         pass
                     new_stad = self.team_panel_stadium_var.get().strip()
                     if new_stad:
                         if hasattr(t, 'set_stadium_name'):
+                            old_stadium = getattr(t, 'stadium', '')
                             t.set_stadium_name(new_stad)
                         else:
+                            old_stadium = getattr(t, 'stadium', '')
                             t.stadium = new_stad
+                        if new_stad != (old_stadium or ''):
+                            changes.append(f"Stadium: {old_stadium} → {new_stad}")
                     try:
                         c = int(self.team_panel_capacity_var.get())
-                        if c and hasattr(t, 'set_capacity'):
-                            t.set_capacity(c)
+                        if c:
+                            old_capacity = getattr(t, 'stadium_capacity', 0) or 0
+                            if hasattr(t, 'set_capacity'):
+                                t.set_capacity(c)
+                            else:
+                                t.stadium_capacity = c
+                            if c != old_capacity:
+                                changes.append(f"Capacity: {old_capacity} → {c}")
                     except Exception:
                         pass
                     try:
                         cp = int(self.team_panel_car_var.get())
-                        if cp and hasattr(t, 'set_car_park'):
-                            t.set_car_park(cp)
+                        if cp:
+                            old_car = getattr(t, 'car_park', 0) or 0
+                            if hasattr(t, 'set_car_park'):
+                                t.set_car_park(cp)
+                            else:
+                                t.car_park = cp
+                            if cp != old_car:
+                                changes.append(f"Car Park: {old_car} → {cp}")
                     except Exception:
                         pass
                     p = (self.team_panel_pitch_var.get() or '').strip().upper()
                     if p and hasattr(t, 'set_pitch'):
+                        old_pitch = (getattr(t, 'pitch', '') or '').upper()
                         t.set_pitch(p)
+                        if p != old_pitch:
+                            changes.append(f"Pitch: {old_pitch or 'UNKNOWN'} → {p}")
+
+                    if not changes:
+                        messagebox.showinfo("Info", "No changes to apply")
+                        return
+
+                    self._push_undo_entry('team', {o: snapshot})
                     self.modified_team_records[o] = t
                     self.populate_team_tree()
                     try:
@@ -1636,6 +2032,7 @@ class PM99DatabaseEditor:
                     except Exception:
                         pass
                     self.status_var.set(f"✓ Updated team: {getattr(t, 'name', '')}")
+                    messagebox.showinfo("Success", "Changes applied:\n\n" + '\n'.join(changes[:10]))
                     break
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save team changes: {e}")
@@ -1661,11 +2058,279 @@ class PM99DatabaseEditor:
         except Exception:
             pass
 
+    # ----------------------------
+    # Search helpers & selection state
+    # ----------------------------
+    def _parse_search_query(self, text: str):
+        """Return (terms, field_map) for an advanced search string."""
+        if not text:
+            return [], {}
+
+        try:
+            tokens = shlex.split(text)
+        except ValueError:
+            tokens = text.split()
+
+        terms = []
+        field_map = defaultdict(list)
+        for token in tokens:
+            if ':' in token:
+                key, value = token.split(':', 1)
+                key = key.strip().lower()
+                value = value.strip().lower()
+                if not value:
+                    continue
+                field_map[key].append(value)
+            else:
+                token = token.strip().lower()
+                if token:
+                    terms.append(token)
+        return terms, field_map
+
+    def _matches_numeric_token(self, value: int, token: str) -> bool:
+        """Check if integer value matches token supporting ranges (e.g. 1-10)."""
+        token = token.strip()
+        if not token:
+            return True
+        try:
+            if '-' in token:
+                start_text, end_text = token.split('-', 1)
+                start = int(start_text) if start_text else None
+                end = int(end_text) if end_text else None
+                if start is not None and value < start:
+                    return False
+                if end is not None and value > end:
+                    return False
+                return True
+            return value == int(token)
+        except ValueError:
+            return token == str(value)
+
+    def _matches_position(self, record: PlayerRecord, token: str) -> bool:
+        token = token.lower()
+        pos_map = {
+            'gk': 0, 'goalkeeper': 0,
+            'df': 1, 'def': 1, 'defender': 1,
+            'mf': 2, 'mid': 2, 'midfielder': 2,
+            'fw': 3, 'striker': 3, 'forward': 3,
+        }
+        if token.isdigit():
+            try:
+                return record.position_primary == int(token)
+            except Exception:
+                return False
+        if token in pos_map:
+            return record.position_primary == pos_map[token]
+        try:
+            return token in record.get_position_name().lower()
+        except Exception:
+            return False
+
+    def _matches_team_identifier(self, team_id: int, team_name: str, token: str) -> bool:
+        token = token.lower()
+        if token.isdigit():
+            try:
+                return team_id == int(token)
+            except Exception:
+                return False
+        return token in (team_name or '').lower()
+
+    def _player_matches_search(self, record: PlayerRecord, terms, field_map) -> bool:
+        team_id = getattr(record, 'team_id', 0)
+        team_name = ''
+        try:
+            if hasattr(self, 'team_lookup'):
+                team_name = self.team_lookup.get(team_id, '') or ''
+        except Exception:
+            team_name = ''
+
+        searchable = [
+            getattr(record, 'name', '').lower(),
+            team_name.lower(),
+            str(team_id),
+            str(getattr(record, 'squad_number', '')),
+            record.get_position_name().lower() if hasattr(record, 'get_position_name') else '',
+            str(getattr(record, 'nationality_id', getattr(record, 'nationality', ''))),
+        ]
+
+        for term in terms:
+            if not any(term in field for field in searchable if isinstance(field, str)):
+                return False
+
+        for term in field_map.get('name', []):
+            if term not in getattr(record, 'name', '').lower():
+                return False
+
+        team_tokens = field_map.get('team', []) + field_map.get('club', [])
+        for token in team_tokens:
+            if not self._matches_team_identifier(team_id, team_name, token):
+                return False
+
+        for token in field_map.get('squad', []) + field_map.get('number', []):
+            if not self._matches_numeric_token(getattr(record, 'squad_number', 0), token):
+                return False
+
+        for token in field_map.get('pos', []) + field_map.get('position', []):
+            if not self._matches_position(record, token):
+                return False
+
+        nationality_tokens = field_map.get('nat', []) + field_map.get('nationality', [])
+        nationality_value = getattr(record, 'nationality_id', getattr(record, 'nationality', 0))
+        for token in nationality_tokens:
+            if token.isdigit():
+                try:
+                    if nationality_value != int(token):
+                        return False
+                except Exception:
+                    return False
+            else:
+                if token not in str(nationality_value).lower():
+                    return False
+
+        return True
+
+    def _coach_matches_search(self, coach, terms, field_map) -> bool:
+        full_name = getattr(coach, 'full_name', str(coach))
+        given = getattr(coach, 'given_name', '')
+        surname = getattr(coach, 'surname', '')
+
+        searchable = [full_name.lower(), given.lower(), surname.lower()]
+
+        for term in terms:
+            if not any(term in field for field in searchable):
+                return False
+
+        for token in field_map.get('name', []):
+            if token not in full_name.lower():
+                return False
+        for token in field_map.get('given', []):
+            if token not in given.lower():
+                return False
+        for token in field_map.get('surname', []) + field_map.get('last', []):
+            if token not in surname.lower():
+                return False
+        offset_value = getattr(coach, 'record_offset', None)
+        for token in field_map.get('offset', []):
+            try:
+                if offset_value != int(token, 0):
+                    return False
+            except Exception:
+                if token not in hex(offset_value or 0)[2:]:
+                    return False
+        return True
+
+    def _team_matches_search(self, team, terms, field_map) -> bool:
+        name = getattr(team, 'name', '')
+        league = getattr(team, 'league', '')
+        stadium = getattr(team, 'stadium', '')
+        team_id = getattr(team, 'team_id', 0)
+        pitch = getattr(team, 'pitch', '') or ''
+
+        searchable = [
+            name.lower(),
+            league.lower(),
+            stadium.lower(),
+            str(team_id),
+            pitch.lower(),
+        ]
+
+        for term in terms:
+            if not any(term in field for field in searchable):
+                return False
+
+        for token in field_map.get('name', []):
+            if token not in name.lower():
+                return False
+        for token in field_map.get('league', []) + field_map.get('country', []):
+            if token not in league.lower():
+                return False
+        for token in field_map.get('stadium', []):
+            if token not in stadium.lower():
+                return False
+        for token in field_map.get('pitch', []):
+            if token not in pitch.lower():
+                return False
+        for token in field_map.get('id', []) + field_map.get('team', []):
+            if not self._matches_numeric_token(team_id, token):
+                return False
+        return True
+
+    def _update_player_selection_label(self):
+        try:
+            if hasattr(self, 'selection_label'):
+                count = len(self.tree.selection()) if hasattr(self, 'tree') else 0
+                noun = "player" if count == 1 else "players"
+                self.selection_label.config(text=f"Selection: {count} {noun}")
+        except Exception:
+            pass
+
+    def _update_coach_selection_label(self):
+        try:
+            if hasattr(self, 'coach_selection_label'):
+                count = len(self.coach_tree.selection()) if hasattr(self, 'coach_tree') else 0
+                noun = "coach" if count == 1 else "coaches"
+                self.coach_selection_label.config(text=f"Selection: {count} {noun}")
+        except Exception:
+            pass
+
+    def _update_team_selection_label(self):
+        try:
+            if hasattr(self, 'team_selection_label'):
+                count = len(self.team_tree.selection()) if hasattr(self, 'team_tree') else 0
+                noun = "team" if count == 1 else "teams"
+                self.team_selection_label.config(text=f"Selection: {count} {noun}")
+        except Exception:
+            pass
+
+    def _update_undo_button_state(self):
+        try:
+            if hasattr(self, 'undo_button'):
+                if self.undo_stack:
+                    self.undo_button.config(state=tk.NORMAL)
+                else:
+                    self.undo_button.config(state=tk.DISABLED)
+        except Exception:
+            pass
+
+    def _push_undo_entry(self, category: str, snapshots: dict):
+        """Add a snapshot entry to the undo stack."""
+        if not snapshots:
+            return
+        self.undo_stack.append((category, snapshots))
+        # Cap history to avoid unbounded growth
+        if len(self.undo_stack) > 50:
+            self.undo_stack = self.undo_stack[-50:]
+        self._update_undo_button_state()
+
+    def _restore_object_from_snapshot(self, target, snapshot):
+        """Restore ``target`` object's state from a deep-copied snapshot."""
+        try:
+            target.__dict__.clear()
+            target.__dict__.update(copy.deepcopy(snapshot.__dict__))
+        except Exception:
+            # Fallback: try attribute assignment
+            for key, value in copy.deepcopy(snapshot.__dict__).items():
+                try:
+                    setattr(target, key, value)
+                except Exception:
+                    pass
+
+    def _find_record_in_collection(self, collection, offset):
+        for o, record in collection:
+            if o == offset:
+                return record
+        return None
+
     def filter_coaches(self, *args):
-        """Filter coaches by search box"""
-        search = self.coach_search_var.get().lower()
-        if search:
-            self.filtered_coach_records = [(o, c) for o, c in self.coach_records if search in (getattr(c, 'full_name', str(c)).lower())]
+        """Filter coaches by search box with advanced token parsing."""
+        query = self.coach_search_var.get().strip()
+        terms, field_map = self._parse_search_query(query)
+        if terms or field_map:
+            self.filtered_coach_records = [
+                (o, c)
+                for o, c in self.coach_records
+                if self._coach_matches_search(c, terms, field_map)
+            ]
         else:
             self.filtered_coach_records = self.coach_records.copy()
         self.populate_coach_tree()
@@ -1674,7 +2339,12 @@ class PM99DatabaseEditor:
         """Handle coach selection in the coach tree"""
         selection = self.coach_tree.selection()
         if not selection:
+            self._update_coach_selection_label()
             return
+
+        self._update_coach_selection_label()
+        if len(selection) > 1:
+            self.status_var.set(f"{len(selection)} coaches selected")
 
         item = self.coach_tree.item(selection[0])
         try:
@@ -1693,7 +2363,8 @@ class PM99DatabaseEditor:
                 self.surname_var.set("")
                 for widget in self.attr_container.winfo_children():
                     widget.destroy()
-                self.status_var.set(f"Selected coach: {display}")
+                if len(selection) == 1:
+                    self.status_var.set(f"Selected coach: {display}")
                 coach_found = True
                 break
 
@@ -1741,9 +2412,14 @@ class PM99DatabaseEditor:
     
     def filter_records(self, *args):
         """Filter players by search"""
-        search = self.search_var.get().lower()
-        if search:
-            self.filtered_records = [(o, r) for o, r in self.all_records if search in r.name.lower()]
+        query = self.search_var.get().strip()
+        terms, field_map = self._parse_search_query(query)
+        if terms or field_map:
+            self.filtered_records = [
+                (o, r)
+                for o, r in self.all_records
+                if self._player_matches_search(r, terms, field_map)
+            ]
         else:
             self.filtered_records = self.all_records.copy()
         self.populate_tree()
@@ -1752,17 +2428,24 @@ class PM99DatabaseEditor:
         """Handle player selection"""
         selection = self.tree.selection()
         if not selection:
+            self._update_player_selection_label()
             return
-        
+
+        self._update_player_selection_label()
+        if len(selection) > 1:
+            self.status_var.set(f"{len(selection)} players selected")
+
         # Get record from tag
         item = self.tree.item(selection[0])
         offset = int(item['tags'][0])
-        
+
         # Find the record
         for o, r in self.all_records:
             if o == offset:
                 self.current_record = (o, r)
                 self.display_record(r)
+                if len(selection) == 1:
+                    self.status_var.set(f"Selected player: {getattr(r, 'name', '')}")
                 break
     
     def display_record(self, record: PlayerRecord):
@@ -1819,110 +2502,254 @@ class PM99DatabaseEditor:
                 return lambda *args: lbl.config(text=str(v.get()))
             var.trace('w', make_updater(val_label, var))
     
-    def apply_changes(self):
-        """Apply changes to current record"""
-        if not self.current_record:
-            return
-        
-        offset, record = self.current_record
-        
+    def _collect_player_target_values(self):
+        """Collect target values from the player editor widgets."""
+        pos_map = {"Goalkeeper": 0, "Defender": 1, "Midfielder": 2, "Forward": 3}
+        pos_name = self.position_var.get()
+        pos_code = pos_map.get(pos_name, 0)
+        attrs = [var.get() for var in self.attr_vars]
+        return {
+            'given': self.given_name_var.get().strip(),
+            'surname': self.surname_var.get().strip(),
+            'team_id': self.team_id_var.get(),
+            'squad': self.squad_var.get(),
+            'position_name': pos_name,
+            'position_code': pos_code,
+            'nationality': self.nationality_var.get(),
+            'dob': (self.dob_day_var.get(), self.dob_month_var.get(), self.dob_year_var.get()),
+            'height': self.height_var.get(),
+            'attributes': attrs,
+        }
+
+    def _apply_player_targets_to_record(self, record: PlayerRecord, target_values: dict):
+        """Apply collected target values to a single PlayerRecord."""
+        changes = []
+
+        new_given = target_values['given']
+        old_given = getattr(record, 'given_name', '') or ''
+        if new_given != old_given:
+            record.set_given_name(new_given)
+            changes.append(f"Given Name: {old_given} → {new_given}")
+
+        new_surname = target_values['surname']
+        old_surname = getattr(record, 'surname', '') or ''
+        if new_surname != old_surname:
+            record.set_surname(new_surname)
+            changes.append(f"Surname: {old_surname} → {new_surname}")
+
+        new_team_id = target_values['team_id']
+        old_team_id = getattr(record, 'team_id', 0)
+        if new_team_id != old_team_id:
+            record.set_team_id(new_team_id)
+            changes.append(f"Team ID: {old_team_id} → {new_team_id}")
+
+        new_squad = target_values['squad']
+        old_squad = getattr(record, 'squad_number', 0)
+        if new_squad != old_squad:
+            record.set_squad_number(new_squad)
+            changes.append(f"Squad #: {old_squad} → {new_squad}")
+
+        new_pos_code = target_values['position_code']
+        old_pos_code = getattr(record, 'position_primary', getattr(record, 'position', 0))
+        if new_pos_code != old_pos_code:
+            old_pos_name = record.get_position_name() if hasattr(record, 'get_position_name') else str(old_pos_code)
+            record.set_position(new_pos_code)
+            changes.append(f"Position: {old_pos_name} → {target_values['position_name']}")
+
+        new_nat = target_values['nationality']
+        old_nat = getattr(record, 'nationality_id', getattr(record, 'nationality', 0))
+        if new_nat != old_nat:
+            record.set_nationality(new_nat)
+            changes.append(f"Nationality ID: {old_nat} → {new_nat}")
+
+        new_day, new_month, new_year = target_values['dob']
+        old_dob = getattr(record, 'dob', None)
+        if old_dob is None or (new_day, new_month, new_year) != tuple(old_dob):
+            record.set_dob(new_day, new_month, new_year)
+            old_dob_display = (
+                f"{old_dob[0]}/{old_dob[1]}/{old_dob[2]}" if old_dob else "None"
+            )
+            changes.append(f"DOB: {old_dob_display} → {new_day}/{new_month}/{new_year}")
+
+        new_height = target_values['height']
+        old_height = getattr(record, 'height', None)
+        if old_height is None or new_height != old_height:
+            record.set_height(new_height)
+            old_height_display = old_height if old_height is not None else 'None'
+            changes.append(f"Height: {old_height_display} → {new_height} cm")
+
+        existing_attrs = list(getattr(record, 'attributes', []))
+        for idx, new_val in enumerate(target_values['attributes']):
+            old_val = existing_attrs[idx] if idx < len(existing_attrs) else None
+            if old_val is None:
+                old_val = 0
+            if new_val != old_val:
+                record.set_attribute(idx, new_val)
+                label = self.attr_labels[idx] if idx < len(self.attr_labels) else f"Attribute {idx}"
+                changes.append(f"{label}: {old_val} → {new_val}")
+
+        return changes
+
+    def _apply_player_changes_batch(self, targets, show_dialog=True):
+        """Apply player editor values to all target records."""
+        if not targets:
+            messagebox.showinfo("Info", "No players selected")
+            return False
+
+        target_values = self._collect_player_target_values()
+        snapshots = {}
+        change_log = {}
+        processed = []
+
         try:
-            changes = []
-            
-            # Player name (given name and surname)
-            new_given = self.given_name_var.get().strip()
-            new_surname = self.surname_var.get().strip()
-            old_given = getattr(record, 'given_name', '') or ''
-            old_surname = getattr(record, 'surname', '') or ''
-            
-            if new_given != old_given:
-                try:
-                    record.set_given_name(new_given)
-                    changes.append(f"Given Name: {old_given} → {new_given}")
-                except ValueError as e:
-                    messagebox.showerror("Invalid Name", f"Given name error: {e}")
-                    return
-            
-            if new_surname != old_surname:
-                try:
-                    record.set_surname(new_surname)
-                    changes.append(f"Surname: {old_surname} → {new_surname}")
-                except ValueError as e:
-                    messagebox.showerror("Invalid Name", f"Surname error: {e}")
-                    return
-            
-            # Team ID
-            new_team_id = self.team_id_var.get()
-            if new_team_id != record.team_id:
-                record.set_team_id(new_team_id)
-                changes.append(f"Team ID: {record.team_id} → {new_team_id}")
-            
-            # Squad number
-            new_squad = self.squad_var.get()
-            if new_squad != record.squad_number:
-                record.set_squad_number(new_squad)
-                changes.append(f"Squad #: {record.squad_number} → {new_squad}")
-            
-            # Position
-            pos_name = self.position_var.get()
-            pos_map = {"Goalkeeper": 0, "Defender": 1, "Midfielder": 2, "Forward": 3}
-            new_pos = pos_map.get(pos_name, 0)
-            if new_pos != record.position:
-                old_pos_name = record.get_position_name()
-                record.set_position(new_pos)
-                changes.append(f"Position: {old_pos_name} → {pos_name}")
-            
-            # Metadata: Nationality, DOB, Height
-            # Nationality ID
-            new_nat = self.nationality_var.get()
-            old_nat = getattr(record, 'nationality_id', None)
-            old_nat_display = old_nat if old_nat is not None else 'None'
-            old_nat_comp = old_nat if old_nat is not None else 0
-            if new_nat != old_nat_comp:
-                record.set_nationality(new_nat)
-                changes.append(f"Nationality ID: {old_nat_display} → {new_nat}")
-            
-            # DOB
-            new_day = self.dob_day_var.get()
-            new_month = self.dob_month_var.get()
-            new_year = self.dob_year_var.get()
-            old_dob = getattr(record, 'dob', None)
-            old_dob_comp = old_dob if old_dob is not None else None
-            if old_dob_comp is None or (new_day, new_month, new_year) != old_dob_comp:
-                record.set_dob(new_day, new_month, new_year)
-                old_dob_display = f"{old_dob[0]}/{old_dob[1]}/{old_dob[2]}" if old_dob else "None"
-                changes.append(f"DOB: {old_dob_display} → {new_day}/{new_month}/{new_year}")
-            
-            # Height
-            new_height = self.height_var.get()
-            old_height = getattr(record, 'height', None)
-            if old_height is None or new_height != old_height:
-                record.set_height(new_height)
-                old_height_display = old_height if old_height is not None else 'None'
-                changes.append(f"Height: {old_height_display} → {new_height} cm")
-            
-            # Attributes
-            for i, var in enumerate(self.attr_vars):
-                new_val = var.get()
-                if new_val != record.attributes[i]:
-                    old_val = record.attributes[i]
-                    record.set_attribute(i, new_val)
-                    changes.append(f"{self.attr_labels[i]}: {old_val} → {new_val}")
-            
-            if changes:
-                self.modified_records[offset] = record
-                change_text = '\n'.join(changes[:10])  # Show first 10 changes
-                if len(changes) > 10:
-                    change_text += f"\n... and {len(changes)-10} more changes"
-                
-                self.status_var.set(f"✓ {len(changes)} change(s) applied to {record.name}")
-                messagebox.showinfo("Success", f"Changes applied to {record.name}:\n\n{change_text}\n\nSave database to persist changes (Ctrl+S)")
-            else:
-                messagebox.showinfo("Info", "No changes to apply")
-        
+            for offset, record in targets:
+                snapshots[offset] = copy.deepcopy(record)
+                changes = self._apply_player_targets_to_record(record, target_values)
+                if changes:
+                    change_log[offset] = (record, changes)
+                    processed.append((offset, record))
+                else:
+                    snapshots.pop(offset, None)
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to apply changes:\n{str(e)}")
-    
+            # Restore any modified records from their snapshots
+            for processed_offset, processed_record in processed:
+                snapshot = snapshots.get(processed_offset)
+                if snapshot is not None:
+                    self._restore_object_from_snapshot(processed_record, snapshot)
+            current_snapshot = snapshots.get(offset)
+            if current_snapshot is not None:
+                self._restore_object_from_snapshot(record, current_snapshot)
+            messagebox.showerror("Error", f"Failed to apply changes:\n{e}")
+            return False
+
+        if not change_log:
+            if show_dialog:
+                messagebox.showinfo("Info", "No changes to apply")
+            return False
+
+        self._push_undo_entry('player', snapshots)
+
+        for offset, (record, _) in change_log.items():
+            self.modified_records[offset] = record
+
+        # Refresh UI
+        self.populate_tree()
+        first_offset, first_record = targets[0]
+        self.current_record = (first_offset, first_record)
+        self.display_record(first_record)
+
+        total_records = len(change_log)
+        self.status_var.set(f"✓ Applied changes to {total_records} player(s)")
+
+        if show_dialog:
+            if total_records == 1:
+                offset, (record, changes) = next(iter(change_log.items()))
+                change_text = '\n'.join(changes[:10])
+                if len(changes) > 10:
+                    change_text += f"\n... and {len(changes) - 10} more changes"
+                name = getattr(record, 'name', f"Offset {offset}")
+                messagebox.showinfo(
+                    "Success",
+                    f"Changes applied to {name}:\n\n{change_text}\n\nSave database to persist changes (Ctrl+S)",
+                )
+            else:
+                summary_lines = []
+                for offset, (record, changes) in list(change_log.items())[:5]:
+                    name = getattr(record, 'name', f"Offset {offset}")
+                    summary_lines.append(f"{name}: {len(changes)} change(s)")
+                remaining = total_records - len(summary_lines)
+                if remaining > 0:
+                    summary_lines.append(f"… plus {remaining} more player(s)")
+                messagebox.showinfo(
+                    "Success",
+                    "Changes applied to multiple players:\n\n" + '\n'.join(summary_lines),
+                )
+
+        return True
+
+    def apply_changes(self):
+        """Apply editor changes to the currently selected player."""
+        if not self.current_record:
+            messagebox.showinfo("Info", "No player selected")
+            return
+        self._apply_player_changes_batch([self.current_record])
+
+    def apply_changes_to_selection(self):
+        """Apply editor changes to all selected players in the tree."""
+        selection = self.tree.selection()
+        if not selection:
+            messagebox.showinfo("Info", "Select one or more players in the table")
+            return
+
+        targets = []
+        seen_offsets = set()
+        for item in selection:
+            try:
+                offset = int(self.tree.item(item)['tags'][0])
+            except Exception:
+                continue
+            if offset in seen_offsets:
+                continue
+            record = self._find_record_in_collection(self.all_records, offset)
+            if record is not None:
+                targets.append((offset, record))
+                seen_offsets.add(offset)
+
+        if not targets:
+            messagebox.showerror("Error", "Unable to resolve selected players")
+            return
+
+        self._apply_player_changes_batch(targets)
+
+    def undo_last_change(self):
+        """Restore the most recent change batch."""
+        if not self.undo_stack:
+            messagebox.showinfo("Undo", "No changes to undo")
+            return
+
+        category, snapshots = self.undo_stack.pop()
+        restored = 0
+
+        if category == 'player':
+            collection = self.all_records
+            modified_dict = self.modified_records
+        elif category == 'coach':
+            collection = self.coach_records
+            modified_dict = self.modified_coach_records
+        elif category == 'team':
+            collection = self.team_records
+            modified_dict = self.modified_team_records
+        else:
+            collection = []
+            modified_dict = {}
+
+        for offset, snapshot in snapshots.items():
+            record = self._find_record_in_collection(collection, offset)
+            if record is None:
+                continue
+            self._restore_object_from_snapshot(record, snapshot)
+            if modified_dict is not None:
+                modified_dict[offset] = record
+            restored += 1
+
+        if category == 'player':
+            self.populate_tree()
+            if self.current_record and self.current_record[0] in snapshots:
+                self.display_record(self.current_record[1])
+        elif category == 'coach':
+            self.populate_coach_tree()
+        elif category == 'team':
+            self.populate_team_tree()
+            try:
+                self.build_team_lookup()
+                self.populate_tree()
+            except Exception:
+                pass
+
+        self.status_var.set(f"↩ Undid changes for {restored} {category}(s)")
+        messagebox.showinfo("Undo", f"Reverted {restored} {category}(s)")
+        self._update_undo_button_state()
+
     def reset_current(self):
         """Reset current player to original values"""
         if self.current_record:
