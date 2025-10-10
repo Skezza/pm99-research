@@ -21,7 +21,7 @@ python -m pm99_editor rename DBDAT/JUG98030.FDI --id 123 --name "New Name"
 The GUI uses these same parsers; if the CLI works, the GUI will too.
 
 ## Window layout
-The application hosts a left-hand navigation tree and a right-hand editor that changes with the active tab.
+The application hosts a left-hand navigation tree and a right-hand editor that changes with the active tab. Four notebook tabs are available: Players, Coaches, Teams, and ⚽ Leagues.
 
 ### Players tab
 * **Search box** — typing filters the tree in real time using `filter_records()` logic; the search matches names and IDs.
@@ -48,6 +48,11 @@ The application hosts a left-hand navigation tree and a right-hand editor that c
 * Editable fields include team name, ID, stadium, capacity, car park size, and pitch quality (combo box of known constants).
 * `Show squad lineup` toggles a roster sub-panel listing correlated player names when available.
 
+### ⚽ Leagues tab
+* Presents a hierarchical Country → League → Team tree built from `pm99_editor/league_definitions.py` combined with parsed team data.
+* Country and free-text filters help narrow large datasets; double-clicking a team row jumps to the Team overlay.
+* Stadium name, capacity, and pitch details display alongside the tree so you can audit metadata without leaving the tab.
+
 ### Tools → Open PKF Viewer…
 The Tools menu launches a file picker for PKF archives. After choosing a file the modal viewer uses [`PKFFile`](../pm99_editor/pkf.py) to list entries and previews decoded bytes with the same `_format_hex_preview()` helper. Errors encountered while opening the archive are surfaced in the status bar.
 
@@ -68,5 +73,7 @@ The Tools menu launches a file picker for PKF archives. After choosing a file th
 | Players missing from list | Records without canonical names may be skipped by the deduplication heuristic. Confirm the entry with the CLI `list` command and, if necessary, locate it directly via the directory offsets shown in the console output. |
 | Save fails | The status bar will show the exception message. Check file permissions and ensure the backup file can be created in the same directory. |
 | GUI freezes during load | Large files are processed in background threads, but slow disks can still delay UI updates. Wait for the status bar confirmation before editing. |
+
+Automated tests under `pytest` skip integration cases if the proprietary `DBDAT` assets are missing, so a clean checkout without the data will still report success (with skips). To exercise the full suite, supply the game databases before running the command.
 
 For deeper technical detail see [`docs/ARCHITECTURE.md`](./ARCHITECTURE.md) and [`docs/DATA_FORMATS.md`](./DATA_FORMATS.md).

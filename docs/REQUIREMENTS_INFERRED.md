@@ -18,5 +18,5 @@ Based on the current code, tests, and documentation, the Premier Manager 99 edit
 - Document new offsets/fields in canonical docs and keep legacy artifacts for provenance ([README.md](../README.md)).
 
 ## Outstanding needs
-- Canonical documentation for architecture, data formats, and editor usage is referenced but missing, implying a requirement to author or restore those files ([docs/GETTING_STARTED.md](GETTING_STARTED.md)).
-- Test execution depends on bundled sample data (`DBDAT/*.FDI`), indicating a requirement to distribute fixtures or provide setup guidance (see [docs/Bugs/MISSING_DBDAT_FIXTURES.md](Bugs/MISSING_DBDAT_FIXTURES.md)).
+- Keep canonical documentation (architecture, data formats, editor usage) synchronised with implementation changes so references in `README.md` remain trustworthy.
+- Test execution depends on proprietary sample data (`DBDAT/*.FDI`), indicating a requirement to distribute fixtures, provide a fetch script, or expose a flag that forces failures when data is missing (see [docs/Bugs/MISSING_DBDAT_FIXTURES.md](Bugs/MISSING_DBDAT_FIXTURES.md)).
