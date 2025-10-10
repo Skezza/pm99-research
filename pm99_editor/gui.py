@@ -8,6 +8,9 @@ try:
     from .file_writer import save_modified_records
     from .xor import xor_decode
     from .loaders import load_teams, load_coaches
+<<<<<<< HEAD
+    from .pkf import PKFDecoderError, PKFFile, PKFStringMatch
+=======
     from .pkf import PKFDecoderError, PKFFile
     from .pkf_searcher import PKFSearcher, SearchResult
     from .exporters import (
@@ -15,6 +18,7 @@ try:
         generate_coach_table_text,
         generate_team_table_text,
     )
+>>>>>>> main
 except Exception:
     # When executed directly: python pm99_editor/gui.py
     sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -23,6 +27,27 @@ except Exception:
     from pm99_editor.file_writer import save_modified_records
     from pm99_editor.xor import xor_decode
     from pm99_editor.loaders import load_teams, load_coaches
+<<<<<<< HEAD
+    from pm99_editor.pkf import PKFDecoderError, PKFFile, PKFStringMatch
+
+# Ensure common helpers are available when run as a script
+from pathlib import Path
+from typing import List, Union
+
+"""
+Modern GUI application for Premier Manager 99 Database Editor
+Uses the modular package structure
+"""
+
+import tkinter as tk
+from tkinter import ttk, messagebox, filedialog
+from pm99_editor.models import PlayerRecord, TeamRecord, CoachRecord
+from pm99_editor.io import FDIFile
+from pm99_editor.file_writer import save_modified_records
+from pm99_editor.xor import xor_decode
+from pm99_editor.loaders import load_teams, load_coaches
+from pm99_editor.pkf import PKFDecoderError, PKFFile, PKFStringMatch
+=======
     from pm99_editor.pkf import PKFDecoderError, PKFFile
     from pm99_editor.exporters import (
         generate_player_table_text,
@@ -32,6 +57,7 @@ except Exception:
 
 # Ensure common helpers are available when run as a script
 from pathlib import Path
+>>>>>>> main
 from datetime import datetime
 import re
 from collections import defaultdict
@@ -73,6 +99,26 @@ def _format_hex_preview(data: bytes, width: int = 16, start_offset: int = 0, max
         lines.append(f"… ({len(data) - end_offset} more bytes)")
 
     return "\n".join(lines), has_more
+
+
+def _format_hex_preview(data: bytes, width: int = 16, limit: int = 256) -> str:
+    """Return a short hex dump for ``data`` suitable for text display."""
+
+    if not data:
+        return "(empty payload)"
+
+    snippet = data[:limit]
+    lines = []
+    for offset in range(0, len(snippet), width):
+        chunk = snippet[offset : offset + width]
+        hex_part = " ".join(f"{byte:02X}" for byte in chunk)
+        ascii_part = "".join(chr(byte) if 32 <= byte < 127 else "." for byte in chunk)
+        lines.append(f"{offset:04X}  {hex_part:<{width * 3 - 1}}  {ascii_part}")
+
+    if len(data) > limit:
+        lines.append(f"… ({len(data) - limit} more bytes)")
+
+    return "\n".join(lines)
 
 class PM99DatabaseEditor:
     """Modern GUI application for editing Premier Manager 99 database files"""
@@ -146,8 +192,11 @@ class PM99DatabaseEditor:
         tools_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Tools", menu=tools_menu)
         tools_menu.add_command(label="Open PKF Viewer...", command=self.open_pkf_viewer)
+<<<<<<< HEAD
+=======
         tools_menu.add_command(label="PKF String Searcher...", command=self.open_pkf_searcher)
         tools_menu.add_command(label="Load PKF and Count Records...", command=self.load_pkf_and_count)
+>>>>>>> main
 
         self.root.bind('<Control-s>', lambda e: self.save_database())
         
@@ -624,8 +673,13 @@ class PM99DatabaseEditor:
 
         viewer = tk.Toplevel(self.root)
         viewer.title(f"PKF Viewer — {file_path.name}")
+<<<<<<< HEAD
+        viewer.geometry("820x540")
+        viewer.minsize(640, 420)
+=======
         viewer.geometry("1000x700")
         viewer.minsize(800, 500)
+>>>>>>> main
 
         header = ttk.Frame(viewer, padding=(10, 10, 10, 0))
         header.pack(fill=tk.X)
@@ -635,6 +689,10 @@ class PM99DatabaseEditor:
             text=f"{len(pkf_file)} entries · format: {pkf_file.format_hint} · {len(raw_bytes)} bytes",
         ).pack(anchor=tk.W)
 
+<<<<<<< HEAD
+        paned = ttk.PanedWindow(viewer, orient=tk.HORIZONTAL)
+        paned.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+=======
         # Controls frame
         controls_frame = ttk.Frame(viewer, padding=(10, 5, 10, 10))
         controls_frame.pack(fill=tk.X)
@@ -686,6 +744,7 @@ class PM99DatabaseEditor:
 
         paned = ttk.PanedWindow(viewer, orient=tk.HORIZONTAL)
         paned.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
+>>>>>>> main
 
         # Left: entry listing
         list_frame = ttk.Frame(paned)
@@ -736,6 +795,131 @@ class PM99DatabaseEditor:
         text_container.rowconfigure(0, weight=1)
         text_container.columnconfigure(0, weight=1)
 
+<<<<<<< HEAD
+        search_matches: List[PKFStringMatch] = []
+
+        search_frame = ttk.LabelFrame(preview_frame, text="String search", padding=(6, 6))
+        search_frame.pack(fill=tk.BOTH, expand=False, pady=(10, 0))
+
+        instructions = ttk.Label(
+            search_frame,
+            text="Enter one or more strings separated by commas or new lines.",
+        )
+        instructions.pack(anchor=tk.W)
+
+        search_input = tk.Text(search_frame, height=2, width=20)
+        search_input.pack(fill=tk.X, pady=(4, 6))
+
+        options_frame = ttk.Frame(search_frame)
+        options_frame.pack(fill=tk.X, pady=(0, 6))
+
+        case_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(options_frame, text="Case sensitive", variable=case_var).pack(
+            side=tk.LEFT
+        )
+
+        def parse_patterns(raw: str) -> Union[str, List[str]]:
+            tokens = [part.strip() for part in re.split(r"[\n,]+", raw) if part.strip()]
+            if not tokens:
+                raise ValueError("Enter at least one search string")
+            return tokens[0] if len(tokens) == 1 else tokens
+
+        results_columns = ("entry", "match_offset", "absolute_offset", "needle")
+        results_tree = ttk.Treeview(
+            search_frame,
+            columns=results_columns,
+            show="headings",
+            height=6,
+        )
+        results_tree.heading("entry", text="Entry")
+        results_tree.heading("match_offset", text="Entry offset")
+        results_tree.heading("absolute_offset", text="File offset")
+        results_tree.heading("needle", text="Needle")
+        results_tree.column("entry", width=70, anchor=tk.CENTER)
+        results_tree.column("match_offset", width=110, anchor=tk.W)
+        results_tree.column("absolute_offset", width=120, anchor=tk.W)
+        results_tree.column("needle", width=160, anchor=tk.W)
+
+        results_scroll = ttk.Scrollbar(
+            search_frame, orient=tk.VERTICAL, command=results_tree.yview
+        )
+        results_tree.configure(yscrollcommand=results_scroll.set)
+
+        results_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        results_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+
+        def run_search() -> None:
+            raw = search_input.get("1.0", tk.END).strip()
+            try:
+                patterns = parse_patterns(raw)
+            except ValueError as exc:
+                messagebox.showinfo("PKF String Search", str(exc))
+                return
+
+            try:
+                matches = pkf_file.search_strings(
+                    patterns,
+                    case_sensitive=case_var.get(),
+                )
+            except (TypeError, ValueError) as exc:
+                messagebox.showerror("PKF String Search", str(exc))
+                return
+
+            for child in results_tree.get_children():
+                results_tree.delete(child)
+
+            search_matches.clear()
+            search_matches.extend(matches)
+
+            if not matches:
+                self.status_var.set("No string matches found")
+                return
+
+            seen_entries = set()
+            for idx, match in enumerate(matches):
+                seen_entries.add(match.entry_index)
+                results_tree.insert(
+                    "",
+                    tk.END,
+                    iid=f"match-{idx}",
+                    values=(
+                        match.entry_index,
+                        f"0x{match.match_offset:08X}",
+                        f"0x{match.absolute_offset:08X}",
+                        match.needle,
+                    ),
+                )
+
+            self.status_var.set(
+                f"Found {len(matches)} match(es) across {len(seen_entries)} entr"
+                "ies"
+            )
+
+        ttk.Button(options_frame, text="Search", command=run_search).pack(side=tk.RIGHT)
+
+        def on_result_select(event) -> None:  # pragma: no cover - UI interaction
+            selection = results_tree.selection()
+            if not selection:
+                return
+            match_id = selection[0]
+            try:
+                index = int(match_id.split("-", 1)[1])
+            except (IndexError, ValueError):
+                return
+            if not (0 <= index < len(search_matches)):
+                return
+            match = search_matches[index]
+            entry_id = str(match.entry_index)
+            if entry_id in entry_map:
+                tree.selection_set(entry_id)
+                tree.focus(entry_id)
+                tree.see(entry_id)
+                update_preview(entry_id)
+
+        results_tree.bind("<<TreeviewSelect>>", on_result_select)
+
+        def update_preview(selected_entry_id: str) -> None:
+=======
         def get_transformed_data(raw_data: bytes) -> bytes:
             """Apply transformations to the data."""
             data = raw_data
@@ -772,10 +956,28 @@ class PM99DatabaseEditor:
             if not selected_entry_id:
                 return
 
+>>>>>>> main
             entry = entry_map.get(selected_entry_id)
             if entry is None:
                 return
 
+<<<<<<< HEAD
+            label = f"Entry {entry.index}"
+            if entry.name:
+                label += f" ({entry.name})"
+            info_label.configure(
+                text=f"{label} · offset 0x{entry.offset:08X} · {entry.length} bytes"
+            )
+
+            lines = [
+                _format_hex_preview(entry.raw_bytes),
+            ]
+
+            try:
+                decoded = pkf_file.decode_entry(entry.index)
+            except PKFDecoderError as exc:
+                lines.extend(["", f"Decoder error: {exc}"])
+=======
             # Apply transformations
             transformed_data = get_transformed_data(entry.raw_bytes)
 
@@ -827,6 +1029,7 @@ class PM99DatabaseEditor:
             except PKFDecoderError as exc:
                 if encoding == "raw":  # Only show decoder error if not showing encoding
                     lines.extend(["", f"Decoder error: {exc}"])
+>>>>>>> main
             else:
                 if not isinstance(decoded, (bytes, bytearray)):
                     lines.extend(["", "Decoded payload:", str(decoded)])
@@ -840,7 +1043,10 @@ class PM99DatabaseEditor:
             selection = tree.selection()
             if not selection:
                 return
+<<<<<<< HEAD
+=======
             current_page_var.set(1)  # Reset to first page on selection change
+>>>>>>> main
             update_preview(selection[0])
 
         tree.bind("<<TreeviewSelect>>", on_tree_select)
@@ -853,6 +1059,8 @@ class PM99DatabaseEditor:
             tree.focus(first)
             update_preview(first)
 
+<<<<<<< HEAD
+=======
     def open_pkf_searcher(self) -> None:
         """Open PKF String Searcher tool window."""
         searcher_window = tk.Toplevel(self.root)
@@ -1242,6 +1450,7 @@ class PM99DatabaseEditor:
 
         threading.Thread(target=worker, daemon=True).start()
 
+>>>>>>> main
     def load_database(self):
         """Load the database file asynchronously to avoid blocking the UI."""
         # Update status immediately and create a progress dialog on main thread

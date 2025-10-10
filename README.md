@@ -7,7 +7,8 @@ Quick start
 Requirements: Python 3.8+; run from repo root. Database files are under [DBDAT/](DBDAT/).
 
 GUI tips
-- Launch the desktop editor via `python -m pm99_editor.gui`; the **Tools → Open PKF Viewer…** menu opens the new container inspector for `.PKF` archives.
+- Launch the desktop editor via `python -m pm99_editor.gui`; the **Tools → Open PKF Viewer…** menu opens the new container inspector for `.PKF` archives with a built-in string searcher that accepts single needles or lists.
+- For offline investigation, `ArchiveStringSearcher` in [pm99_editor/pkf.py](pm99_editor/pkf.py) accepts a folder of `.PKF`/`.FDI` assets and a list of needles to report cross-file matches.
 
 CLI examples
 The command line uses [pm99_editor/cli.py](pm99_editor/cli.py) via module entry. Core commands are implemented in [cli.cmd_list()](pm99_editor/cli.py:10), [cli.cmd_search()](pm99_editor/cli.py:22), [cli.cmd_rename()](pm99_editor/cli.py:38) and [cli.cmd_info()](pm99_editor/cli.py:74); the entry point is [cli.main()](pm99_editor/cli.py:89).
