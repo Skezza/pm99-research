@@ -77,6 +77,225 @@ def _format_hex_preview(data: bytes, width: int = 16, limit: int = 256) -> str:
 
     return "\n".join(lines)
 
+
+class TeamLineupView(tk.Frame):
+    """Render a PM99-inspired squad lineup with grouped sections and stat colours."""
+
+    COLUMNS = [
+        ("num", "N.", 4, "center"),
+        ("name", "PLAYER", 26, "w"),
+        ("en", "EN", 3, "center"),
+        ("sp", "SP", 3, "center"),
+        ("st", "ST", 3, "center"),
+        ("ag", "AG", 3, "center"),
+        ("qu", "QU", 3, "center"),
+        ("fi", "FI", 3, "center"),
+        ("mo", "MO", 3, "center"),
+        ("av", "AV", 3, "center"),
+        ("role", "ROL.", 5, "center"),
+        ("pos", "POS", 4, "center"),
+    ]
+
+    SECTION_CONFIG = {
+        "starting": {"label": "Starting XI", "row_bg": "#e6f1ff"},
+        "subs": {"label": "Substitutes", "row_bg": "#fff4d9"},
+        "reserves": {"label": "Reserves", "row_bg": "#f0f0f0"},
+        "unassigned": {"label": "Unassigned", "row_bg": "#f5f5f5"},
+    }
+
+    HEADER_BG = "#20324d"
+    HEADER_FG = "#f5f7fb"
+    SECTION_HEADER_BG = "#314865"
+    SECTION_HEADER_FG = "#f9fafc"
+    PLACEHOLDER_BG = "#f7f8fb"
+    PLACEHOLDER_FG = "#6b7280"
+    DEFAULT_TEXT_FG = "#1f2933"
+
+    STAT_KEYS = {"en", "sp", "st", "ag", "qu", "fi", "mo", "av"}
+
+    def __init__(self, master):
+        super().__init__(master, bg=self.PLACEHOLDER_BG)
+
+        header = tk.Frame(self, bg=self.HEADER_BG)
+        header.pack(fill=tk.X, side=tk.TOP)
+
+        for idx, (_key, label, width, anchor) in enumerate(self.COLUMNS):
+            lbl = tk.Label(
+                header,
+                text=label,
+                font=("TkDefaultFont", 10, "bold"),
+                width=width,
+                anchor=anchor,
+                bg=self.HEADER_BG,
+                fg=self.HEADER_FG,
+                padx=4,
+                pady=4,
+            )
+            lbl.grid(row=0, column=idx, padx=(0 if idx == 0 else 1, 0))
+
+        header.grid_columnconfigure(1, weight=1)
+
+        body_container = tk.Frame(self, bg=self.PLACEHOLDER_BG)
+        body_container.pack(fill=tk.BOTH, expand=True)
+
+        self.canvas = tk.Canvas(
+            body_container,
+            background=self.PLACEHOLDER_BG,
+            highlightthickness=0,
+            borderwidth=0,
+        )
+        self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        self.scrollbar = ttk.Scrollbar(body_container, orient=tk.VERTICAL, command=self.canvas.yview)
+        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+
+        self.body = tk.Frame(self.canvas, bg=self.PLACEHOLDER_BG)
+        self.body_window = self.canvas.create_window((0, 0), window=self.body, anchor="nw")
+
+        self.body.bind("<Configure>", self._on_body_configure)
+        self.canvas.bind("<Configure>", self._on_canvas_configure)
+
+        self.show_placeholder("Select a team to view its squad.")
+
+    def _on_body_configure(self, _event):
+        try:
+            self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        except Exception:
+            pass
+
+    def _on_canvas_configure(self, event):
+        try:
+            self.canvas.itemconfigure(self.body_window, width=event.width)
+        except Exception:
+            pass
+
+    def clear(self):
+        self.show_placeholder("Select a team to view its squad.")
+
+    def show_placeholder(self, message: str):
+        for widget in self.body.winfo_children():
+            widget.destroy()
+
+        placeholder = tk.Label(
+            self.body,
+            text=message,
+            font=("TkDefaultFont", 10, "italic"),
+            bg=self.PLACEHOLDER_BG,
+            fg=self.PLACEHOLDER_FG,
+            pady=20,
+        )
+        placeholder.grid(row=0, column=0, columnspan=len(self.COLUMNS), sticky="nsew")
+
+    def update_lineup(self, lineup_rows):
+        for widget in self.body.winfo_children():
+            widget.destroy()
+
+        if not lineup_rows:
+            self.show_placeholder("No registered players for this team.")
+            return
+
+        current_row = 0
+        for entry in lineup_rows:
+            entry_type = entry.get("type")
+            if entry_type == "section":
+                self._render_section_header(current_row, entry)
+                current_row += 1
+            elif entry_type == "empty":
+                self._render_empty_row(current_row, entry)
+                current_row += 1
+            elif entry_type == "player":
+                self._render_player_row(current_row, entry)
+                current_row += 1
+
+        for idx, _ in enumerate(self.COLUMNS):
+            self.body.grid_columnconfigure(idx, weight=1 if idx == 1 else 0)
+
+    def _render_section_header(self, row_index: int, entry: dict):
+        label_text = entry.get("label", "").upper()
+        section_header = tk.Label(
+            self.body,
+            text=label_text,
+            font=("TkDefaultFont", 9, "bold"),
+            bg=self.SECTION_HEADER_BG,
+            fg=self.SECTION_HEADER_FG,
+            padx=8,
+            pady=4,
+        )
+        section_header.grid(
+            row=row_index,
+            column=0,
+            columnspan=len(self.COLUMNS),
+            sticky="ew",
+            pady=(10 if row_index else 4, 2),
+        )
+
+    def _render_empty_row(self, row_index: int, entry: dict):
+        section = entry.get("section", "unassigned")
+        config = self.SECTION_CONFIG.get(section, {})
+        bg = config.get("row_bg", self.PLACEHOLDER_BG)
+        label = tk.Label(
+            self.body,
+            text=entry.get("text", "No players assigned"),
+            font=("TkDefaultFont", 9, "italic"),
+            bg=bg,
+            fg=self.PLACEHOLDER_FG,
+            padx=8,
+            pady=6,
+            anchor="w",
+        )
+        label.grid(row=row_index, column=0, columnspan=len(self.COLUMNS), sticky="ew", pady=(0, 2))
+
+    def _render_player_row(self, row_index: int, entry: dict):
+        section = entry.get("section", "unassigned")
+        config = self.SECTION_CONFIG.get(section, {})
+        base_bg = config.get("row_bg", self.PLACEHOLDER_BG)
+
+        for col_idx, (key, _label, width, anchor) in enumerate(self.COLUMNS):
+            value = entry.get(key, "")
+            cell_bg, cell_fg = self._cell_colors(key, value, base_bg)
+            font = ("TkDefaultFont", 10, "bold") if key == "name" else ("TkDefaultFont", 10)
+            if key == "role":
+                font = ("TkDefaultFont", 9, "bold")
+            label = tk.Label(
+                self.body,
+                text=value,
+                width=width,
+                anchor=anchor,
+                bg=cell_bg,
+                fg=cell_fg,
+                padx=4,
+                pady=2,
+                font=font,
+            )
+            label.grid(
+                row=row_index,
+                column=col_idx,
+                sticky="nsew",
+                padx=(0 if col_idx == 0 else 1, 0),
+                pady=(0, 1),
+            )
+
+    def _cell_colors(self, key: str, value, base_bg: str):
+        if key not in self.STAT_KEYS:
+            return base_bg, self.DEFAULT_TEXT_FG
+
+        try:
+            numeric = int(value)
+        except (TypeError, ValueError):
+            return base_bg, self.DEFAULT_TEXT_FG
+
+        if numeric >= 90:
+            return "#d64848", "#ffffff"
+        if numeric >= 80:
+            return "#f2b24a", "#1a1a1a"
+        if numeric >= 70:
+            return "#5ab179", "#ffffff"
+        if numeric >= 60:
+            return "#4a90e2", "#ffffff"
+        return "#9aa5b1", "#ffffff"
+
+
 class PM99DatabaseEditor:
     """Modern GUI application for editing Premier Manager 99 database files"""
     def __init__(self, root):
@@ -575,44 +794,8 @@ class PM99DatabaseEditor:
         self.team_panel_roster_toggle_btn.pack(side=tk.LEFT, padx=5, pady=5)
 
         self.team_panel_roster_frame = ttk.LabelFrame(self.team_overlay, text="Squad Lineup", padding="5")
-        # roster is not packed initially (collapsed)
-
-        # Enhanced roster tree with all attributes (PM99 style)
-        roster_cols = ('num', 'name', 'en', 'sp', 'st', 'ag', 'qu', 'fi', 'mo', 'av', 'role', 'pos')
-        self.team_roster_tree = ttk.Treeview(self.team_panel_roster_frame, columns=roster_cols, show='headings', selectmode='browse', height=20)
-        
-        # Configure columns with PM99-style headers
-        self.team_roster_tree.heading('num', text='N.')
-        self.team_roster_tree.heading('name', text='PLAYER')
-        self.team_roster_tree.heading('en', text='EN')  # Energy
-        self.team_roster_tree.heading('sp', text='SP')  # Speed
-        self.team_roster_tree.heading('st', text='ST')  # Stamina
-        self.team_roster_tree.heading('ag', text='AG')  # Agility
-        self.team_roster_tree.heading('qu', text='QU')  # Quality
-        self.team_roster_tree.heading('fi', text='FI')  # Fitness
-        self.team_roster_tree.heading('mo', text='MO')  # Morale
-        self.team_roster_tree.heading('av', text='AV')  # Average
-        self.team_roster_tree.heading('role', text='ROL.')
-        self.team_roster_tree.heading('pos', text='POS')
-        
-        # Set column widths
-        self.team_roster_tree.column('num', width=35, anchor=tk.CENTER)
-        self.team_roster_tree.column('name', width=180, anchor=tk.W)
-        self.team_roster_tree.column('en', width=35, anchor=tk.CENTER)
-        self.team_roster_tree.column('sp', width=35, anchor=tk.CENTER)
-        self.team_roster_tree.column('st', width=35, anchor=tk.CENTER)
-        self.team_roster_tree.column('ag', width=35, anchor=tk.CENTER)
-        self.team_roster_tree.column('qu', width=35, anchor=tk.CENTER)
-        self.team_roster_tree.column('fi', width=35, anchor=tk.CENTER)
-        self.team_roster_tree.column('mo', width=35, anchor=tk.CENTER)
-        self.team_roster_tree.column('av', width=35, anchor=tk.CENTER)
-        self.team_roster_tree.column('role', width=60, anchor=tk.CENTER)
-        self.team_roster_tree.column('pos', width=50, anchor=tk.CENTER)
-        
-        roster_scroll = ttk.Scrollbar(self.team_panel_roster_frame, orient=tk.VERTICAL, command=self.team_roster_tree.yview)
-        self.team_roster_tree.configure(yscrollcommand=roster_scroll.set)
-        self.team_roster_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        roster_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        self.team_lineup_view = TeamLineupView(self.team_panel_roster_frame)
+        self.team_lineup_view.pack(fill=tk.BOTH, expand=True)
 
         # Team action buttons (overlay)
         team_btn_frame = ttk.Frame(self.team_overlay, padding="10")
@@ -1764,110 +1947,121 @@ class PM99DatabaseEditor:
         except Exception:
             pass
 
-    def _populate_roster_tree_with_team(self, team):
-        """Populate roster tree for given TeamRecord with PM99-style lineup (Starting XI, Subs, Reserves)."""
+    def _populate_team_lineup(self, team):
+        """Populate the custom squad view for the selected team."""
+
         try:
-            # Clear existing items
-            for it in self.team_roster_tree.get_children():
-                self.team_roster_tree.delete(it)
+            rows = self._build_team_lineup_rows(team)
         except Exception:
-            pass
-        
-        try:
-            tid = getattr(team, 'team_id', None)
-            # Search all_records list for players with matching team_id
-            players = []
-            for o, r in getattr(self, 'all_records', []):
-                try:
-                    if getattr(r, 'team_id', None) == tid:
-                        players.append((o, r))
-                except Exception:
-                    continue
-            
-            # Sort by squad number
-            players.sort(key=lambda x: getattr(x[1], 'squad_number', 99))
-            
-            # Insert section headers and players
-            section_tags = {
-                'starting': ('STARTING XI', '#e8f4f8', 'bold'),
-                'subs': ('SUBSTITUTES', '#fff4e6', 'bold'),
-                'reserves': ('RESERVES', '#f0f0f0', 'bold')
-            }
-            
-            for off, rec in players:
-                squad_num = getattr(rec, 'squad_number', 0)
-                
-                # Determine section
-                if squad_num >= 1 and squad_num <= 11:
-                    section = 'starting'
-                elif squad_num >= 12 and squad_num <= 16:
-                    section = 'subs'
-                elif squad_num >= 17 and squad_num <= 20:
-                    section = 'reserves'
-                else:
-                    continue  # Skip players outside squad range
-                
-                # Get player name
-                display = getattr(rec, 'name', None)
-                if not display:
-                    given = getattr(rec, 'given_name', '') or ''
-                    surname = getattr(rec, 'surname', '') or ''
-                    display = f"{given} {surname}".strip()
-                
-                # Get position
-                pos_abbr = self._get_position_abbr(rec.get_position_name() if hasattr(rec, 'get_position_name') else 'Unknown')
-                
-                # Get role based on position and squad number
-                role = self._get_player_role(rec, squad_num)
-                
-                # Get attributes (12 attributes total)
-                attrs = getattr(rec, 'attributes', [50] * 12)
-                if len(attrs) < 12:
-                    attrs = list(attrs) + [50] * (12 - len(attrs))
-                
-                # Calculate average (first 10 attributes for average)
-                avg = sum(attrs[:10]) // 10 if attrs else 50
-                
-                # Map attributes to display columns
-                # Based on PM99: EN SP ST AG QU FI MO AV
-                # attrs[0-11] map to various skills
-                en = attrs[0] if len(attrs) > 0 else 50  # Energy/Pace
-                sp = attrs[1] if len(attrs) > 1 else 50  # Speed
-                st = attrs[2] if len(attrs) > 2 else 50  # Stamina
-                ag = attrs[3] if len(attrs) > 3 else 50  # Agility/Aggression
-                qu = attrs[4] if len(attrs) > 4 else 50  # Quality
-                fi = attrs[5] if len(attrs) > 5 else 50  # Fitness
-                mo = attrs[6] if len(attrs) > 6 else 50  # Morale
-                
-                try:
-                    item_id = self.team_roster_tree.insert('', tk.END,
-                        values=(squad_num, display, en, sp, st, ag, qu, fi, mo, avg, role, pos_abbr),
-                        tags=(section, str(off)))
-                    
-                    # Apply section-specific styling
-                    if section == 'starting':
-                        self.team_roster_tree.item(item_id, tags=(section, str(off)))
-                    elif section == 'subs':
-                        self.team_roster_tree.item(item_id, tags=(section, str(off)))
-                    elif section == 'reserves':
-                        self.team_roster_tree.item(item_id, tags=(section, str(off)))
-                        
-                except Exception as e:
-                    logger.debug(f"Failed to insert player {display}: {e}")
-                    continue
-            
-            # Configure tag colors for different sections
+            rows = []
+
+        if not rows:
+            self.team_lineup_view.show_placeholder("No registered players for this team.")
+        else:
+            self.team_lineup_view.update_lineup(rows)
+
+    def _build_team_lineup_rows(self, team):
+        tid = getattr(team, 'team_id', None)
+        players = []
+        for _offset, record in getattr(self, 'all_records', []):
             try:
-                self.team_roster_tree.tag_configure('starting', background='#e8f4f8')
-                self.team_roster_tree.tag_configure('subs', background='#fff4e6')
-                self.team_roster_tree.tag_configure('reserves', background='#f0f0f0')
+                if getattr(record, 'team_id', None) == tid:
+                    players.append(record)
             except Exception:
-                pass
-                
-        except Exception as e:
-            logger.debug(f"Failed to populate roster: {e}")
-            pass
-    
+                continue
+
+        players.sort(key=lambda rec: (
+            getattr(rec, 'squad_number', 0) or 0,
+            getattr(rec, 'surname', '') or getattr(rec, 'name', '') or '',
+        ))
+
+        sections = [
+            ('starting', 1, 11),
+            ('subs', 12, 16),
+            ('reserves', 17, 20),
+        ]
+
+        section_players = {key: [] for key, _start, _end in sections}
+        extras = []
+
+        for player in players:
+            squad_number = getattr(player, 'squad_number', 0) or 0
+            assigned = False
+            for section_key, start, end in sections:
+                if start <= squad_number <= end:
+                    section_players[section_key].append(player)
+                    assigned = True
+                    break
+            if not assigned:
+                extras.append(player)
+
+        rows = []
+        for section_key, _start, _end in sections:
+            section_label = TeamLineupView.SECTION_CONFIG.get(section_key, {}).get('label', section_key.title())
+            rows.append({'type': 'section', 'section': section_key, 'label': section_label})
+            if section_players[section_key]:
+                for player in section_players[section_key]:
+                    rows.append(self._player_row_from_record(player, section_key))
+            else:
+                rows.append({
+                    'type': 'empty',
+                    'section': section_key,
+                    'text': 'No players assigned to this part of the squad.',
+                })
+
+        if extras:
+            rows.append({
+                'type': 'section',
+                'section': 'unassigned',
+                'label': TeamLineupView.SECTION_CONFIG.get('unassigned', {}).get('label', 'Unassigned'),
+            })
+            for player in extras:
+                rows.append(self._player_row_from_record(player, 'unassigned'))
+
+        return rows
+
+    def _player_row_from_record(self, player, section):
+        squad_number = getattr(player, 'squad_number', 0) or 0
+        display_number = f"{squad_number}" if squad_number else "—"
+
+        display_name = getattr(player, 'name', '') or ''
+        if not display_name:
+            given = getattr(player, 'given_name', '') or ''
+            surname = getattr(player, 'surname', '') or ''
+            display_name = f"{given} {surname}".strip() or "Unknown Player"
+
+        attributes = list(getattr(player, 'attributes', []) or [])
+        while len(attributes) < 7:
+            attributes.append(50)
+
+        stat_keys = ['en', 'sp', 'st', 'ag', 'qu', 'fi', 'mo']
+        stats = dict(zip(stat_keys, attributes[:7]))
+
+        avg_values = [val for val in stats.values() if isinstance(val, int)]
+        stats['av'] = sum(avg_values) // len(avg_values) if avg_values else 0
+
+        section_roles = {
+            'starting': 'XI',
+            'subs': 'SUB',
+            'reserves': 'RES',
+            'unassigned': '—',
+        }
+
+        position_name = player.get_position_name() if hasattr(player, 'get_position_name') else 'Unknown'
+        position_abbr = self._get_position_abbr(position_name)
+
+        row = {
+            'type': 'player',
+            'section': section,
+            'num': display_number,
+            'name': display_name,
+            'role': section_roles.get(section, '—'),
+            'pos': position_abbr,
+        }
+
+        row.update(stats)
+        return row
+
     def _get_position_abbr(self, position_name):
         """Get position abbreviation for display."""
         abbr_map = {
@@ -1879,17 +2073,6 @@ class PM99DatabaseEditor:
         }
         return abbr_map.get(position_name, 'UNK')
     
-    def _get_player_role(self, player, squad_num):
-        """Determine player role based on position and squad number."""
-        pos_name = player.get_position_name() if hasattr(player, 'get_position_name') else 'Unknown'
-        
-        if squad_num == 1:
-            return '🟢'  # Goalkeeper indicator
-        elif squad_num >= 2 and squad_num <= 11:
-            return '⚪'  # Starting XI indicator
-        else:
-            return '🔵'  # Sub/Reserve indicator
-
     def _populate_team_overlay(self, team):
         """Set overlay vars and roster for selected TeamRecord."""
         try:
@@ -1905,7 +2088,7 @@ class PM99DatabaseEditor:
                 self._toggle_roster()
             else:
                 self.team_panel_roster_toggle_btn.config(text="Show squad lineup")
-            self._populate_roster_tree_with_team(team)
+            self._populate_team_lineup(team)
         except Exception:
             pass
 
@@ -1918,8 +2101,7 @@ class PM99DatabaseEditor:
             self.team_panel_capacity_var.set(0)
             self.team_panel_car_var.set(0)
             self.team_panel_pitch_var.set("UNKNOWN")
-            for item in self.team_roster_tree.get_children():
-                self.team_roster_tree.delete(item)
+            self.team_lineup_view.clear()
             if self.team_panel_roster_visible:
                 self._toggle_roster()
             else:
@@ -2053,7 +2235,7 @@ class PM99DatabaseEditor:
                     self.team_panel_capacity_var.set(getattr(t, 'stadium_capacity', 0) or 0)
                     self.team_panel_car_var.set(getattr(t, 'car_park', 0) or 0)
                     self.team_panel_pitch_var.set((getattr(t, 'pitch', '') or '').upper() or 'UNKNOWN')
-                    self._populate_roster_tree_with_team(t)
+                    self._populate_team_lineup(t)
                     break
         except Exception:
             pass
