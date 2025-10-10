@@ -103,5 +103,5 @@ Relevant tests/examples for exploration:
 
 9) Contributing
 - Keep canonical docs concise under [docs/](./)
-- Archive verbose notes in [out/](../out/) and cross‑link as references
+- Archive verbose notes in [docs/archive/](archive/) and cross‑link as references
 - When adding fields or offsets, document them briefly in [docs/DATA_FORMATS.md](./DATA_FORMATS.md) with precise byte rules and a minimal test
