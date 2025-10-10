@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import List, Tuple, Any
 from pm99_editor.xor import xor_decode
 from pm99_editor.models import TeamRecord
-from pm99_editor.coach_models import parse_coaches_from_record
+from pm99_editor.coach_models import parse_coaches_from_record, EditableCoachRecord
 
 
 def decode_entry(data: bytes, offset: int) -> Tuple[bytes, int]:
@@ -134,7 +134,7 @@ def load_teams(file_path: str) -> List[Tuple[int, TeamRecord]]:
     except Exception as e:
         print(f"[TEAM LOADER] Error loading teams: {e}")
     
-    print(f"[TEAM LOADER] Loaded {len(parsed)} teams")
+    print(f"[TEAM LOADER] Loading teams from {file_path}... {len(parsed)} teams loaded")
     return parsed
 
 
@@ -173,6 +173,8 @@ def load_coaches(file_path: str) -> List[Tuple[int, Any]]:
                     
                     for c in coaches:
                         name = getattr(c, 'full_name', '')
+                        given = getattr(c, 'given_name', '')
+                        surname = getattr(c, 'surname', '')
                         
                         # Basic checks
                         if not name or len(name) < 6 or len(name) > 40:
@@ -319,7 +321,10 @@ def load_coaches(file_path: str) -> List[Tuple[int, Any]]:
                             continue
                         
                         seen_names.add(name)
-                        parsed_coaches.append((pos, c))
+                        
+                        # Wrap in EditableCoachRecord for serialization support
+                        editable_coach = EditableCoachRecord(decoded, pos, given, surname)
+                        parsed_coaches.append((pos, editable_coach))
                         
                 except Exception:
                     pass
