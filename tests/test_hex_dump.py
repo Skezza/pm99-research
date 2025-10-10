@@ -1,14 +1,10 @@
 #!/usr/bin/env python3
 """Unit test: hex layout and name-end marker presence for Hierro"""
 
-from pathlib import Path
 from pm99_editor.io import FDIFile
 
-def test_hierro_hex_and_marker():
-    f = Path("DBDAT/JUG98030.FDI")
-    assert f.exists(), "Test fixture missing: DBDAT/JUG98030.FDI"
-
-    fdi = FDIFile(f)
+def test_hierro_hex_and_marker(players_fdi_path):
+    fdi = FDIFile(players_fdi_path)
     fdi.load()
 
     matches = fdi.find_by_name("Hierro")

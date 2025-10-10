@@ -1,11 +1,8 @@
 import pytest
-from pathlib import Path
 from pm99_editor.scanner import find_player_records
 
-def test_find_player_records_returns_non_empty():
-    f = Path("DBDAT/JUG98030.FDI")
-    assert f.exists(), "Test fixture missing: DBDAT/JUG98030.FDI"
-    data = f.read_bytes()
+def test_find_player_records_returns_non_empty(players_fdi_path):
+    data = players_fdi_path.read_bytes()
     records = find_player_records(data)
     assert isinstance(records, list)
     assert len(records) > 0, "No records found by scanner"

@@ -1,5 +1,6 @@
 import pytest
 from pathlib import Path
+
 from pm99_editor.io import FDIFile
 
 def normalize_name(s: str) -> str:
@@ -15,13 +16,13 @@ def get_display_name(record) -> str:
     surname = getattr(record, 'surname', '') or ''
     return f"{given} {surname}".strip()
 
-def test_canonical_players_present():
+def test_canonical_players_present(players_fdi_path):
     p = Path('tests/fixtures/canonical_players.csv')
     assert p.exists(), f"Canonical players file not found: {p}"
 
     canonical = [line.strip() for line in p.read_text(encoding='utf-8').splitlines() if line.strip()]
 
-    fdi = FDIFile('DBDAT/JUG98030.FDI')
+    fdi = FDIFile(players_fdi_path)
     fdi.load()
 
     records = [r for _, r in getattr(fdi, 'records_with_offsets', [(None, r) for r in getattr(fdi, 'records', [])])]
@@ -34,9 +35,9 @@ def test_canonical_players_present():
 
     assert not missing, f"Missing canonical players ({len(missing)}): {missing}"
 
-def test_no_synthesized_placeholders_in_records():
+def test_no_synthesized_placeholders_in_records(players_fdi_path):
     # Ensure the packaged parser does not include synthesized placeholder records
-    fdi = FDIFile('DBDAT/JUG98030.FDI')
+    fdi = FDIFile(players_fdi_path)
     fdi.load()
     records_with_offsets = getattr(fdi, 'records_with_offsets', [(None, r) for r in getattr(fdi, 'records', [])])
     records = [r for _, r in records_with_offsets]
