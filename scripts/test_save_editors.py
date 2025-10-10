@@ -1,73 +1,112 @@
 #!/usr/bin/env python3
-# Ensure package imports work when running as a script
-import os, sys
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-"""
-Test save for coach and team records using in-memory save_modified_records.
-"""
-from pathlib import Path
-from pm99_editor.io import FDIFile
-from pm99_editor.coach_models import parse_coaches_from_record, EditableCoachRecord
-from pm99_editor.models import TeamRecord
-from pm99_editor.file_writer import save_modified_records
-import traceback
-import sys
+"""Tests for saving coach and team records using save_modified_records."""
 
-def test_coach():
-    fp = 'DBDAT/ENT98030.FDI'
-    data = Path(fp).read_bytes()
-    f = FDIFile(fp)
-    f.load()
-    for entry, decoded, length in f.iter_decoded_directory_entries():
-        coaches = parse_coaches_from_record(decoded)
+from __future__ import annotations
+
+import os
+import sys
+import traceback
+from pathlib import Path
+
+import pytest
+
+# Ensure package imports work when running as a standalone script
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from pm99_editor.coach_models import EditableCoachRecord, parse_coaches_from_record
+from pm99_editor.file_writer import save_modified_records
+from pm99_editor.io import FDIFile
+from pm99_editor.models import TeamRecord
+
+
+def test_coach() -> None:
+    coach_path = Path("DBDAT/ENT98030.FDI")
+    if not coach_path.exists():
+        pytest.skip("Required data file not found: DBDAT/ENT98030.FDI")
+
+    data = coach_path.read_bytes()
+    fdi = FDIFile(str(coach_path))
+    fdi.load()
+
+    for entry, decoded, _ in fdi.iter_decoded_directory_entries():
+        coaches = parse_coaches_from_record(decoded) or []
         if not coaches:
             continue
-        c = coaches[0]
-        editable = EditableCoachRecord(decoded, entry.offset, getattr(c, 'given_name', ''), getattr(c, 'surname', ''))
-        new_given = (editable.given_name or "Coach") + '_X'
+
+        coach = coaches[0]
+        editable = EditableCoachRecord(
+            decoded,
+            entry.offset,
+            getattr(coach, "given_name", ""),
+            getattr(coach, "surname", ""),
+        )
+        new_given = (editable.given_name or "Coach") + "_X"
         editable.set_name(new_given, editable.surname)
-        new_bytes = save_modified_records(fp, data, [(entry.offset, editable)])
-        print("COACH UPDATED:", fp, "offset", hex(entry.offset), "orig_len", len(data), "new_len", len(new_bytes), "delta", len(new_bytes)-len(data))
-        return True
-    print("NO COACH MATCH")
-    return False
 
-def test_team():
-    fp = 'DBDAT/EQ98030.FDI'
-    data = Path(fp).read_bytes()
-    f = FDIFile(fp)
-    f.load()
-    for entry, decoded, length in f.iter_decoded_directory_entries():
-        tr = TeamRecord(decoded, entry.offset)
-        if tr.name and tr.name not in ("Unknown Team", "Parse Error"):
-            try:
-                oldname = tr.name
-                newname = oldname + "_X"
-                tr.set_name(newname)
-                new_bytes = save_modified_records(fp, data, [(entry.offset, tr)])
-                print("TEAM UPDATED:", fp, "offset", hex(entry.offset), "oldname", oldname, "new_len", len(new_bytes), "delta", len(new_bytes)-len(data))
-                return True
-            except Exception as e:
-                print("TEAM MODIFY FAILED", e)
-                traceback.print_exc()
-                return False
-    print("NO TEAM MATCH")
-    return False
+        new_bytes = save_modified_records(str(coach_path), data, [(entry.offset, editable)])
+        print(
+            "COACH UPDATED:",
+            coach_path,
+            "offset",
+            hex(entry.offset),
+            "orig_len",
+            len(data),
+            "new_len",
+            len(new_bytes),
+            "delta",
+            len(new_bytes) - len(data),
+        )
+        assert len(new_bytes) >= len(data)
+        return
 
-def main():
-    ok1 = False
-    ok2 = False
+    pytest.skip("No coach entries parsed from ENT98030.FDI")
+
+
+def test_team() -> None:
+    team_path = Path("DBDAT/EQ98030.FDI")
+    if not team_path.exists():
+        pytest.skip("Required data file not found: DBDAT/EQ98030.FDI")
+
+    data = team_path.read_bytes()
+    fdi = FDIFile(str(team_path))
+    fdi.load()
+
+    for entry, decoded, _ in fdi.iter_decoded_directory_entries():
+        team = TeamRecord(decoded, entry.offset)
+        if not team.name or team.name in ("Unknown Team", "Parse Error"):
+            continue
+
+        try:
+            old_name = team.name
+            new_name = old_name + "_X"
+            team.set_name(new_name)
+            new_bytes = save_modified_records(str(team_path), data, [(entry.offset, team)])
+            print(
+                "TEAM UPDATED:",
+                team_path,
+                "offset",
+                hex(entry.offset),
+                "oldname",
+                old_name,
+                "new_len",
+                len(new_bytes),
+                "delta",
+                len(new_bytes) - len(data),
+            )
+            assert len(new_bytes) >= len(data)
+            return
+        except Exception as exc:  # pragma: no cover - diagnostic output
+            print("TEAM MODIFY FAILED", exc)
+            traceback.print_exc()
+            pytest.fail("Team modification failed")
+
+    pytest.skip("No suitable team entries found in EQ98030.FDI")
+
+
+if __name__ == "__main__":
     try:
-        ok1 = test_coach()
-    except Exception:
-        print("COACH TEST EXCEPTION")
-        traceback.print_exc()
-    try:
-        ok2 = test_team()
-    except Exception:
-        print("TEAM TEST EXCEPTION")
-        traceback.print_exc()
-    sys.exit(0 if (ok1 and ok2) else 2)
-
-if __name__ == '__main__':
-    main()
+        test_coach()
+        test_team()
+    except pytest.SkipTest as exc:
+        print(exc)
+        sys.exit(0)

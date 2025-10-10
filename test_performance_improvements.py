@@ -2,6 +2,9 @@
 
 import time
 from pathlib import Path
+
+import pytest
+
 from pm99_editor.io import FDIFile
 
 def test_player_loading():
@@ -13,8 +16,7 @@ def test_player_loading():
         player_file = Path("pm99_editor/DBDAT/JUG98030.FDI")
     
     if not player_file.exists():
-        print("ERROR: Player database file not found")
-        return False
+        pytest.skip("Required data file not found: DBDAT/JUG98030.FDI")
     
     print(f"Loading player database from: {player_file}")
     print("-" * 60)
@@ -62,9 +64,13 @@ def test_player_loading():
     else:
         print("⚠ SLOW: Load time over 10 seconds (may need further optimization)")
     
-    return True
+    # Basic sanity assertion to ensure the test registers as passed when executed
+    assert len(fdi.records) > 0
 
 
 if __name__ == "__main__":
-    success = test_player_loading()
-    exit(0 if success else 1)
+    try:
+        test_player_loading()
+    except pytest.SkipTest as exc:
+        print(exc)
+        exit(0)

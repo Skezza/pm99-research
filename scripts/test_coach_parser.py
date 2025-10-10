@@ -1,11 +1,18 @@
-"""
-Test coach parsing
-"""
+"""Test coach parsing."""
+
 import struct
 from pathlib import Path
+
+import pytest
+
 from pm99_editor.coach_models import parse_coaches_from_record
 
-data = Path('DBDAT/ENT98030.FDI').read_bytes()
+COACH_FILE = Path('DBDAT/ENT98030.FDI')
+
+if not COACH_FILE.exists():
+    pytest.skip("Required data file not found: DBDAT/ENT98030.FDI", allow_module_level=True)
+
+data = COACH_FILE.read_bytes()
 
 # The coach record is at 0x026cf6
 pos = 0x026cf6

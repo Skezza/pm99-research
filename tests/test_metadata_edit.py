@@ -1,16 +1,12 @@
 #!/usr/bin/env python3
 """Unit test for metadata field editing (position, nationality, DOB, height, attributes)."""
 
-from pathlib import Path
 from pm99_editor.io import FDIFile
 from pm99_editor.models import PlayerRecord
 
-def test_metadata_edit_roundtrip():
+def test_metadata_edit_roundtrip(players_fdi_path):
     """Load the FDI fixture, find 'Hierro', modify metadata, serialize and re-parse, assert changes persisted."""
-    f = Path("DBDAT/JUG98030.FDI")
-    assert f.exists(), "Test fixture missing: DBDAT/JUG98030.FDI"
-
-    fdi = FDIFile(f)
+    fdi = FDIFile(players_fdi_path)
     fdi.load()
 
     matches = fdi.find_by_name("Hierro")

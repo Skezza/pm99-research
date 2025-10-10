@@ -4,16 +4,23 @@ Test strict filtering for coaches and teams
 """
 import sys
 import os
+
+from pathlib import Path
+
+import pytest
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), ".")))
 
 from pm99_editor.coach_models import parse_coaches_from_record
 from pm99_editor.models import TeamRecord
 from pm99_editor.xor import decode_entry
-from pathlib import Path
 
 def test_coach_filtering():
     print("=== Testing Coach Filtering ===")
-    data = Path('DBDAT/ENT98030.FDI').read_bytes()
+    coach_file = Path('DBDAT/ENT98030.FDI')
+    if not coach_file.exists():
+        pytest.skip("Required data file not found: DBDAT/ENT98030.FDI")
+
+    data = coach_file.read_bytes()
     pos = 0x400
     seen_names = set()
     valid_coaches = []
@@ -65,7 +72,11 @@ def test_coach_filtering():
 
 def test_team_filtering():
     print("\n=== Testing Team Filtering ===")
-    data = Path('DBDAT/EQ98030.FDI').read_bytes()
+    team_file = Path('DBDAT/EQ98030.FDI')
+    if not team_file.exists():
+        pytest.skip("Required data file not found: DBDAT/EQ98030.FDI")
+
+    data = team_file.read_bytes()
     pos = 0x400
     seen_names = set()
     valid_teams = []

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""
-Test that specific players are now showing with correct full names
-"""
+"""Test that specific players are now showing with correct full names."""
 
 import struct
 from pathlib import Path
+
+import pytest
 
 def xor_decode(data: bytes, key: int = 0x61) -> bytes:
     return bytes(b ^ key for b in data)
@@ -16,8 +16,12 @@ sys.path.insert(0, '.')
 from pm99_database_editor import PlayerRecord, find_player_records
 
 # Load database
-file_path = 'DBDAT/JUG98030.FDI'
-file_data = Path(file_path).read_bytes()
+file_path = Path('DBDAT/JUG98030.FDI')
+
+if not file_path.exists():
+    pytest.skip("Required data file not found: DBDAT/JUG98030.FDI", allow_module_level=True)
+
+file_data = file_path.read_bytes()
 
 print("Testing name extraction fixes...")
 print("=" * 80)
