@@ -10,7 +10,7 @@ Premier Manager 99 ships multiple `.FDI` databases. The editor currently focuses
 
 Each file has the following structure:
 
-1. **Header (`0x20` bytes)** — parsed by [`FDIHeader.from_bytes()`](../pm99_editor/models.py#L1286):
+1. **Header (`0x20` bytes)** — parsed by the `FDIHeader.from_bytes()` helper:
    | Offset | Size | Field | Notes |
    | --- | --- | --- | --- |
    | `0x00` | 8 | Signature | Always `b'DMFIv1.0'`; mismatches abort loading. |
@@ -19,7 +19,7 @@ Each file has the following structure:
    | `0x18` | 4 | `max_offset` | Highest byte offset touched by any entry; recomputed on save. |
    | `0x1C` | 4 | `dir_size` | Size of the directory table in bytes. |
 
-2. **Directory table** — `dir_size` bytes starting at `0x20`, consisting of 8-byte records decoded by [`DirectoryEntry.from_bytes()`](../pm99_editor/models.py#L1318):
+2. **Directory table** — `dir_size` bytes starting at `0x20`, consisting of 8-byte records decoded by `DirectoryEntry.from_bytes()`:
    | Offset | Size | Field |
    | --- | --- | --- |
    | `+0` | 4 | `offset` (little endian) — points to the encoded payload (length prefix).
@@ -30,10 +30,10 @@ Each file has the following structure:
    - `[uint16 length]` followed by `length` bytes encoded with `byte ^ 0x61` (`decode_entry()` / `encode_entry()`).
    - The editor stores both the decoded payload and the original encoded bytes so writes can preserve unknown regions.
 
-The directory is often incomplete; `FDIFile.load()` augments player records by scanning the entire decoded file through [`find_player_records()`](../pm99_editor/scanner.py) so hidden or duplicate payloads become visible in the UI.
+The directory is often incomplete; `FDIFile.load()` augments player records by scanning the entire decoded file through `find_player_records()` so hidden or duplicate payloads become visible in the UI.
 
 ## Player records (`JUG98030.FDI`)
-Player payloads are variable-length and contain a mix of plain and XOR-obfuscated fields. [`PlayerRecord.from_bytes()`](../pm99_editor/models.py#L560) implements the canonical parser. Key layout details:
+Player payloads are variable-length and contain a mix of plain and XOR-obfuscated fields. `PlayerRecord.from_bytes()` implements the canonical parser. Key layout details:
 
 | Region | Description |
 | --- | --- |
@@ -55,7 +55,7 @@ Additional observations:
 - `save_modified_records()` and `write_fdi_record()` re-encode the entire payload and adjust directory offsets if the encoded length changes.
 
 ## Team records (`EQ98030.FDI`)
-[`TeamRecord`](../pm99_editor/models.py#L13) represents the partially-understood structure:
+`TeamRecord` represents the partially-understood structure:
 - Records often start with a 3-byte separator `0x61 0xDD 0x63` followed by padding before the uppercase team name.
 - The parser scans for the first uppercase ASCII run to locate the name, stopping when it encounters lowercase `a` separators or non-printable characters.
 - Stadium names follow the team name and are extracted from printable spans containing keywords like "stadium", "ground", "park", etc.
@@ -65,7 +65,7 @@ Additional observations:
 Edits replace text slices inside the `raw_data` buffer; the GUI keeps offsets so stadium and team names can be updated without corrupting other bytes.
 
 ## Coach records (`ENT98030.FDI`)
-[`CoachRecord`](../pm99_editor/models.py#L434) decodes a simpler structure:
+`CoachRecord` decodes a simpler structure:
 - After an initial flag byte, two length-prefixed strings are stored back-to-back.
 - Each string is encoded as `[uint16 length]` followed by bytes XOR'd with `0x61` in 32-bit chunks. `_decode_string_32bit()` reverses this and trims trailing nulls.
 - The GUI exposes fields for given name and surname and writes changes through `set_name()`, which rebuilds the encoded string blocks in-place.

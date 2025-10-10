@@ -1,13 +1,10 @@
 # Suggested Follow-up Improvements
 
-## 1. Document or restore missing canonical files
-Multiple guides (for example the root [README](../README.md) and [docs/GETTING_STARTED.md](GETTING_STARTED.md)) reference `docs/ARCHITECTURE.md`, `docs/DATA_FORMATS.md`, and `docs/EDITOR_README.md`, but these files are absent from the repository. Either add the documents or trim the references so newcomers are not sent to dead links.
+## 1. Ship or fetch safe fixtures for integration tests
+Although the suite now skips integration cases when `DBDAT/*.FDI` assets are missing, that leaves important workflows untested. Bundle sanitized samples or provide a documented download script so CI can execute the end-to-end checks. An opt-in flag to fail when data is absent would also help.
 
-## 2. Provide open sample data or conditionalize data-heavy tests
-The automated tests expect proprietary `DBDAT/*.FDI` assets. Add redistributable fixtures, or gate the tests when the files are not available, so contributors can run the suite without extra setup. See [docs/Bugs/MISSING_DBDAT_FIXTURES.md](Bugs/MISSING_DBDAT_FIXTURES.md).
+## 2. Clarify CLI rename limitations
+`pm99_editor/cli.py` performs in-place renames by assigning `record.name = args.name` and writing via `FDIFile.save()`. Document padding requirements or add length validation before writes to avoid silent truncation/corruption when new names exceed original byte windows.
 
-## 3. Clarify CLI rename limitations
-`pm99_editor/cli.py` performs in-place renames by assigning `record.name = args.name` and writing via `FDIFile.save()`. Consider documenting padding requirements or adding length validation before writes to avoid silent truncation/corruption when new names exceed original byte windows.
-
-## 4. Register custom pytest markers
-`tests/test_embedded_player_detection.py` uses `@pytest.mark.integration` but pytest warns that the marker is unknown. Add a `pytest.ini` or `conftest.py` with `markers = integration: ...` to silence the warning and clarify intent.
+## 3. Automate documentation drift checks
+The restored architecture, data format, and editor guides quickly fall out of sync when code changes. Add a lightweight checklist (for example in pull request templates) or automated lint that prompts contributors to update the canonical docs whenever relevant modules change.
