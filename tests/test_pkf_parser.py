@@ -1,10 +1,16 @@
 """Tests for the conservative PKF parser."""
 
+import json
 import struct
 
 import pytest
 
-from pm99_editor.pkf import PKFDecoderError, PKFFile
+from pm99_editor.pkf import (
+    PKFDecoderError,
+    PKFEntryKind,
+    PKFFile,
+    PKFTableValidationError,
+)
 
 
 def build_toc32_pkf(chunks):
@@ -29,6 +35,7 @@ def test_parse_simple_table_of_contents():
     assert entries[0].raw_bytes == b"ABC"
     assert entries[1].offset > entries[0].offset
     assert entries[2].length == 2
+    assert entries[0].kind == PKFEntryKind.STRING_TABLE
 
 
 def test_replace_entry_roundtrip_for_toc32():
@@ -44,15 +51,39 @@ def test_replace_entry_roundtrip_for_toc32():
     assert reparsed.get_entry(0).raw_bytes == b"foo"
 
 
-def test_fallback_single_entry_and_replace():
+def test_raw_fallback_requires_opt_in():
     raw = b"no table present"
-    pkf = PKFFile.from_bytes("raw.pkf", raw)
+    with pytest.raises(PKFTableValidationError):
+        PKFFile.from_bytes("raw.pkf", raw)
+
+    pkf = PKFFile.from_bytes(
+        "raw.pkf", raw, strict=False, allow_raw_fallback=True
+    )
 
     assert len(pkf) == 1
     assert pkf.get_entry(0).raw_bytes == raw
 
     pkf.replace_entry(0, b"changed")
     assert pkf.to_bytes() == b"changed"
+
+
+def test_parse_detects_non_contiguous_payload():
+    # Build a PKF blob with two entries and an unexpected gap between them.
+    table_size = 4 + 2 * 8
+    total_size = table_size + 4 + 4 + 6  # include a gap before the second payload
+    raw = bytearray(total_size)
+
+    struct.pack_into("<I", raw, 0, 2)  # entry count
+    struct.pack_into("<II", raw, 4, table_size, 4)  # first entry (contiguous)
+    struct.pack_into("<II", raw, 12, table_size + 10, 4)  # second entry starts late
+
+    raw[table_size : table_size + 4] = b"AAAA"
+    raw[table_size + 10 : table_size + 14] = b"BBBB"
+
+    with pytest.raises(PKFTableValidationError) as excinfo:
+        PKFFile.from_bytes("gap.pkf", bytes(raw))
+
+    assert "expected 0x" in str(excinfo.value)
 
 
 def test_decoder_registry():
@@ -79,3 +110,24 @@ def test_decoder_registry():
         PKFFile.decode_payload(b"BADxxx")
 
     PKFFile.clear_decoders()
+
+
+def test_validation_failures_are_logged(tmp_path, monkeypatch):
+    monkeypatch.setenv("PM99_DIAGNOSTICS_DIR", str(tmp_path))
+
+    raw = bytearray(12)
+    struct.pack_into("<I", raw, 0, 1)
+    struct.pack_into("<II", raw, 4, 4, 0)
+
+    with pytest.raises(PKFTableValidationError):
+        PKFFile.from_bytes("broken.pkf", bytes(raw))
+
+    log_path = tmp_path / "pkf_table_validation.log"
+    assert log_path.exists()
+
+    lines = [line for line in log_path.read_text(encoding="utf-8").splitlines() if line]
+    assert lines
+    entry = json.loads(lines[-1])
+    assert entry["kind"] == "pkf_table_validation"
+    assert entry["details"]["file"] == "broken.pkf"
+    assert entry["details"]["issues"]

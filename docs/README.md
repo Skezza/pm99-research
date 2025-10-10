@@ -8,6 +8,7 @@ Start here (canonical)
 - Architecture overview: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - Data formats and record rules: [docs/DATA_FORMATS.md](docs/DATA_FORMATS.md)
 - Editor user guide (GUI/usage status): [docs/EDITOR_README.md](docs/EDITOR_README.md)
+- Deliverable impact walkthrough: [docs/DELIVERABLE_IMPACT.md](docs/DELIVERABLE_IMPACT.md)
 
 Developer references
 - Developer guide (tests, scripts, CLI usage): [docs/DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md) (to be added)
