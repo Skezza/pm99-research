@@ -1,16 +1,12 @@
 #!/usr/bin/env python3
 """Unit test for PlayerRecord serialization round-trip (converted from script)."""
 
-from pathlib import Path
 from pm99_editor.io import FDIFile
 from pm99_editor.models import PlayerRecord
 
-def test_hierro_serialization_roundtrip():
+def test_hierro_serialization_roundtrip(players_fdi_path):
     """Load the FDI fixture, find 'Hierro', serialize and re-parse, assert key fields preserved."""
-    f = Path("DBDAT/JUG98030.FDI")
-    assert f.exists(), "Test fixture missing: DBDAT/JUG98030.FDI"
-
-    fdi = FDIFile(f)
+    fdi = FDIFile(players_fdi_path)
     fdi.load()
 
     matches = fdi.find_by_name("Hierro")

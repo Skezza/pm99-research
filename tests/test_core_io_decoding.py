@@ -113,7 +113,7 @@ def build_sample_record(name: str, pos_code: int, attributes: list, total_length
 
 
 def test_player_position_parsing():
-    from app.pm99_database_editor import PlayerRecord
+    from pm99_database_editor import PlayerRecord
 
     # Build a canonical 80-byte record with position=3 (Forward)
     attrs = [10] * 12
@@ -126,7 +126,7 @@ def test_player_position_parsing():
 
 
 def test_player_attributes_parsing():
-    from app.pm99_database_editor import PlayerRecord
+    from pm99_database_editor import PlayerRecord
 
     # Varied attribute values (0-99) encoded in the tail of the record
     attrs = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 99, 5]

@@ -1,16 +1,13 @@
 #!/usr/bin/env python3
 import pytest
-from pathlib import Path
 from pm99_editor.io import FDIFile
 from pm99_editor.coach_models import parse_coaches_from_record
 from pm99_editor.models import TeamRecord
 from pm99_editor.file_writer import save_modified_records
 from pm99_editor.xor import decode_entry
 
-def test_coach_parsing():
-    fp = 'DBDAT/ENT98030.FDI'
-    assert Path(fp).exists()
-    f = FDIFile(fp)
+def test_coach_parsing(coaches_fdi_path):
+    f = FDIFile(coaches_fdi_path)
     f.load()
     for entry, decoded, length in f.iter_decoded_directory_entries():
         coaches = parse_coaches_from_record(decoded)
@@ -22,10 +19,8 @@ def test_coach_parsing():
             return
     pytest.skip("No coaches parsed from ENT98030.FDI")
 
-def test_team_parsing():
-    fp = 'DBDAT/EQ98030.FDI'
-    assert Path(fp).exists()
-    f = FDIFile(fp)
+def test_team_parsing(teams_fdi_path):
+    f = FDIFile(teams_fdi_path)
     f.load()
     for entry, decoded, length in f.iter_decoded_directory_entries():
         tr = TeamRecord(decoded, entry.offset)
@@ -37,10 +32,8 @@ def test_team_parsing():
             return
     pytest.skip("No team parsed from EQ98030.FDI")
 
-def test_team_save_roundtrip():
-    fp = 'DBDAT/EQ98030.FDI'
-    assert Path(fp).exists()
-    f = FDIFile(fp)
+def test_team_save_roundtrip(teams_fdi_path):
+    f = FDIFile(teams_fdi_path)
     f.load()
     for entry, decoded, length in f.iter_decoded_directory_entries():
         tr = TeamRecord(decoded, entry.offset)
@@ -48,7 +41,7 @@ def test_team_save_roundtrip():
             old_name = tr.name
             new_name = old_name + "_TEST"
             tr.set_name(new_name)
-            new_bytes = save_modified_records(fp, f.file_data, [(entry.offset, tr)])
+            new_bytes = save_modified_records(str(teams_fdi_path), f.file_data, [(entry.offset, tr)])
             new_decoded, l = decode_entry(new_bytes, entry.offset)
             # Check the new decoded payload contains the new name (best-effort)
             decoded_text = new_decoded.decode('latin-1', errors='ignore')

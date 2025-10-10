@@ -1,6 +1,9 @@
 """Test the new garbage filters against reported problematic entries."""
 
 # Garbage entries reported from the GUI
+import pytest
+
+
 garbage_entries = [
     "Dea8iaa",
     "ZorrillawHvaReal Valladolid, S.A.D.",
@@ -23,7 +26,8 @@ garbage_entries = [
     "Football AssociationA/aaaaaa'a",
 ]
 
-def test_filters(name):
+
+def _apply_filters(name):
     """Apply all the filters from load_teams to a name."""
     
     # Length checks
@@ -107,6 +111,12 @@ def test_filters(name):
     return True, "PASSED"
 
 
+@pytest.mark.parametrize("name", garbage_entries)
+def test_filters_reject_garbage(name):
+    result, reason = _apply_filters(name)
+    assert not result, f"Expected garbage name to be rejected but filter returned {reason}: {name}"
+
+
 if __name__ == "__main__":
     print("Testing garbage filters on reported problematic entries:\n")
     
@@ -114,7 +124,7 @@ if __name__ == "__main__":
     failed = 0
     
     for entry in garbage_entries:
-        result, reason = test_filters(entry)
+        result, reason = _apply_filters(entry)
         status = "✓ REJECTED" if not result else "✗ PASSED"
         
         if not result:
