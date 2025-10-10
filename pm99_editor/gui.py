@@ -9,6 +9,12 @@ try:
     from .xor import xor_decode
     from .loaders import load_teams, load_coaches
     from .pkf import PKFDecoderError, PKFFile
+    from .pkf_searcher import PKFSearcher, SearchResult
+    from .exporters import (
+        generate_player_table_text,
+        generate_coach_table_text,
+        generate_team_table_text,
+    )
 except Exception:
     # When executed directly: python pm99_editor/gui.py
     sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -18,47 +24,55 @@ except Exception:
     from pm99_editor.xor import xor_decode
     from pm99_editor.loaders import load_teams, load_coaches
     from pm99_editor.pkf import PKFDecoderError, PKFFile
+    from pm99_editor.exporters import (
+        generate_player_table_text,
+        generate_coach_table_text,
+        generate_team_table_text,
+    )
 
 # Ensure common helpers are available when run as a script
 from pathlib import Path
-
-"""
-Modern GUI application for Premier Manager 99 Database Editor
-Uses the modular package structure
-"""
-
-import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
-from pm99_editor.models import PlayerRecord, TeamRecord, CoachRecord
-from pm99_editor.io import FDIFile
-from pm99_editor.file_writer import save_modified_records
-from pm99_editor.xor import xor_decode
-from pm99_editor.loaders import load_teams, load_coaches
-from pm99_editor.pkf import PKFDecoderError, PKFFile
 from datetime import datetime
 import re
 from collections import defaultdict
 import threading
+import importlib
 
+import tkinter as tk
+from tkinter import ttk, messagebox, filedialog
 
-def _format_hex_preview(data: bytes, width: int = 16, limit: int = 256) -> str:
-    """Return a short hex dump for ``data`` suitable for text display."""
+def _format_hex_preview(data: bytes, width: int = 16, start_offset: int = 0, max_lines: int = 1000) -> tuple[str, bool]:
+    """Return a hex dump for ``data`` suitable for text display with pagination support.
 
+    Args:
+        data: The data to format
+        width: Bytes per line
+        start_offset: Starting offset in data
+        max_lines: Maximum lines to display
+
+    Returns:
+        Tuple of (formatted_text, has_more_data)
+    """
     if not data:
-        return "(empty payload)"
+        return "(empty payload)", False
 
-    snippet = data[:limit]
     lines = []
-    for offset in range(0, len(snippet), width):
-        chunk = snippet[offset : offset + width]
+    total_lines = (len(data) + width - 1) // width
+    end_offset = min(len(data), start_offset + max_lines * width)
+
+    for offset in range(start_offset, end_offset, width):
+        if offset >= len(data):
+            break
+        chunk = data[offset : offset + width]
         hex_part = " ".join(f"{byte:02X}" for byte in chunk)
         ascii_part = "".join(chr(byte) if 32 <= byte < 127 else "." for byte in chunk)
-        lines.append(f"{offset:04X}  {hex_part:<{width * 3 - 1}}  {ascii_part}")
+        lines.append(f"{offset:08X}  {hex_part:<{width * 3 - 1}}  {ascii_part}")
 
-    if len(data) > limit:
-        lines.append(f"… ({len(data) - limit} more bytes)")
+    has_more = end_offset < len(data)
+    if has_more:
+        lines.append(f"… ({len(data) - end_offset} more bytes)")
 
-    return "\n".join(lines)
+    return "\n".join(lines), has_more
 
 class PM99DatabaseEditor:
     """Modern GUI application for editing Premier Manager 99 database files"""
@@ -132,6 +146,8 @@ class PM99DatabaseEditor:
         tools_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Tools", menu=tools_menu)
         tools_menu.add_command(label="Open PKF Viewer...", command=self.open_pkf_viewer)
+        tools_menu.add_command(label="PKF String Searcher...", command=self.open_pkf_searcher)
+        tools_menu.add_command(label="Load PKF and Count Records...", command=self.load_pkf_and_count)
 
         self.root.bind('<Control-s>', lambda e: self.save_database())
         
@@ -182,9 +198,12 @@ class PM99DatabaseEditor:
         
         self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        
+
         self.tree.bind('<<TreeviewSelect>>', self.on_select)
-        
+
+        export_player_btn = ttk.Button(player_tab, text="Export Players", command=self.export_players)
+        export_player_btn.pack(pady=(5, 0))
+
         # Count label
         self.count_label = ttk.Label(player_tab, text="Players: 0")
         self.count_label.pack(pady=(5, 0))
@@ -321,62 +340,6 @@ class PM99DatabaseEditor:
         self.league_count_label = ttk.Label(league_tab, text="Leagues: 0")
         self.league_count_label.pack(pady=(5,0), padx=5)
 
-        # Start background load of teams (lazy but triggered at UI creation for discoverability)
-        def _load_teams_background():
-            # Show a transient progress dialog on the main thread
-            try:
-                progress = tk.Toplevel(self.root)
-                progress.title("Loading teams...")
-                progress.geometry("300x80")
-                progress.transient(self.root)
-                ttk.Label(progress, text="Scanning teams file...").pack(pady=10)
-                progressbar = ttk.Progressbar(progress, mode='indeterminate')
-                progressbar.pack(pady=10)
-                progressbar.start()
-            except Exception:
-                progress = None
-                progressbar = None
-
-            def worker():
-                # Use shared loader with strict validation
-                parsed = load_teams(self.team_file_path)
-
-                def finalize():
-                    try:
-                        if progressbar:
-                            progressbar.stop()
-                        if progress:
-                            progress.destroy()
-                    except Exception:
-                        pass
-                    self.team_records = parsed
-                    self.teams_loaded = True
-                    self.filtered_team_records = self.team_records.copy()
-                    # Build a lookup from team_id -> team_name for display in Players tab
-                    try:
-                        self.build_team_lookup()
-                    except Exception:
-                        self.team_lookup = {}
-                    self.populate_team_tree()
-                    # Refresh players tree so team names can be shown if mapping was found
-                    try:
-                        self.populate_tree()
-                    except Exception:
-                        pass
-                    # Refresh leagues if on leagues tab
-                    try:
-                        current_tab = self.notebook.tab(self.notebook.select(), 'text')
-                        if current_tab == "Leagues":
-                            self.populate_league_tree()
-                    except Exception:
-                        pass
-                    self.status_var.set(f"✓ Loaded {len(self.team_records)} teams")
-                self.root.after(0, finalize)
-
-            threading.Thread(target=worker, daemon=True).start()
-
-        # Trigger background load (non-blocking)
-        _load_teams_background()
         
         # Right: Editor
         right_frame = ttk.Frame(main_paned)
@@ -569,6 +532,58 @@ class PM99DatabaseEditor:
         # Start hidden (we use .place() to show/hide so player editor remains intact beneath)
         self.team_overlay.place_forget()
 
+        # Coach overlay panel (hidden by default) - will replace the right-hand editor when the Coaches tab is active
+        # Parent is the same right_frame used by the player editor; we will place() this overlay to sit on top.
+        self.coach_overlay = ttk.Frame(right_frame)
+        self.coach_overlay_active = False
+
+        # Coach panel variables (overlay)
+        self.coach_panel_given_var = tk.StringVar()
+        self.coach_panel_surname_var = tk.StringVar()
+        self.coach_panel_full_var = tk.StringVar()
+
+        coach_panel = ttk.LabelFrame(self.coach_overlay, text="Coach Information", padding="10")
+        coach_panel.pack(fill=tk.X, pady=(0,5))
+
+        ttk.Label(coach_panel, text="Given Name:", font=('TkDefaultFont', 10, 'bold')).grid(row=0, column=0, sticky=tk.W, pady=5)
+        ttk.Entry(coach_panel, textvariable=self.coach_panel_given_var, width=30).grid(row=0, column=1, sticky=tk.W, padx=10, pady=5)
+        ttk.Label(coach_panel, text="(max 12 chars)", font=('TkDefaultFont', 8)).grid(row=0, column=2, sticky=tk.W)
+
+        ttk.Label(coach_panel, text="Surname:", font=('TkDefaultFont', 10, 'bold')).grid(row=1, column=0, sticky=tk.W, pady=5)
+        ttk.Entry(coach_panel, textvariable=self.coach_panel_surname_var, width=30).grid(row=1, column=1, sticky=tk.W, padx=10, pady=5)
+        ttk.Label(coach_panel, text="(max 12 chars)", font=('TkDefaultFont', 8)).grid(row=1, column=2, sticky=tk.W)
+
+        ttk.Label(coach_panel, text="Full Name:", font=('TkDefaultFont', 10)).grid(row=2, column=0, sticky=tk.W, pady=5)
+        full_name_entry = ttk.Entry(coach_panel, textvariable=self.coach_panel_full_var, width=30, state='readonly')
+        full_name_entry.grid(row=2, column=1, sticky=tk.W, padx=10, pady=5)
+        ttk.Label(coach_panel, text="(auto-generated)", font=('TkDefaultFont', 8)).grid(row=2, column=2, sticky=tk.W)
+
+        # Link given name and surname to update full name
+        def update_coach_full_name(*args):
+            given = self.coach_panel_given_var.get().strip()
+            surname = self.coach_panel_surname_var.get().strip()
+            self.coach_panel_full_var.set(f"{given} {surname}".strip())
+        
+        self.coach_panel_given_var.trace('w', update_coach_full_name)
+        self.coach_panel_surname_var.trace('w', update_coach_full_name)
+
+        # Coach attributes info frame (placeholder for future attributes)
+        coach_attr_frame = ttk.LabelFrame(self.coach_overlay, text="Coach Details", padding="10")
+        coach_attr_frame.pack(fill=tk.BOTH, expand=True, pady=(5,0))
+
+        info_text = ttk.Label(coach_attr_frame, text="Coach attributes are not yet available in this editor.\nCurrently only name editing is supported.",
+                             justify=tk.LEFT, font=('TkDefaultFont', 9))
+        info_text.pack(pady=20)
+
+        # Coach action buttons (overlay)
+        coach_btn_frame = ttk.Frame(self.coach_overlay, padding="10")
+        coach_btn_frame.pack(fill=tk.X)
+        ttk.Button(coach_btn_frame, text="💾 Save Coach", command=self.apply_coach_changes, style='Accent.TButton').pack(side=tk.LEFT, padx=5)
+        ttk.Button(coach_btn_frame, text="🔄 Reset Coach", command=self.reset_coach_editor).pack(side=tk.LEFT, padx=5)
+
+        # Start hidden (we use .place() to show/hide so player editor remains intact beneath)
+        self.coach_overlay.place_forget()
+
         # Status bar
         self.status_var = tk.StringVar(value="Ready")
         ttk.Label(self.root, textvariable=self.status_var, relief=tk.SUNKEN, anchor=tk.W).pack(side=tk.BOTTOM, fill=tk.X)
@@ -609,8 +624,8 @@ class PM99DatabaseEditor:
 
         viewer = tk.Toplevel(self.root)
         viewer.title(f"PKF Viewer — {file_path.name}")
-        viewer.geometry("820x540")
-        viewer.minsize(640, 420)
+        viewer.geometry("1000x700")
+        viewer.minsize(800, 500)
 
         header = ttk.Frame(viewer, padding=(10, 10, 10, 0))
         header.pack(fill=tk.X)
@@ -620,8 +635,57 @@ class PM99DatabaseEditor:
             text=f"{len(pkf_file)} entries · format: {pkf_file.format_hint} · {len(raw_bytes)} bytes",
         ).pack(anchor=tk.W)
 
+        # Controls frame
+        controls_frame = ttk.Frame(viewer, padding=(10, 5, 10, 10))
+        controls_frame.pack(fill=tk.X)
+
+        # Data transformation controls
+        transform_frame = ttk.LabelFrame(controls_frame, text="Data Transformation", padding="5")
+        transform_frame.pack(side=tk.LEFT, padx=(0, 10))
+
+        # XOR controls
+        ttk.Label(transform_frame, text="XOR Key:").grid(row=0, column=0, sticky=tk.W, padx=5)
+        xor_key_var = tk.StringVar(value="0x00")
+        xor_key_entry = ttk.Entry(transform_frame, textvariable=xor_key_var, width=10)
+        xor_key_entry.grid(row=0, column=1, padx=5)
+
+        xor_enabled_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(transform_frame, text="Apply XOR", variable=xor_enabled_var,
+                       command=lambda: update_preview(tree.selection()[0] if tree.selection() else None)).grid(row=0, column=2, padx=5)
+
+        # Additional transformations
+        ttk.Label(transform_frame, text="Encoding:").grid(row=1, column=0, sticky=tk.W, padx=5)
+        encoding_var = tk.StringVar(value="raw")
+        encoding_combo = ttk.Combobox(transform_frame, textvariable=encoding_var,
+                                     values=["raw", "utf-8", "cp1252", "latin1"], width=8, state="readonly")
+        encoding_combo.grid(row=1, column=1, padx=5)
+        encoding_combo.bind("<<ComboboxSelected>>", lambda e: update_preview(tree.selection()[0] if tree.selection() else None))
+
+        bit_ops_var = tk.StringVar(value="none")
+        ttk.Label(transform_frame, text="Bit Ops:").grid(row=1, column=2, sticky=tk.W, padx=5)
+        bit_ops_combo = ttk.Combobox(transform_frame, textvariable=bit_ops_var,
+                                    values=["none", "reverse_bits", "swap_endian"], width=12, state="readonly")
+        bit_ops_combo.grid(row=1, column=3, padx=5)
+        bit_ops_combo.bind("<<ComboboxSelected>>", lambda e: update_preview(tree.selection()[0] if tree.selection() else None))
+
+        # Pagination controls
+        pagination_frame = ttk.LabelFrame(controls_frame, text="View Options", padding="5")
+        pagination_frame.pack(side=tk.LEFT, padx=(0, 10))
+
+        ttk.Label(pagination_frame, text="Lines per page:").grid(row=0, column=0, sticky=tk.W, padx=5)
+        lines_per_page_var = tk.IntVar(value=50)
+        lines_spinbox = ttk.Spinbox(pagination_frame, from_=10, to=1000, textvariable=lines_per_page_var, width=8)
+        lines_spinbox.grid(row=0, column=1, padx=5)
+
+        current_page_var = tk.IntVar(value=1)
+        ttk.Label(pagination_frame, text="Page:").grid(row=0, column=2, sticky=tk.W, padx=5)
+        page_spinbox = ttk.Spinbox(pagination_frame, from_=1, to=9999, textvariable=current_page_var, width=6)
+        page_spinbox.grid(row=0, column=3, padx=5)
+
+        ttk.Button(pagination_frame, text="Go", command=lambda: update_preview(tree.selection()[0] if tree.selection() else None)).grid(row=0, column=4, padx=5)
+
         paned = ttk.PanedWindow(viewer, orient=tk.HORIZONTAL)
-        paned.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        paned.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
 
         # Left: entry listing
         list_frame = ttk.Frame(paned)
@@ -672,26 +736,97 @@ class PM99DatabaseEditor:
         text_container.rowconfigure(0, weight=1)
         text_container.columnconfigure(0, weight=1)
 
+        def get_transformed_data(raw_data: bytes) -> bytes:
+            """Apply transformations to the data."""
+            data = raw_data
+
+            # Apply XOR if enabled
+            if xor_enabled_var.get():
+                try:
+                    key_str = xor_key_var.get().strip()
+                    if key_str.startswith('0x'):
+                        key = int(key_str, 16)
+                    else:
+                        key = int(key_str, 10)
+                    data = xor_decode(data, key)
+                except (ValueError, TypeError):
+                    # Invalid key, show original data
+                    pass
+
+            # Apply bit operations
+            bit_op = bit_ops_var.get()
+            if bit_op == "reverse_bits":
+                data = bytes(self._reverse_bits_byte(b) for b in data)
+            elif bit_op == "swap_endian":
+                # Swap endianness of 16-bit words
+                if len(data) % 2 == 0:
+                    data = b''.join(data[i+1:i+2] + data[i:i+1] for i in range(0, len(data), 2))
+
+            return data
+
+        def _reverse_bits_byte(self, byte: int) -> int:
+            """Reverse the bits in a byte."""
+            return int('{:08b}'.format(byte)[::-1], 2)
+
         def update_preview(selected_entry_id: str) -> None:
+            if not selected_entry_id:
+                return
+
             entry = entry_map.get(selected_entry_id)
             if entry is None:
                 return
 
+            # Apply transformations
+            transformed_data = get_transformed_data(entry.raw_bytes)
+
             label = f"Entry {entry.index}"
             if entry.name:
                 label += f" ({entry.name})"
+            transform_info = []
+            if xor_enabled_var.get():
+                transform_info.append(f"XOR: {xor_key_var.get()}")
+            transform_str = f" · {' · '.join(transform_info)}" if transform_info else ""
             info_label.configure(
-                text=f"{label} · offset 0x{entry.offset:08X} · {entry.length} bytes"
+                text=f"{label} · offset 0x{entry.offset:08X} · {len(transformed_data)} bytes{transform_str}"
             )
 
-            lines = [
-                _format_hex_preview(entry.raw_bytes),
-            ]
+            # Calculate pagination
+            lines_per_page = lines_per_page_var.get()
+            bytes_per_line = 16
+            current_page = max(1, current_page_var.get())
+            start_offset = (current_page - 1) * lines_per_page * bytes_per_line
+
+            # Format with pagination
+            formatted_text, has_more = _format_hex_preview(
+                transformed_data,
+                width=16,
+                start_offset=start_offset,
+                max_lines=lines_per_page
+            )
+
+            lines = [formatted_text]
+
+            # Add page info
+            total_pages = max(1, (len(transformed_data) + bytes_per_line * lines_per_page - 1) // (bytes_per_line * lines_per_page))
+            current_page_var.set(min(current_page, total_pages))
+            lines.append(f"\nPage {current_page_var.get()} of {total_pages}")
+
+            # Try to decode with selected encoding
+            encoding = encoding_var.get()
+            if encoding != "raw":
+                try:
+                    decoded_text = transformed_data.decode(encoding)
+                    lines.extend(["", f"Decoded as {encoding}:", decoded_text])
+                except UnicodeDecodeError as exc:
+                    lines.extend(["", f"Decoding error ({encoding}): {exc}"])
+                except Exception as exc:
+                    lines.extend(["", f"Error: {exc}"])
 
             try:
-                decoded = pkf_file.decode_entry(entry.index)
+                decoded = pkf_file.decode_payload(transformed_data)
             except PKFDecoderError as exc:
-                lines.extend(["", f"Decoder error: {exc}"])
+                if encoding == "raw":  # Only show decoder error if not showing encoding
+                    lines.extend(["", f"Decoder error: {exc}"])
             else:
                 if not isinstance(decoded, (bytes, bytearray)):
                     lines.extend(["", "Decoded payload:", str(decoded)])
@@ -705,6 +840,7 @@ class PM99DatabaseEditor:
             selection = tree.selection()
             if not selection:
                 return
+            current_page_var.set(1)  # Reset to first page on selection change
             update_preview(selection[0])
 
         tree.bind("<<TreeviewSelect>>", on_tree_select)
@@ -716,6 +852,395 @@ class PM99DatabaseEditor:
             tree.selection_set(first)
             tree.focus(first)
             update_preview(first)
+
+    def open_pkf_searcher(self) -> None:
+        """Open PKF String Searcher tool window."""
+        searcher_window = tk.Toplevel(self.root)
+        searcher_window.title("PKF String Searcher")
+        searcher_window.geometry("1200x800")
+        searcher_window.minsize(900, 600)
+        
+        # Directory selection
+        dir_frame = ttk.LabelFrame(searcher_window, text="Search Location", padding="10")
+        dir_frame.pack(fill=tk.X, padx=10, pady=10)
+        
+        dir_var = tk.StringVar(value=str(self._pkf_last_dir))
+        ttk.Label(dir_frame, text="Directory:").pack(side=tk.LEFT, padx=5)
+        dir_entry = ttk.Entry(dir_frame, textvariable=dir_var, width=50)
+        dir_entry.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
+        
+        def browse_dir():
+            from tkinter import filedialog
+            directory = filedialog.askdirectory(initialdir=dir_var.get())
+            if directory:
+                dir_var.set(directory)
+        
+        ttk.Button(dir_frame, text="Browse...", command=browse_dir).pack(side=tk.LEFT, padx=5)
+        
+        # Search controls
+        search_frame = ttk.LabelFrame(searcher_window, text="Search Parameters", padding="10")
+        search_frame.pack(fill=tk.X, padx=10, pady=(0, 10))
+        
+        # Query input
+        query_frame = ttk.Frame(search_frame)
+        query_frame.pack(fill=tk.X, pady=5)
+        ttk.Label(query_frame, text="Search Query:").pack(side=tk.LEFT, padx=5)
+        query_var = tk.StringVar()
+        query_entry = ttk.Entry(query_frame, textvariable=query_var, width=40)
+        query_entry.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
+        
+        # Search mode
+        mode_frame = ttk.Frame(search_frame)
+        mode_frame.pack(fill=tk.X, pady=5)
+        ttk.Label(mode_frame, text="Mode:").pack(side=tk.LEFT, padx=5)
+        mode_var = tk.StringVar(value="text")
+        ttk.Radiobutton(mode_frame, text="Text", variable=mode_var, value="text").pack(side=tk.LEFT, padx=5)
+        ttk.Radiobutton(mode_frame, text="Regex", variable=mode_var, value="regex").pack(side=tk.LEFT, padx=5)
+        ttk.Radiobutton(mode_frame, text="Hex", variable=mode_var, value="hex").pack(side=tk.LEFT, padx=5)
+        
+        # Options row 1
+        opts1_frame = ttk.Frame(search_frame)
+        opts1_frame.pack(fill=tk.X, pady=5)
+        
+        case_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(opts1_frame, text="Case sensitive", variable=case_var).pack(side=tk.LEFT, padx=5)
+        
+        recursive_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(opts1_frame, text="Recursive", variable=recursive_var).pack(side=tk.LEFT, padx=5)
+        
+        ttk.Label(opts1_frame, text="Encoding:").pack(side=tk.LEFT, padx=(20, 5))
+        encoding_var = tk.StringVar(value="utf-8")
+        encoding_combo = ttk.Combobox(opts1_frame, textvariable=encoding_var,
+                                     values=["utf-8", "cp1252", "latin1", "raw"], width=10, state="readonly")
+        encoding_combo.pack(side=tk.LEFT, padx=5)
+        
+        # Options row 2 (XOR and context)
+        opts2_frame = ttk.Frame(search_frame)
+        opts2_frame.pack(fill=tk.X, pady=5)
+        
+        xor_enabled_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(opts2_frame, text="XOR decode:", variable=xor_enabled_var).pack(side=tk.LEFT, padx=5)
+        xor_key_var = tk.StringVar(value="0x00")
+        xor_entry = ttk.Entry(opts2_frame, textvariable=xor_key_var, width=8)
+        xor_entry.pack(side=tk.LEFT, padx=5)
+        
+        ttk.Label(opts2_frame, text="Context bytes:").pack(side=tk.LEFT, padx=(20, 5))
+        context_var = tk.IntVar(value=32)
+        ttk.Spinbox(opts2_frame, from_=8, to=256, textvariable=context_var, width=8).pack(side=tk.LEFT, padx=5)
+        
+        ttk.Label(opts2_frame, text="Max results:").pack(side=tk.LEFT, padx=(20, 5))
+        limit_var = tk.IntVar(value=1000)
+        ttk.Spinbox(opts2_frame, from_=10, to=10000, textvariable=limit_var, width=8).pack(side=tk.LEFT, padx=5)
+        
+        # Search button
+        btn_frame = ttk.Frame(search_frame)
+        btn_frame.pack(fill=tk.X, pady=10)
+        
+        search_status_var = tk.StringVar(value="Ready")
+        ttk.Label(btn_frame, textvariable=search_status_var).pack(side=tk.LEFT, padx=5)
+        
+        ttk.Button(btn_frame, text="🔍 Search", command=lambda: perform_search(),
+                  style='Accent.TButton').pack(side=tk.RIGHT, padx=5)
+        ttk.Button(btn_frame, text="Export CSV", command=lambda: export_results('csv')).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(btn_frame, text="Clear", command=lambda: clear_results()).pack(side=tk.RIGHT, padx=5)
+        
+        # Results pane
+        results_paned = ttk.PanedWindow(searcher_window, orient=tk.VERTICAL)
+        results_paned.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
+        
+        # Results list (top)
+        results_list_frame = ttk.LabelFrame(results_paned, text="Results", padding="5")
+        results_paned.add(results_list_frame, weight=2)
+        
+        results_columns = ("file", "entry", "offset", "preview")
+        results_tree = ttk.Treeview(results_list_frame, columns=results_columns, show='headings', selectmode='browse')
+        results_tree.heading("file", text="File")
+        results_tree.heading("entry", text="Entry")
+        results_tree.heading("offset", text="Offset")
+        results_tree.heading("preview", text="Preview")
+        
+        results_tree.column("file", width=200)
+        results_tree.column("entry", width=60, anchor=tk.CENTER)
+        results_tree.column("offset", width=100, anchor=tk.CENTER)
+        results_tree.column("preview", width=400)
+        
+        results_scroll = ttk.Scrollbar(results_list_frame, orient=tk.VERTICAL, command=results_tree.yview)
+        results_tree.configure(yscrollcommand=results_scroll.set)
+        results_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        results_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # Detail pane (bottom)
+        detail_frame = ttk.LabelFrame(results_paned, text="Match Details", padding="5")
+        results_paned.add(detail_frame, weight=1)
+        
+        detail_text = tk.Text(detail_frame, wrap="none", font=("Courier New", 9), height=15)
+        detail_scroll_y = ttk.Scrollbar(detail_frame, orient=tk.VERTICAL, command=detail_text.yview)
+        detail_scroll_x = ttk.Scrollbar(detail_frame, orient=tk.HORIZONTAL, command=detail_text.xview)
+        detail_text.configure(yscrollcommand=detail_scroll_y.set, xscrollcommand=detail_scroll_x.set)
+        
+        detail_text.grid(row=0, column=0, sticky='nsew')
+        detail_scroll_y.grid(row=0, column=1, sticky='ns')
+        detail_scroll_x.grid(row=1, column=0, sticky='ew')
+        
+        detail_frame.rowconfigure(0, weight=1)
+        detail_frame.columnconfigure(0, weight=1)
+        
+        # Store search results
+        current_results = []
+        
+        def clear_results():
+            """Clear all results."""
+            nonlocal current_results
+            current_results = []
+            for item in results_tree.get_children():
+                results_tree.delete(item)
+            detail_text.delete("1.0", tk.END)
+            search_status_var.set("Ready")
+        
+        def perform_search():
+            """Execute the search."""
+            nonlocal current_results
+            
+            directory = Path(dir_var.get())
+            query = query_var.get().strip()
+            
+            if not query:
+                messagebox.showwarning("Search", "Please enter a search query")
+                return
+            
+            if not directory.exists():
+                messagebox.showerror("Search", f"Directory not found: {directory}")
+                return
+            
+            # Clear previous results
+            clear_results()
+            search_status_var.set("Searching...")
+            searcher_window.update()
+            
+            try:
+                # Create searcher
+                searcher = PKFSearcher(
+                    directory=directory,
+                    recursive=recursive_var.get(),
+                    file_pattern="*.pkf",
+                    max_results=limit_var.get(),
+                    context_size=context_var.get(),
+                )
+                
+                # Check for PKF files
+                pkf_files = searcher.find_pkf_files()
+                if not pkf_files:
+                    messagebox.showinfo("Search", f"No PKF files found in {directory}")
+                    search_status_var.set("No PKF files found")
+                    return
+                
+                # Perform search
+                mode = mode_var.get()
+                if mode == "hex":
+                    results = searcher.search_hex(query, use_parallel=True)
+                elif mode == "regex":
+                    results = searcher.search_regex(query, encoding=encoding_var.get(), use_parallel=True)
+                elif xor_enabled_var.get():
+                    try:
+                        key_str = xor_key_var.get().strip()
+                        xor_key = int(key_str, 16) if key_str.startswith('0x') else int(key_str)
+                        results = searcher.search_with_xor(query, xor_key, encoding=encoding_var.get(), use_parallel=True)
+                    except ValueError as e:
+                        messagebox.showerror("Search", f"Invalid XOR key: {e}")
+                        search_status_var.set("Error: Invalid XOR key")
+                        return
+                else:
+                    results = searcher.search_text(query, case_sensitive=case_var.get(),
+                                                  encoding=encoding_var.get(), use_parallel=True)
+                
+                current_results = results
+                
+                # Display results
+                if not results:
+                    search_status_var.set("No matches found")
+                    messagebox.showinfo("Search", "No matches found")
+                    return
+                
+                for idx, result in enumerate(results):
+                    rel_path = result.file_path.relative_to(directory) if result.file_path.is_relative_to(directory) else result.file_path.name
+                    preview_text = result.get_match_text(encoding_var.get())[:60]
+                    if len(preview_text) > 60:
+                        preview_text = preview_text[:57] + "..."
+                    
+                    results_tree.insert("", tk.END, iid=str(idx), values=(
+                        str(rel_path),
+                        result.entry_index,
+                        f"0x{result.absolute_offset:08X}",
+                        preview_text
+                    ))
+                
+                search_status_var.set(f"Found {len(results)} match(es) in {len(pkf_files)} file(s)")
+                
+            except Exception as e:
+                messagebox.showerror("Search Error", f"Search failed:\n{str(e)}")
+                search_status_var.set(f"Error: {str(e)}")
+        
+        def on_result_select(event):
+            """Show details when a result is selected."""
+            selection = results_tree.selection()
+            if not selection:
+                return
+            
+            try:
+                idx = int(selection[0])
+                result = current_results[idx]
+                
+                # Format detailed view
+                detail_text.delete("1.0", tk.END)
+                
+                details = []
+                details.append(f"File: {result.file_path}")
+                details.append(f"Entry: {result.entry_index}")
+                details.append(f"Entry Offset: 0x{result.entry_offset:08X}")
+                details.append(f"Match Offset (in entry): 0x{result.match_offset:04X}")
+                details.append(f"Absolute Offset: 0x{result.absolute_offset:08X}")
+                if result.encoding:
+                    details.append(f"Encoding: {result.encoding}")
+                if result.xor_key is not None:
+                    details.append(f"XOR Key: 0x{result.xor_key:02X}")
+                details.append("")
+                details.append("Hex Dump with Context:")
+                details.append(result.format_preview(width=16))
+                
+                # Add decoded text if applicable
+                if result.encoding and result.encoding != "raw":
+                    try:
+                        text = result.get_match_text(result.encoding)
+                        if text and not text.startswith("<binary"):
+                            details.append("")
+                            details.append(f"Decoded Text ({result.encoding}):")
+                            details.append(text)
+                    except Exception:
+                        pass
+                
+                detail_text.insert("1.0", "\n".join(details))
+                
+            except Exception as e:
+                detail_text.delete("1.0", tk.END)
+                detail_text.insert("1.0", f"Error displaying result: {e}")
+        
+        def export_results(format_type='csv'):
+            """Export results to file."""
+            if not current_results:
+                messagebox.showinfo("Export", "No results to export")
+                return
+            
+            from tkinter import filedialog
+            if format_type == 'csv':
+                filename = filedialog.asksaveasfilename(
+                    defaultextension=".csv",
+                    filetypes=[("CSV files", "*.csv"), ("All files", "*.*")]
+                )
+            else:
+                filename = filedialog.asksaveasfilename(
+                    defaultextension=".json",
+                    filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
+                )
+            
+            if not filename:
+                return
+            
+            try:
+                if format_type == 'csv':
+                    import csv
+                    with open(filename, 'w', newline='', encoding='utf-8') as f:
+                        writer = csv.writer(f)
+                        writer.writerow(['File', 'Entry', 'Offset', 'Match (Hex)', 'Match (Text)'])
+                        for result in current_results:
+                            writer.writerow([
+                                str(result.file_path),
+                                result.entry_index,
+                                f"0x{result.absolute_offset:08X}",
+                                result.match_bytes.hex(),
+                                result.get_match_text(encoding_var.get())
+                            ])
+                else:
+                    import json
+                    data = [{
+                        'file': str(r.file_path),
+                        'entry': r.entry_index,
+                        'offset': f"0x{r.absolute_offset:08X}",
+                        'match_hex': r.match_bytes.hex(),
+                        'match_text': r.get_match_text(encoding_var.get())
+                    } for r in current_results]
+                    with open(filename, 'w', encoding='utf-8') as f:
+                        json.dump({'results': data, 'total': len(data)}, f, indent=2)
+                
+                messagebox.showinfo("Export", f"Exported {len(current_results)} results to {filename}")
+            except Exception as e:
+                messagebox.showerror("Export Error", f"Export failed:\n{str(e)}")
+        
+        results_tree.bind("<<TreeviewSelect>>", on_result_select)
+
+        # Bind Enter key to search
+        query_entry.bind("<Return>", lambda e: perform_search())
+
+    def load_pkf_and_count(self) -> None:
+        """Load one or more PKF files and display the count of records (entries) from how many files."""
+        initial_dir = str(self._pkf_last_dir)
+        file_paths = filedialog.askopenfilenames(
+            title="Select PKF file(s) to count records",
+            initialdir=initial_dir,
+            filetypes=(("PKF archives", "*.pkf"), ("All files", "*.*")),
+        )
+        if not file_paths:
+            return
+
+        # Show progress dialog
+        progress = tk.Toplevel(self.root)
+        progress.title("Loading PKF files...")
+        progress.geometry("350x100")
+        progress.transient(self.root)
+        progress.resizable(False)
+        ttk.Label(progress, text="Processing PKF files...").pack(pady=10)
+        progressbar = ttk.Progressbar(progress, mode='determinate', maximum=len(file_paths))
+        progressbar.pack(pady=10, padx=20, fill=tk.X)
+        progress_label = ttk.Label(progress, text="Starting...")
+        progress_label.pack(pady=5)
+
+        total_records = 0
+        loaded_files = 0
+        errors = []
+
+        def worker():
+            nonlocal total_records, loaded_files, errors
+            for i, file_path in enumerate(file_paths):
+                chosen_path = Path(file_path)
+                progress_label.config(text=f"Loading {chosen_path.name}...")
+                progressbar.config(value=i)
+                self.root.update_idletasks()
+                try:
+                    data = chosen_path.read_bytes()
+                    pkf_file = PKFFile.from_bytes(chosen_path.name, data)
+                    total_records += len(pkf_file)
+                    loaded_files += 1
+                    self._pkf_last_dir = chosen_path.parent
+                except Exception as exc:
+                    errors.append(f"{chosen_path.name}: {exc}")
+            progressbar.config(value=len(file_paths))
+            progress_label.config(text="Complete")
+            self.root.after(0, finalize)
+
+        def finalize():
+            progress.destroy()
+            if loaded_files == 0:
+                messagebox.showerror("PKF Loader", "Failed to load any PKF files:\n" + "\n".join(errors))
+                self.status_var.set("Error loading PKF files")
+                return
+
+            message = f"Loaded {loaded_files} PKF file(s)\n\nTotal records (entries): {total_records}"
+            if errors:
+                message += f"\n\nErrors ({len(errors)}):\n" + "\n".join(errors)
+
+            messagebox.showinfo("PKF Record Count", message)
+            self.status_var.set(f"PKF loaded: {loaded_files} file(s) ({total_records} total records)")
+
+        threading.Thread(target=worker, daemon=True).start()
 
     def load_database(self):
         """Load the database file asynchronously to avoid blocking the UI."""
@@ -729,33 +1254,46 @@ class PM99DatabaseEditor:
             return
 
         progress = tk.Toplevel(self.root)
-        progress.title("Loading...")
-        progress.geometry("300x80")
+        progress.title("Loading Database...")
+        progress.geometry("300x100")
         progress.transient(self.root)
-        ttk.Label(progress, text="Importing database...").pack(pady=10)
-        progressbar = ttk.Progressbar(progress, mode='indeterminate')
-        progressbar.pack(pady=10)
-        progressbar.start()
+        progress_label = ttk.Label(progress, text="Starting database import...")
+        progress_label.pack(pady=10)
+        progressbar = ttk.Progressbar(progress, mode='determinate', maximum=3)  # Players, Coaches, Teams
+        progressbar.pack(pady=10, padx=20, fill=tk.X)
 
         def worker():
             try:
-                # Read and load the file (heavy work) in background thread
+                # Load players
+                self.root.after(0, lambda: progress_label.config(text="Loading players from JUG98030.FDI..."))
+                self.root.after(0, lambda: progressbar.config(value=0))
                 self.file_data = Path(self.file_path).read_bytes()
                 fdi = FDIFile(self.file_path)
                 fdi.load()
                 # Prefer the offset-aware structure when available
                 records = getattr(fdi, 'records_with_offsets', [(None, r) for r in getattr(fdi, 'records', [])])
+
+                # Load coaches
+                self.root.after(0, lambda: progress_label.config(text="Loading coaches from ENT98030.FDI..."))
+                self.root.after(0, lambda: progressbar.config(value=1))
+                parsed_coaches = load_coaches(self.coach_file_path)
+
+                # Load teams
+                self.root.after(0, lambda: progress_label.config(text="Loading teams from EQ98030.FDI..."))
+                self.root.after(0, lambda: progressbar.config(value=2))
+                parsed_teams = load_teams(self.team_file_path)
+
                 # Schedule UI update on main thread
-                self.root.after(0, lambda: self._on_db_loaded(progress, progressbar, fdi, records))
+                self.root.after(0, lambda: self._on_db_loaded_full(progress, progressbar, fdi, records, parsed_coaches, parsed_teams))
             except Exception as e:
                 self.root.after(0, lambda: self._on_db_load_failed(progress, progressbar, e))
 
         threading.Thread(target=worker, daemon=True).start()
 
-    def _on_db_loaded(self, progress, progressbar, fdi, records):
-        """Callback run on the UI thread when background load completes successfully."""
+    def _on_db_loaded_full(self, progress, progressbar, fdi, records, coaches, teams):
+        """Callback run on the UI thread when full database load completes successfully."""
         try:
-            progressbar.stop()
+            progressbar.config(value=3)
             progress.destroy()
         except Exception:
             pass
@@ -765,8 +1303,30 @@ class PM99DatabaseEditor:
         self.filtered_records = self.all_records.copy()
         self.populate_tree()
 
-        self.status_var.set(f"✓ Loaded {len(self.all_records)} players")
-        messagebox.showinfo("Success", f"Loaded {len(self.all_records)} players from database")
+        # Set coaches
+        self.coach_records = coaches
+        self.coaches_loaded = True
+        self.filtered_coach_records = self.coach_records.copy()
+        self.populate_coach_tree()
+
+        # Set teams
+        self.team_records = teams
+        self.teams_loaded = True
+        self.filtered_team_records = self.team_records.copy()
+        # Build team lookup
+        try:
+            self.build_team_lookup()
+            self.populate_tree()  # Refresh players to show team names
+        except Exception:
+            self.team_lookup = {}
+        self.populate_team_tree()
+
+        total_players = len(self.all_records)
+        total_coaches = len(self.coach_records)
+        total_teams = len(self.team_records)
+
+        self.status_var.set(f"✓ Loaded database: {total_players} players, {total_coaches} coaches, {total_teams} teams")
+        messagebox.showinfo("Success", f"Loaded database:\n{total_players} players\n{total_coaches} coaches\n{total_teams} teams")
 
     def _on_db_load_failed(self, progress, progressbar, error):
         """Callback run on the UI thread when background load fails."""
@@ -1643,6 +2203,118 @@ class PM99DatabaseEditor:
         except Exception:
             pass
 
+    def _show_coach_overlay(self):
+        """Display the coach overlay panel, hiding the underlying player editor."""
+        try:
+            if not getattr(self, 'coach_overlay_active', False):
+                self._clear_coach_overlay()
+                self.coach_overlay.place(relx=0, rely=0, relwidth=1, relheight=1)
+                self.coach_overlay_active = True
+        except Exception:
+            pass
+
+    def _hide_coach_overlay(self):
+        """Hide the coach overlay panel and restore the player editor."""
+        try:
+            if getattr(self, 'coach_overlay_active', False):
+                self.coach_overlay.place_forget()
+                self.coach_overlay_active = False
+                self._clear_coach_overlay()
+        except Exception:
+            pass
+
+    def _clear_coach_overlay(self):
+        """Reset overlay fields to default/blank state."""
+        try:
+            self.coach_panel_given_var.set("")
+            self.coach_panel_surname_var.set("")
+            self.coach_panel_full_var.set("")
+        except Exception:
+            pass
+
+    def _populate_coach_overlay(self, coach):
+        """Set overlay vars for selected CoachRecord."""
+        try:
+            if not getattr(self, 'coach_overlay_active', False):
+                self._show_coach_overlay()
+            
+            given = getattr(coach, 'given_name', '') or ''
+            surname = getattr(coach, 'surname', '') or ''
+            
+            # If we only have full_name, try to split it
+            if not given and not surname:
+                full_name = getattr(coach, 'full_name', '')
+                if full_name:
+                    parts = full_name.split(maxsplit=1)
+                    given = parts[0] if len(parts) > 0 else ''
+                    surname = parts[1] if len(parts) > 1 else ''
+            
+            self.coach_panel_given_var.set(given)
+            self.coach_panel_surname_var.set(surname)
+        except Exception:
+            pass
+
+    def apply_coach_changes(self):
+        """Apply edits from the coach overlay back to the CoachRecord and mark modified."""
+        try:
+            selection = self.coach_tree.selection()
+            if not selection:
+                messagebox.showinfo("Info", "No coach selected")
+                return
+            
+            item = self.coach_tree.item(selection[0])
+            offset = int(item['tags'][0])
+            
+            for o, c in self.coach_records:
+                if o == offset:
+                    new_given = self.coach_panel_given_var.get().strip()
+                    new_surname = self.coach_panel_surname_var.get().strip()
+                    
+                    # Validate names
+                    if not new_given or not new_surname:
+                        messagebox.showwarning("Invalid Input", "Both given name and surname are required")
+                        return
+                    
+                    if len(new_given) > 12 or len(new_surname) > 12:
+                        messagebox.showwarning("Invalid Input", "Names must be 12 characters or less")
+                        return
+                    
+                    # Apply changes
+                    try:
+                        if hasattr(c, 'set_name'):
+                            c.set_name(new_given, new_surname)
+                        else:
+                            # Fallback for coaches without set_name method
+                            c.given_name = new_given
+                            c.surname = new_surname
+                            c.full_name = f"{new_given} {new_surname}".strip()
+                        
+                        self.modified_coach_records[o] = c
+                        self.populate_coach_tree()
+                        self.status_var.set(f"✓ Updated coach: {getattr(c, 'full_name', '')}")
+                    except Exception as e:
+                        messagebox.showerror("Error", f"Failed to update coach: {e}")
+                    break
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save coach changes: {e}")
+
+    def reset_coach_editor(self):
+        """Reset coach overlay fields to current CoachRecord values."""
+        try:
+            selection = self.coach_tree.selection()
+            if not selection:
+                return
+            
+            item = self.coach_tree.item(selection[0])
+            offset = int(item['tags'][0])
+            
+            for o, c in self.coach_records:
+                if o == offset:
+                    self._populate_coach_overlay(c)
+                    break
+        except Exception:
+            pass
+
     def filter_coaches(self, *args):
         """Filter coaches by search box"""
         search = self.coach_search_var.get().lower()
@@ -1665,24 +2337,22 @@ class PM99DatabaseEditor:
             self.status_var.set("Error: Invalid coach selection")
             return
 
-        # Find the coach record
+        # Find the coach record and populate the overlay
         coach_found = False
         for o, c in getattr(self, 'coach_records', []):
             if o == offset:
                 display = getattr(c, 'full_name', str(c))
-                # Clear name fields and attribute widgets (coaches don't have player attributes)
-                self.given_name_var.set("")
-                self.surname_var.set("")
-                for widget in self.attr_container.winfo_children():
-                    widget.destroy()
-                self.status_var.set(f"Selected coach: {display}")
+                try:
+                    self._show_coach_overlay()
+                    self._populate_coach_overlay(c)
+                    self.status_var.set(f"Selected coach: {display}")
+                except Exception:
+                    pass
                 coach_found = True
                 break
 
         if not coach_found:
             self.status_var.set(f"Error: Coach at offset 0x{offset:x} not found")
-            self.given_name_var.set("")
-            self.surname_var.set("")
 
     def on_tab_changed(self, event):
         """Handle notebook tab changes (lazy-load coaches/teams)"""
@@ -1696,30 +2366,23 @@ class PM99DatabaseEditor:
             if not getattr(self, 'coaches_loaded', False):
                 self.load_coaches()
             self._hide_team_overlay()
-            # Clear player-specific display when switching to coaches
-            self.given_name_var.set("")
-            self.surname_var.set("")
-            for widget in self.attr_container.winfo_children():
-                widget.destroy()
+            # Show coach overlay when switching to Coaches tab
+            # (will be populated when a coach is selected)
+            # For now just clear the overlay
+            self._clear_coach_overlay()
         elif tab_text == "Teams":
             self._show_team_overlay()
-            # Clear player-specific display when switching to teams
-            self.given_name_var.set("")
-            self.surname_var.set("")
-            for widget in self.attr_container.winfo_children():
-                widget.destroy()
-        elif tab_text == "Leagues":
+            self._hide_coach_overlay()
+        elif tab_text == "⚽ Leagues":
             self._hide_team_overlay()
+            self._hide_coach_overlay()
             # Populate leagues if teams are loaded
             if getattr(self, 'teams_loaded', False):
                 self.populate_league_tree()
-            # Clear player-specific display when switching to leagues
-            self.given_name_var.set("")
-            self.surname_var.set("")
-            for widget in self.attr_container.winfo_children():
-                widget.destroy()
         else:
+            # Players tab or other tab
             self._hide_team_overlay()
+            self._hide_coach_overlay()
     
     def filter_records(self, *args):
         """Filter players by search"""
@@ -1979,40 +2642,50 @@ class PM99DatabaseEditor:
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save:\n{str(e)}")
     
+    def export_players(self):
+        """Export the visible player table to the clipboard."""
+        if not hasattr(self, 'filtered_records'):
+            return
+
+        export_text = generate_player_table_text(
+            getattr(self, 'filtered_records', []),
+            team_lookup=getattr(self, 'team_lookup', {}),
+        )
+
+        self.root.clipboard_clear()
+        self.root.clipboard_append(export_text)
+        messagebox.showinfo(
+            "Export Complete",
+            f"Exported {len(getattr(self, 'filtered_records', []))} players to clipboard",
+        )
+
     def export_coaches(self):
         """Export coach list to clipboard"""
         if not hasattr(self, 'filtered_coach_records'):
             return
-        coach_names = []
-        for offset, coach in self.filtered_coach_records:
-            display = getattr(coach, 'full_name', str(coach))
-            coach_names.append(display)
-        export_text = '\n'.join(coach_names)
+
+        export_text = generate_coach_table_text(getattr(self, 'filtered_coach_records', []))
+
         self.root.clipboard_clear()
         self.root.clipboard_append(export_text)
-        messagebox.showinfo("Export Complete", f"Exported {len(coach_names)} coaches to clipboard")
+        messagebox.showinfo(
+            "Export Complete",
+            f"Exported {len(getattr(self, 'filtered_coach_records', []))} coaches to clipboard",
+        )
 
     def export_teams(self):
         """Export team list to clipboard with offset and team_id for debugging"""
         if not hasattr(self, 'filtered_team_records'):
             return
-        team_lines = []
-        for offset, team in self.filtered_team_records:
-            name = getattr(team, 'name', None) or "Unknown Team"
-            team_id = getattr(team, 'team_id', 0)
-            league = getattr(team, 'league', 'Unknown')
-            # Format: offset | team_id | name | league
-            team_lines.append(f"0x{offset:08x} | {team_id:5d} | {name:<50s} | {league}")
-        
-        # Add header
-        header = f"{'Offset':<12} | {'ID':<5} | {'Name':<50} | League\n" + "="*100
-        export_text = header + '\n' + '\n'.join(team_lines)
-        
+
+        export_text = generate_team_table_text(getattr(self, 'filtered_team_records', []))
+
         self.root.clipboard_clear()
         self.root.clipboard_append(export_text)
-        messagebox.showinfo("Export Complete",
-                          f"Exported {len(team_lines)} teams to clipboard\n\n" +
-                          "Format: Offset | Team ID | Name | League")
+        messagebox.showinfo(
+            "Export Complete",
+            f"Exported {len(getattr(self, 'filtered_team_records', []))} teams to clipboard",
+        )
 
     def open_file(self):
         """Open different database file"""
