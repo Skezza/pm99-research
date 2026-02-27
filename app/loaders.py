@@ -8,6 +8,7 @@ sequential scanning instead.
 """
 
 from pathlib import Path
+import sys
 from typing import List, Tuple, Any
 from app.xor import xor_decode
 from app.models import TeamRecord
@@ -55,86 +56,76 @@ def load_teams(file_path: str) -> List[Tuple[int, TeamRecord]]:
     Returns:
         List of (offset, TeamRecord) tuples for valid teams
     """
-    parsed = []
-    
+    parsed: List[Tuple[int, TeamRecord]] = []
+
     try:
         data = Path(file_path).read_bytes()
-        
-        # Known team sections in the file (from analysis scripts)
-        # These are length-prefixed XOR-encoded sections
-        known_sections = [
-            0x201,   # Section 1: ~11KB
-            0x2f04,  # Section 2: ~42KB (main team data)
-        ]
-        
         seen_names = set()
-        separator = bytes([0x61, 0xdd, 0x63])  # Team record separator
-        
-        for section_offset in known_sections:
+        separator = bytes([0x61, 0xdd, 0x63])  # Team record separator in decoded entries
+
+        # EQ98030.FDI uses normal length-prefixed XOR entries. Scanning all entries finds
+        # many more team sections than the earlier two hardcoded offsets.
+        pos = 0x400
+        data_len = len(data)
+        while pos + 2 <= data_len:
             try:
-                # Read length prefix (2 bytes, little-endian)
-                length = int.from_bytes(data[section_offset:section_offset+2], 'little')
-                
-                # Decode XOR-encoded section
-                encoded = data[section_offset + 2 : section_offset + 2 + length]
-                decoded = bytes(b ^ 0x61 for b in encoded)
-                
-                # Find separator positions
+                decoded, length = decode_entry(data, pos)
+                if length <= 0 or pos + 2 + length > data_len:
+                    pos += 1
+                    continue
+
+                if separator not in decoded:
+                    pos += 2 + length
+                    continue
+
                 positions = []
-                pos = 0
-                while pos < len(decoded):
-                    pos = decoded.find(separator, pos)
-                    if pos == -1:
+                sep_search_pos = 0
+                while sep_search_pos < len(decoded):
+                    sep_search_pos = decoded.find(separator, sep_search_pos)
+                    if sep_search_pos == -1:
                         break
-                    positions.append(pos)
-                    pos += 3
-                
-                # Extract team records between separators
+                    positions.append(sep_search_pos)
+                    sep_search_pos += 3
+
                 for i in range(len(positions)):
                     sep_pos = positions[i]
-                    next_sep = positions[i+1] if i+1 < len(positions) else len(decoded)
-                    
-                    # Extract record data (from separator to next separator)
+                    next_sep = positions[i + 1] if i + 1 < len(positions) else len(decoded)
                     record_data = decoded[sep_pos:next_sep]
-                    
+
                     try:
-                        team = TeamRecord(record_data, section_offset + sep_pos)
+                        team = TeamRecord(record_data, pos + sep_pos)
+                        # Preserve enclosing entry location for safe write-back.
+                        team.container_offset = pos
+                        team.container_relative_offset = sep_pos
                         name = getattr(team, 'name', None)
-                        
+
                         # Basic validation
                         if not name or name in ("Unknown Team", "Parse Error", ""):
                             continue
-                        
-                        # Length check
-                        if len(name) < 3 or len(name) > 60:
+                        if len(name) < 4 or len(name) > 60:
                             continue
-                        
-                        # Must start with uppercase
                         if not name[0].isupper():
                             continue
-                        
-                        # Must have letters
                         if not any(c.isalpha() for c in name):
                             continue
-                        
-                        # Deduplicate
+
+                        # Deduplicate by parsed name (best-effort; noisy aliases may still appear)
                         if name in seen_names:
                             continue
-                        
+
                         seen_names.add(name)
-                        parsed.append((section_offset + sep_pos, team))
-                        
+                        parsed.append((pos + sep_pos, team))
                     except Exception:
-                        pass
-                        
-            except Exception as e:
-                print(f"[TEAM LOADER] Error processing section at 0x{section_offset:x}: {e}")
-                continue
-                
+                        continue
+
+                pos += 2 + length
+            except Exception:
+                pos += 1
+
     except Exception as e:
-        print(f"[TEAM LOADER] Error loading teams: {e}")
+        print(f"[TEAM LOADER] Error loading teams: {e}", file=sys.stderr)
     
-    print(f"[TEAM LOADER] Loading teams from {file_path}... {len(parsed)} teams loaded")
+    print(f"[TEAM LOADER] Loading teams from {file_path}... {len(parsed)} teams loaded", file=sys.stderr)
     return parsed
 
 
@@ -335,6 +326,6 @@ def load_coaches(file_path: str) -> List[Tuple[int, Any]]:
             pos += 2 + length if length > 0 else 1
             
     except Exception as e:
-        print(f"[COACH LOADER] Error loading coaches: {e}")
+        print(f"[COACH LOADER] Error loading coaches: {e}", file=sys.stderr)
     
     return parsed_coaches

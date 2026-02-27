@@ -8,12 +8,126 @@ import logging
 from pathlib import Path
 from typing import Tuple, List
 
-from app.models import FDIHeader, DirectoryEntry
-from app.xor import encode_entry, decode_entry
+from app.models import FDIHeader, DirectoryEntry, PlayerRecord
+from app.xor import encode_entry, decode_entry, read_string, write_string
 from app.settings import SAVE_NAME_ONLY, ALLOW_FULL_RECORD_REWRITE_ON_EXPANSION
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
+
+
+def _encode_pm99_text(text: str) -> bytes:
+    """Encode text for PM99 decoded payload matching parser expectations."""
+    try:
+        return text.encode('latin-1')
+    except UnicodeEncodeError:
+        # Player parsing can surface CP1252 punctuation; fall back so byte matching works.
+        return text.encode('cp1252', errors='replace')
+
+
+def _normalize_name_text(value: str) -> str:
+    """Normalize display names for conservative comparisons."""
+    return " ".join((value or "").split()).strip().lower()
+
+
+def _replace_player_name_structured(decoded: bytes, offset: int, old_name: str, new_name: str) -> Tuple[bytes, bool]:
+    """
+    Fallback player-name replacement for length-prefixed string layouts.
+
+    Some player records store given/surname as two length-prefixed strings inside
+    the decoded payload, so the plain display name is not present contiguously.
+    In that case parse the record, update only the name fields, and reserialize.
+    """
+    try:
+        rec = PlayerRecord.from_bytes(decoded, offset)
+    except Exception:
+        return decoded, False
+
+    parsed_name = (getattr(rec, "name", None) or "").strip()
+    if not parsed_name:
+        parsed_name = f"{getattr(rec, 'given_name', '') or ''} {getattr(rec, 'surname', '') or ''}".strip()
+
+    # Refuse to patch if the parsed record does not look like the requested target.
+    if old_name and _normalize_name_text(parsed_name) != _normalize_name_text(old_name):
+        return decoded, False
+
+    # Preserve core fields defensively; name changes should not mutate these.
+    before_team = getattr(rec, "team_id", None)
+    before_squad = getattr(rec, "squad_number", None)
+    before_attrs = list(getattr(rec, "attributes", []) or [])
+
+    rec.set_name(new_name)
+    rebuilt = rec.to_bytes()
+    if not isinstance(rebuilt, (bytes, bytearray)):
+        return decoded, False
+    rebuilt = bytes(rebuilt)
+
+    if len(rebuilt) != len(decoded) and not ALLOW_FULL_RECORD_REWRITE_ON_EXPANSION:
+        return decoded, False
+
+    # Re-parse and ensure non-name fields are unchanged before writing.
+    try:
+        reparsed = PlayerRecord.from_bytes(rebuilt, offset)
+        if getattr(reparsed, "team_id", None) != before_team:
+            return decoded, False
+        if getattr(reparsed, "squad_number", None) != before_squad:
+            return decoded, False
+        if list(getattr(reparsed, "attributes", []) or [])[:12] != before_attrs[:12]:
+            return decoded, False
+    except Exception:
+        return decoded, False
+
+    return rebuilt, True
+
+
+def _replace_player_name_length_prefixed(decoded: bytes, old_name: str, new_name: str) -> Tuple[bytes, bool]:
+    """
+    Replace PM99 player name stored as two raw length-prefixed strings at offset 5.
+
+    Keeps the decoded payload length unchanged by padding the surname with spaces
+    when the new encoded name block is shorter. Refuses expansion here.
+    """
+    try:
+        pos = 5
+        given_old, consumed1 = read_string(decoded, pos)
+        pos += consumed1
+        surname_old, consumed2 = read_string(decoded, pos)
+        pos += consumed2
+    except Exception:
+        return decoded, False
+
+    parsed_old = " ".join(part for part in (given_old, surname_old) if part).strip()
+    if not parsed_old or _normalize_name_text(parsed_old) != _normalize_name_text(old_name):
+        return decoded, False
+
+    parts = " ".join((new_name or "").split()).split(maxsplit=1)
+    if len(parts) < 2:
+        return decoded, False
+    new_given, new_surname = parts[0], parts[1]
+
+    try:
+        given_part = write_string(new_given)
+        surname_part = write_string(new_surname)
+    except Exception:
+        return decoded, False
+
+    old_block_len = consumed1 + consumed2
+    new_block = given_part + surname_part
+
+    if len(new_block) > old_block_len:
+        return decoded, False
+
+    if len(new_block) < old_block_len:
+        pad_len = old_block_len - len(new_block)
+        try:
+            surname_part = write_string(new_surname + (" " * pad_len))
+        except Exception:
+            return decoded, False
+        new_block = given_part + surname_part
+        if len(new_block) != old_block_len:
+            return decoded, False
+
+    return decoded[:5] + new_block + decoded[5 + old_block_len :], True
 
 
 def create_backup(filepath: str) -> str:
@@ -45,11 +159,11 @@ def replace_text_in_decoded(decoded: bytes, old_text: str, new_text: str) -> Tup
         - If replacement changes length, success==True indicates the decoded payload was updated,
           but callers must handle container-level size changes (record rewrite).
     """
-    old_bytes = old_text.encode('latin1')
+    old_bytes = _encode_pm99_text(old_text)
     if old_bytes not in decoded:
         return decoded, False
 
-    new_bytes = new_text.encode('latin1')
+    new_bytes = _encode_pm99_text(new_text)
 
     # Exact-length swap is trivial
     if len(old_bytes) == len(new_bytes):
@@ -206,10 +320,20 @@ def write_name_only_record(filepath: str, offset: int, old_name: str, new_name: 
             logger.debug("Failed to decode entry at offset 0x%X", offset)
             return False
 
-        # Attempt safe replacement
+        # Attempt safe replacement against a plain printable run (works for many records).
         modified_decoded, success = replace_text_in_decoded(decoded, old_name, new_name)
         if success:
             # Persist using the existing safe writer (handles encoding and directory adjustment)
+            return write_fdi_record(filepath, offset, modified_decoded)
+
+        # Preferred player fallback: preserve the original length-prefixed string layout.
+        modified_decoded, success = _replace_player_name_length_prefixed(decoded, old_name, new_name)
+        if success:
+            return write_fdi_record(filepath, offset, modified_decoded)
+
+        # Fallback for player records that store names as two length-prefixed strings.
+        modified_decoded, success = _replace_player_name_structured(decoded, offset, old_name, new_name)
+        if success:
             return write_fdi_record(filepath, offset, modified_decoded)
 
         # Not safe to update in-place
