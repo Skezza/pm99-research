@@ -20,6 +20,7 @@ from app.editor_sources import (
     gather_player_records,
     gather_team_records,
 )
+from app.eq_jug_linked import load_eq_linked_team_rosters
 from app.file_writer import create_backup, replace_text_in_decoded, save_modified_records
 from app.io import FDIFile
 from app.main_dat import (
@@ -30,7 +31,7 @@ from app.main_dat import (
     update_main_dat,
 )
 from app.models import PlayerRecord, TeamRecord
-from app.xor import decode_entry, encode_entry
+from app.xor import decode_entry, encode_entry, xor_decode, xor_encode
 
 
 @dataclass
@@ -518,9 +519,94 @@ def extract_team_rosters_eq_same_entry_overlap(
     )
 
 
+def extract_team_rosters_eq_jug_linked(
+    *,
+    team_file: str,
+    player_file: str = "DBDAT/JUG98030.FDI",
+    team_queries: Optional[List[str]] = None,
+) -> List[Dict[str, Any]]:
+    """
+    Extract parser-backed static rosters from DBASEPRE.EXE's external EQ->JUG links.
+
+    The unresolved legacy inline mode is intentionally excluded until its layout is
+    decoded precisely. This returns only the rosters we can prove today.
+    """
+    rosters = load_eq_linked_team_rosters(team_file=team_file, player_file=player_file)
+    queries = [str(item or "").strip() for item in list(team_queries or []) if str(item or "").strip()]
+
+    out: List[Dict[str, Any]] = []
+    for roster in rosters:
+        short_name = str(getattr(roster, "short_name", "") or "").strip()
+        full_club_name = str(getattr(roster, "full_club_name", "") or "").strip()
+        if queries and not any(
+            team_query_matches(query, team_name=short_name, full_club_name=full_club_name)
+            for query in queries
+        ):
+            continue
+
+        rows = []
+        for row in list(getattr(roster, "rows", []) or []):
+            rows.append(
+                {
+                    "slot_index": int(getattr(row, "slot_index", 0) or 0),
+                    "flag": int(getattr(row, "flag", 0) or 0),
+                    "pid": int(getattr(row, "player_record_id", 0) or 0),
+                    "player_name": str(getattr(row, "player_name", "") or ""),
+                }
+            )
+
+        out.append(
+            {
+                "provenance": "eq_jug_linked_parser",
+                "team_name": short_name,
+                "full_club_name": full_club_name,
+                "stadium_name": str(getattr(roster, "stadium_name", "") or ""),
+                "eq_record_id": int(getattr(roster, "eq_record_id", 0) or 0),
+                "record_size": int(getattr(roster, "record_size", 0) or 0),
+                "mode_byte": int(getattr(roster, "mode_byte", 0) or 0),
+                "ent_count": int(getattr(roster, "ent_count", 0) or 0),
+                "rows": rows,
+            }
+        )
+    return out
+
+
 def _write_modified_entries(path: Path, file_data: bytes, modified_entries: List[Tuple[int, Any]]) -> Optional[str]:
     if not modified_entries:
         return None
+    if all(
+        getattr(record, "container_encoding", None) == "indexed_xor"
+        and isinstance(getattr(record, "container_length", None), int)
+        for _, record in modified_entries
+    ):
+        patched_file = bytearray(file_data)
+        for offset, record in sorted(modified_entries, key=lambda item: item[0], reverse=True):
+            container_offset = getattr(record, "container_offset", offset)
+            container_length = getattr(record, "container_length", None)
+            if not isinstance(container_offset, int) or not isinstance(container_length, int):
+                raise RuntimeError(
+                    f"Indexed record at 0x{offset:x} is missing container metadata; cannot write safely"
+                )
+            if container_offset < 0 or container_offset + container_length > len(file_data):
+                raise RuntimeError(
+                    f"Indexed record 0x{container_offset:x}+0x{container_length:x} is outside file bounds"
+                )
+
+            new_decoded = record.to_bytes()
+            if not isinstance(new_decoded, (bytes, bytearray)):
+                raise TypeError("record.to_bytes() must return bytes")
+            encoded_entry = xor_encode(bytes(new_decoded))
+            if len(encoded_entry) != container_length:
+                raise RuntimeError(
+                    f"Indexed record 0x{container_offset:x} size changed "
+                    f"({container_length} -> {len(encoded_entry)}); variable-length rewrites are not supported"
+                )
+            patched_file[container_offset : container_offset + container_length] = encoded_entry
+
+        backup_path = create_backup(str(path))
+        path.write_bytes(bytes(patched_file))
+        return backup_path
+
     new_bytes = save_modified_records(str(path), file_data, modified_entries)
     backup_path = create_backup(str(path))
     path.write_bytes(new_bytes)
@@ -539,28 +625,68 @@ def _write_modified_team_subrecords(
     FDI entry boundaries. This patches the enclosing decoded section payload(s) and then writes
     those container entries back via save_modified_records().
     """
-    plans_by_container: Dict[int, List[Tuple[int, bytes, bytes]]] = {}
+    plans_by_container: Dict[int, Dict[str, Any]] = {}
     for inner_offset, team in modified_entries:
         container_offset = getattr(team, "container_offset", None)
         rel_offset = getattr(team, "container_relative_offset", None)
+        container_length = getattr(team, "container_length", None)
+        container_encoding = getattr(team, "container_encoding", "length_prefixed_entry")
         original_raw = bytes(getattr(team, "original_raw_data", b"") or b"")
         new_raw = bytes(getattr(team, "raw_data", b"") or b"")
         if not isinstance(container_offset, int) or not isinstance(rel_offset, int):
             raise RuntimeError(
                 f"Team record at 0x{inner_offset:x} is missing container offsets; cannot write safely"
             )
+        if container_encoding == "indexed_xor" and not isinstance(container_length, int):
+            raise RuntimeError(
+                f"Team record at 0x{inner_offset:x} is missing indexed container length; cannot write safely"
+            )
         if not original_raw or not new_raw:
             raise RuntimeError(f"Team record at 0x{inner_offset:x} has no raw_data for patching")
-        plans_by_container.setdefault(container_offset, []).append((rel_offset, original_raw, new_raw))
+        bucket = plans_by_container.setdefault(
+            container_offset,
+            {
+                "plans": [],
+                "encoding": container_encoding,
+                "length": container_length,
+            },
+        )
+        if bucket["encoding"] != container_encoding:
+            raise RuntimeError(
+                f"Container 0x{container_offset:x} has mixed encodings ({bucket['encoding']} vs {container_encoding})"
+            )
+        if container_encoding == "indexed_xor" and bucket["length"] != container_length:
+            raise RuntimeError(
+                f"Container 0x{container_offset:x} has conflicting indexed lengths "
+                f"({bucket['length']} vs {container_length})"
+            )
+        bucket["plans"].append((rel_offset, original_raw, new_raw))
 
     patched_file = bytearray(file_data)
-    container_records: List[Tuple[int, bytes]] = []
-    for container_offset, plans in plans_by_container.items():
-        decoded, _ = decode_entry(file_data, container_offset)
-        patched = bytes(decoded)
+    container_records: List[Tuple[int, str, Optional[int], bytes]] = []
+    for container_offset, container_info in plans_by_container.items():
+        container_encoding = container_info["encoding"]
+        container_length = container_info["length"]
+
+        if container_encoding == "indexed_xor":
+            if container_length is None:
+                raise RuntimeError(
+                    f"Indexed container 0x{container_offset:x} is missing its payload length"
+                )
+            container_end = container_offset + container_length
+            if container_offset < 0 or container_end > len(file_data):
+                raise RuntimeError(
+                    f"Indexed container 0x{container_offset:x}+0x{container_length:x} is outside file bounds"
+                )
+            patched = xor_decode(file_data[container_offset:container_end])
+        else:
+            decoded, _ = decode_entry(file_data, container_offset)
+            patched = bytes(decoded)
 
         # Apply from the end so lower offsets remain stable even if lengths change.
-        for rel_offset, old_subrecord, new_subrecord in sorted(plans, key=lambda item: item[0], reverse=True):
+        for rel_offset, old_subrecord, new_subrecord in sorted(
+            container_info["plans"], key=lambda item: item[0], reverse=True
+        ):
             if rel_offset < 0 or rel_offset + len(old_subrecord) > len(patched):
                 raise RuntimeError(
                     f"Team subrecord at +0x{rel_offset:x} is outside container entry 0x{container_offset:x}"
@@ -572,18 +698,28 @@ def _write_modified_team_subrecords(
                 )
             patched = patched[:rel_offset] + new_subrecord + patched[rel_offset + len(old_subrecord) :]
 
-        container_records.append((container_offset, patched))
+        container_records.append((container_offset, container_encoding, container_length, patched))
 
     # Team section offsets can fall inside the file's directory block, so using the
     # generic save_modified_records() path can overwrite patched bytes while it repacks
     # directory entries. Perform a direct same-size entry overwrite instead.
-    for container_offset, patched_decoded in sorted(container_records, key=lambda item: item[0], reverse=True):
-        encoded_entry = encode_entry(patched_decoded)
-        try:
-            old_decoded, old_len = decode_entry(file_data, container_offset)
-        except Exception as exc:
-            raise RuntimeError(f"Failed to decode team container 0x{container_offset:x}: {exc}") from exc
-        old_size = 2 + old_len
+    for container_offset, container_encoding, container_length, patched_decoded in sorted(
+        container_records, key=lambda item: item[0], reverse=True
+    ):
+        if container_encoding == "indexed_xor":
+            if container_length is None:
+                raise RuntimeError(
+                    f"Indexed container 0x{container_offset:x} is missing its payload length"
+                )
+            encoded_entry = xor_encode(patched_decoded)
+            old_size = container_length
+        else:
+            encoded_entry = encode_entry(patched_decoded)
+            try:
+                _old_decoded, old_len = decode_entry(file_data, container_offset)
+            except Exception as exc:
+                raise RuntimeError(f"Failed to decode team container 0x{container_offset:x}: {exc}") from exc
+            old_size = 2 + old_len
         if len(encoded_entry) != old_size:
             raise RuntimeError(
                 f"Team container 0x{container_offset:x} size changed ({old_size} -> {len(encoded_entry)}); "
@@ -612,6 +748,19 @@ def write_team_staged_records(file_path: str, modified_records: List[Tuple[int, 
         for _, team in modified_records
     ):
         return _write_modified_team_subrecords(path, file_data, modified_records)
+    return _write_modified_entries(path, file_data, modified_records)
+
+
+def write_coach_staged_records(file_path: str, modified_records: List[Tuple[int, Any]]) -> Optional[str]:
+    """
+    Save staged coach records using the safest available path for current offsets.
+
+    Returns the created backup path, or None when there are no records to write.
+    """
+    if not modified_records:
+        return None
+    path = Path(file_path)
+    file_data = path.read_bytes()
     return _write_modified_entries(path, file_data, modified_records)
 
 
@@ -993,6 +1142,7 @@ __all__ = [
     "PlayerSkillPatchResult",
     "PlayerVisibleSkillSnapshot",
     "TeamRosterSameEntryOverlapRunResult",
+    "extract_team_rosters_eq_jug_linked",
     "extract_team_rosters_eq_same_entry_overlap",
     "inspect_player_visible_skills_dd6361",
     "TeamChange",
@@ -1004,4 +1154,6 @@ __all__ = [
     "rename_player_records",
     "rename_team_records",
     "rename_coach_records",
+    "write_coach_staged_records",
+    "write_team_staged_records",
 ]
