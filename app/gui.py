@@ -33,12 +33,14 @@ from tkinter import ttk, messagebox, filedialog, simpledialog
 from app.bulk_rename import bulk_rename_players, revert_player_renames
 from app.editor_actions import (
     build_player_visible_skill_index_dd6361,
+    extract_team_rosters_eq_jug_linked,
     extract_team_rosters_eq_same_entry_overlap,
     inspect_player_visible_skills_dd6361,
     patch_player_visible_skills_dd6361,
     parse_player_skill_patch_assignments,
     rename_coach_records,
     rename_team_records,
+    write_coach_staged_records,
     write_team_staged_records,
 )
 from app.editor_helpers import team_query_matches
@@ -60,7 +62,7 @@ TEAM_PANEL_PROVENANCE_TEXT = (
     "Capacity, Car Park, and Pitch quality are display-only until parser-backed save support exists."
 )
 TEAM_ROSTER_PROVENANCE_TEXT = (
-    "Authoritative roster rows only. Static SP/ST/AG/QU are parser-backed. "
+    "Authoritative roster rows where available. Static SP/ST/AG/QU are parser-backed. "
     "EN/FI/MO/AV/ROL./POS remain unresolved."
 )
 TEAM_ROSTER_SHOW_TEXT = "Show partial squad roster"
@@ -1008,6 +1010,57 @@ class PM99DatabaseEditor:
             player_file = 'DBDAT/JUG98030.FDI'
 
         try:
+            linked = extract_team_rosters_eq_jug_linked(
+                team_file=str(getattr(self, 'team_file_path', 'DBDAT/EQ98030.FDI') or 'DBDAT/EQ98030.FDI'),
+                player_file=str(player_file),
+                team_queries=[team_name],
+            )
+        except Exception:
+            linked = []
+
+        cache_by_file = getattr(self, '_dd6361_pid_stat_cache', None)
+        if not isinstance(cache_by_file, dict):
+            cache_by_file = {}
+        pid_stat_index = cache_by_file.get(str(player_file))
+        if pid_stat_index is None:
+            try:
+                pid_stat_index = build_player_visible_skill_index_dd6361(file_path=str(player_file))
+            except Exception:
+                pid_stat_index = {}
+            cache_by_file[str(player_file)] = pid_stat_index
+            self._dd6361_pid_stat_cache = cache_by_file
+
+        if linked:
+            item = linked[0]
+            rows = list(item.get("rows") or [])
+            visible_rows = 0
+            for row in rows:
+                pid = int(row.get("pid", 0) or 0)
+                parser_name = str(row.get("player_name") or "").strip()
+                stats_entry = dict((pid_stat_index or {}).get(pid) or {})
+                resolved_name = str(stats_entry.get("resolved_bio_name") or "").strip()
+                display_label = parser_name or resolved_name
+                display_name = f"{display_label} [pid {pid}]" if display_label else f"PID {pid} (name unresolved)"
+                sp = st = ag = qu = ""
+                if stats_entry:
+                    mapped10 = dict(stats_entry.get("mapped10") or {})
+                    sp = mapped10.get("speed", "")
+                    st = mapped10.get("stamina", "")
+                    ag = mapped10.get("aggression", "")
+                    qu = mapped10.get("quality", "")
+                en, fi, mo, av, role, pos = PM99DatabaseEditor._unresolved_roster_values()
+                visible_rows += 1
+                tree.insert(
+                    '',
+                    tk.END,
+                    values=(visible_rows, display_name, en, sp, st, ag, qu, fi, mo, av, role, pos),
+                )
+            self.status_var.set(
+                f"Loaded parser-backed EQ->JUG roster rows for {team_name}: {visible_rows}{TEAM_ROSTER_STATUS_SUFFIX}"
+            )
+            return
+
+        try:
             result = extract_team_rosters_eq_same_entry_overlap(
                 team_file=str(getattr(self, 'team_file_path', 'DBDAT/EQ98030.FDI') or 'DBDAT/EQ98030.FDI'),
                 player_file=str(player_file),
@@ -1027,17 +1080,6 @@ class PM99DatabaseEditor:
             return
 
         rows = list(preferred.get("rows") or [])
-        cache_by_file = getattr(self, '_dd6361_pid_stat_cache', None)
-        if not isinstance(cache_by_file, dict):
-            cache_by_file = {}
-        pid_stat_index = cache_by_file.get(str(player_file))
-        if pid_stat_index is None:
-            try:
-                pid_stat_index = build_player_visible_skill_index_dd6361(file_path=str(player_file))
-            except Exception:
-                pid_stat_index = {}
-            cache_by_file[str(player_file)] = pid_stat_index
-            self._dd6361_pid_stat_cache = cache_by_file
         visible_rows = 0
         for row in rows:
             if row.get("is_empty_slot"):
@@ -3315,15 +3357,11 @@ class PM99DatabaseEditor:
 
             # Coaches
             if n_coaches:
-                coach_path = Path(self.coach_file_path)
-                coach_data = coach_path.read_bytes()
-                coach_backup = coach_path.with_name(coach_path.name + f'.backup_{timestamp}')
-                coach_backup.write_bytes(coach_data)
                 modified_list = [(o, r) for o, r in self.modified_coach_records.items()]
-                new_data = save_modified_records(self.coach_file_path, coach_data, modified_list)
-                coach_path.write_bytes(new_data)
+                coach_backup = write_coach_staged_records(self.coach_file_path, modified_list)
                 self.modified_coach_records.clear()
-                backups.append(str(coach_backup))
+                if coach_backup:
+                    backups.append(str(coach_backup))
 
             # Teams
             if n_teams:

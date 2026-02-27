@@ -2179,3 +2179,86 @@ Validated locally after adding the parser module:
 
 - `python3 -m pytest -q -o addopts='' tests/test_main_dat.py tests/test_cli_v1.py tests/test_gui_v1.py tests/test_editor_actions_unit.py`
 - result: `58 passed`
+
+## 2026-02-27 - DBASEPRE.EXE Indexed FDI Container Findings
+
+`DBASEPRE.EXE` is the strongest current static-database anchor.
+
+Confirmed binary-backed container model:
+
+- `FUN_0043ac50` validates `DMFIv1.0`
+- it reads two dwords at `0x08` and `0x0C` as header fields, then reads the record count at `0x10`
+- the inline index starts immediately at `0x14`
+- `FUN_0043aab0` parses each index entry as:
+  - `u32 record_id`
+  - `u8 key_length`
+  - `key_length` raw bytes (uppercased in-memory)
+  - `u32 payload_offset`
+  - `u32 payload_length`
+- top-level payloads are not length-prefixed on disk
+- top-level payload bytes are XOR-encoded directly, and the index carries the payload length
+
+This means the old assumption that `EQ98030.FDI` team sections are best treated as generic length-prefixed XOR entries is not authoritative for the indexed static database path.
+
+Parser changes made from this:
+
+- added `app.fdi_indexed.IndexedFDIFile`
+- `app.loaders.load_teams(...)` now prefers the indexed DMFI parser and falls back to the older sequential scan only if indexed parsing fails
+- indexed team records now carry:
+  - `container_offset`
+  - `container_relative_offset`
+  - `container_length`
+  - `container_encoding="indexed_xor"`
+- `app.editor_actions._write_modified_team_subrecords(...)` now supports same-size rewrites for indexed XOR containers as well as legacy length-prefixed containers
+
+Practical effect:
+
+- team parsing is now closer to the game's real static DB model
+- team edits staged from indexed `EQ98030.FDI` payloads remain writable when the patched subrecord does not change the enclosing payload size
+
+Validated locally for this milestone:
+
+- `python3 -m pytest -q -o addopts='' tests/test_fdi_indexed.py`
+- `python3 -m pytest -q -o addopts='' tests/test_editor_actions_unit.py`
+- `python3 -m pytest -q -o addopts='' tests/test_cli_v1.py`
+
+Results:
+
+- `3 passed`
+- `10 passed`
+- `23 passed`
+
+Known unchanged baseline issue:
+
+- `tests/test_loaders.py::test_coaches_reject_garbage` still fails locally because the current coach loader returns `95` records, below the test's lower bound of `100`
+- this change did not modify `load_coaches(...)`
+
+## 2026-02-27 - ENT98030.FDI Indexed Coach Loader And Writer
+
+`ENT98030.FDI` is also a DMFI indexed container, and the existing coach loader was still using the older sequential length-prefixed scan.
+
+That is no longer true.
+
+Parser-backed change:
+
+- `app.loaders.load_coaches(...)` now prefers `IndexedFDIFile` for `ENT98030.FDI`
+- each indexed payload is XOR-decoded directly and passed to `parse_coaches_from_record(...)`
+- the existing conservative coach-name validation and deduplication are preserved
+- sequential length-prefixed scanning remains only as a fallback path when indexed parsing fails
+
+Write-path change:
+
+- indexed coach records now carry:
+  - `container_offset`
+  - `container_length`
+  - `container_encoding="indexed_xor"`
+- `app.editor_actions._write_modified_entries(...)` now detects indexed XOR records and rewrites them by direct same-size payload overwrite
+- variable-length indexed rewrites are still refused
+- `app.editor_actions.write_coach_staged_records(...)` now provides the GUI/backend-safe save path for staged coach edits
+- the GUI save flow now uses `write_coach_staged_records(...)` instead of blindly routing coach changes through the old generic length-prefixed writer
+
+Practical effect:
+
+- coach loading is now closer to the real `DBASEPRE.EXE` static DB path
+- coach editing is safer for indexed `ENT98030.FDI` records, as long as the edited decoded payload does not change size
+- this removes another major parser-vs-heuristic mismatch from the editor
