@@ -11,7 +11,18 @@ Players are identified in the FDI files by their position in the directory and b
 - **Squad number**: byte 5 of the record.
 - **Original name**: bytes starting at offset 8 until a sentinel, encoded in CP1252.
 
-For milestone M1, we use the **record index** as the primary key. For later milestones we may use a composite key `(team_id, squad_no, original_name)` to improve resilience.
+For milestone M1, the mapping now stores both:
+
+- **Offset** (`offset` / `offset_hex`) as the primary locator for revert (preferred)
+- **Record index** as a compatibility fallback if offset is unavailable
+
+Notes from real-data validation:
+
+- Some scanner-derived player lists can contain multiple discovered names at the same file offset (false-positive duplicates from the same decoded blob).
+- The bulk rename pipeline now treats **offset** as the integrity key for writes/reverts and skips duplicate offsets deterministically, recording warnings in per-file results.
+- This preserves reversible mappings on real `JUG98030.FDI` data without disabling integrity checks.
+
+For later milestones we may also use a composite key `(team_id, squad_no, original_name)` to improve resilience.
 
 ## Rename String Format
 
@@ -30,6 +41,8 @@ This produces a new name of exactly the same length, avoiding record resizing.
 The bulk rename operation writes a mapping file (CSV) with the following columns:
 
 - `record_index`: zero‑based index of the player record.
+- `offset`: integer file offset used by `FDIFile.save()` / name-only writes.
+- `offset_hex`: hexadecimal representation of the same offset (for readability).
 - `team_id`: original team identifier.
 - `squad_no`: original squad number.
 - `original_name`: the name before renaming.
@@ -39,15 +52,15 @@ The bulk rename operation writes a mapping file (CSV) with the following columns
 Example:
 
 ```
-record_index,team_id,squad_no,original_name,new_name,file
-0,3712,1,Keen,Z0000000,JUG0001.FDI
+record_index,offset,offset_hex,team_id,squad_no,original_name,new_name,file
+0,4660,0x1234,3712,1,Keen,Z0000000,JUG0001.FDI
 ```
 
 ## Revert Process
 
 To revert a bulk rename, read the mapping file and, for each entry:
 
-1. Locate the record index in the corresponding FDI file.
+1. Locate the record in the corresponding FDI file by `offset` (preferred), falling back to `record_index` if needed.
 2. Replace the current name with `original_name` (which has the same length).
 3. Write the record back; since lengths match, directory offsets do not change.
 

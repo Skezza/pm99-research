@@ -29,7 +29,19 @@ Uses the modular package structure
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
+from tkinter import ttk, messagebox, filedialog, simpledialog
+from app.bulk_rename import bulk_rename_players, revert_player_renames
+from app.editor_actions import (
+    build_player_visible_skill_index_dd6361,
+    extract_team_rosters_eq_same_entry_overlap,
+    inspect_player_visible_skills_dd6361,
+    patch_player_visible_skills_dd6361,
+    parse_player_skill_patch_assignments,
+    rename_coach_records,
+    rename_team_records,
+    write_team_staged_records,
+)
+from app.editor_helpers import team_query_matches
 from app.models import PlayerRecord, TeamRecord, CoachRecord
 from app.io import FDIFile
 from app.file_writer import save_modified_records
@@ -42,6 +54,19 @@ from datetime import datetime
 import re
 from collections import defaultdict
 import threading
+
+TEAM_PANEL_PROVENANCE_TEXT = (
+    "Authoritative save fields: Team name, Team ID, Stadium. "
+    "Capacity, Car Park, and Pitch quality are display-only until parser-backed save support exists."
+)
+TEAM_ROSTER_PROVENANCE_TEXT = (
+    "Authoritative roster rows only. Static SP/ST/AG/QU are parser-backed. "
+    "EN/FI/MO/AV/ROL./POS remain unresolved."
+)
+TEAM_ROSTER_SHOW_TEXT = "Show partial squad roster"
+TEAM_ROSTER_HIDE_TEXT = "Hide partial squad roster"
+TEAM_ROSTER_STATUS_SUFFIX = " (static SP/ST/AG/QU only; dynamic columns unresolved)"
+TEAM_ROSTER_UNRESOLVED_VALUE = "?"
 
 
 def _format_hex_preview(data: bytes, width: int = 16, start_offset: int = 0, max_lines: int = 1000) -> tuple[str, bool]:
@@ -151,6 +176,14 @@ class PM99DatabaseEditor:
         tools_menu.add_command(label="Open PKF Viewer...", command=self.open_pkf_viewer)
         tools_menu.add_command(label="PKF String Searcher...", command=self.open_pkf_searcher)
         tools_menu.add_command(label="Load PKF and Count Records...", command=self.load_pkf_and_count)
+        tools_menu.add_separator()
+        tools_menu.add_command(label="Bulk Rename Players (M1)...", command=self.open_bulk_player_rename_dialog)
+        tools_menu.add_command(label="Revert Bulk Player Rename (M1)...", command=self.open_bulk_player_revert_dialog)
+        tools_menu.add_separator()
+        tools_menu.add_command(
+            label="Patch Player Visible Skills (dd6361)...",
+            command=self.open_player_skill_patch_dialog,
+        )
 
         self.root.bind('<Control-s>', lambda e: self.save_database())
         if SAVE_NAME_ONLY:
@@ -448,7 +481,77 @@ class PM99DatabaseEditor:
             "Attr 6 (Handling?)", "Attr 7 (Passing?)", "Attr 8 (Dribbling?)",
             "Attr 9 (Heading?)", "Attr 10 (Tackling?)", "Attr 11 (Shooting?)"
         ]
-        
+
+        # Verified dd6361 visible-skill panel state (separate from legacy generic attributes)
+        self.visible_skill_snapshot = None
+        self.staged_visible_skill_patches = {}
+        self.visible_skill_field_order = [
+            "speed", "stamina", "aggression", "quality",
+            "handling", "passing", "dribbling", "heading", "tackling", "shooting",
+        ]
+        self.visible_skill_baseline = {}
+        self.visible_skill_vars = {field: tk.IntVar(value=0) for field in self.visible_skill_field_order}
+        self.visible_skill_status_var = tk.StringVar(
+            value="dd6361 visible skills: authoritative parser-backed panel (not loaded)"
+        )
+
+        visible_skill_frame = ttk.LabelFrame(
+            right_frame,
+            text="Verified Visible Skills (dd6361, Authoritative)",
+            padding="10",
+        )
+        visible_skill_frame.pack(fill=tk.X, pady=(0, 5))
+
+        visible_grid = ttk.Frame(visible_skill_frame)
+        visible_grid.pack(fill=tk.X)
+
+        for idx, field in enumerate(self.visible_skill_field_order):
+            row = idx // 2
+            col_group = idx % 2
+            col = col_group * 3
+            label = field.replace("_", " ").title()
+            ttk.Label(visible_grid, text=label + ":").grid(row=row, column=col, sticky=tk.W, padx=(0, 4), pady=2)
+            spin = ttk.Spinbox(visible_grid, from_=0, to=255, textvariable=self.visible_skill_vars[field], width=6)
+            spin.grid(row=row, column=col + 1, sticky=tk.W, padx=(0, 10), pady=2)
+
+        visible_btns = ttk.Frame(visible_skill_frame)
+        visible_btns.pack(fill=tk.X, pady=(8, 0))
+        ttk.Button(
+            visible_btns,
+            text="Refresh dd6361",
+            command=lambda: self.refresh_visible_skill_panel(show_dialog_errors=True),
+        ).pack(side=tk.LEFT, padx=(0, 6))
+        ttk.Button(
+            visible_btns,
+            text="Stage for Save Database",
+            command=self.stage_visible_skill_panel_changes,
+        ).pack(side=tk.LEFT, padx=(0, 6))
+        ttk.Button(
+            visible_btns,
+            text="Discard Staged",
+            command=self.discard_visible_skill_panel_staged_changes,
+        ).pack(side=tk.LEFT, padx=(0, 6))
+        ttk.Button(
+            visible_btns,
+            text="Review Staged...",
+            command=self.review_staged_visible_skill_patches,
+        ).pack(side=tk.LEFT, padx=(0, 6))
+        ttk.Button(
+            visible_btns,
+            text="Patch Visible Skills (In-Place + Backup)",
+            command=self.patch_visible_skill_panel_in_place,
+        ).pack(side=tk.LEFT, padx=(0, 6))
+        ttk.Button(
+            visible_btns,
+            text="Advanced Patch Dialog...",
+            command=self.open_player_skill_patch_dialog,
+        ).pack(side=tk.LEFT)
+        ttk.Label(
+            visible_skill_frame,
+            textvariable=self.visible_skill_status_var,
+            font=("TkDefaultFont", 8),
+        ).pack(fill=tk.X, pady=(6, 0))
+
         # Buttons
         button_frame = ttk.Frame(right_frame, padding="10")
         button_frame.pack(fill=tk.X)
@@ -483,25 +586,71 @@ class PM99DatabaseEditor:
         ttk.Entry(team_panel, textvariable=self.team_panel_stadium_var, width=60).grid(row=2, column=1, columnspan=2, sticky=tk.W, padx=10, pady=5)
  
         ttk.Label(team_panel, text="Capacity:").grid(row=3, column=0, sticky=tk.W, pady=5)
-        ttk.Spinbox(team_panel, from_=0, to=1000000, textvariable=self.team_panel_capacity_var, width=14).grid(row=3, column=1, sticky=tk.W, padx=10, pady=5)
+        self.team_panel_capacity_spin = ttk.Spinbox(
+            team_panel,
+            from_=0,
+            to=1000000,
+            textvariable=self.team_panel_capacity_var,
+            width=14,
+            state='disabled',
+        )
+        self.team_panel_capacity_spin.grid(row=3, column=1, sticky=tk.W, padx=10, pady=5)
+        ttk.Label(team_panel, text="display-only", font=('TkDefaultFont', 8)).grid(row=3, column=2, sticky=tk.W, pady=5)
  
         ttk.Label(team_panel, text="Car Park:").grid(row=4, column=0, sticky=tk.W, pady=5)
-        ttk.Spinbox(team_panel, from_=0, to=200000, textvariable=self.team_panel_car_var, width=14).grid(row=4, column=1, sticky=tk.W, padx=10, pady=5)
+        self.team_panel_car_spin = ttk.Spinbox(
+            team_panel,
+            from_=0,
+            to=200000,
+            textvariable=self.team_panel_car_var,
+            width=14,
+            state='disabled',
+        )
+        self.team_panel_car_spin.grid(row=4, column=1, sticky=tk.W, padx=10, pady=5)
+        ttk.Label(team_panel, text="display-only", font=('TkDefaultFont', 8)).grid(row=4, column=2, sticky=tk.W, pady=5)
  
         ttk.Label(team_panel, text="Pitch quality:").grid(row=5, column=0, sticky=tk.W, pady=5)
-        self.team_panel_pitch_combo = ttk.Combobox(team_panel, textvariable=self.team_panel_pitch_var, state='readonly', width=16)
+        self.team_panel_pitch_combo = ttk.Combobox(
+            team_panel,
+            textvariable=self.team_panel_pitch_var,
+            state='disabled',
+            width=16,
+        )
         self.team_panel_pitch_combo['values'] = ['GOOD', 'EXCELLENT', 'AVERAGE', 'POOR', 'UNKNOWN']
         self.team_panel_pitch_combo.grid(row=5, column=1, sticky=tk.W, padx=10, pady=5)
+        ttk.Label(team_panel, text="display-only", font=('TkDefaultFont', 8)).grid(row=5, column=2, sticky=tk.W, pady=5)
+        ttk.Label(
+            team_panel,
+            text=TEAM_PANEL_PROVENANCE_TEXT,
+            justify=tk.LEFT,
+            font=('TkDefaultFont', 8),
+            wraplength=520,
+        ).grid(row=6, column=0, columnspan=3, sticky=tk.W, pady=(8, 0))
  
         # Roster toggle + frame (collapsible)
         roster_toggle_frame = ttk.Frame(self.team_overlay)
         roster_toggle_frame.pack(fill=tk.X)
         self.team_panel_roster_visible = False
-        self.team_panel_roster_toggle_btn = ttk.Button(roster_toggle_frame, text="Show squad lineup", command=self._toggle_roster)
+        self.team_panel_roster_toggle_btn = ttk.Button(
+            roster_toggle_frame,
+            text=TEAM_ROSTER_SHOW_TEXT,
+            command=self._toggle_roster,
+        )
         self.team_panel_roster_toggle_btn.pack(side=tk.LEFT, padx=5, pady=5)
  
-        self.team_panel_roster_frame = ttk.LabelFrame(self.team_overlay, text="Squad Lineup", padding="5")
+        self.team_panel_roster_frame = ttk.LabelFrame(
+            self.team_overlay,
+            text="Squad Roster (Authoritative / Partial)",
+            padding="5",
+        )
         # roster is not packed initially (collapsed)
+        ttk.Label(
+            self.team_panel_roster_frame,
+            text=TEAM_ROSTER_PROVENANCE_TEXT,
+            justify=tk.LEFT,
+            font=('TkDefaultFont', 8),
+            wraplength=720,
+        ).pack(fill=tk.X, pady=(0, 4))
  
         # Enhanced roster tree with all attributes (PM99 style)
         roster_cols = ('num', 'name', 'en', 'sp', 'st', 'ag', 'qu', 'fi', 'mo', 'av', 'role', 'pos')
@@ -510,16 +659,16 @@ class PM99DatabaseEditor:
         # Configure columns with PM99-style headers
         self.team_roster_tree.heading('num', text='N.')
         self.team_roster_tree.heading('name', text='PLAYER')
-        self.team_roster_tree.heading('en', text='EN')  # Energy
+        self.team_roster_tree.heading('en', text='EN?')  # Unresolved
         self.team_roster_tree.heading('sp', text='SP')  # Speed
         self.team_roster_tree.heading('st', text='ST')  # Stamina
         self.team_roster_tree.heading('ag', text='AG')  # Agility
         self.team_roster_tree.heading('qu', text='QU')  # Quality
-        self.team_roster_tree.heading('fi', text='FI')  # Fitness
-        self.team_roster_tree.heading('mo', text='MO')  # Morale
-        self.team_roster_tree.heading('av', text='AV')  # Average
-        self.team_roster_tree.heading('role', text='ROL.')
-        self.team_roster_tree.heading('pos', text='POS')
+        self.team_roster_tree.heading('fi', text='FI?')  # Unresolved
+        self.team_roster_tree.heading('mo', text='MO?')  # Unresolved
+        self.team_roster_tree.heading('av', text='AV?')  # Unresolved
+        self.team_roster_tree.heading('role', text='ROL.?')
+        self.team_roster_tree.heading('pos', text='POS?')
         
         # Set column widths
         self.team_roster_tree.column('num', width=35, anchor=tk.CENTER)
@@ -692,7 +841,7 @@ class PM99DatabaseEditor:
 
     def filter_teams(self, *args):
         """Filter teams by search string and repopulate team tree."""
-        query = self.team_search_var.get().strip().lower()
+        query = self.team_search_var.get().strip()
         if not getattr(self, 'team_records', None):
             self.filtered_team_records = []
         elif not query:
@@ -701,8 +850,12 @@ class PM99DatabaseEditor:
             out = []
             for o, t in self.team_records:
                 name = getattr(t, 'name', '') or ''
+                full_name = getattr(t, 'full_club_name', '') or ''
                 tid = str(getattr(t, 'team_id', ''))
-                if query in name.lower() or query in tid.lower():
+                if (
+                    team_query_matches(query, team_name=name, full_club_name=full_name)
+                    or query.lower() in tid.lower()
+                ):
                     out.append((o, t))
             self.filtered_team_records = out
         try:
@@ -766,6 +919,8 @@ class PM99DatabaseEditor:
                 self.team_panel_pitch_var.set(getattr(team, 'pitch_quality', 'UNKNOWN') or 'UNKNOWN')
                 # clear roster display
                 self.team_roster_tree.delete(*self.team_roster_tree.get_children())
+                if getattr(self, 'team_panel_roster_visible', False):
+                    self.load_current_team_roster()
                 self._show_team_overlay()
                 break
 
@@ -814,28 +969,218 @@ class PM99DatabaseEditor:
             if self.team_panel_roster_visible:
                 self.team_panel_roster_frame.pack_forget()
                 self.team_panel_roster_visible = False
-                self.team_panel_roster_toggle_btn.config(text="Show squad lineup")
+                self.team_panel_roster_toggle_btn.config(text=TEAM_ROSTER_SHOW_TEXT)
             else:
                 self.team_panel_roster_frame.pack(fill=tk.BOTH, expand=True)
                 self.team_panel_roster_visible = True
-                self.team_panel_roster_toggle_btn.config(text="Hide squad lineup")
+                self.team_panel_roster_toggle_btn.config(text=TEAM_ROSTER_HIDE_TEXT)
+                self.load_current_team_roster()
         except Exception:
             pass
 
+    @staticmethod
+    def _unresolved_roster_values():
+        return (TEAM_ROSTER_UNRESOLVED_VALUE,) * 6
+
+    def load_current_team_roster(self):
+        """Populate the team roster overlay using authoritative EQ roster extraction."""
+        tree = getattr(self, 'team_roster_tree', None)
+        if tree is None:
+            return
+        try:
+            tree.delete(*tree.get_children())
+        except Exception:
+            pass
+        current_team = getattr(self, 'current_team', None)
+        if not current_team:
+            return
+
+        _offset, team = current_team
+        team_name = str(getattr(team, 'name', '') or '').strip()
+        if not team_name:
+            return
+
+        player_file = getattr(self, 'file_path', '') or 'DBDAT/JUG98030.FDI'
+        try:
+            if Path(str(player_file)).name.upper().startswith("JUG") is False:
+                player_file = 'DBDAT/JUG98030.FDI'
+        except Exception:
+            player_file = 'DBDAT/JUG98030.FDI'
+
+        try:
+            result = extract_team_rosters_eq_same_entry_overlap(
+                team_file=str(getattr(self, 'team_file_path', 'DBDAT/EQ98030.FDI') or 'DBDAT/EQ98030.FDI'),
+                player_file=str(player_file),
+                team_queries=[team_name],
+                top_examples=5,
+                include_fallbacks=False,
+            )
+        except Exception as exc:
+            self.status_var.set(f"Team roster load failed: {exc}")
+            return
+
+        requested = list(getattr(result, 'requested_team_results', []) or [])
+        item = requested[0] if requested else {}
+        preferred = dict(item.get("preferred_roster_match") or {})
+        if str(preferred.get("provenance") or "") != "same_entry_authoritative":
+            self.status_var.set(f"No authoritative roster mapping yet for {team_name}")
+            return
+
+        rows = list(preferred.get("rows") or [])
+        cache_by_file = getattr(self, '_dd6361_pid_stat_cache', None)
+        if not isinstance(cache_by_file, dict):
+            cache_by_file = {}
+        pid_stat_index = cache_by_file.get(str(player_file))
+        if pid_stat_index is None:
+            try:
+                pid_stat_index = build_player_visible_skill_index_dd6361(file_path=str(player_file))
+            except Exception:
+                pid_stat_index = {}
+            cache_by_file[str(player_file)] = pid_stat_index
+            self._dd6361_pid_stat_cache = cache_by_file
+        visible_rows = 0
+        for row in rows:
+            if row.get("is_empty_slot"):
+                continue
+            pid = int(row.get("pid_candidate", 0) or 0)
+            dd_name = str(row.get("dd6361_name") or "").strip()
+            stats_entry = dict((pid_stat_index or {}).get(pid) or {})
+            resolved_name = str(stats_entry.get("resolved_bio_name") or "").strip()
+            display_label = dd_name or resolved_name
+            display_name = f"{display_label} [pid {pid}]" if display_label else f"PID {pid} (name unresolved)"
+            sp = st = ag = qu = ""
+            if stats_entry:
+                mapped10 = dict(stats_entry.get("mapped10") or {})
+                sp = mapped10.get("speed", "")
+                st = mapped10.get("stamina", "")
+                ag = mapped10.get("aggression", "")
+                qu = mapped10.get("quality", "")
+            en, fi, mo, av, role, pos = PM99DatabaseEditor._unresolved_roster_values()
+            visible_rows += 1
+            tree.insert(
+                '',
+                tk.END,
+                values=(visible_rows, display_name, en, sp, st, ag, qu, fi, mo, av, role, pos),
+            )
+        self.status_var.set(
+            f"Loaded authoritative roster rows for {team_name}: {visible_rows}{TEAM_ROSTER_STATUS_SUFFIX}"
+        )
+
     def apply_team_changes(self):
-        """Apply changes made in the team editor (placeholder)."""
+        """Apply/stage team name edits using shared editor actions."""
         if not getattr(self, 'current_team', None):
             return
-        # Attempt to apply a few basic fields back to the team object if methods exist
         offset, team = self.current_team
         try:
-            if hasattr(team, 'set_name'):
-                team.set_name(self.team_panel_name_var.get())
-            if hasattr(team, 'set_team_id'):
-                team.set_team_id(int(self.team_panel_id_var.get() or 0))
-            self.modified_team_records[offset] = team
+            # If this record is already staged, mutate the in-memory staged object directly
+            # so repeated edits before Save do not reload stale on-disk state.
+            if offset in self.modified_team_records:
+                staged_team = self.modified_team_records[offset]
+                change_lines = []
+                new_name = self.team_panel_name_var.get().strip()
+                new_stadium = self.team_panel_stadium_var.get().strip()
+                if new_name and new_name != (getattr(staged_team, 'name', '') or '') and hasattr(staged_team, 'set_name'):
+                    old_name = getattr(staged_team, 'name', '') or ''
+                    staged_team.set_name(new_name)
+                    change_lines.append(f"Team: {old_name} -> {getattr(staged_team, 'name', '') or new_name}")
+                if new_stadium != (getattr(staged_team, 'stadium', '') or '') and hasattr(staged_team, 'set_stadium_name'):
+                    old_stadium = getattr(staged_team, 'stadium', '') or ''
+                    staged_team.set_stadium_name(new_stadium)
+                    change_lines.append(f"Stadium: {old_stadium} -> {getattr(staged_team, 'stadium', '') or new_stadium}")
+                try:
+                    new_team_id = int(self.team_panel_id_var.get() or 0)
+                except Exception:
+                    new_team_id = getattr(staged_team, 'team_id', 0)
+                if new_team_id != getattr(staged_team, 'team_id', 0) and hasattr(staged_team, 'set_team_id'):
+                    staged_team.set_team_id(new_team_id)
+                    change_lines.append(f"Team ID -> {new_team_id}")
+                if not change_lines:
+                    messagebox.showinfo("Team Editor", "No changes to apply")
+                    return
+                team = staged_team
+                self.current_team = (offset, staged_team)
+                for record_list_name in ('team_records', 'filtered_team_records'):
+                    record_list = getattr(self, record_list_name, None) or []
+                    for idx, (o, rec) in enumerate(record_list):
+                        if o == offset:
+                            record_list[idx] = (offset, staged_team)
+                            break
+                try:
+                    self.build_team_lookup()
+                    self.populate_tree()
+                    self.populate_team_tree()
+                except Exception:
+                    pass
+                self.status_var.set("✓ Team changes staged (save to persist)")
+                messagebox.showinfo(
+                    "Team Editor",
+                    "Team changes staged. Use Save Database to persist.\n\n" + "\n".join(change_lines[:10]),
+                )
+                return
+
+            old_name = getattr(team, 'name', '') or ''
+            old_stadium = getattr(team, 'stadium', '') or ''
+            new_name = self.team_panel_name_var.get().strip()
+            new_stadium = self.team_panel_stadium_var.get().strip()
+
+            result = rename_team_records(
+                self.team_file_path,
+                old_name,
+                new_name or old_name,
+                old_stadium=old_stadium if old_stadium else None,
+                new_stadium=(new_stadium if new_stadium != old_stadium else None),
+                include_uncertain=True,
+                target_offsets=[offset],
+                write_changes=False,
+            )
+
+            staged_team = team
+            change_lines = []
+            if result.staged_records:
+                staged_team = result.staged_records[0][1]
+                for change in result.changes:
+                    if change.name_change and change.name_change[0] != change.name_change[1]:
+                        change_lines.append(f"Team: {change.name_change[0]} -> {change.name_change[1]}")
+                    if change.stadium_change and change.stadium_change[0] != change.stadium_change[1]:
+                        change_lines.append(f"Stadium: {change.stadium_change[0]} -> {change.stadium_change[1]}")
+
+            # Preserve direct Team ID edits in the staged record.
+            try:
+                new_team_id = int(self.team_panel_id_var.get() or 0)
+            except Exception:
+                new_team_id = getattr(staged_team, 'team_id', 0)
+            if new_team_id != getattr(staged_team, 'team_id', 0) and hasattr(staged_team, 'set_team_id'):
+                staged_team.set_team_id(new_team_id)
+                change_lines.append(f"Team ID -> {new_team_id}")
+
+            if not change_lines:
+                messagebox.showinfo("Team Editor", "No changes to apply")
+                return
+
+            self.modified_team_records[offset] = staged_team
+            self.current_team = (offset, staged_team)
+
+            for record_list_name in ('team_records', 'filtered_team_records'):
+                record_list = getattr(self, record_list_name, None) or []
+                for idx, (o, rec) in enumerate(record_list):
+                    if o == offset:
+                        record_list[idx] = (offset, staged_team)
+                        break
+
+            try:
+                self.build_team_lookup()
+                self.populate_tree()
+                self.populate_team_tree()
+                self.team_panel_name_var.set(getattr(staged_team, 'name', '') or '')
+                self.team_panel_stadium_var.set(getattr(staged_team, 'stadium', '') or '')
+            except Exception:
+                pass
+
             self.status_var.set("✓ Team changes staged (save to persist)")
-            messagebox.showinfo("Team Editor", "Team changes staged. Use Save Database to persist.")
+            messagebox.showinfo(
+                "Team Editor",
+                "Team changes staged. Use Save Database to persist.\n\n" + "\n".join(change_lines[:10]),
+            )
         except Exception as e:
             messagebox.showerror("Team Editor", f"Failed to apply team changes: {e}")
 
@@ -851,16 +1196,87 @@ class PM99DatabaseEditor:
             self.status_var.set("Team editor reset to original values")
 
     def apply_coach_changes(self):
-        """Apply coach name changes (placeholder)."""
+        """Apply/stage coach name edits using shared editor actions."""
         if not getattr(self, 'current_coach', None):
             return
         offset, coach = self.current_coach
         try:
-            if hasattr(coach, 'set_given_name'):
-                coach.set_given_name(self.coach_panel_given_var.get())
-            if hasattr(coach, 'set_surname'):
-                coach.set_surname(self.coach_panel_surname_var.get())
-            self.modified_coach_records[offset] = coach
+            if offset in self.modified_coach_records:
+                staged_coach = self.modified_coach_records[offset]
+                new_given = self.coach_panel_given_var.get().strip()
+                new_surname = self.coach_panel_surname_var.get().strip()
+                old_full = (
+                    getattr(staged_coach, 'full_name', None)
+                    or getattr(staged_coach, 'name', None)
+                    or f"{getattr(staged_coach, 'given_name', '')} {getattr(staged_coach, 'surname', '')}".strip()
+                )
+                new_full = f"{new_given} {new_surname}".strip()
+                if new_full == old_full:
+                    messagebox.showinfo("Coach Editor", "No changes to apply")
+                    return
+                if hasattr(staged_coach, 'set_name'):
+                    staged_coach.set_name(new_given, new_surname)
+                else:
+                    setattr(staged_coach, 'given_name', new_given)
+                    setattr(staged_coach, 'surname', new_surname)
+                    setattr(staged_coach, 'full_name', new_full)
+                self.current_coach = (offset, staged_coach)
+                for record_list_name in ('coach_records', 'filtered_coach_records'):
+                    record_list = getattr(self, record_list_name, None) or []
+                    for idx, (o, rec) in enumerate(record_list):
+                        if o == offset:
+                            record_list[idx] = (offset, staged_coach)
+                            break
+                try:
+                    self.populate_coach_tree()
+                except Exception:
+                    pass
+                self.coach_panel_full_var.set(
+                    getattr(staged_coach, 'full_name', None)
+                    or getattr(staged_coach, 'name', None)
+                    or new_full
+                )
+                self.status_var.set("✓ Coach changes staged (save to persist)")
+                messagebox.showinfo("Coach Editor", "Coach changes staged. Use Save Database to persist.")
+                return
+
+            old_name = (
+                getattr(coach, 'full_name', None)
+                or getattr(coach, 'name', None)
+                or f"{getattr(coach, 'given_name', '')} {getattr(coach, 'surname', '')}".strip()
+            )
+            new_name = f"{self.coach_panel_given_var.get().strip()} {self.coach_panel_surname_var.get().strip()}".strip()
+            result = rename_coach_records(
+                self.coach_file_path,
+                old_name,
+                new_name,
+                include_uncertain=True,
+                target_offset=offset,
+                write_changes=False,
+            )
+            if not result.staged_records:
+                messagebox.showinfo("Coach Editor", "No changes to apply")
+                return
+
+            staged_coach = result.staged_records[0][1]
+            self.modified_coach_records[offset] = staged_coach
+            self.current_coach = (offset, staged_coach)
+            for record_list_name in ('coach_records', 'filtered_coach_records'):
+                record_list = getattr(self, record_list_name, None) or []
+                for idx, (o, rec) in enumerate(record_list):
+                    if o == offset:
+                        record_list[idx] = (offset, staged_coach)
+                        break
+            try:
+                self.populate_coach_tree()
+            except Exception:
+                pass
+            full = (
+                getattr(staged_coach, 'full_name', None)
+                or getattr(staged_coach, 'name', None)
+                or f"{getattr(staged_coach, 'given_name', '')} {getattr(staged_coach, 'surname', '')}".strip()
+            )
+            self.coach_panel_full_var.set(full)
             self.status_var.set("✓ Coach changes staged (save to persist)")
             messagebox.showinfo("Coach Editor", "Coach changes staged. Use Save Database to persist.")
         except Exception as e:
@@ -960,6 +1376,725 @@ class PM99DatabaseEditor:
             self.league_count_label.config(text=f"Leagues: {len(self.team_records)}")
         except Exception:
             pass
+
+    def _format_bulk_summary_lines(self, result):
+        lines = []
+        for file_result in getattr(result, 'file_results', [])[:12]:
+            changed = getattr(file_result, 'changed_players', 0)
+            total = getattr(file_result, 'total_players', 0)
+            rows = getattr(file_result, 'rows_written', 0)
+            lines.append(f"{file_result.file}: changed={changed}, total={total}, rows={rows}")
+        extra = len(getattr(result, 'file_results', [])) - len(lines)
+        if extra > 0:
+            lines.append(f"... and {extra} more file(s)")
+        return lines
+
+    def open_bulk_player_rename_dialog(self):
+        """Run deterministic bulk player rename via shared bulk-rename helpers."""
+        try:
+            data_dir = filedialog.askdirectory(
+                title="Select DBDAT directory",
+                initialdir=str(Path("DBDAT") if Path("DBDAT").exists() else Path(".")),
+            )
+            if not data_dir:
+                return
+
+            map_output = filedialog.asksaveasfilename(
+                title="Save rename mapping CSV",
+                defaultextension=".csv",
+                initialfile="rename_map.csv",
+                filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+            )
+            if not map_output:
+                return
+
+            dry_run = messagebox.askyesno(
+                "Bulk Rename Players",
+                "Run in dry-run mode?\n\nYes = write mapping CSV only\nNo = rename players and write mapping",
+            )
+            self.status_var.set("Running bulk player rename...")
+            self.root.update_idletasks()
+            result = bulk_rename_players(data_dir, map_output, dry_run=dry_run)
+            summary_lines = self._format_bulk_summary_lines(result)
+            self.status_var.set(
+                f"✓ Bulk player rename {'dry-run ' if dry_run else ''}complete ({result.rows_written} rows)"
+            )
+            messagebox.showinfo(
+                "Bulk Rename Players",
+                (
+                    f"{'Dry run complete' if dry_run else 'Bulk rename complete'}\n\n"
+                    f"Files processed: {result.files_processed}\n"
+                    f"Rows written: {result.rows_written}\n"
+                    f"Mapping: {result.map_output}\n\n"
+                    + "\n".join(summary_lines)
+                ),
+            )
+        except Exception as exc:
+            self.status_var.set("Bulk player rename failed")
+            messagebox.showerror("Bulk Rename Players", f"Bulk rename failed:\n{exc}")
+
+    def open_bulk_player_revert_dialog(self):
+        """Revert deterministic bulk player rename using a mapping CSV."""
+        try:
+            data_dir = filedialog.askdirectory(
+                title="Select DBDAT directory",
+                initialdir=str(Path("DBDAT") if Path("DBDAT").exists() else Path(".")),
+            )
+            if not data_dir:
+                return
+
+            map_input = filedialog.askopenfilename(
+                title="Select rename mapping CSV",
+                filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+                initialdir=str(Path(".")),
+            )
+            if not map_input:
+                return
+
+            dry_run = messagebox.askyesno(
+                "Revert Bulk Player Rename",
+                "Run in dry-run mode?\n\nYes = validate only\nNo = revert player names",
+            )
+            self.status_var.set("Running bulk player rename revert...")
+            self.root.update_idletasks()
+            result = revert_player_renames(data_dir, map_input, dry_run=dry_run)
+            summary_lines = self._format_bulk_summary_lines(result)
+            self.status_var.set(
+                f"✓ Bulk player revert {'dry-run ' if dry_run else ''}complete ({result.rows_processed} rows)"
+            )
+            messagebox.showinfo(
+                "Revert Bulk Player Rename",
+                (
+                    f"{'Dry run complete' if dry_run else 'Bulk revert complete'}\n\n"
+                    f"Files processed: {result.files_processed}\n"
+                    f"Rows processed: {result.rows_processed}\n"
+                    f"Mapping: {result.map_input}\n\n"
+                    + "\n".join(summary_lines)
+                ),
+            )
+        except Exception as exc:
+            self.status_var.set("Bulk player revert failed")
+            messagebox.showerror("Revert Bulk Player Rename", f"Bulk revert failed:\n{exc}")
+
+    def _current_player_visible_skill_query(self):
+        current = getattr(self, "current_record", None)
+        if not (isinstance(current, tuple) and len(current) >= 2):
+            return ""
+        record = current[1]
+        given = (getattr(record, "given_name", None) or "").strip()
+        surname = (getattr(record, "surname", None) or "").strip()
+        full = " ".join(part for part in (given, surname) if part).strip()
+        if full:
+            return full
+        return (getattr(record, "name", "") or "").strip()
+
+    def _visible_skill_stage_key(self, file_path: str, resolved_bio_name: str):
+        return (str(Path(file_path)), str(resolved_bio_name).strip().upper())
+
+    def _current_visible_skill_stage_entry(self):
+        """Return staged dd6361 patch entry for the current visible-skill snapshot, if any."""
+        snapshot = getattr(self, "visible_skill_snapshot", None)
+        if snapshot is None:
+            return None
+        file_path = getattr(self, "file_path", None) or "DBDAT/JUG98030.FDI"
+        if not str(file_path).lower().endswith(".fdi"):
+            file_path = "DBDAT/JUG98030.FDI"
+        key = self._visible_skill_stage_key(file_path, getattr(snapshot, "resolved_bio_name", ""))
+        staged = getattr(self, "staged_visible_skill_patches", None)
+        if not isinstance(staged, dict):
+            return None
+        return staged.get(key)
+
+    def _visible_skill_status_text(self, snapshot=None):
+        """Build a compact status line for the dd6361 visible-skill panel."""
+        snapshot = snapshot if snapshot is not None else getattr(self, "visible_skill_snapshot", None)
+        staged = getattr(self, "staged_visible_skill_patches", None)
+        staged_count = len(staged) if isinstance(staged, dict) else 0
+        if snapshot is None:
+            if staged_count:
+                return f"dd6361 visible skills: not loaded | {staged_count} staged patch(es)"
+            return "dd6361 visible skills: not loaded"
+        base = f"dd6361 visible skills loaded: {getattr(snapshot, 'resolved_bio_name', '')}"
+        current_stage = self._current_visible_skill_stage_entry()
+        if current_stage:
+            return base + f" | staged patch pending ({len(current_stage.get('updates', {}))} field(s))"
+        if staged_count:
+            return base + f" | {staged_count} staged patch(es)"
+        return base
+
+    def _set_visible_skill_panel_unavailable(self, reason: str = "unavailable"):
+        try:
+            self.visible_skill_snapshot = None
+            self.visible_skill_baseline = {}
+            for field, var in getattr(self, "visible_skill_vars", {}).items():
+                try:
+                    var.set(0)
+                except Exception:
+                    pass
+            if hasattr(self, "visible_skill_status_var"):
+                status = f"dd6361 visible skills: {reason}"
+                staged = getattr(self, "staged_visible_skill_patches", None)
+                if isinstance(staged, dict) and staged:
+                    status += f" | {len(staged)} staged patch(es)"
+                self.visible_skill_status_var.set(status)
+        except Exception:
+            pass
+
+    def refresh_visible_skill_panel(self, show_dialog_errors: bool = False):
+        """Load verified dd6361 mapped10 visible stats for the currently selected player."""
+        try:
+            file_path = getattr(self, "file_path", None) or "DBDAT/JUG98030.FDI"
+            if not str(file_path).lower().endswith(".fdi"):
+                file_path = "DBDAT/JUG98030.FDI"
+            query = self._current_player_visible_skill_query()
+            if not query:
+                self._set_visible_skill_panel_unavailable("no player selected")
+                return None
+
+            snapshot = inspect_player_visible_skills_dd6361(
+                file_path=file_path,
+                player_name=query,
+            )
+            self.visible_skill_snapshot = snapshot
+            self.visible_skill_baseline = {
+                field: int(snapshot.mapped10.get(field, 0))
+                for field in getattr(self, "visible_skill_field_order", snapshot.mapped10_order)
+            }
+            for field in getattr(self, "visible_skill_field_order", snapshot.mapped10_order):
+                if field in getattr(self, "visible_skill_vars", {}):
+                    self.visible_skill_vars[field].set(int(snapshot.mapped10.get(field, 0)))
+            if hasattr(self, "visible_skill_status_var"):
+                self.visible_skill_status_var.set(self._visible_skill_status_text(snapshot))
+            return snapshot
+        except Exception as exc:
+            self._set_visible_skill_panel_unavailable(f"error ({exc})")
+            if show_dialog_errors:
+                messagebox.showerror("Visible Skills (dd6361)", f"Failed to load visible skills:\n{exc}")
+            return None
+
+    def _collect_visible_skill_panel_updates(self):
+        """Return changed mapped10 fields from the dd6361 visible-skill panel."""
+        snapshot = getattr(self, "visible_skill_snapshot", None)
+        if snapshot is None:
+            return None, "No dd6361 visible-skill snapshot is loaded"
+
+        updates = {}
+        field_order = getattr(self, "visible_skill_field_order", getattr(snapshot, "mapped10_order", []))
+        baseline = getattr(self, "visible_skill_baseline", {}) or {}
+        for field in field_order:
+            if field not in getattr(self, "visible_skill_vars", {}):
+                continue
+            try:
+                new_val = int(self.visible_skill_vars[field].get())
+            except Exception as exc:
+                return None, f"Invalid value for {field}: {exc}"
+            old_val = int(baseline.get(field, snapshot.mapped10.get(field, 0)))
+            if new_val != old_val:
+                updates[field] = new_val
+        return updates, None
+
+    def stage_visible_skill_panel_changes(self):
+        """Stage panel-visible dd6361 mapped10 edits for the next Save Database run."""
+        snapshot = getattr(self, "visible_skill_snapshot", None)
+        if snapshot is None:
+            snapshot = self.refresh_visible_skill_panel(show_dialog_errors=True)
+            if snapshot is None:
+                return
+
+        updates, err = self._collect_visible_skill_panel_updates()
+        if err:
+            messagebox.showerror("Visible Skills (dd6361)", err)
+            return
+        if not updates:
+            messagebox.showinfo("Visible Skills (dd6361)", "No visible skill changes to stage.")
+            return
+
+        file_path = getattr(self, "file_path", None) or "DBDAT/JUG98030.FDI"
+        if not str(file_path).lower().endswith(".fdi"):
+            file_path = "DBDAT/JUG98030.FDI"
+
+        key = self._visible_skill_stage_key(file_path, snapshot.resolved_bio_name)
+        staged = getattr(self, "staged_visible_skill_patches", None)
+        if not isinstance(staged, dict):
+            self.staged_visible_skill_patches = {}
+            staged = self.staged_visible_skill_patches
+        staged[key] = {
+            "file_path": str(file_path),
+            "player_name": str(snapshot.resolved_bio_name),
+            "updates": dict(updates),
+            "target_query": str(getattr(snapshot, "target_query", snapshot.resolved_bio_name)),
+        }
+
+        changed_lines = [
+            f"{field}: {self.visible_skill_baseline.get(field, snapshot.mapped10.get(field))} -> {value}"
+            for field, value in updates.items()
+        ]
+        self.status_var.set(
+            f"✓ Staged dd6361 visible skills for {snapshot.resolved_bio_name} (save database to persist)"
+        )
+        try:
+            self.visible_skill_status_var.set(self._visible_skill_status_text(snapshot))
+        except Exception:
+            pass
+        messagebox.showinfo(
+            "Visible Skills (dd6361)",
+            (
+                "Visible skill changes staged for Save Database.\n\n"
+                f"Player: {snapshot.resolved_bio_name}\n"
+                f"File: {file_path}\n\n"
+                "Changed fields:\n"
+                + "\n".join(changed_lines[:10])
+                + (f"\n... and {len(changed_lines) - 10} more" if len(changed_lines) > 10 else "")
+            ),
+        )
+
+    def discard_visible_skill_panel_staged_changes(self):
+        """Discard the staged dd6361 visible-skill patch for the currently loaded player snapshot."""
+        snapshot = getattr(self, "visible_skill_snapshot", None)
+        if snapshot is None:
+            messagebox.showinfo("Visible Skills (dd6361)", "No dd6361 visible-skill snapshot is loaded.")
+            return
+
+        file_path = getattr(self, "file_path", None) or "DBDAT/JUG98030.FDI"
+        if not str(file_path).lower().endswith(".fdi"):
+            file_path = "DBDAT/JUG98030.FDI"
+        key = self._visible_skill_stage_key(file_path, getattr(snapshot, "resolved_bio_name", ""))
+        staged = getattr(self, "staged_visible_skill_patches", None)
+        if not isinstance(staged, dict) or key not in staged:
+            messagebox.showinfo("Visible Skills (dd6361)", "No staged visible-skill patch exists for this player.")
+            return
+
+        staged_item = staged.pop(key)
+        self.status_var.set(f"Discarded staged dd6361 visible-skill patch for {snapshot.resolved_bio_name}")
+        try:
+            self.visible_skill_status_var.set(self._visible_skill_status_text(snapshot))
+        except Exception:
+            pass
+
+        # Reset UI values back to baseline for the current snapshot.
+        for field, baseline_val in (getattr(self, "visible_skill_baseline", {}) or {}).items():
+            if field in getattr(self, "visible_skill_vars", {}):
+                try:
+                    self.visible_skill_vars[field].set(int(baseline_val))
+                except Exception:
+                    pass
+
+        changed_fields = ", ".join(sorted((staged_item.get("updates") or {}).keys()))
+        messagebox.showinfo(
+            "Visible Skills (dd6361)",
+            f"Discarded staged patch for {snapshot.resolved_bio_name}."
+            + (f"\nFields: {changed_fields}" if changed_fields else ""),
+        )
+
+    def review_staged_visible_skill_patches(self):
+        """Show a summary of staged dd6361 visible-skill patches pending Save Database."""
+        staged = getattr(self, "staged_visible_skill_patches", None)
+        if not isinstance(staged, dict) or not staged:
+            messagebox.showinfo("Visible Skills (dd6361)", "No staged dd6361 visible-skill patches.")
+            return
+
+        current_key = None
+        snapshot = getattr(self, "visible_skill_snapshot", None)
+        if snapshot is not None:
+            try:
+                file_path = getattr(self, "file_path", None) or "DBDAT/JUG98030.FDI"
+                if not str(file_path).lower().endswith(".fdi"):
+                    file_path = "DBDAT/JUG98030.FDI"
+                current_key = self._visible_skill_stage_key(file_path, getattr(snapshot, "resolved_bio_name", ""))
+            except Exception:
+                current_key = None
+
+        lines = []
+        for idx, (_key, item) in enumerate(
+            sorted(staged.items(), key=lambda kv: (kv[1].get("file_path", ""), kv[1].get("player_name", "")))
+        ):
+            if idx >= 20:
+                lines.append(f"... and {len(staged) - 20} more staged patch(es)")
+                break
+            updates = item.get("updates") or {}
+            update_preview = ", ".join(f"{k}={v}" for k, v in sorted(updates.items())[:6])
+            if len(updates) > 6:
+                update_preview += f", ... (+{len(updates) - 6} more)"
+            line = (
+                f"{item.get('player_name')} [{Path(str(item.get('file_path'))).name}]"
+                + (f": {update_preview}" if update_preview else "")
+            )
+            if current_key is not None and _key == current_key:
+                line += " [current]"
+            lines.append(line)
+
+        messagebox.showinfo(
+            "Visible Skills (dd6361)",
+            (
+                f"Staged dd6361 visible-skill patches pending Save Database ({len(staged)} total):\n\n"
+                + "\n".join(lines)
+            ),
+        )
+
+    def _apply_staged_visible_skill_patches(self, create_backups: bool = False):
+        """
+        Apply staged dd6361 visible-skill patches immediately.
+
+        Intended for Save Database integration. Returns a list of backend patch results.
+        """
+        staged = getattr(self, "staged_visible_skill_patches", None)
+        if not isinstance(staged, dict) or not staged:
+            return []
+
+        results = []
+        # Apply in a stable order for reproducibility.
+        for _key, item in sorted(staged.items(), key=lambda kv: (kv[1].get("file_path", ""), kv[1].get("player_name", ""))):
+            result = patch_player_visible_skills_dd6361(
+                file_path=str(item["file_path"]),
+                player_name=str(item["player_name"]),
+                updates=dict(item.get("updates") or {}),
+                output_file=None,
+                in_place=True,
+                create_backup_before_write=create_backups,
+                json_output=None,
+            )
+            results.append(result)
+
+        # Refresh current player file bytes/panel if we touched the open player file.
+        try:
+            current_file = str(getattr(self, "file_path", "") or "")
+            if current_file and any(str(getattr(r, "file_path", "")) == current_file for r in results):
+                self.file_data = Path(current_file).read_bytes()
+                self.refresh_visible_skill_panel(show_dialog_errors=False)
+        except Exception:
+            pass
+
+        self.staged_visible_skill_patches.clear()
+        try:
+            self.visible_skill_status_var.set(self._visible_skill_status_text(getattr(self, "visible_skill_snapshot", None)))
+        except Exception:
+            pass
+        return results
+
+    def patch_visible_skill_panel_in_place(self):
+        """Patch current panel changes in-place via dd6361 backend (with backup)."""
+        snapshot = getattr(self, "visible_skill_snapshot", None)
+        if snapshot is None:
+            snapshot = self.refresh_visible_skill_panel(show_dialog_errors=True)
+            if snapshot is None:
+                return
+
+        updates, err = self._collect_visible_skill_panel_updates()
+        if err:
+            messagebox.showerror("Visible Skills (dd6361)", err)
+            return
+        if not updates:
+            messagebox.showinfo("Visible Skills (dd6361)", "No visible skill changes to patch.")
+            return
+
+        file_path = getattr(self, "file_path", None) or "DBDAT/JUG98030.FDI"
+        if not str(file_path).lower().endswith(".fdi"):
+            file_path = "DBDAT/JUG98030.FDI"
+
+        changed_lines = [
+            f"{field}: {self.visible_skill_baseline.get(field, snapshot.mapped10.get(field))} -> {value}"
+            for field, value in updates.items()
+        ]
+        if not messagebox.askyesno(
+            "Visible Skills (dd6361)",
+            (
+                "Patch visible skills in place for the currently selected player?\n\n"
+                f"Player: {snapshot.resolved_bio_name}\n"
+                f"File: {file_path}\n"
+                "A backup will be created automatically.\n\n"
+                + "\n".join(changed_lines[:10])
+            ),
+        ):
+            return
+
+        try:
+            self.status_var.set("Patching dd6361 visible skills (in-place)...")
+            self.root.update_idletasks()
+            result = patch_player_visible_skills_dd6361(
+                file_path=file_path,
+                player_name=snapshot.resolved_bio_name,
+                updates=updates,
+                output_file=None,
+                in_place=True,
+                create_backup_before_write=True,
+                json_output=None,
+            )
+            try:
+                key = self._visible_skill_stage_key(file_path, result.resolved_bio_name)
+                if isinstance(getattr(self, "staged_visible_skill_patches", None), dict):
+                    self.staged_visible_skill_patches.pop(key, None)
+            except Exception:
+                pass
+            try:
+                if Path(file_path).resolve() == Path(getattr(self, "file_path", "")).resolve():
+                    self.file_data = Path(file_path).read_bytes()
+            except Exception:
+                pass
+            # Re-read to refresh baseline/current values.
+            refreshed = self.refresh_visible_skill_panel(show_dialog_errors=False)
+            self.status_var.set(f"✓ dd6361 visible skills patched for {result.resolved_bio_name}")
+            info_lines = [
+                f"Player: {result.resolved_bio_name}",
+                f"File: {result.output_file}",
+            ]
+            if result.backup_path:
+                info_lines.append(f"Backup: {result.backup_path}")
+            info_lines.extend(["", "Patched fields:"] + changed_lines[:10])
+            if len(changed_lines) > 10:
+                info_lines.append(f"... and {len(changed_lines) - 10} more")
+            if refreshed is not None and getattr(refreshed, "resolved_bio_name", None):
+                info_lines.append("")
+                info_lines.append(f"Reloaded snapshot: {refreshed.resolved_bio_name}")
+            messagebox.showinfo("Visible Skills (dd6361)", "\n".join(info_lines))
+        except Exception as exc:
+            self.status_var.set("dd6361 visible skill patch failed")
+            messagebox.showerror("Visible Skills (dd6361)", f"Failed to patch visible skills:\n{exc}")
+
+    def _prompt_visible_skill_patch_assignments(self, snapshot):
+        """
+        Prompt for dd6361 mapped10 visible-skill edits.
+
+        Returns a list of FIELD=VALUE assignments, an empty list for "no changes",
+        or None when the user cancels. Falls back to a simple text prompt in
+        headless/test contexts where a real modal dialog cannot be shown.
+        """
+        # Headless/test fallback (e.g. unit tests using a fake root object)
+        if not hasattr(self.root, "wait_window"):
+            assignment_text = simpledialog.askstring(
+                "Patch Player Visible Skills",
+                (
+                    "Enter visible stat assignments as FIELD=VALUE.\n"
+                    "Use commas or new lines to provide multiple values.\n\n"
+                    "Supported fields: speed, stamina, aggression, quality,\n"
+                    "handling, passing, dribbling, heading, tackling, shooting"
+                ),
+                initialvalue="\n".join(
+                    f"{field}={snapshot.mapped10.get(field, 0)}"
+                    for field in getattr(snapshot, "mapped10_order", [])
+                ),
+            )
+            if assignment_text is None:
+                return None
+            return [
+                item.strip()
+                for item in re.split(r"[\n,]+", assignment_text)
+                if item and item.strip()
+            ]
+
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Patch Player Visible Skills (dd6361)")
+        try:
+            dialog.transient(self.root)
+            dialog.grab_set()
+        except Exception:
+            pass
+        dialog.resizable(False, False)
+
+        result = {"assignments": None}
+        vars_by_field = {}
+        initial_values = {field: int(snapshot.mapped10.get(field, 0)) for field in snapshot.mapped10_order}
+
+        body = ttk.Frame(dialog, padding=10)
+        body.pack(fill=tk.BOTH, expand=True)
+
+        ttk.Label(
+            body,
+            text=f"Player: {getattr(snapshot, 'resolved_bio_name', '')}",
+            font=("TkDefaultFont", 10, "bold"),
+        ).grid(row=0, column=0, columnspan=3, sticky=tk.W, pady=(0, 4))
+        ttk.Label(
+            body,
+            text="Edit verified visible stats (dd6361 mapped10). Only changed fields will be patched.",
+        ).grid(row=1, column=0, columnspan=3, sticky=tk.W, pady=(0, 8))
+
+        for idx, field in enumerate(snapshot.mapped10_order):
+            row = 2 + idx
+            label = field.replace("_", " ").title()
+            ttk.Label(body, text=label + ":").grid(row=row, column=0, sticky=tk.W, padx=(0, 8), pady=2)
+            var = tk.IntVar(value=initial_values[field])
+            vars_by_field[field] = var
+            spin = ttk.Spinbox(body, from_=0, to=255, textvariable=var, width=8)
+            spin.grid(row=row, column=1, sticky=tk.W, pady=2)
+            ttk.Label(body, text=f"(current {initial_values[field]})").grid(
+                row=row, column=2, sticky=tk.W, padx=(8, 0), pady=2
+            )
+            if idx == 0:
+                try:
+                    spin.focus_set()
+                    spin.selection_range(0, tk.END)
+                except Exception:
+                    pass
+
+        button_row = 2 + len(snapshot.mapped10_order)
+        button_frame = ttk.Frame(body)
+        button_frame.grid(row=button_row, column=0, columnspan=3, sticky=tk.EW, pady=(10, 0))
+
+        def _collect_assignments():
+            assignments = []
+            for field in snapshot.mapped10_order:
+                try:
+                    value = int(vars_by_field[field].get())
+                except Exception as exc:
+                    messagebox.showerror(
+                        "Patch Player Visible Skills",
+                        f"Invalid value for {field}: {exc}",
+                        parent=dialog,
+                    )
+                    return None
+                if value != initial_values[field]:
+                    assignments.append(f"{field}={value}")
+            return assignments
+
+        def _on_apply():
+            assignments = _collect_assignments()
+            if assignments is None:
+                return
+            result["assignments"] = assignments
+            dialog.destroy()
+
+        def _on_cancel():
+            result["assignments"] = None
+            dialog.destroy()
+
+        ttk.Button(button_frame, text="Cancel", command=_on_cancel).pack(side=tk.RIGHT)
+        ttk.Button(button_frame, text="Patch", command=_on_apply).pack(side=tk.RIGHT, padx=(0, 6))
+
+        try:
+            dialog.bind("<Return>", lambda _e: _on_apply())
+            dialog.bind("<Escape>", lambda _e: _on_cancel())
+            dialog.protocol("WM_DELETE_WINDOW", _on_cancel)
+        except Exception:
+            pass
+
+        self.root.wait_window(dialog)
+        return result["assignments"]
+
+    def open_player_skill_patch_dialog(self):
+        """
+        Patch verified visible player stats (dd6361 mapped10) using the shared backend action.
+
+        This is intentionally separate from the legacy player attribute editor because the
+        current on-screen PM99 stat mapping is only verified for the dd6361 biography trailer
+        path (core4 + 6 technical skills).
+        """
+        try:
+            default_query = ""
+            current = getattr(self, "current_record", None)
+            if isinstance(current, tuple) and len(current) >= 2:
+                record = current[1]
+                default_query = " ".join(
+                    part for part in [getattr(record, "given_name", None), getattr(record, "surname", None)] if part
+                ).strip()
+                if not default_query:
+                    default_query = (getattr(record, "name", "") or "").strip()
+
+            player_file = getattr(self, "file_path", None) or "DBDAT/JUG98030.FDI"
+            if not str(player_file).lower().endswith(".fdi"):
+                player_file = "DBDAT/JUG98030.FDI"
+
+            player_file = filedialog.askopenfilename(
+                title="Select player database (JUG*.FDI)",
+                filetypes=[("FDI files", "*.FDI"), ("All files", "*.*")],
+                initialdir=str(Path(player_file).parent if player_file else Path("DBDAT")),
+                initialfile=Path(player_file).name if player_file else "JUG98030.FDI",
+            )
+            if not player_file:
+                return
+
+            name_query = simpledialog.askstring(
+                "Patch Player Visible Skills",
+                "Player name query (dd6361 bio name):",
+                initialvalue=default_query or "",
+            )
+            if not name_query:
+                return
+
+            # Prefill with the current verified mapped10 values for the selected/player query.
+            snapshot = inspect_player_visible_skills_dd6361(
+                file_path=player_file,
+                player_name=name_query,
+            )
+            prompt_assignments = getattr(self, "_prompt_visible_skill_patch_assignments", None)
+            if not callable(prompt_assignments):
+                prompt_assignments = lambda snap: PM99DatabaseEditor._prompt_visible_skill_patch_assignments(self, snap)
+            assignment_items = prompt_assignments(snapshot)
+            if assignment_items is None:
+                return
+            if not assignment_items:
+                messagebox.showinfo("Patch Player Visible Skills", "No visible skill changes were selected.")
+                return
+
+            in_place = messagebox.askyesno(
+                "Patch Player Visible Skills",
+                (
+                    "Patch in place?\n\n"
+                    "Yes = patch the selected JUG*.FDI directly and create a backup\n"
+                    "No = write a patched copy (recommended)"
+                ),
+            )
+
+            output_file = None
+            if not in_place:
+                default_out = Path(player_file).with_name(Path(player_file).stem + ".dd6361_patched.FDI")
+                output_file = filedialog.asksaveasfilename(
+                    title="Save patched player database copy",
+                    defaultextension=".FDI",
+                    initialfile=default_out.name,
+                    initialdir=str(default_out.parent),
+                    filetypes=[("FDI files", "*.FDI"), ("All files", "*.*")],
+                )
+                if not output_file:
+                    return
+
+            self.status_var.set("Running dd6361 visible skill patch...")
+            self.root.update_idletasks()
+
+            updates = parse_player_skill_patch_assignments(assignment_items)
+            result = patch_player_visible_skills_dd6361(
+                file_path=player_file,
+                player_name=name_query,
+                updates=updates,
+                output_file=output_file,
+                in_place=in_place,
+                create_backup_before_write=in_place,
+                json_output=None,
+            )
+
+            # Refresh cached bytes if we patched the currently open player file in-place.
+            try:
+                if result.in_place and Path(player_file).resolve() == Path(getattr(self, "file_path", "")).resolve():
+                    self.file_data = Path(player_file).read_bytes()
+            except Exception:
+                pass
+
+            changed_lines = []
+            for field in result.mapped10_order:
+                if field in result.updates_requested:
+                    changed_lines.append(
+                        f"{field}: {result.mapped10_before.get(field)} -> {result.mapped10_after.get(field)}"
+                    )
+            if len(changed_lines) > 10:
+                changed_lines = changed_lines[:10] + [f"... and {len(result.updates_requested) - 10} more"]
+
+            self.status_var.set(
+                f"✓ Visible skill patch {'applied' if result.in_place else 'copy written'} for {result.resolved_bio_name}"
+            )
+            summary = [
+                f"Player: {result.resolved_bio_name}",
+                f"Resolved from query: {snapshot.target_query}",
+                f"File: {result.output_file}",
+            ]
+            if result.backup_path:
+                summary.append(f"Backup: {result.backup_path}")
+            if result.touched_entry_offsets:
+                touched_preview = ", ".join(f"0x{off:08X}" for off in result.touched_entry_offsets[:5])
+                summary.append(f"Touched entry offsets: {touched_preview}")
+            if changed_lines:
+                summary.extend(["", "Changed fields:"] + changed_lines)
+            messagebox.showinfo("Patch Player Visible Skills", "\n".join(summary))
+        except Exception as exc:
+            self.status_var.set("Visible skill patch failed")
+            messagebox.showerror("Patch Player Visible Skills", f"Visible skill patch failed:\n{exc}")
 
     def open_pkf_viewer(self) -> None:
         """Open a PKF archive in a lightweight inspection window."""
@@ -1838,6 +2973,12 @@ class PM99DatabaseEditor:
                 return lambda *args: lbl.config(text=str(v.get()))
             var.trace('w', make_updater(val_label, var))
 
+        # Best-effort refresh of the verified dd6361 visible-skill panel for the selected player.
+        try:
+            self.refresh_visible_skill_panel(show_dialog_errors=False)
+        except Exception:
+            self._set_visible_skill_panel_unavailable("refresh error")
+
     def apply_changes(self):
         """Apply changes to current record"""
         if not self.current_record:
@@ -2116,14 +3257,17 @@ class PM99DatabaseEditor:
         n_players = len(getattr(self, 'modified_records', {}))
         n_coaches = len(getattr(self, 'modified_coach_records', {}))
         n_teams = len(getattr(self, 'modified_team_records', {}))
+        n_visible_skill_patches = len(getattr(self, 'staged_visible_skill_patches', {}) or {})
 
-        if n_players == 0 and n_coaches == 0 and n_teams == 0:
+        if n_players == 0 and n_coaches == 0 and n_teams == 0 and n_visible_skill_patches == 0:
             messagebox.showinfo("Info", "No changes to save")
             return
 
         parts = []
         if n_players:
             parts.append(f"{n_players} player(s) → {self.file_path}")
+        if n_visible_skill_patches:
+            parts.append(f"{n_visible_skill_patches} dd6361 visible-skill patch(es) → {self.file_path}")
         if n_coaches:
             parts.append(f"{n_coaches} coach(es) → {self.coach_file_path}")
         if n_teams:
@@ -2141,9 +3285,15 @@ class PM99DatabaseEditor:
             backups = []
 
             # Players
-            if n_players:
+            if n_players or n_visible_skill_patches:
                 player_backup = Path(self.file_path + f'.backup_{timestamp}')
-                player_backup.write_bytes(self.file_data)
+                if self.file_data is not None:
+                    player_backup.write_bytes(self.file_data)
+                else:
+                    player_backup.write_bytes(Path(self.file_path).read_bytes())
+                backups.append(str(player_backup))
+
+            if n_players:
                 # Use FDIFile save which honors SAVE_NAME_ONLY conservative behaviour
                 fdi = FDIFile(self.file_path)
                 fdi.file_data = self.file_data
@@ -2153,7 +3303,15 @@ class PM99DatabaseEditor:
                 # Refresh in-memory file data and clear staged modifications
                 self.file_data = Path(self.file_path).read_bytes()
                 self.modified_records.clear()
-                backups.append(str(player_backup))
+
+            if n_visible_skill_patches:
+                patch_results = self._apply_staged_visible_skill_patches(create_backups=False)
+                # If save is called before any player data was loaded, ensure memory cache refresh.
+                if patch_results and self.file_data is None:
+                    try:
+                        self.file_data = Path(self.file_path).read_bytes()
+                    except Exception:
+                        pass
 
             # Coaches
             if n_coaches:
@@ -2170,14 +3328,13 @@ class PM99DatabaseEditor:
             # Teams
             if n_teams:
                 team_path = Path(self.team_file_path)
-                team_data = team_path.read_bytes()
-                team_backup = team_path.with_name(team_path.name + f'.backup_{timestamp}')
-                team_backup.write_bytes(team_data)
                 modified_list = [(o, r) for o, r in self.modified_team_records.items()]
-                new_data = save_modified_records(self.team_file_path, team_data, modified_list)
-                team_path.write_bytes(new_data)
+                # Team loader offsets point inside decoded section records; use the
+                # team-aware writer so we patch and rewrite the enclosing FDI entries.
+                team_backup = write_team_staged_records(self.team_file_path, modified_list)
                 self.modified_team_records.clear()
-                backups.append(str(team_backup))
+                if team_backup:
+                    backups.append(str(team_backup))
 
             self.status_var.set(f"✓ Database saved")
             messagebox.showinfo("Success", f"Database saved!\nBackups:\n" + "\n".join(backups))
@@ -2197,6 +3354,10 @@ class PM99DatabaseEditor:
                 self.modified_records.clear()
             except Exception:
                 self.modified_records = {}
+            try:
+                self.staged_visible_skill_patches.clear()
+            except Exception:
+                self.staged_visible_skill_patches = {}
             # Reload database for the newly chosen file
             self.load_database()
 def main():

@@ -94,6 +94,7 @@ class FDIFile:
         self.directory = []
         self.records = []
         self.modified_records = {}
+        self.last_backup_path = None
     
     def load(self):
         """Load and parse the FDI file (OPTIMIZED VERSION)"""
@@ -381,6 +382,7 @@ class FDIFile:
             try:
                 # Create a single backup copy before attempting any writes
                 backup_path = create_backup(str(output_path))
+                self.last_backup_path = backup_path
                 
                 # Apply each modified record as a conservative name-only write
                 for offset, record in list(self.modified_records.items()):
@@ -445,6 +447,7 @@ class FDIFile:
         # Default (legacy) behaviour: full rewrite of modified records in-memory
         # Create backup by renaming original file to .backup and write new bytes afterwards
         backup_path = output_path.with_suffix(f"{output_path.suffix}.backup")
+        self.last_backup_path = str(backup_path)
         output_path.rename(backup_path)
         
         # Save modified data using the existing batch writer
