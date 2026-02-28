@@ -18,7 +18,10 @@ class TeamRecord:
 
     def __init__(self, data: bytes, record_offset: int):
         self.raw_data = bytearray(data)
+        self.original_raw_data = bytes(data)
         self.record_offset = record_offset
+        self.container_offset = None
+        self.container_relative_offset = None
 
         # Team ID and where it was found (offset inside raw_data) so we can write it back
         try:
@@ -33,7 +36,7 @@ class TeamRecord:
             name, ns, ne = self._extract_name()
         except Exception:
             name, ns, ne = "Unknown Team", 0, 0
-        self.name = name
+        self.name = self._clean_extracted_text(name)
         self.name_start = ns
         self.name_end = ne
 
@@ -42,9 +45,19 @@ class TeamRecord:
             stadium, ss, se = self._extract_stadium()
         except Exception:
             stadium, ss, se = "", 0, 0
-        self.stadium = stadium
+        self.stadium = self._clean_extracted_text(stadium)
         self.stadium_start = ss
         self.stadium_end = se
+
+        # Additional team metadata often embedded in EQ team subrecords (heuristic parsing).
+        self.full_club_name = None
+        self.chairman = None
+        self.shirt_sponsor = None
+        self.kit_supplier = None
+        try:
+            self._extract_team_metadata_fields()
+        except Exception:
+            pass
 
         # Parsed stadium details (capacity, car park, pitch quality)
         try:
@@ -54,6 +67,7 @@ class TeamRecord:
         self.stadium_capacity = cap
         self.car_park = car
         self.pitch = pitch
+        self._sync_stadium_detail_aliases()
 
         # League information (to be parsed from metadata)
         try:
@@ -61,6 +75,270 @@ class TeamRecord:
         except Exception:
             league = "Unknown League"
         self.league = league
+
+    def _clean_extracted_text(self, text: str) -> str:
+        """Normalize common parser artifacts while keeping conservative semantics."""
+        if not text:
+            return text
+        cleaned = "".join(ch for ch in text if (" " <= ch <= "~")).strip()
+        # Team/stadium extraction can preserve a leading delimiter 'a' artifact before a
+        # capitalized phrase, e.g. 'aOld Trafford' or 'aBritannia Stadium'.
+        if len(cleaned) >= 2 and cleaned[0] == 'a' and cleaned[1].isupper():
+            cleaned = cleaned[1:]
+        return cleaned
+
+    def _iter_printable_runs(self):
+        """Return printable ASCII runs from raw_data as (start, end, text)."""
+        out = []
+        try:
+            data = bytes(self.raw_data)
+            for m in re.finditer(rb'[\x20-\x7e]{3,100}', data):
+                text = m.group().decode('latin-1', errors='ignore').strip()
+                if text:
+                    out.append((m.start(), m.end(), text))
+        except Exception:
+            return []
+        return out
+
+    def _normalize_meta_run(self, text: str) -> str:
+        if not text:
+            return ""
+        cleaned = "".join(ch for ch in text if (" " <= ch <= "~")).replace("`", " ").strip()
+        # Strip common delimiter-ish prefixes ending in 'a' before a capitalized payload.
+        cleaned = re.sub(r'^[A-Za-z]{0,4}a(?=[A-Z0-9])', '', cleaned)
+        cleaned = re.sub(r'^[^A-Za-z0-9]+', '', cleaned)
+        cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+        return cleaned
+
+    def _trim_meta_tail_artifacts(self, text: str) -> str:
+        """Trim common trailing junk chars from team metadata strings."""
+        if not text:
+            return text
+        s = text.strip().rstrip('., ')
+        low = s.lower()
+        has_club_keyword = any(k in low for k in ("football club", "f. c", "f.c.", "club", "s.a.d"))
+        if has_club_keyword:
+            while len(s) > 4:
+                last = s[-1]
+                prev = s[-2] if len(s) >= 2 else ""
+                # Common artifacts are a trailing digit/letter glued to an otherwise valid phrase.
+                if last.isdigit():
+                    s = s[:-1].rstrip('., ')
+                    continue
+                # Strip a single lowercase artifact after punctuation/space, e.g. "F. C.e"
+                if last.islower() and not prev.islower():
+                    s = s[:-1].rstrip('., ')
+                    continue
+                # Some decoded strings end with a single garbage lowercase suffix char (e.g. x).
+                if last.islower() and prev.islower():
+                    separator_chars = set('aioghijkmnpqruvwx')
+                    valid_endings = {'ona', 'ivo', 'alo', 'ano', 'ino'}
+                    if last in separator_chars and (len(s) < 4 or s[-3:].lower() not in valid_endings):
+                        s = s[:-1].rstrip('., ')
+                        continue
+                if last.isupper() and prev.islower():
+                    s = s[:-1].rstrip('., ')
+                    continue
+                break
+        else:
+            # Also trim a single common garbage suffix letter on shorter club labels (e.g. "Manchester Cityx").
+            if len(s) > 4 and s[-1].islower() and s[-2].islower():
+                separator_chars = set('aioghijkmnpqruvwx')
+                if s[-1] in separator_chars:
+                    s = s[:-1].rstrip('., ')
+        return s
+
+    def _looks_like_meta_text(self, text: str) -> bool:
+        if not text:
+            return False
+        if len(text) < 4 or len(text) > 80:
+            return False
+        letters = sum(1 for ch in text if ch.isalpha())
+        if letters < 3:
+            return False
+        if (letters / max(1, len(text))) < 0.45:
+            return False
+        return True
+
+    def _extract_person_name_from_run(self, raw_text: str):
+        if not raw_text:
+            return None
+        text = self._normalize_meta_run(raw_text)
+        if not text:
+            return None
+        # Remove common delimiter residues before capitalized chunks so "aaauaSir X" -> "Sir X".
+        text = re.sub(r'\b[a-z]{1,6}a(?=[A-Z])', '', text)
+        text = re.sub(r'\s+', ' ', text).strip()
+        low = text.lower()
+        if any(k in low for k in ("stadium", "ground", "park", "lane", "football club", "club")):
+            return None
+
+        patterns = [
+            r'\b(?:Sir|Mr|Mrs|Ms|Dr)\s+[A-Z][A-Za-z.\'-]+(?:\s+[A-Z][A-Za-z.\'-]+){0,5}\b',
+            r'\b(?:[A-Z]\.?\s*){1,4}[A-Z][A-Za-z][A-Za-z.\'-]*(?:\s+[A-Z][A-Za-z.\'-]+){0,5}\b',
+            r'\b[A-Z][a-z]+(?:\s+[A-Z][A-Za-z.\'-]+){1,5}\b',
+        ]
+        best = None
+        for pat in patterns:
+            for m in re.finditer(pat, text):
+                cand = m.group(0).strip().rstrip('., ')
+                if len(cand) < 4:
+                    continue
+                if best is None or len(cand) > len(best):
+                    best = cand
+        return best
+
+    def _extract_brand_pair_from_run(self, raw_text: str):
+        if not raw_text:
+            return None
+        text = self._normalize_meta_run(raw_text)
+        if not text:
+            return None
+        low_text = text.lower()
+        if any(k in low_text for k in ("football club", "stadium", "ground", "sir ", " mr ", " mrs ", " dr ")):
+            return None
+
+        def _brand_like(value: str) -> bool:
+            v = self._trim_meta_tail_artifacts(value.strip())
+            if not v:
+                return False
+            if any(k in v.lower() for k in ("football", "club", "stadium", "ground")):
+                return False
+            if not any(ch.isalpha() for ch in v):
+                return False
+            # reject all-lowercase and long person-like phrases
+            if v.lower() == v:
+                return False
+            if len(v.split()) > 3:
+                return False
+            return True
+
+        def _brand_clean(value: str) -> str:
+            v = value.strip().strip('., ')
+            v = re.sub(r'^[a-z]{1,6}(?=[A-Z])', '', v).strip()
+            # Strip a single trailing digit/obvious punctuation artifact, but keep normal lowercase endings
+            v = v.rstrip(' .,-')
+            if v.endswith(tuple('0123456789')):
+                v = v.rstrip('0123456789').rstrip(' .,-')
+            return v
+
+        # Common sponsor/supplier strings are joined by tiny delimiter fragments (da/ea/fa/ga/etc).
+        m = re.search(r'([A-Za-z0-9&.\' -]{2,40}?)[a-z]a([A-Za-z0-9&.\' -]{2,40})', text)
+        if m:
+            left = _brand_clean(m.group(1))
+            right = _brand_clean(m.group(2))
+            if left and right and _brand_like(left) and _brand_like(right):
+                if _brand_like(left) and _brand_like(right):
+                    return left, right
+        toks = re.findall(r'[A-Z][A-Z0-9&.\'-]{2,}', text)
+        deny = {"F.C", "FC", "S.A.D", "S.A.D.", "CLUB", "STADIUM"}
+        out = []
+        for tok in toks:
+            if tok in deny:
+                continue
+            if tok not in out:
+                out.append(tok)
+        if len(out) >= 2:
+            return out[0], out[1]
+        return None
+
+    def _extract_club_name_candidate_from_run(self, raw_text: str):
+        text = self._normalize_meta_run(raw_text)
+        if not self._looks_like_meta_text(text):
+            return None
+        text = self._trim_meta_tail_artifacts(text)
+        if not self._looks_like_meta_text(text):
+            return None
+        # Exclude obvious brand-only / coded chunks.
+        if text.isupper() and " " not in text and len(text) <= 20:
+            return None
+        return text
+
+    def _extract_team_metadata_fields(self):
+        """Heuristically parse extra metadata from EQ team subrecords (additive only)."""
+        self.full_club_name = None
+        self.chairman = None
+        self.shirt_sponsor = None
+        self.kit_supplier = None
+        runs = self._iter_printable_runs()
+        if not runs:
+            return
+
+        # Prefer runs after the parsed stadium slice; fallback to all runs if unavailable.
+        start_after = int(getattr(self, 'stadium_end', 0) or 0)
+        post_runs = [(s, e, t) for (s, e, t) in runs if s >= start_after]
+        if not post_runs:
+            post_runs = runs
+
+        team_name = (self.name or "").strip()
+        stadium = (self.stadium or "").strip()
+
+        club_name_idx = None
+        best_keyword_club = None
+        best_keyword_idx = None
+        first_plausible_club = None
+        first_plausible_idx = None
+
+        for idx, (_s, _e, raw_text) in enumerate(post_runs[:12]):
+            cand = self._extract_club_name_candidate_from_run(raw_text)
+            if not cand:
+                continue
+            if cand in (team_name, stadium):
+                continue
+            low = cand.lower()
+            if any(k in low for k in ("football club", "f. c", "f.c.", " club", "s.a.d")):
+                best_keyword_club = cand
+                best_keyword_idx = idx
+                break
+            if first_plausible_club is None:
+                # Allow shorter club aliases like "Stoke City" even without club keywords.
+                if re.search(r'[A-Za-z]', cand):
+                    first_plausible_club = cand
+                    first_plausible_idx = idx
+
+        if best_keyword_club is not None:
+            self.full_club_name = best_keyword_club
+            club_name_idx = best_keyword_idx
+        elif first_plausible_club is not None:
+            self.full_club_name = first_plausible_club
+            club_name_idx = first_plausible_idx
+
+        # Chairman/president style person string usually follows club-name fields.
+        person_start_idx = (club_name_idx + 1) if isinstance(club_name_idx, int) else 0
+        chairman_idx = None
+        for idx, (_s, _e, raw_text) in enumerate(post_runs[person_start_idx:person_start_idx + 10], start=person_start_idx):
+            cand = self._extract_person_name_from_run(raw_text)
+            if not cand:
+                continue
+            if cand in (team_name, stadium, self.full_club_name):
+                continue
+            self.chairman = cand
+            chairman_idx = idx
+            break
+
+        # Sponsor + kit supplier are often stored as two uppercase brand tokens in one run.
+        brand_start_idx = (chairman_idx + 1) if isinstance(chairman_idx, int) else person_start_idx
+        for _s, _e, raw_text in post_runs[brand_start_idx:brand_start_idx + 10]:
+            pair = self._extract_brand_pair_from_run(raw_text)
+            if not pair:
+                continue
+            sponsor, supplier = pair
+            # Ignore cases where we accidentally captured club acronyms from the full club name.
+            if sponsor in {"RTA", "TVA"}:
+                continue
+            self.shirt_sponsor = sponsor
+            self.kit_supplier = supplier
+            break
+
+        # Legacy-friendly aliases for downstream callers.
+        try:
+            self.sponsor = self.shirt_sponsor
+        except Exception:
+            pass
+        try:
+            self.kit_manufacturer = self.kit_supplier
+        except Exception:
+            pass
 
     def _extract_team_id(self):
         """Scan for plausible team ID (3000-5000 range) and return (value, offset)."""
@@ -269,6 +547,14 @@ class TeamRecord:
             pass
         
         return "Unknown League"
+
+    def _sync_stadium_detail_aliases(self):
+        """Maintain legacy attribute names used by older GUI/export code paths."""
+        try:
+            self.capacity = int(self.stadium_capacity) if self.stadium_capacity is not None else 0
+        except Exception:
+            self.capacity = 0
+        self.pitch_quality = (self.pitch or "UNKNOWN")
     
     def get_country(self) -> str:
         """Get the country this team belongs to."""
@@ -314,8 +600,14 @@ class TeamRecord:
         self.name = new_name
         # Recompute stadium region after name changes
         self.stadium, self.stadium_start, self.stadium_end = self._extract_stadium()
+        self.stadium = self._clean_extracted_text(self.stadium)
+        try:
+            self._extract_team_metadata_fields()
+        except Exception:
+            pass
         # Re-parse stadium details
         self.stadium_capacity, self.car_park, self.pitch = self._parse_stadium_details(self.stadium)
+        self._sync_stadium_detail_aliases()
         return bytes(self.raw_data)
 
     def set_stadium_name(self, new_stadium: str):
@@ -350,8 +642,13 @@ class TeamRecord:
                 self.stadium_end = self.stadium_start + len(new_bytes)
 
         self.stadium = new_stadium
+        try:
+            self._extract_team_metadata_fields()
+        except Exception:
+            pass
         # Re-parse stadium details
         self.stadium_capacity, self.car_park, self.pitch = self._parse_stadium_details(self.stadium)
+        self._sync_stadium_detail_aliases()
         return bytes(self.raw_data)
 
     def set_capacity(self, capacity: int):
@@ -1005,9 +1302,8 @@ class PlayerRecord:
         """Rebuild the raw_data name region ensuring metadata/attributes remain aligned.
  
         This implementation stores a plain printable name run (e.g. "Given SURNAME")
-        followed by a short marker so subsequent metadata writes find the expected
-        dynamic offsets. Preserves the original metadata and attribute blocks so
-        attributes and other fields remain intact.
+        while preserving the original metadata/attribute tail where possible.
+        It keeps the decoded record length stable to avoid unsafe rewrites.
         """
         if self.raw_data is None:
             self.name_dirty = False
@@ -1020,39 +1316,54 @@ class PlayerRecord:
         # Attributes live at the tail: len(data) - 19 .. len(data) - 7
         attr_start = len(data) - 19 if len(data) >= 19 else len(data)
  
-        # Determine where the old encoded name block ended so we can preserve metadata
+        marker = bytes([0x61, 0x61, 0x61, 0x61])
+
+        # Find an existing marker anywhere in the pre-attribute region (not just 20..60).
+        marker_pos = None
+        for i in range(name_start, max(name_start, attr_start - 3)):
+            if data[i:i+4] == marker:
+                marker_pos = i
+                break
+
+        # Try to parse the legacy two-string layout conservatively; reject absurd lengths.
+        parsed_names_end = None
         try:
-            import struct
             pos = name_start
-            if pos + 2 <= len(data):
-                len1 = struct.unpack_from("<H", data, pos)[0]
-                pos += 2 + len1
-            if pos + 2 <= len(data):
-                len2 = struct.unpack_from("<H", data, pos)[0]
-                pos += 2 + len2
-            old_names_end = pos
+            for _ in range(2):
+                if pos + 2 > attr_start:
+                    raise ValueError("name length prefix out of range")
+                seg_len = struct.unpack_from("<H", data, pos)[0]
+                if seg_len < 0 or seg_len > 64 or pos + 2 + seg_len > attr_start:
+                    raise ValueError("implausible name segment length")
+                pos += 2 + seg_len
+            parsed_names_end = pos
         except Exception:
-            # Fallback if structure isn't as expected
-            old_names_end = max(name_start + 8, attr_start - 20)
- 
-        # Preserve existing metadata and attributes regions
-        metadata_start = old_names_end
+            parsed_names_end = None
+
+        if marker_pos is not None and marker_pos < attr_start:
+            old_names_end = marker_pos
+            metadata_start = min(attr_start, marker_pos + 4)
+            keep_marker = True
+        elif parsed_names_end is not None:
+            old_names_end = parsed_names_end
+            metadata_start = parsed_names_end
+            keep_marker = False
+        else:
+            # Unknown layout (common in scanner-synthesized/minimal records): treat the
+            # whole pre-attribute region as name space and preserve only the attribute tail.
+            old_names_end = attr_start
+            metadata_start = attr_start
+            keep_marker = False
+
+        # Preserve existing metadata and attributes regions exactly to keep record size stable.
         metadata_block = data[metadata_start:attr_start]
         attributes_block = data[attr_start:]
  
-        # Ensure minimum metadata and attributes sizes remain sensible
-        min_metadata_len = 14
-        if len(metadata_block) < min_metadata_len:
-            metadata_block = metadata_block + b"\x00" * (min_metadata_len - len(metadata_block))
- 
-        if len(attributes_block) < 19:
-            attributes_block = attributes_block + b"\x00" * (19 - len(attributes_block))
- 
         header = data[:name_start]
  
-        # Build a plain printable name run: "Given SURNAME" (surname uppercased for visibility)
+        # Build a plain printable name run preserving caller-provided case.
         given = (self.given_name or "").strip()
-        surname = (self.surname or "").strip().upper()
+        surname = (self.surname or "").strip()
         if given:
             full_name = f"{given} {surname}".strip()
         else:
@@ -1061,13 +1372,8 @@ class PlayerRecord:
         # Encode as Latin-1 printable run
         name_bytes = full_name.encode("latin-1", errors="replace")
  
-        # Reserve at least the old name block length where possible to avoid excessive reflow
-        reserved_len = max(0, old_names_end - name_start)
- 
-        # Ensure the marker will be placed at >= index 20 so downstream parsers find it.
-        # name_start + len(name_bytes) must be >= 20 => len(name_bytes) >= (20 - name_start)
-        min_marker_required = max(0, 20 - name_start)
-        target_len = max(reserved_len, min_marker_required)
+        fixed_tail = len(header) + len(metadata_block) + len(attributes_block) + (4 if keep_marker else 0)
+        target_len = max(0, len(data) - fixed_tail)
  
         if len(name_bytes) > target_len:
             # If name would overflow target space, truncate surname to fit while preserving given name
@@ -1081,20 +1387,34 @@ class PlayerRecord:
                 surname_b = surname.encode("latin-1", errors="replace")[:allowed_for_surname]
                 name_bytes = given_b + sep + surname_b
         else:
-            # Pad with spaces to reach target_len (this guarantees marker at >= index 20)
+            # Pad with spaces to preserve overall record length.
             name_bytes = name_bytes + b" " * (target_len - len(name_bytes))
  
-        # Insert a short marker after the name so _find_name_end_in_data can detect it later.
-        marker = bytes([0x61, 0x61, 0x61, 0x61])
- 
-        # Construct new decoded payload: header + name + marker + metadata + attributes
+        # Construct new decoded payload preserving total length.
         new_data = bytearray()
         new_data += header
         new_data += name_bytes
-        new_data += marker
+        if keep_marker:
+            new_data += marker
         new_data += metadata_block
         new_data += attributes_block
- 
+
+        # Final length guard: trim/pad the name region if heuristics drifted.
+        if len(new_data) != len(data):
+            delta = len(data) - len(new_data)
+            if delta > 0:
+                # Grow name region with spaces to keep record size stable.
+                insert_at = len(header) + len(name_bytes)
+                new_data[insert_at:insert_at] = b" " * delta
+            elif delta < 0:
+                # Trim from the padded end of the name region first.
+                trim = min(-delta, len(name_bytes))
+                if trim:
+                    start = len(header) + max(0, len(name_bytes) - trim)
+                    del new_data[start:start + trim]
+            if len(new_data) != len(data):
+                new_data = new_data[:len(data)] + (b"\x00" * max(0, len(data) - len(new_data)))
+
         self.raw_data = bytes(new_data)
         self.name_dirty = False
 

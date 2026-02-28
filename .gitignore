@@ -14,6 +14,9 @@ venv/
 *.swo
 *.orig
 
+# Local workspace
+.local/
+
 # Data
 *.FDI.backup
 *.FDI.bak
@@ -23,3 +26,7 @@ out/
 *.bak
 *.tmp
 *.cache
+.coverage
+coverage.xml
+.pytest_cache/
+*.backup_*
