@@ -1,99 +1,36 @@
-﻿# Premier Manager 99 — Database Editor and Reverse Engineering
+# Premier Manager 99 Database Editor
 
-Purpose
-One‑stop entrypoint for working with Premier Manager 99 database files: inspect, search and make safe edits. Canonical docs now live in [docs/](docs/) and the legacy investigation trail remains in [docs/archive/](docs/archive/) as artifacts.
+This repository contains the active PM99 editor code in [app/](app/), the CLI in [app/cli.py](app/cli.py), the GUI in [app/gui.py](app/gui.py), tests in [tests/](tests/), and local working data in [DBDAT/](DBDAT/).
 
-Quick start
-Requirements: Python 3.8+; run from repo root. Database files are under [DBDAT/](DBDAT/).
+The project contract is defined by the root governance docs:
+- [codex.md](codex.md)
+- [project_plan.md](project_plan.md)
+- [technical_considerations.md](technical_considerations.md)
 
-GUI tips
-- Launch the desktop editor via `python -m app.gui`; the **Tools → Open PKF Viewer…** menu opens the new container inspector for `.PKF` archives with a built-in string searcher that accepts single needles or lists.
-- For offline investigation, `ArchiveStringSearcher` in [app/pkf.py](app/pkf.py) accepts a folder of `.PKF`/`.FDI` assets and a list of needles to report cross-file matches.
+Everything else should be reached through the documentation map in [docs/README.md](docs/README.md).
 
-CLI examples
-The command line uses [app/cli.py](app/cli.py) via module entry. Core commands are implemented in [cli.cmd_list()](app/cli.py:10), [cli.cmd_search()](app/cli.py:22), [cli.cmd_rename()](app/cli.py:38) and [cli.cmd_info()](app/cli.py:74); the entry point is [cli.main()](app/cli.py:89).
+The canonical docs are:
+- [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)
+- [docs/EDITOR_README.md](docs/EDITOR_README.md)
+- [docs/OPERATIONS.md](docs/OPERATIONS.md)
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- [docs/DATA_FORMATS.md](docs/DATA_FORMATS.md)
+- [docs/REFERENCE/PLAYER_FIELDS.md](docs/REFERENCE/PLAYER_FIELDS.md)
+- [docs/REFERENCE/TEAM_FIELDS.md](docs/REFERENCE/TEAM_FIELDS.md)
 
-Inspect file header and counts
-Example reference: [DBDAT/JUG98030.FDI](DBDAT/JUG98030.FDI)
-```
-python -m app info DBDAT/JUG98030.FDI
-```
+Historical context is intentionally separated:
+- [docs/HISTORY/README.md](docs/HISTORY/README.md)
+- [docs/archive/README.md](docs/archive/README.md)
 
-List first 20 players
-```
-python -m app list DBDAT/JUG98030.FDI --limit 20
-```
-
-Search by name
-```
-python -m app search DBDAT/JUG98030.FDI "Ronaldo"
-```
-
-Rename by record id (same-length recommended)
-```
-python -m app rename DBDAT/JUG98030.FDI --id 123 --name "Cristiano Ronaldo"
-```
-
-Safety
-- Always work on copies of [DBDAT/JUG98030.FDI](DBDAT/JUG98030.FDI) and keep backups.
-- Writer creates backups via [file_writer.create_backup()](app/file_writer.py:17) and adjusts directory offsets with [file_writer.write_fdi_record()](app/file_writer.py:102).
-
-Project layout
-- Core library: [app/](app/)
-  - File I/O wrapper [FDIFile](app/io.py:15) with helpers: [FDIFile.load()](app/io.py:31), [FDIFile.list_players()](app/io.py:338), [FDIFile.find_by_name()](app/io.py:229), [FDIFile.save()](app/io.py:269)
-  - Models: [PlayerRecord](app/models.py:13) with parser [PlayerRecord.from_bytes()](app/models.py:63) and serializer [PlayerRecord.to_bytes()](app/models.py:281)
-  - Header & directory: [FDIHeader.from_bytes()](app/models.py:389), [DirectoryEntry.from_bytes()](app/models.py:434)
-  - XOR helpers: [app/xor.py](app/xor.py)
-  - PKF containers: [app/pkf.py](app/pkf.py)
-- CLI: [app/cli.py](app/cli.py)
-- Tests: [tests/](tests/)
-- Analysis scripts: [scripts/](scripts/)
-- Game data used for development: [DBDAT/](DBDAT/)
-
-Canonical documentation (start here)
-- User guide: [docs/EDITOR_README.md](docs/EDITOR_README.md) — how to use the editor today
-- Data formats and field mapping: [docs/PLAYER_FIELD_MAP.md](docs/PLAYER_FIELD_MAP.md)
-- Reverse‑engineering summary: [docs/REVERSE_ENGINEERING_HANDOVER.md](docs/REVERSE_ENGINEERING_HANDOVER.md) and [docs/REVERSE_ENGINEERING_FINAL_REPORT.md](docs/REVERSE_ENGINEERING_FINAL_REPORT.md)
-- Project docs index: [docs/README.md](docs/README.md)
-
-Legacy investigation artifacts (kept for reference)
-The following remain for traceability and will be gradually folded into concise canonical docs:
-- Loader and decode summary: [docs/archive/README.md](docs/archive/README.md)
-- Binary triangulation and struct notes: [docs/archive/triangulation.md](docs/archive/triangulation.md), [docs/archive/struct_notes.md](docs/archive/struct_notes.md), [docs/archive/verify.txt](docs/archive/verify.txt)
-- Handover bundles and status reports: [docs/archive/COMPREHENSIVE_HANDOVER.md](docs/archive/COMPREHENSIVE_HANDOVER.md), [docs/archive/FINAL_HANDOVER.md](docs/archive/FINAL_HANDOVER.md), [docs/archive/FINAL_FINDINGS.md](docs/archive/FINAL_FINDINGS.md), [docs/archive/FINAL_STATUS.md](docs/archive/FINAL_STATUS.md), [docs/archive/COMPLETION_NOTES.md](docs/archive/COMPLETION_NOTES.md), [docs/archive/PROJECT_SUMMARY.md](docs/archive/PROJECT_SUMMARY.md), [docs/archive/HANDOVER_FINAL.md](docs/archive/HANDOVER_FINAL.md), [docs/archive/handover.md](docs/archive/handover.md)
-- Editor success notes: [docs/archive/SUCCESS_COMPLETE_COACH_EDITOR.md](docs/archive/SUCCESS_COMPLETE_COACH_EDITOR.md), [docs/archive/PLAYER_EDITOR_SUCCESS.md](docs/archive/PLAYER_EDITOR_SUCCESS.md)
-- Field schemas and roadmap: [docs/archive/schema_players.md](docs/archive/schema_players.md), [docs/archive/FULL_EDITOR_ROADMAP.md](docs/archive/FULL_EDITOR_ROADMAP.md), [docs/archive/USAGE.md](docs/archive/USAGE.md), [docs/archive/editor_roadmap.md](docs/archive/editor_roadmap.md), [docs/archive/ENHANCEMENT_PLAN.md](docs/archive/ENHANCEMENT_PLAN.md)
-
-Status at a glance
-Parsing and writing are intentionally conservative. Known‑good reading/writing paths are encapsulated in:
-- Parser: [PlayerRecord.from_bytes()](app/models.py:63) with dynamic offsets (name end marker and attribute tail)
-- Safe writer: [file_writer.write_fdi_record()](app/file_writer.py:102)
-- Header parsing: [FDIHeader.from_bytes()](app/models.py:389)
-
-Development workflow
-- Run tests: from repo root execute
-```
+Quick commands:
+```bash
+python -m app.cli info DBDAT/JUG98030.FDI
+python -m app.cli list DBDAT/JUG98030.FDI --limit 20
+python -m app.cli search DBDAT/JUG98030.FDI "Ronaldo"
+python -m app.gui
 pytest -q
 ```
-- Explore records in a REPL
-```
-python -q
->>> from app.io import FDIFile
->>> f = FDIFile("DBDAT/JUG98030.FDI"); f.load()
->>> f.records[0]
-```
-See the [FDIFile](app/io.py:15) implementation for available helpers.
 
-Contributing and documentation cleanup
-This repository previously contained overlapping handovers and AI‑generated notes. The new structure adopts:
-- Canonical docs under [docs/](docs/) with concise, maintained topics
-- Artifact trail kept under [docs/archive/](docs/archive/)
-- Future consolidation target: migrate field/schema specifics from [docs/archive/schema_players.md](docs/archive/schema_players.md) into a single developer‑facing spec
-
-Where to go next
-- Getting started guide: [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)
-- Architecture overview: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-- Developer guide (tests, scripts, CLI): [docs/DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md)
-
-License and usage
-Educational/research use only. The original game and its assets are copyright their owners.
+Reference data retained for investigation and comparison:
+- [app/DBDAT/](app/DBDAT/)
+- [FDI-PKF/](FDI-PKF/)
