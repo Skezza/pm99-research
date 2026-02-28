@@ -150,7 +150,11 @@ class EditableCoachRecord:
     """
     def __init__(self, decoded_data: bytes, record_offset: int, given_name: str, surname: str):
         self.decoded = bytearray(decoded_data)
+        self.original_decoded = bytes(decoded_data)
         self.record_offset = record_offset
+        self.container_offset = None
+        self.container_length = None
+        self.container_encoding = None
         self.given_name = given_name or ""
         self.surname = surname or ""
         self.full_name = f"{self.given_name} {self.surname}".strip()

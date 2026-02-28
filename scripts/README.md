@@ -1,21 +1,22 @@
-# Premier Manager 99 Reverse Engineering Scripts
+# Active Scripts
 
-## Overview
-Collection of Python scripts for analyzing and modifying Premier Manager 99 database files.
+This directory is intentionally trimmed to a small set of maintained wrappers:
 
-## Scripts Directory Structure
-- `analyze_*`: Scripts for analyzing specific aspects of the database
-- `debug_*`: Debugging scripts for testing specific functionality
-- `find_*`: Scripts for finding specific records or patterns
-- `locate_*`: Scripts for locating specific records
-- `parse_*`: Scripts for parsing specific sections of the database
+- `bulk_rename_players.py`
+- `bulk_rename_revert.py`
+- `probe_bio_trailer_stats.py`
+- `probe_dd6361_skill_patch.py`
+- `probe_eq_roster_playerid_linkage.py`
+- `probe_eq_team_roster_overlap_extract.py`
+- `probe_lineup_screenshot.py`
+- `probe_lineup_playerpage_crosscheck.py`
+- `probe_marker_neighborhoods.py`
+- `probe_pm99_install_binaries.py`
+- `probe_screenshot_rol_boxes.py`
+- `probe_seed_pdfs.py`
+- `probe_team_extraction_readiness.py`
+- `reconcile_division_roster_pdf.py`
+- `smoke_pkf_tests.py`
 
-## Usage
-Run scripts from the project root directory:
-```bash
-python scripts/analyze_players.py
-```
-
-## Dependencies
-- Python 3.7+
-- Required packages: (listed in requirements.txt)
+Legacy exploratory/debug scripts were archived to:
+- `archive/repo_cleanup_2026-02-26/scripts_legacy/`
