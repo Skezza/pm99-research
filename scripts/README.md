@@ -18,5 +18,4 @@ This directory is intentionally trimmed to a small set of maintained wrappers:
 - `reconcile_division_roster_pdf.py`
 - `smoke_pkf_tests.py`
 
-Legacy exploratory/debug scripts were archived to:
-- `archive/repo_cleanup_2026-02-26/scripts_legacy/`
+Legacy exploratory and one-off debug scripts were removed from the active tree. If a script here is not pulling its weight, it should be deleted rather than parked in a second archive.

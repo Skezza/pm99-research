@@ -494,57 +494,28 @@ def test_cmd_player_skill_patch_rejects_no_backup_without_in_place(capsys):
 
 def test_cmd_team_roster_extract_delegates_to_shared_action(monkeypatch, capsys, tmp_path):
     calls = {}
-
-    fake_payload = {"ok": True, "requested_team_results": [{"team_name": "Stoke C"}]}
-    fake_result = SimpleNamespace(
-        team_count=532,
-        dd6361_pid_name_count=2009,
-        same_entry_overlap_coverage={
-            "status_counts": {
-                "perfect_same_entry_run_overlap": 487,
-                "moderate_same_entry_overlap": 8,
-            },
-            "strong_or_better_count": 487,
-            "strong_or_better_ratio": 0.9154,
-        },
-        requested_team_results=[
+    def fake_extract_linked(**kwargs):
+        calls["extract"] = kwargs
+        return [
             {
+                "provenance": "eq_jug_linked_parser",
                 "team_name": "Stoke C",
                 "full_club_name": "Stoke City",
-                "team_id": 3425,
-                "team_offset": 0x29802,
-                "status": "perfect_same_entry_run_overlap",
-                "containing_entry": {"entry_offset": 0x2694D, "length": 34048},
-                "top_run_match": {
-                    "run_index": 6,
-                    "overlap_hits_in_team_raw": 19,
-                    "non_empty_row_count": 19,
-                    "second_best_overlap_hits": 1,
-                    "rows": [
-                        {
-                            "pid_candidate": 15578,
-                            "dd6361_name": "Graham KAVANAGH",
-                            "is_empty_slot": False,
-                            "xor_pid_found_in_team_raw": True,
-                        },
-                        {
-                            "pid_candidate": 32960,
-                            "dd6361_name": "Scott James TAYLOR",
-                            "is_empty_slot": False,
-                            "xor_pid_found_in_team_raw": True,
-                        },
-                    ],
-                },
+                "eq_record_id": 99,
+                "mode_byte": 1,
+                "ent_count": 1,
+                "rows": [
+                    {"slot_index": 0, "flag": 0, "pid": 15578, "player_name": "Graham KAVANAGH"},
+                    {"slot_index": 1, "flag": 0, "pid": 32960, "player_name": "Scott James TAYLOR"},
+                ],
             }
-        ],
-        raw_payload=fake_payload,
-    )
+        ]
 
-    def fake_extract(**kwargs):
-        calls["extract"] = kwargs
-        return fake_result
+    def fail_overlap(**kwargs):
+        raise AssertionError("heuristic extractor should not be used in authoritative mode")
 
-    monkeypatch.setattr(cli, "extract_team_rosters_eq_same_entry_overlap", fake_extract)
+    monkeypatch.setattr(cli, "extract_team_rosters_eq_jug_linked", fake_extract_linked)
+    monkeypatch.setattr(cli, "extract_team_rosters_eq_same_entry_overlap", fail_overlap)
 
     report_file = tmp_path / "team_roster_report.json"
     cli.cmd_team_roster_extract(
@@ -564,27 +535,21 @@ def test_cmd_team_roster_extract_delegates_to_shared_action(monkeypatch, capsys,
         "team_file": "DBDAT/EQ98030.FDI",
         "player_file": "DBDAT/JUG98030.FDI",
         "team_queries": ["Stoke"],
-        "top_examples": 10,
-        "include_fallbacks": False,
-        "json_output": str(report_file),
     }
     out = capsys.readouterr().out
-    assert "Same-entry EQ roster overlap coverage" in out
-    assert "Stoke C (Stoke City)" in out
-    assert "status=perfect_same_entry_run_overlap" in out
-    assert "Graham KAVANAGH" in out
+    assert "Selection mode: authoritative_only" in out
+    assert "Stoke C (Stoke City): provenance=eq_jug_linked_parser" in out
+    assert "slot=01 pid=15578 flag=0 Graham KAVANAGH" in out
     assert "Report:" in out
+    assert '"team_name": "Stoke C"' in report_file.read_text(encoding="utf-8")
 
 
 def test_cmd_team_roster_extract_json_passthrough(monkeypatch, capsys):
-    fake_result = SimpleNamespace(
-        team_count=532,
-        dd6361_pid_name_count=2009,
-        same_entry_overlap_coverage={},
-        requested_team_results=[],
-        raw_payload={"hello": "world"},
+    monkeypatch.setattr(
+        cli,
+        "extract_team_rosters_eq_jug_linked",
+        lambda **kwargs: [{"hello": "world"}],
     )
-    monkeypatch.setattr(cli, "extract_team_rosters_eq_same_entry_overlap", lambda **kwargs: fake_result)
 
     cli.cmd_team_roster_extract(
         Namespace(
@@ -601,6 +566,63 @@ def test_cmd_team_roster_extract_json_passthrough(monkeypatch, capsys):
 
     out = capsys.readouterr().out
     assert '"hello": "world"' in out
+
+
+def test_cmd_team_roster_linked_prints_parser_backed_rows(monkeypatch, capsys):
+    monkeypatch.setattr(
+        cli,
+        "extract_team_rosters_eq_jug_linked",
+        lambda **kwargs: [
+            {
+                "provenance": "eq_jug_linked_parser",
+                "team_name": "Inter",
+                "full_club_name": "Internazionale Milano Football Club",
+                "eq_record_id": 12,
+                "mode_byte": 1,
+                "ent_count": 1,
+                "rows": [
+                    {"slot_index": 0, "flag": 0, "pid": 3937, "player_name": "Demo PLAYER"},
+                    {"slot_index": 1, "flag": 1, "pid": 4000, "player_name": ""},
+                ],
+            }
+        ],
+    )
+
+    cli.cmd_team_roster_linked(
+        Namespace(
+            file="DBDAT/EQ98030.FDI",
+            player_file="DBDAT/JUG98030.FDI",
+            team=["Inter Milan"],
+            row_limit=10,
+            json=False,
+        )
+    )
+
+    out = capsys.readouterr().out
+    assert "Inter (Internazionale Milano Football Club): provenance=eq_jug_linked_parser" in out
+    assert "slot=01 pid= 3937 flag=0 Demo PLAYER" in out
+    assert "slot=02 pid= 4000 flag=1 (name unresolved)" in out
+
+
+def test_cmd_team_roster_linked_json_passthrough(monkeypatch, capsys):
+    monkeypatch.setattr(
+        cli,
+        "extract_team_rosters_eq_jug_linked",
+        lambda **kwargs: [{"team_name": "Inter", "rows": []}],
+    )
+
+    cli.cmd_team_roster_linked(
+        Namespace(
+            file="DBDAT/EQ98030.FDI",
+            player_file="DBDAT/JUG98030.FDI",
+            team=[],
+            row_limit=25,
+            json=True,
+        )
+    )
+
+    out = capsys.readouterr().out
+    assert '"team_name": "Inter"' in out
 
 
 def test_team_query_matches_canonical_alias_without_broad_false_positive():
@@ -691,36 +713,26 @@ def test_cmd_team_roster_extract_prints_heuristic_candidate_warning(monkeypatch,
 
 
 def test_cmd_team_roster_extract_default_authoritative_hides_fallback_sections(monkeypatch, capsys):
-    fake_result = SimpleNamespace(
-        team_count=532,
-        dd6361_pid_name_count=2009,
-        same_entry_overlap_coverage={
-            "status_counts": {"perfect_same_entry_run_overlap": 487, "weak_same_entry_overlap": 23},
-            "strong_or_better_count": 487,
-            "strong_or_better_ratio": 0.9154,
-        },
-        final_extraction_coverage={
-            "covered_count": 508,
-            "covered_ratio": 0.955,
-            "circular_shift_fallback_count": 21,
-        },
-        requested_team_results=[
+    monkeypatch.setattr(
+        cli,
+        "extract_team_rosters_eq_jug_linked",
+        lambda **kwargs: [
             {
+                "provenance": "eq_jug_linked_parser",
                 "team_name": "Middlesbrough",
                 "full_club_name": "Middlesbrough Football Club",
-                "team_id": 4449,
-                "team_offset": 0x1AD03,
-                "status": "weak_same_entry_overlap",
-                "circular_shift_candidate_status": "order_fallback_circular_shift_same_entry_run",
-                "heuristic_warnings": [{"type": "known_lineup_anchor_collision", "message": "x"}],
-                "containing_entry": {"entry_offset": 0x15B3C, "length": 21504},
-                "top_run_match": {"run_index": 2, "overlap_hits_in_team_raw": 1, "non_empty_row_count": 27, "second_best_overlap_hits": 1, "rows": []},
-                "circular_shift_candidate_match": {"run_index": 0, "non_empty_row_count": 23, "selection_method": "circular_shift_same_entry", "rows": []},
+                "eq_record_id": 4449,
+                "mode_byte": 0,
+                "ent_count": 1,
+                "rows": [],
             }
         ],
-        raw_payload={"ok": True},
     )
-    monkeypatch.setattr(cli, "extract_team_rosters_eq_same_entry_overlap", lambda **kwargs: fake_result)
+    monkeypatch.setattr(
+        cli,
+        "extract_team_rosters_eq_same_entry_overlap",
+        lambda **kwargs: (_ for _ in ()).throw(AssertionError("heuristic extractor should not be used")),
+    )
 
     cli.cmd_team_roster_extract(
         Namespace(
@@ -737,8 +749,8 @@ def test_cmd_team_roster_extract_default_authoritative_hides_fallback_sections(m
 
     out = capsys.readouterr().out
     assert "Selection mode: authoritative_only" in out
+    assert "Middlesbrough (Middlesbrough Football Club): provenance=eq_jug_linked_parser" in out
     assert "Heuristic candidate coverage" not in out
-    assert "heuristic_candidate_status" not in out
     assert "candidate_run index=0" not in out
 
 

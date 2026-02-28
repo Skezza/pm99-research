@@ -85,3 +85,6 @@ Some GUI tooling surfaces PKF container files. [`PKFFile`](../app/pkf.py) uses t
 
 Keep tests such as [`tests/test_core_io_decoding.py`](../tests/test_core_io_decoding.py) and [`tests/test_serialization.py`](../tests/test_serialization.py) updated whenever new insights refine these rules.
 
+For stable field-level reference material, use:
+- [REFERENCE/PLAYER_FIELDS.md](REFERENCE/PLAYER_FIELDS.md)
+- [REFERENCE/TEAM_FIELDS.md](REFERENCE/TEAM_FIELDS.md)

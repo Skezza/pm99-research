@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+import re
 from typing import Dict, List, Optional
 
 from app.fdi_indexed import IndexedFDIFile
@@ -13,6 +14,31 @@ from app.xor import xor_decode
 
 _EXTERNAL_LINK_JUMP = 0x6E7
 _MIN_EXTERNAL_LINK_RECORD_SIZE = 600
+_JUG_NAME_SCAN_START = 10
+_JUG_NAME_SCAN_BYTES = 192
+_JUG_NAME_SEGMENT_SPLIT_RE = re.compile(r"a(?=[A-ZÀ-Ý])")
+_JUG_NAME_UPPER_BOUNDARY_RE = re.compile(r"(?<=[a-zà-ÿ])(?=[A-ZÀ-Ý])")
+_JUG_NAME_TOKEN_RE = re.compile(r"[A-Za-zÀ-ÿ]+(?:[.'-][A-Za-zÀ-ÿ]+)*")
+_JUG_NAME_CONNECTORS = {
+    "da",
+    "das",
+    "de",
+    "del",
+    "den",
+    "der",
+    "di",
+    "do",
+    "dos",
+    "du",
+    "el",
+    "la",
+    "las",
+    "le",
+    "los",
+    "van",
+    "von",
+    "y",
+}
 
 
 @dataclass(frozen=True)
@@ -35,6 +61,134 @@ class EQLinkedTeamRoster:
     rows: List[EQLinkedRosterRow] = field(default_factory=list)
 
 
+def _alpha_letters(text: str) -> str:
+    return "".join(ch for ch in text if ch.isalpha())
+
+
+def _trim_uppercase_suffix_artifact(token: str) -> str:
+    alpha = _alpha_letters(token)
+    if len(alpha) < 4:
+        return token
+
+    uppercase_prefix = 0
+    for ch in alpha:
+        if ch.isupper():
+            uppercase_prefix += 1
+        else:
+            break
+
+    if uppercase_prefix < 3 or uppercase_prefix >= len(alpha):
+        return token
+    if not alpha[uppercase_prefix:].islower():
+        return token
+
+    out: List[str] = []
+    seen_letters = 0
+    for ch in token:
+        out.append(ch)
+        if ch.isalpha():
+            seen_letters += 1
+            if seen_letters >= uppercase_prefix:
+                break
+    return "".join(out).rstrip(" .'-")
+
+
+def _normalize_jug_name_token(token: str) -> Optional[tuple[str, str]]:
+    token = token.strip(" .'-")
+    if not token:
+        return None
+
+    lowered = token.lower()
+    if lowered in _JUG_NAME_CONNECTORS:
+        return lowered, "connector"
+
+    token = _trim_uppercase_suffix_artifact(token)
+    alpha = _alpha_letters(token)
+    if not alpha:
+        return None
+
+    if len(alpha) == 1 and alpha[0].isupper():
+        return alpha, "initial"
+    if all(ch.isupper() for ch in alpha):
+        return token, "upper"
+    if alpha[0].isupper() and all(ch.islower() for ch in alpha[1:]):
+        if len(alpha) > 22:
+            return None
+        if len(alpha) < 3 and alpha != "Mc":
+            return None
+        return token, "title"
+    return None
+
+
+def _extract_name_from_jug_prefix_segment(segment: str) -> str:
+    segment = re.split(r"a{3,}", segment, maxsplit=1)[0]
+    if not segment:
+        return ""
+
+    # The legacy name block often glues tokens together at lower->upper boundaries.
+    segment = re.sub(r"(?<=[A-Za-zÀ-ÿ])\.(?=[A-Za-zÀ-ÿ])", " ", segment)
+    segment = _JUG_NAME_UPPER_BOUNDARY_RE.sub(" ", segment)
+    segment = re.sub(r"[^A-Za-zÀ-ÿ .'-]+", " ", segment)
+    segment = re.sub(r"\s+", " ", segment).strip()
+    if not segment:
+        return ""
+
+    tokens: List[tuple[str, str]] = []
+    for raw_token in _JUG_NAME_TOKEN_RE.findall(segment):
+        normalized = _normalize_jug_name_token(raw_token)
+        if normalized is None:
+            if tokens:
+                break
+            continue
+        tokens.append(normalized)
+
+    while tokens and tokens[0][1] == "connector":
+        tokens.pop(0)
+    while tokens and tokens[-1][1] == "connector":
+        tokens.pop()
+
+    real_tokens = [(token, kind) for token, kind in tokens if kind != "connector"]
+    if len(real_tokens) < 2:
+        return ""
+
+    # Keep this conservative: the recovered suffix must still include at least one
+    # clear uppercase surname-style token, otherwise we keep the name unresolved.
+    if not any(kind == "upper" and len(_alpha_letters(token)) >= 2 for token, kind in real_tokens):
+        return ""
+
+    return " ".join(token for token, _ in tokens)
+
+
+def _extract_jug_name_from_raw_payload(raw_payload: bytes) -> str:
+    probe = xor_decode(raw_payload[:_JUG_NAME_SCAN_BYTES])
+    if len(probe) <= _JUG_NAME_SCAN_START:
+        return ""
+
+    region = probe[_JUG_NAME_SCAN_START:]
+    marker = region.find(b"aaaa")
+    if marker != -1:
+        region = region[:marker]
+    if not region:
+        return ""
+
+    text = region.decode("cp1252", errors="replace")
+    text = "".join(ch if ch.isprintable() else " " for ch in text)
+    text = re.sub(r"\s+", " ", text).strip()
+    if not text:
+        return ""
+
+    segments = [segment for segment in _JUG_NAME_SEGMENT_SPLIT_RE.split(text) if segment.strip()]
+    names: List[str] = []
+    for segment in segments:
+        name = _extract_name_from_jug_prefix_segment(segment)
+        if name:
+            names.append(name)
+
+    if names:
+        return names[-1]
+    return _extract_name_from_jug_prefix_segment(text)
+
+
 def _read_xor_u16_string(raw_payload: bytes, cursor: int) -> tuple[str, int]:
     if cursor + 2 > len(raw_payload):
         raise ValueError("truncated string length")
@@ -51,6 +205,38 @@ def _read_xor_u16_string(raw_payload: bytes, cursor: int) -> tuple[str, int]:
     return text.rstrip("\x00"), end
 
 
+def _advance_legacy_mode_zero_cursor(raw_payload: bytes, cursor: int, record_size: int) -> int:
+    """Skip the legacy inline mode-0 block and return the base for the external link tables."""
+    if record_size > 0x207:
+        cursor += 2
+    cursor += 4
+    _, cursor = _read_xor_u16_string(raw_payload, cursor)
+    cursor += 4
+    cursor += 4
+    _, cursor = _read_xor_u16_string(raw_payload, cursor)
+    _, cursor = _read_xor_u16_string(raw_payload, cursor)
+    cursor += 3
+    cursor += 20 if record_size >= 0x1F9 else 10
+    cursor += 15
+    cursor += 46 if record_size >= 0x1F9 else 42
+    if record_size < 700:
+        if record_size < 0x1F9:
+            pair_count = 7
+        elif record_size < 0x203:
+            pair_count = 17
+        else:
+            pair_count = 21
+        cursor += pair_count * 2
+    else:
+        if cursor >= len(raw_payload):
+            raise ValueError("truncated legacy sparse-count byte")
+        sparse_count = raw_payload[cursor]
+        cursor += 1 + sparse_count * 3
+    if cursor > len(raw_payload):
+        raise ValueError("legacy mode-0 block overruns payload")
+    return cursor
+
+
 def parse_eq_external_team_roster_payload(
     raw_payload: bytes,
     player_name_by_id: Dict[int, str],
@@ -58,8 +244,9 @@ def parse_eq_external_team_roster_payload(
     """
     Parse one raw EQ indexed payload using the DBASEPRE.EXE external-link layout.
 
-    Only the large-record mode currently used by the external JUG link path is
-    supported here. Legacy mode-0 payloads are left unresolved for now.
+    Only the large-record (`>= 600`) path is handled here. Both the external mode
+    and the legacy inline mode-0 prelude are supported up to the shared external
+    ENT/JUG link tables.
     """
     if len(raw_payload) < 0x2A:
         return None
@@ -86,11 +273,14 @@ def parse_eq_external_team_roster_payload(
         cursor += 4
     cursor += 2 + 2 + 2
 
-    # The older inline payload mode is still unresolved.
+    link_base = cursor
     if mode_byte == 0:
-        return None
+        try:
+            link_base = _advance_legacy_mode_zero_cursor(raw_payload, cursor, record_size)
+        except Exception:
+            return None
 
-    ent_cursor = cursor + _EXTERNAL_LINK_JUMP
+    ent_cursor = link_base + _EXTERNAL_LINK_JUMP
     if ent_cursor >= len(raw_payload):
         return None
 
@@ -134,16 +324,20 @@ def _build_jug_player_name_index(player_file: str) -> Dict[int, str]:
     indexed = IndexedFDIFile.from_bytes(player_bytes)
     out: Dict[int, str] = {}
     for entry in indexed.entries:
+        raw_payload = player_bytes[entry.payload_offset : entry.payload_offset + entry.payload_length]
+        record = None
         try:
             payload = entry.decode_payload(player_bytes)
             record = PlayerRecord.from_bytes(payload, entry.payload_offset)
+            name = str(getattr(record, "name", "") or "").strip()
         except Exception:
-            continue
-        name = str(getattr(record, "name", "") or "").strip()
+            name = ""
         if not name:
             given = str(getattr(record, "given_name", "") or "").strip()
             surname = str(getattr(record, "surname", "") or "").strip()
             name = f"{given} {surname}".strip()
+        if not name or name in ("Unknown Player", "Parse Error"):
+            name = _extract_jug_name_from_raw_payload(raw_payload)
         if not name or name in ("Unknown Player", "Parse Error"):
             continue
         out[entry.record_id] = name

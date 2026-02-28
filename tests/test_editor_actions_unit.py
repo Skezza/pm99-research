@@ -349,6 +349,58 @@ def test_extract_team_rosters_eq_same_entry_overlap_wraps_probe_payload(monkeypa
     assert result.raw_payload["dd6361_pid_name_count"] == 2009
 
 
+def test_extract_team_rosters_eq_jug_linked_filters_and_shapes_output(monkeypatch, tmp_path):
+    calls = {}
+
+    def fake_load_eq_linked_team_rosters(**kwargs):
+        calls["load"] = kwargs
+        return [
+            SimpleNamespace(
+                eq_record_id=12,
+                short_name="Inter",
+                full_club_name="Internazionale Milano Football Club",
+                stadium_name="San Siro",
+                record_size=700,
+                mode_byte=1,
+                ent_count=1,
+                rows=[
+                    SimpleNamespace(slot_index=0, flag=0, player_record_id=3937, player_name="Demo PLAYER"),
+                    SimpleNamespace(slot_index=1, flag=1, player_record_id=4000, player_name=""),
+                ],
+            ),
+            SimpleNamespace(
+                eq_record_id=13,
+                short_name="Inter Cardiff",
+                full_club_name="Inter Cardiff",
+                stadium_name="Leckwith",
+                record_size=700,
+                mode_byte=1,
+                ent_count=1,
+                rows=[],
+            ),
+        ]
+
+    monkeypatch.setattr(editor_actions, "load_eq_linked_team_rosters", fake_load_eq_linked_team_rosters)
+
+    result = editor_actions.extract_team_rosters_eq_jug_linked(
+        team_file=str(tmp_path / "EQ98030.FDI"),
+        player_file=str(tmp_path / "JUG98030.FDI"),
+        team_queries=["Inter Milan"],
+    )
+
+    assert calls["load"] == {
+        "team_file": str(tmp_path / "EQ98030.FDI"),
+        "player_file": str(tmp_path / "JUG98030.FDI"),
+    }
+    assert len(result) == 1
+    assert result[0]["provenance"] == "eq_jug_linked_parser"
+    assert result[0]["team_name"] == "Inter"
+    assert result[0]["rows"] == [
+        {"slot_index": 0, "flag": 0, "pid": 3937, "player_name": "Demo PLAYER"},
+        {"slot_index": 1, "flag": 1, "pid": 4000, "player_name": ""},
+    ]
+
+
 def test_inspect_main_dat_prefix_wraps_parser(tmp_path):
     file_path = tmp_path / "main.dat"
     payload = PM99MainDatFile(
