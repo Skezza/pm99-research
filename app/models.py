@@ -1645,8 +1645,8 @@ class PlayerRecord:
 @dataclass
 class FDIHeader:
     """FDI file header structure.
-    
-    Based on MANAGPRE.EXE header parsing and docs/archive/struct_notes.md.
+
+    Based on MANAGPRE.EXE header parsing and the maintained notes in docs/DATA_FORMATS.md.
     """
     signature: bytes = b'DMFIv1.0'
     record_count: int = 0
