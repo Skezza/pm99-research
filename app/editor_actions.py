@@ -13,6 +13,7 @@ from app.editor_helpers import (
     _team_display_name,
     find_entries_with_substring,
     scan_team_matches,
+    team_query_matches,
 )
 from app.editor_sources import (
     RecordEntry,

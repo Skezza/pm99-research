@@ -2262,3 +2262,120 @@ Practical effect:
 - coach loading is now closer to the real `DBASEPRE.EXE` static DB path
 - coach editing is safer for indexed `ENT98030.FDI` records, as long as the edited decoded payload does not change size
 - this removes another major parser-vs-heuristic mismatch from the editor
+
+## 2026-02-27 - Parser-Backed EQ -> JUG Static Roster Links
+
+`FUN_00439f50` in `DBASEPRE.EXE` is now partially reproduced in Python for the large-record external-link path.
+
+Confirmed parser-backed layout used now:
+
+- team payloads are parsed from the raw indexed `EQ98030.FDI` slice, not the fully XOR-decoded blob
+- at `0x26` the payload carries the game-side record-size discriminator
+- at `0x29` the payload carries the mode byte
+- large records (`>= 600`) with non-zero mode use the external-link path
+- after the fixed scalar block, the external linked tables start at:
+  - `cursor_after_fixed_fields + 0x6e7`
+- that block contains:
+  - `u8 ent_count`
+  - `ent_count * u32` external `ENT` ids
+  - `u8 player_count`
+  - `player_count` rows of:
+    - `u8 flag`
+    - `u32 jug_record_id`
+
+New parser module:
+
+- `app.eq_jug_linked`
+- `parse_eq_external_team_roster_payload(...)`
+- `load_eq_linked_team_rosters(...)`
+
+New shared backend wrapper:
+
+- `app.editor_actions.extract_team_rosters_eq_jug_linked(...)`
+
+Current product usage:
+
+- the GUI team roster pane now prefers this parser-backed `EQ -> JUG` path first
+- it falls back to the older same-entry overlap extractor only when no parser-backed linked roster is available
+- the CLI now exposes the parser-backed view directly via:
+  - `python3 -m app.cli team-roster-linked`
+
+Real-data smoke check against current `DBDAT` files:
+
+- parser-backed linked team records: `451`
+- total linked player rows: `9390`
+- player rows with currently resolved names: `8534`
+
+Current remaining gap:
+
+- `92` `EQ` entries still fall into the unresolved legacy mode-0 branch
+- that branch is not yet decoded, so the parser-backed path is substantial but not yet full static roster coverage
+
+## 2026-02-27 - Legacy Mode-0 EQ Roster Prelude Decoded
+
+The remaining `mode_byte == 0` branch in `FUN_00439f50` is now decoded far enough to reach the same external `ENT` and `JUG` link tables.
+
+Confirmed mode-0 cursor rules now implemented:
+
+- after the shared fixed scalar block, mode-0 consumes:
+  - optional `u16` when `record_size > 0x207`
+  - one `u32`
+  - one XOR `u16` string
+  - two `u32`
+  - two more XOR `u16` strings
+  - `3` raw bytes
+  - `20` bytes when `record_size >= 0x1f9` (else `10`)
+  - `15` more fixed bytes
+  - `46` bytes when `record_size >= 0x1f9` (else `42`)
+  - then either:
+    - fixed `2-byte` pairs for smaller legacy records, or
+    - a sparse `count + count * 3` table for `record_size >= 700`
+- the shared external link tables then begin at:
+  - `cursor_after_mode0_prelude + 0x6e7`
+
+Practical result:
+
+- `app.eq_jug_linked.parse_eq_external_team_roster_payload(...)` now supports both:
+  - non-zero external mode
+  - legacy `mode_byte == 0`
+- `app.eq_jug_linked.load_eq_linked_team_rosters(...)` now covers the full current `EQ98030.FDI` set
+
+Updated real-data smoke check:
+
+- parser-backed linked team records: `543`
+- `mode_byte == 0` records: `92`
+- non-zero mode records: `451`
+- total linked player rows: `11520`
+- player rows with currently resolved names: `10492`
+
+This closes the main static team-to-player linkage milestone:
+
+- the editor now has parser-backed static roster coverage across the current `EQ98030.FDI` dataset
+- remaining work is now about quality and completeness of decoded player data, not whether the roster linkage exists
+
+## 2026-02-28 - Legacy JUG Prefix Name Recovery
+
+The `EQ -> JUG` roster linkage was already parser-backed, but `1028` linked player rows still rendered with blank names because the existing `PlayerRecord` parser did not understand every `JUG98030.FDI` payload variant.
+
+To reduce that gap without changing roster provenance, `app.eq_jug_linked._build_jug_player_name_index(...)` now has a conservative fallback:
+
+- it only runs when `PlayerRecord.from_bytes(...)` yields no usable name
+- it scans the first decoded `JUG` payload prefix (`10`-byte header skipped, then up to `192` bytes)
+- it truncates at the first `aaaa` marker when present
+- it splits on the legacy `a + uppercase` separator pattern that often divides an abbreviated alias from the fuller display name
+- it accepts only name-shaped suffixes that still contain a clear uppercase surname-style token
+
+This is intentionally narrower than the old broad regex experiments:
+
+- static roster linkage remains parser-backed and authoritative
+- only the displayed player name gets a best-effort recovery path when the primary player parser fails
+- malformed names are still left unresolved rather than forced into obviously bad output
+
+Updated real-data smoke check against current `DBDAT` files:
+
+- parser-backed linked team records: `543`
+- total linked player rows: `11520`
+- player rows with currently resolved names: `11209`
+- remaining blank linked player names: `311`
+
+This lifts parser-backed linked roster name coverage by `717` rows while keeping the fallback bounded to the known legacy `JUG` prefix region.

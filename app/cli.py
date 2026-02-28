@@ -12,6 +12,7 @@ from pathlib import Path
 
 from .bulk_rename import bulk_rename_players, revert_player_renames
 from .editor_actions import (
+    extract_team_rosters_eq_jug_linked,
     extract_team_rosters_eq_same_entry_overlap,
     inspect_main_dat_prefix,
     parse_player_skill_patch_assignments,
@@ -65,6 +66,46 @@ def _emit(value, as_json: bool = False):
         print(json.dumps(_jsonable(value), indent=2))
     else:
         print(value)
+
+
+def _write_json_report(path: str | None, value) -> None:
+    if not path:
+        return
+    Path(path).write_text(json.dumps(_jsonable(value), indent=2) + "\n", encoding="utf-8")
+
+
+def _print_linked_team_rosters(rosters, row_limit: int) -> None:
+    if not rosters:
+        print("No parser-backed EQ->JUG roster rows found.")
+        return
+
+    for item in rosters:
+        team_name = str(item.get("team_name") or "")
+        full_club_name = str(item.get("full_club_name") or "")
+        eq_record_id = int(item.get("eq_record_id") or 0)
+        ent_count = int(item.get("ent_count") or 0)
+        mode_byte = int(item.get("mode_byte") or 0)
+        rows = list(item.get("rows") or [])
+        display = team_name
+        if full_club_name and full_club_name != team_name:
+            display = f"{team_name} ({full_club_name})"
+        print(
+            f"{display}: provenance=eq_jug_linked_parser eq_record_id={eq_record_id} "
+            f"mode={mode_byte} ent_count={ent_count} rows={len(rows)}"
+        )
+        shown = 0
+        for row in rows:
+            if row_limit and shown >= row_limit:
+                remaining = len(rows) - shown
+                if remaining > 0:
+                    print(f"  ... {remaining} more row(s)")
+                break
+            shown += 1
+            pid = int(row.get("pid") or 0)
+            flag = int(row.get("flag") or 0)
+            player_name = str(row.get("player_name") or "").strip()
+            label = player_name or "(name unresolved)"
+            print(f"  slot={shown:02d} pid={pid:5d} flag={flag} {label}")
 
 
 def _gather_player_entries_for_cli(args):
@@ -1246,6 +1287,39 @@ def cmd_team_list(args):
 
 def cmd_team_roster_extract(args):
     include_fallbacks = bool(getattr(args, "include_fallbacks", False))
+    if not include_fallbacks:
+        rosters = extract_team_rosters_eq_jug_linked(
+            team_file=args.file,
+            player_file=args.player_file,
+            team_queries=list(args.team or []),
+        )
+        if args.json:
+            _emit(rosters, as_json=True)
+            return
+
+        _write_json_report(getattr(args, "json_output", None), rosters)
+        print("Selection mode: authoritative_only")
+        if not rosters:
+            if list(args.team or []):
+                print("No parser-backed EQ->JUG roster found for the requested --team query.")
+            else:
+                print("Authoritative parser-backed roster coverage: 0 linked team records.")
+        elif not list(args.team or []):
+            total_rows = sum(len(list(item.get("rows") or [])) for item in rosters)
+            print(
+                f"Authoritative parser-backed roster coverage: {len(rosters)} linked team records "
+                f"| linked player rows={total_rows}"
+            )
+        else:
+            _print_linked_team_rosters(
+                rosters,
+                max(0, int(getattr(args, "row_limit", 25) or 0)),
+            )
+
+        if args.json_output:
+            print(f"\nReport: {args.json_output}")
+        return
+
     result = extract_team_rosters_eq_same_entry_overlap(
         team_file=args.file,
         player_file=args.player_file,
@@ -1548,6 +1622,33 @@ def cmd_team_roster_extract(args):
 
     if args.json_output:
         print(f"\nReport: {args.json_output}")
+
+
+def cmd_team_roster_linked(args):
+    rosters = extract_team_rosters_eq_jug_linked(
+        team_file=args.file,
+        player_file=args.player_file,
+        team_queries=list(args.team or []),
+    )
+    if args.json:
+        _emit(rosters, as_json=True)
+        return
+
+    if not rosters:
+        if list(args.team or []):
+            print("No parser-backed EQ->JUG roster found for the requested --team query.")
+        else:
+            print("No parser-backed EQ->JUG roster rows found.")
+        return
+
+    if not list(args.team or []):
+        print(
+            f"Parser-backed EQ->JUG roster coverage: {len(rosters)} linked team records. "
+            "Use --team to filter, or --json for the full dump."
+        )
+        return
+
+    _print_linked_team_rosters(rosters, max(0, int(getattr(args, "row_limit", 25) or 0)))
 
 
 def cmd_team_search(args):
@@ -2081,7 +2182,7 @@ def main():
 
     team_roster_extract_parser = subparsers.add_parser(
         "team-roster-extract",
-        help="Extract team roster via EQ same-entry overlap (experimental, read-only)",
+        help="Extract team roster (parser-backed by default; heuristic fallbacks optional)",
     )
     team_roster_extract_parser.add_argument(
         "file",
@@ -2123,6 +2224,36 @@ def main():
     team_roster_extract_parser.add_argument("--json-output", help="Optional JSON report file path")
     team_roster_extract_parser.add_argument("--json", action="store_true", help="Emit JSON result")
     team_roster_extract_parser.set_defaults(func=cmd_team_roster_extract)
+
+    team_roster_linked_parser = subparsers.add_parser(
+        "team-roster-linked",
+        help="Extract parser-backed EQ->JUG linked team rosters (read-only)",
+    )
+    team_roster_linked_parser.add_argument(
+        "file",
+        nargs="?",
+        default="DBDAT/EQ98030.FDI",
+        help="Path to EQ98030.FDI (default: DBDAT/EQ98030.FDI)",
+    )
+    team_roster_linked_parser.add_argument(
+        "--player-file",
+        default="DBDAT/JUG98030.FDI",
+        help="Path to JUG98030.FDI for player-id -> player-name resolution",
+    )
+    team_roster_linked_parser.add_argument(
+        "--team",
+        action="append",
+        default=[],
+        help="Team query substring filter (repeatable). Omit for a coverage summary only.",
+    )
+    team_roster_linked_parser.add_argument(
+        "--row-limit",
+        type=int,
+        default=25,
+        help="Max roster rows to print per requested team in text mode (default: 25)",
+    )
+    team_roster_linked_parser.add_argument("--json", action="store_true", help="Emit JSON result")
+    team_roster_linked_parser.set_defaults(func=cmd_team_roster_linked)
 
     # Coach commands
     coach_list_parser = subparsers.add_parser("coach-list", help="List coach records")

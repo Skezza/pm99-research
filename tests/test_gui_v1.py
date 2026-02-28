@@ -239,6 +239,7 @@ def test_load_current_team_roster_populates_authoritative_rows(monkeypatch):
             }
         }
 
+    monkeypatch.setattr(gui, "extract_team_rosters_eq_jug_linked", lambda **kwargs: [])
     monkeypatch.setattr(gui, "extract_team_rosters_eq_same_entry_overlap", fake_extract)
     monkeypatch.setattr(gui, "build_player_visible_skill_index_dd6361", fake_build_index)
 
@@ -276,6 +277,80 @@ def test_load_current_team_roster_populates_authoritative_rows(monkeypatch):
     assert (
         editor.status_var.get()
         == "Loaded authoritative roster rows for Milan: 2 (static SP/ST/AG/QU only; dynamic columns unresolved)"
+    )
+
+
+def test_load_current_team_roster_prefers_eq_jug_linked_rows(monkeypatch):
+    editor = SimpleNamespace(
+        team_roster_tree=_FakeTree(),
+        current_team=(0x10, SimpleNamespace(name="Milan")),
+        team_file_path="DBDAT/EQ98030.FDI",
+        file_path="DBDAT/JUG98030.FDI",
+        status_var=_FakeVar(),
+    )
+
+    def fake_extract_linked(**kwargs):
+        return [
+            {
+                "provenance": "eq_jug_linked_parser",
+                "rows": [
+                    {"slot_index": 0, "flag": 0, "pid": 3937, "player_name": "Demo PLAYER"},
+                    {"slot_index": 1, "flag": 1, "pid": 4000, "player_name": ""},
+                ],
+            }
+        ]
+
+    def fake_build_index(**kwargs):
+        assert kwargs == {"file_path": "DBDAT/JUG98030.FDI"}
+        return {
+            3937: {
+                "pid": 3937,
+                "resolved_bio_name": "Demo PLAYER",
+                "mapped10": {"speed": 90, "stamina": 86, "aggression": 85, "quality": 90},
+            }
+        }
+
+    def fail_overlap(**kwargs):
+        raise AssertionError("same-entry fallback should not be called when linked rows exist")
+
+    monkeypatch.setattr(gui, "extract_team_rosters_eq_jug_linked", fake_extract_linked)
+    monkeypatch.setattr(gui, "extract_team_rosters_eq_same_entry_overlap", fail_overlap)
+    monkeypatch.setattr(gui, "build_player_visible_skill_index_dd6361", fake_build_index)
+
+    gui.PM99DatabaseEditor.load_current_team_roster(editor)
+
+    assert len(editor.team_roster_tree.rows) == 2
+    assert editor.team_roster_tree.rows[0]["values"] == (
+        1,
+        "Demo PLAYER [pid 3937]",
+        "?",
+        90,
+        86,
+        85,
+        90,
+        "?",
+        "?",
+        "?",
+        "?",
+        "?",
+    )
+    assert editor.team_roster_tree.rows[1]["values"] == (
+        2,
+        "PID 4000 (name unresolved)",
+        "?",
+        "",
+        "",
+        "",
+        "",
+        "?",
+        "?",
+        "?",
+        "?",
+        "?",
+    )
+    assert (
+        editor.status_var.get()
+        == "Loaded parser-backed EQ->JUG roster rows for Milan: 2 (static SP/ST/AG/QU only; dynamic columns unresolved)"
     )
 
 
