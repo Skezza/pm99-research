@@ -32,14 +32,24 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, simpledialog
 from app.bulk_rename import bulk_rename_players, revert_player_renames
 from app.editor_actions import (
+    batch_edit_player_metadata_records,
+    batch_edit_team_roster_records,
     build_player_visible_skill_index_dd6361,
+    edit_team_roster_eq_jug_linked,
+    edit_team_roster_same_entry_authoritative,
     extract_team_rosters_eq_jug_linked,
     extract_team_rosters_eq_same_entry_overlap,
+    inspect_player_metadata_records,
     inspect_player_visible_skills_dd6361,
     patch_player_visible_skills_dd6361,
     parse_player_skill_patch_assignments,
+    profile_indexed_player_leading_bytes,
+    profile_indexed_player_suffix_bytes,
+    profile_indexed_player_attribute_prefixes,
+    profile_player_legacy_weight_candidates,
     rename_coach_records,
     rename_team_records,
+    validate_database_files,
     write_coach_staged_records,
     write_team_staged_records,
 )
@@ -140,6 +150,7 @@ class PM99DatabaseEditor:
         self.modified_records = {}  # offset -> PlayerRecord
         self.modified_coach_records = {}  # offset -> CoachRecord
         self.modified_team_records = {}   # offset -> TeamRecord
+        self.team_roster_row_meta = {}    # tree item id -> authoritative roster row metadata
 
         # Coaches loading state (lazy-loaded)
         self.coach_file_path = 'DBDAT/ENT98030.FDI'
@@ -181,6 +192,13 @@ class PM99DatabaseEditor:
         tools_menu.add_separator()
         tools_menu.add_command(label="Bulk Rename Players (M1)...", command=self.open_bulk_player_rename_dialog)
         tools_menu.add_command(label="Revert Bulk Player Rename (M1)...", command=self.open_bulk_player_revert_dialog)
+        tools_menu.add_command(label="Batch Edit Players from CSV...", command=self.open_player_batch_edit_dialog)
+        tools_menu.add_command(label="Batch Edit Team Roster from CSV...", command=self.open_team_roster_batch_edit_dialog)
+        tools_menu.add_command(label="Inspect Player Metadata...", command=self.open_player_metadata_inspect_dialog)
+        tools_menu.add_command(label="Inspect Indexed Player Byte Profiles...", command=self.open_player_indexed_profiles_dialog)
+        tools_menu.add_command(label="Inspect Team Roster Sources...", command=self.open_team_roster_sources_dialog)
+        tools_menu.add_command(label="Edit Selected Team Roster Slot...", command=self.open_selected_team_roster_edit_dialog)
+        tools_menu.add_command(label="Edit Linked Team Roster Slot...", command=self.open_team_roster_edit_linked_dialog)
         tools_menu.add_separator()
         tools_menu.add_command(
             label="Patch Player Visible Skills (dd6361)...",
@@ -381,6 +399,66 @@ class PM99DatabaseEditor:
         self.league_count_label = ttk.Label(league_tab, text="Leagues: 0")
         self.league_count_label.pack(pady=(5,0), padx=5)
 
+        # Analysis tab (persistent home for confirmed inspection/reporting surfaces)
+        analysis_tab = ttk.Frame(notebook)
+        notebook.add(analysis_tab, text="Analysis")
+        self.analysis_tab = analysis_tab
+
+        analysis_controls = ttk.LabelFrame(
+            analysis_tab,
+            text="Confirmed Analysis",
+            padding="8",
+        )
+        analysis_controls.pack(fill=tk.X, padx=5, pady=(5, 0))
+        ttk.Label(
+            analysis_controls,
+            text=(
+                "Parser-backed inspection/reporting surfaces render here. "
+                "These views mirror the stable read contracts shared with the CLI."
+            ),
+            justify=tk.LEFT,
+            wraplength=860,
+        ).pack(fill=tk.X, anchor=tk.W)
+
+        analysis_btn_row = ttk.Frame(analysis_controls)
+        analysis_btn_row.pack(fill=tk.X, pady=(8, 0))
+        ttk.Button(
+            analysis_btn_row,
+            text="Player Metadata",
+            command=self.open_player_metadata_inspect_dialog,
+        ).pack(side=tk.LEFT)
+        ttk.Button(
+            analysis_btn_row,
+            text="Indexed Byte Profiles",
+            command=self.open_player_indexed_profiles_dialog,
+        ).pack(side=tk.LEFT, padx=(6, 0))
+        ttk.Button(
+            analysis_btn_row,
+            text="Team Roster Sources",
+            command=self.open_team_roster_sources_dialog,
+        ).pack(side=tk.LEFT, padx=(6, 0))
+
+        self.analysis_report_title_var = tk.StringVar(value="No analysis loaded")
+        ttk.Label(
+            analysis_tab,
+            textvariable=self.analysis_report_title_var,
+            font=("TkDefaultFont", 10, "bold"),
+        ).pack(fill=tk.X, padx=8, pady=(8, 2))
+
+        self.analysis_report_hint_var = tk.StringVar(
+            value="Run one of the confirmed inspection actions to populate this workspace."
+        )
+        ttk.Label(
+            analysis_tab,
+            textvariable=self.analysis_report_hint_var,
+            font=("TkDefaultFont", 8),
+            justify=tk.LEFT,
+            wraplength=900,
+        ).pack(fill=tk.X, padx=8, pady=(0, 6))
+
+        self.analysis_report_container = ttk.Frame(analysis_tab)
+        self.analysis_report_container.pack(fill=tk.BOTH, expand=True, padx=5, pady=(0, 5))
+
         # End of restored local GUI file
         # Right: Editor
         right_frame = ttk.Frame(main_paned)
@@ -457,7 +535,15 @@ class PM99DatabaseEditor:
         self.height_spinbox = ttk.Spinbox(info_frame, from_=50, to=250, textvariable=self.height_var, width=8)
         self.height_spinbox.grid(row=7, column=1, sticky=tk.W, padx=10, pady=5)
         ttk.Label(info_frame, text="cm", font=('TkDefaultFont', 8)).grid(row=7, column=2, sticky=tk.W)
-        
+
+        # Weight (only when the selected record exposes a parser-backed slot)
+        ttk.Label(info_frame, text="Weight (kg):").grid(row=8, column=0, sticky=tk.W, pady=5)
+        self.weight_var = tk.StringVar()
+        self.weight_spinbox = ttk.Spinbox(info_frame, from_=40, to=140, textvariable=self.weight_var, width=8)
+        self.weight_spinbox.grid(row=8, column=1, sticky=tk.W, padx=10, pady=5)
+        self.weight_hint_var = tk.StringVar(value="(available when parser-backed)")
+        ttk.Label(info_frame, textvariable=self.weight_hint_var, font=('TkDefaultFont', 8)).grid(row=8, column=2, sticky=tk.W)
+
         # Attributes
         attr_frame = ttk.LabelFrame(right_frame, text="Attributes (Candidate Fields - Double-XOR Encoded)", padding="10")
         attr_frame.pack(fill=tk.BOTH, expand=True)
@@ -476,13 +562,8 @@ class PM99DatabaseEditor:
         
         self.attr_vars = []
         
-        # Attribute labels (best guess - user can verify)
-        self.attr_labels = [
-            "Attr 0 (Speed?)", "Attr 1 (Stamina?)", "Attr 2 (Aggression?)",
-            "Attr 3 (Quality?)", "Attr 4 (Fitness?)", "Attr 5 (Moral?)",
-            "Attr 6 (Handling?)", "Attr 7 (Passing?)", "Attr 8 (Dribbling?)",
-            "Attr 9 (Heading?)", "Attr 10 (Tackling?)", "Attr 11 (Shooting?)"
-        ]
+        self.attr_labels = PlayerRecord.attribute_slot_labels()
+        self.attr_editable_indices = set(PlayerRecord.editable_attribute_indices())
 
         # Verified dd6361 visible-skill panel state (separate from legacy generic attributes)
         self.visible_skill_snapshot = None
@@ -653,10 +734,24 @@ class PM99DatabaseEditor:
             font=('TkDefaultFont', 8),
             wraplength=720,
         ).pack(fill=tk.X, pady=(0, 4))
- 
+
+        roster_actions = ttk.Frame(self.team_panel_roster_frame)
+        roster_actions.pack(fill=tk.X, pady=(0, 4))
+        ttk.Button(
+            roster_actions,
+            text="Edit Selected Slot...",
+            command=self.open_selected_team_roster_edit_dialog,
+        ).pack(side=tk.LEFT)
+        ttk.Button(
+            roster_actions,
+            text="Refresh Roster",
+            command=self.load_current_team_roster,
+        ).pack(side=tk.LEFT, padx=(5, 0))
+
         # Enhanced roster tree with all attributes (PM99 style)
         roster_cols = ('num', 'name', 'en', 'sp', 'st', 'ag', 'qu', 'fi', 'mo', 'av', 'role', 'pos')
         self.team_roster_tree = ttk.Treeview(self.team_panel_roster_frame, columns=roster_cols, show='headings', selectmode='browse', height=20)
+        self.team_roster_tree.bind('<Double-1>', self._on_team_roster_double)
         
         # Configure columns with PM99-style headers
         self.team_roster_tree.heading('num', text='N.')
@@ -984,11 +1079,26 @@ class PM99DatabaseEditor:
     def _unresolved_roster_values():
         return (TEAM_ROSTER_UNRESOLVED_VALUE,) * 6
 
+    def _resolve_team_roster_player_file(self):
+        """Return the player file used for roster lookups, preferring the active JUG file."""
+        player_file = getattr(self, 'file_path', '') or 'DBDAT/JUG98030.FDI'
+        try:
+            if Path(str(player_file)).name.upper().startswith("JUG") is False:
+                player_file = 'DBDAT/JUG98030.FDI'
+        except Exception:
+            player_file = 'DBDAT/JUG98030.FDI'
+        return str(player_file)
+
+    def _on_team_roster_double(self, _event):
+        """Double-click a roster row to open the safe selected-slot editor."""
+        self.open_selected_team_roster_edit_dialog()
+
     def load_current_team_roster(self):
         """Populate the team roster overlay using authoritative EQ roster extraction."""
         tree = getattr(self, 'team_roster_tree', None)
         if tree is None:
             return
+        self.team_roster_row_meta = {}
         try:
             tree.delete(*tree.get_children())
         except Exception:
@@ -1002,12 +1112,7 @@ class PM99DatabaseEditor:
         if not team_name:
             return
 
-        player_file = getattr(self, 'file_path', '') or 'DBDAT/JUG98030.FDI'
-        try:
-            if Path(str(player_file)).name.upper().startswith("JUG") is False:
-                player_file = 'DBDAT/JUG98030.FDI'
-        except Exception:
-            player_file = 'DBDAT/JUG98030.FDI'
+        player_file = PM99DatabaseEditor._resolve_team_roster_player_file(self)
 
         try:
             linked = extract_team_rosters_eq_jug_linked(
@@ -1050,23 +1155,33 @@ class PM99DatabaseEditor:
                     qu = mapped10.get("quality", "")
                 en, fi, mo, av, role, pos = PM99DatabaseEditor._unresolved_roster_values()
                 visible_rows += 1
-                tree.insert(
+                item_id = tree.insert(
                     '',
                     tk.END,
                     values=(visible_rows, display_name, en, sp, st, ag, qu, fi, mo, av, role, pos),
                 )
+                self.team_roster_row_meta[str(item_id)] = {
+                    "mode": "linked",
+                    "team_query": str(item.get("team_name") or team_name),
+                    "team_name": str(item.get("team_name") or team_name),
+                    "full_club_name": str(item.get("full_club_name") or ""),
+                    "slot_number": int(row.get("slot_index", 0) or 0) + 1,
+                    "current_pid": pid,
+                    "current_flag": int(row.get("flag", 0) or 0),
+                }
             self.status_var.set(
                 f"Loaded parser-backed EQ->JUG roster rows for {team_name}: {visible_rows}{TEAM_ROSTER_STATUS_SUFFIX}"
             )
             return
 
         try:
+            supported_same_entry_provenances = {"same_entry_authoritative", "known_lineup_anchor_assisted"}
             result = extract_team_rosters_eq_same_entry_overlap(
                 team_file=str(getattr(self, 'team_file_path', 'DBDAT/EQ98030.FDI') or 'DBDAT/EQ98030.FDI'),
                 player_file=str(player_file),
                 team_queries=[team_name],
                 top_examples=5,
-                include_fallbacks=False,
+                include_fallbacks=True,
             )
         except Exception as exc:
             self.status_var.set(f"Team roster load failed: {exc}")
@@ -1075,8 +1190,9 @@ class PM99DatabaseEditor:
         requested = list(getattr(result, 'requested_team_results', []) or [])
         item = requested[0] if requested else {}
         preferred = dict(item.get("preferred_roster_match") or {})
-        if str(preferred.get("provenance") or "") != "same_entry_authoritative":
-            self.status_var.set(f"No authoritative roster mapping yet for {team_name}")
+        preferred_provenance = str(preferred.get("provenance") or "")
+        if preferred_provenance not in supported_same_entry_provenances:
+            self.status_var.set(f"No supported same-entry overlay mapping yet for {team_name}")
             return
 
         rows = list(preferred.get("rows") or [])
@@ -1099,14 +1215,234 @@ class PM99DatabaseEditor:
                 qu = mapped10.get("quality", "")
             en, fi, mo, av, role, pos = PM99DatabaseEditor._unresolved_roster_values()
             visible_rows += 1
-            tree.insert(
+            item_id = tree.insert(
                 '',
                 tk.END,
                 values=(visible_rows, display_name, en, sp, st, ag, qu, fi, mo, av, role, pos),
             )
+            self.team_roster_row_meta[str(item_id)] = {
+                "mode": "same_entry",
+                "team_query": str(item.get("team_name") or team_name),
+                "team_name": str(item.get("team_name") or team_name),
+                "full_club_name": str(item.get("full_club_name") or ""),
+                "team_offset": int(item.get("team_offset", 0) or 0),
+                "slot_number": visible_rows,
+                "current_pid": pid,
+                "same_entry_provenance": preferred_provenance,
+            }
+        provenance_suffix = f" [{preferred_provenance}]" if preferred_provenance else ""
         self.status_var.set(
-            f"Loaded authoritative roster rows for {team_name}: {visible_rows}{TEAM_ROSTER_STATUS_SUFFIX}"
+            f"Loaded supported same-entry roster rows for {team_name}: {visible_rows}{TEAM_ROSTER_STATUS_SUFFIX}{provenance_suffix}"
         )
+
+    def open_selected_team_roster_edit_dialog(self):
+        """Edit the selected authoritative roster row from the team overlay."""
+        tree = getattr(self, "team_roster_tree", None)
+        if tree is None:
+            return
+        selection = list(tree.selection() or [])
+        if not selection:
+            messagebox.showinfo("Edit Selected Team Roster Slot", "Select a roster row first.")
+            return
+
+        item_id = str(selection[0])
+        row_meta = dict((getattr(self, "team_roster_row_meta", {}) or {}).get(item_id) or {})
+        if not row_meta:
+            messagebox.showinfo(
+                "Edit Selected Team Roster Slot",
+                "The selected row does not have an authoritative writable mapping.",
+            )
+            return
+
+        item = tree.item(item_id)
+        values = list(item.get("values") or [])
+        row_label = str(values[1] if len(values) > 1 else row_meta.get("team_name") or "").strip()
+        mode = str(row_meta.get("mode") or "").strip()
+        team_file = getattr(self, "team_file_path", None) or "DBDAT/EQ98030.FDI"
+        player_file = PM99DatabaseEditor._resolve_team_roster_player_file(self)
+        team_query = str(row_meta.get("team_query") or row_meta.get("team_name") or "").strip()
+        slot_number = int(row_meta.get("slot_number", 0) or 0)
+        if not team_query or slot_number < 1:
+            messagebox.showinfo(
+                "Edit Selected Team Roster Slot",
+                "The selected row is missing required team roster metadata.",
+            )
+            return
+
+        try:
+            if mode == "linked":
+                current_pid = int(row_meta.get("current_pid", 0) or 0)
+                current_flag = int(row_meta.get("current_flag", 0) or 0)
+                player_id_text = simpledialog.askstring(
+                    "Edit Selected Team Roster Slot",
+                    "Player record ID:",
+                    initialvalue=str(current_pid),
+                )
+                if player_id_text is None:
+                    return
+                flag_text = simpledialog.askstring(
+                    "Edit Selected Team Roster Slot",
+                    "Flag byte:",
+                    initialvalue=str(current_flag),
+                )
+                if flag_text is None:
+                    return
+                player_record_id = int(str(player_id_text).strip() or current_pid, 0)
+                flag = int(str(flag_text).strip() or current_flag, 0)
+                if player_record_id == current_pid and flag == current_flag:
+                    messagebox.showinfo("Edit Selected Team Roster Slot", "No changes requested.")
+                    return
+
+                dry_run = messagebox.askyesno(
+                    "Edit Selected Team Roster Slot",
+                    (
+                        f"Patch linked roster row:\n{row_label or team_query}\n\n"
+                        "Run in dry-run mode?\n\n"
+                        "Yes = validate and stage only\n"
+                        "No = write changes immediately"
+                    ),
+                )
+                self.status_var.set("Running selected linked team roster edit...")
+                self.root.update_idletasks()
+                result = edit_team_roster_eq_jug_linked(
+                    team_file=team_file,
+                    player_file=player_file,
+                    team_query=team_query,
+                    slot_number=slot_number,
+                    player_record_id=player_record_id,
+                    flag=flag,
+                    write_changes=not dry_run,
+                )
+                if not dry_run and getattr(result, "applied_to_disk", False):
+                    self.load_current_team_roster()
+
+                warning_count = len(getattr(result, "warnings", []) or [])
+                status_suffix = "dry-run " if dry_run else ""
+                self.status_var.set(
+                    f"✓ Selected linked roster edit {status_suffix}complete "
+                    f"({len(getattr(result, 'changes', []) or [])} changed, {warning_count} warning(s))"
+                )
+                summary_lines = [
+                    f"{'Dry run complete' if dry_run else 'Linked roster edit complete'}",
+                    "",
+                    f"Row: {row_label or team_query}",
+                    f"Slot: {slot_number}",
+                    f"Rows changed: {len(getattr(result, 'changes', []) or [])}",
+                    f"Warnings: {warning_count}",
+                ]
+                if getattr(result, "changes", None):
+                    change = result.changes[0]
+                    summary_lines.extend(
+                        [
+                            "",
+                            f"{getattr(change, 'team_name', '') or team_query}: "
+                            f"pid {getattr(change, 'old_player_record_id', '')} -> {getattr(change, 'new_player_record_id', '')}, "
+                            f"flag {getattr(change, 'old_flag', '')} -> {getattr(change, 'new_flag', '')}",
+                        ]
+                    )
+                backup_path = getattr(result, "backup_path", None)
+                if backup_path:
+                    summary_lines.append(f"Backup: {backup_path}")
+                if warning_count and getattr(result, "warnings", None):
+                    summary_lines.extend(
+                        [
+                            "",
+                            "First warning:",
+                            str(getattr(result.warnings[0], "message", result.warnings[0])),
+                        ]
+                    )
+                messagebox.showinfo("Edit Selected Team Roster Slot", "\n".join(summary_lines))
+                return
+
+            if mode == "same_entry":
+                current_pid = int(row_meta.get("current_pid", 0) or 0)
+                team_offset = int(row_meta.get("team_offset", 0) or 0)
+                pid_text = simpledialog.askstring(
+                    "Edit Selected Team Roster Slot",
+                    "Player ID (16-bit same-entry PID):",
+                    initialvalue=str(current_pid),
+                )
+                if pid_text is None:
+                    return
+                new_pid = int(str(pid_text).strip() or current_pid, 0)
+                if new_pid == current_pid:
+                    messagebox.showinfo("Edit Selected Team Roster Slot", "No changes requested.")
+                    return
+
+                dry_run = messagebox.askyesno(
+                    "Edit Selected Team Roster Slot",
+                    (
+                        f"Patch same-entry roster row:\n{row_label or team_query}\n\n"
+                        "Run in dry-run mode?\n\n"
+                        "Yes = validate and stage only\n"
+                        "No = write changes immediately"
+                    ),
+                )
+                self.status_var.set("Running selected same-entry team roster edit...")
+                self.root.update_idletasks()
+                result = edit_team_roster_same_entry_authoritative(
+                    team_file=team_file,
+                    player_file=player_file,
+                    team_query=team_query,
+                    team_offset=team_offset,
+                    slot_number=slot_number,
+                    pid_candidate=new_pid,
+                    write_changes=not dry_run,
+                )
+                if not dry_run and getattr(result, "applied_to_disk", False):
+                    self.load_current_team_roster()
+
+                warning_count = len(getattr(result, "warnings", []) or [])
+                status_suffix = "dry-run " if dry_run else ""
+                self.status_var.set(
+                    f"✓ Selected same-entry roster edit {status_suffix}complete "
+                    f"({len(getattr(result, 'changes', []) or [])} changed, {warning_count} warning(s))"
+                )
+                summary_lines = [
+                    f"{'Dry run complete' if dry_run else 'Same-entry roster edit complete'}",
+                    "",
+                    f"Row: {row_label or team_query}",
+                    f"Slot: {slot_number}",
+                    f"Rows changed: {len(getattr(result, 'changes', []) or [])}",
+                    f"Warnings: {warning_count}",
+                ]
+                if getattr(result, "changes", None):
+                    change = result.changes[0]
+                    provenance = str(getattr(change, "provenance", "") or row_meta.get("same_entry_provenance") or "")
+                    provenance_suffix = f" [{provenance}]" if provenance else ""
+                    tail_suffix = (
+                        f" (preserved tail={getattr(change, 'preserved_tail_bytes_hex', '')})"
+                        if str(getattr(change, "preserved_tail_bytes_hex", "") or "")
+                        else ""
+                    )
+                    summary_lines.extend(
+                        [
+                            "",
+                            f"{getattr(change, 'team_name', '') or team_query}: "
+                            f"pid {getattr(change, 'old_pid_candidate', '')} -> {getattr(change, 'new_pid_candidate', '')}{provenance_suffix}{tail_suffix}",
+                        ]
+                    )
+                backup_path = getattr(result, "backup_path", None)
+                if backup_path:
+                    summary_lines.append(f"Backup: {backup_path}")
+                if warning_count and getattr(result, "warnings", None):
+                    summary_lines.extend(
+                        [
+                            "",
+                            "First warning:",
+                            str(getattr(result.warnings[0], "message", result.warnings[0])),
+                        ]
+                    )
+                messagebox.showinfo("Edit Selected Team Roster Slot", "\n".join(summary_lines))
+                return
+
+            messagebox.showinfo(
+                "Edit Selected Team Roster Slot",
+                f"The selected roster source is not writable yet ({mode or 'unknown'}).",
+            )
+        except Exception as exc:
+            self.status_var.set("Selected team roster edit failed")
+            messagebox.showerror("Edit Selected Team Roster Slot", f"Selected team roster edit failed:\n{exc}")
 
     def apply_team_changes(self):
         """Apply/stage team name edits using shared editor actions."""
@@ -1431,6 +1767,1630 @@ class PM99DatabaseEditor:
             lines.append(f"... and {extra} more file(s)")
         return lines
 
+    @staticmethod
+    def _parse_optional_dialog_int(value):
+        if value is None:
+            return None
+        text = str(value).strip()
+        if not text:
+            return None
+        return int(text, 0)
+
+    @staticmethod
+    def _format_profile_count_summary(entries, *, label: str, limit: int = 4):
+        summary_parts = []
+        for raw_value, raw_count in list(entries or [])[: max(1, int(limit or 4))]:
+            summary_parts.append(f"{label}={raw_value}({raw_count})")
+        return ", ".join(summary_parts)
+
+    @staticmethod
+    def _player_suffix_pair_hint(indexed_unknown_9, indexed_unknown_10):
+        tone_hint_map = {
+            1: "light-skin?",
+            2: "medium/dark-skin?",
+            3: "dark-skin?",
+        }
+        hair_hint_map = {
+            1: "fair/blond?",
+            3: "black/very-dark?",
+            5: "red/auburn?",
+            6: "brown/dark-brown?",
+        }
+        tone_hint = tone_hint_map.get(indexed_unknown_9)
+        hair_hint = hair_hint_map.get(indexed_unknown_10)
+        if tone_hint and hair_hint:
+            return f"{tone_hint}+{hair_hint}"
+        if tone_hint:
+            return tone_hint
+        if hair_hint:
+            return hair_hint
+        return ""
+
+    @staticmethod
+    def _player_u1_display_hint(indexed_unknown_1):
+        hint_map = {
+            0: "ui-grey",
+            1: "ui-green",
+            2: "ui-red",
+            4: "ui-green(alias)",
+        }
+        return hint_map.get(indexed_unknown_1, "")
+
+    @staticmethod
+    def _player_leading_guard_hint(indexed_unknown_0, indexed_unknown_1):
+        parts = []
+        if isinstance(indexed_unknown_0, int) and indexed_unknown_0 >= 0x62:
+            parts.append("u0-reserved?")
+        if indexed_unknown_1 == 3:
+            parts.append("u1-excluded?")
+        return "+".join(parts)
+
+    def _show_text_report_dialog(self, title, body, *, width: int = 112, height: int = 30):
+        """Show a scrollable read-only text report in a modal-ish toplevel."""
+        dialog = tk.Toplevel(self.root)
+        dialog.title(title)
+        try:
+            dialog.transient(self.root)
+        except Exception:
+            pass
+        dialog.geometry("980x640")
+
+        outer = ttk.Frame(dialog, padding="8")
+        outer.pack(fill=tk.BOTH, expand=True)
+
+        text_frame = ttk.Frame(outer)
+        text_frame.pack(fill=tk.BOTH, expand=True)
+
+        text_widget = tk.Text(text_frame, wrap=tk.NONE, width=width, height=height)
+        y_scroll = ttk.Scrollbar(text_frame, orient=tk.VERTICAL, command=text_widget.yview)
+        x_scroll = ttk.Scrollbar(outer, orient=tk.HORIZONTAL, command=text_widget.xview)
+        text_widget.configure(yscrollcommand=y_scroll.set, xscrollcommand=x_scroll.set)
+
+        text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        y_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        x_scroll.pack(fill=tk.X, pady=(6, 0))
+
+        text_widget.insert("1.0", body if str(body or "").strip() else "(no data)")
+        text_widget.configure(state=tk.DISABLED)
+
+        btn_row = ttk.Frame(outer)
+        btn_row.pack(fill=tk.X, pady=(8, 0))
+        ttk.Button(btn_row, text="Close", command=dialog.destroy).pack(side=tk.RIGHT)
+
+    def _start_analysis_notebook(self, title):
+        """Prepare the persistent Analysis tab for a new structured report."""
+        host = getattr(self, "analysis_report_container", None)
+        if host is None:
+            return None
+        try:
+            for child in list(host.winfo_children()):
+                try:
+                    child.destroy()
+                except Exception:
+                    pass
+        except Exception:
+            return None
+        try:
+            self.analysis_report_title_var.set(str(title or "Analysis"))
+        except Exception:
+            pass
+        try:
+            self.analysis_report_hint_var.set(
+                "Showing the latest confirmed parser-backed inspection output."
+            )
+        except Exception:
+            pass
+        try:
+            notebook = ttk.Notebook(host)
+            notebook.pack(fill=tk.BOTH, expand=True)
+        except Exception:
+            return None
+        try:
+            main_notebook = getattr(self, "notebook", None)
+            analysis_tab = getattr(self, "analysis_tab", None)
+            if main_notebook is not None and analysis_tab is not None:
+                main_notebook.select(analysis_tab)
+        except Exception:
+            pass
+        return notebook
+
+    def _add_report_tree(self, parent, *, columns, headings, rows, empty_message, widths=None):
+        """Render a simple scrollable tree report inside `parent`."""
+        frame = ttk.Frame(parent, padding="8")
+        frame.pack(fill=tk.BOTH, expand=True)
+
+        if not list(rows or []):
+            ttk.Label(frame, text=empty_message, justify=tk.LEFT, wraplength=720).pack(
+                fill=tk.BOTH,
+                expand=True,
+                anchor=tk.W,
+            )
+            return
+
+        tree_frame = ttk.Frame(frame)
+        tree_frame.pack(fill=tk.BOTH, expand=True)
+
+        tree = ttk.Treeview(tree_frame, columns=tuple(columns), show="headings", selectmode="browse")
+        tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        y_scroll = ttk.Scrollbar(tree_frame, orient=tk.VERTICAL, command=tree.yview)
+        y_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        x_scroll = ttk.Scrollbar(frame, orient=tk.HORIZONTAL, command=tree.xview)
+        x_scroll.pack(fill=tk.X, pady=(6, 0))
+        tree.configure(yscrollcommand=y_scroll.set, xscrollcommand=x_scroll.set)
+
+        width_map = dict(widths or {})
+        for column in columns:
+            heading = str(dict(headings or {}).get(column, column))
+            tree.heading(column, text=heading)
+            anchor = tk.W if width_map.get(column, 120) >= 120 else tk.CENTER
+            tree.column(column, width=int(width_map.get(column, 120)), anchor=anchor)
+
+        for row in list(rows or []):
+            tree.insert("", tk.END, values=tuple(row))
+
+    def _show_team_roster_sources_dialog_view(
+        self,
+        *,
+        team_file,
+        player_file,
+        team_query,
+        linked_rosters,
+        same_entry_result,
+    ):
+        """Show a structured dialog for confirmed team roster source coverage."""
+        notebook = PM99DatabaseEditor._start_analysis_notebook(self, "Inspect Team Roster Sources")
+        outer = None
+        if notebook is None:
+            dialog = tk.Toplevel(self.root)
+            dialog.title("Inspect Team Roster Sources")
+            try:
+                dialog.transient(self.root)
+            except Exception:
+                pass
+            dialog.geometry("1100x720")
+
+            outer = ttk.Frame(dialog, padding="8")
+            outer.pack(fill=tk.BOTH, expand=True)
+
+            notebook = ttk.Notebook(outer)
+            notebook.pack(fill=tk.BOTH, expand=True)
+
+        query_text = str(team_query or "").strip()
+        linked_list = list(linked_rosters or [])
+        requested = list(getattr(same_entry_result, "requested_team_results", []) or [])
+        preferred_coverage = dict(getattr(same_entry_result, "preferred_roster_coverage", {}) or {})
+        same_entry_coverage = dict(getattr(same_entry_result, "same_entry_overlap_coverage", {}) or {})
+        final_coverage = dict(getattr(same_entry_result, "final_extraction_coverage", {}) or {})
+
+        summary_rows = [
+            ("Team file", str(team_file)),
+            ("Player file", str(player_file)),
+            ("Team query", query_text if query_text else "(coverage summary)"),
+            ("Linked roster matches", len(linked_list)),
+        ]
+        if query_text:
+            summary_rows.append(("Same-entry requested matches", len(requested)))
+        for key in ("covered_count", "club_like_team_count", "club_like_covered_count"):
+            if key in preferred_coverage:
+                summary_rows.append((f"preferred_roster_coverage.{key}", preferred_coverage.get(key)))
+
+        summary_tab = ttk.Frame(notebook)
+        notebook.add(summary_tab, text="Summary")
+        self._add_report_tree(
+            summary_tab,
+            columns=("metric", "value"),
+            headings={"metric": "Metric", "value": "Value"},
+            rows=summary_rows,
+            empty_message="No roster coverage data available.",
+            widths={"metric": 280, "value": 420},
+        )
+
+        linked_tab = ttk.Frame(notebook)
+        notebook.add(linked_tab, text="Linked EQ->JUG")
+        if query_text:
+            linked_rows = []
+            for item in linked_list:
+                team_name = str(item.get("team_name") or "")
+                full_club_name = str(item.get("full_club_name") or "")
+                display = f"{team_name} ({full_club_name})" if full_club_name and full_club_name != team_name else team_name
+                eq_record_id = int(item.get("eq_record_id") or 0)
+                for index, row in enumerate(list(item.get("rows") or []), start=1):
+                    linked_rows.append(
+                        (
+                            display,
+                            eq_record_id,
+                            index,
+                            int(row.get("pid") or 0),
+                            int(row.get("flag") or 0),
+                            str(row.get("player_name") or "").strip() or "(name unresolved)",
+                        )
+                    )
+            self._add_report_tree(
+                linked_tab,
+                columns=("team", "eq_record_id", "slot", "pid", "flag", "player"),
+                headings={
+                    "team": "Team",
+                    "eq_record_id": "EQ Record",
+                    "slot": "Slot",
+                    "pid": "PID",
+                    "flag": "Flag",
+                    "player": "Player",
+                },
+                rows=linked_rows,
+                empty_message="No parser-backed EQ->JUG linked roster matched the requested team.",
+                widths={"team": 260, "eq_record_id": 90, "slot": 70, "pid": 80, "flag": 70, "player": 260},
+            )
+        else:
+            linked_rows = []
+            for item in linked_list:
+                team_name = str(item.get("team_name") or "")
+                full_club_name = str(item.get("full_club_name") or "")
+                display = f"{team_name} ({full_club_name})" if full_club_name and full_club_name != team_name else team_name
+                linked_rows.append(
+                    (
+                        display,
+                        int(item.get("eq_record_id") or 0),
+                        len(list(item.get("rows") or [])),
+                        int(item.get("mode_byte") or 0),
+                        int(item.get("ent_count") or 0),
+                    )
+                )
+            self._add_report_tree(
+                linked_tab,
+                columns=("team", "eq_record_id", "rows", "mode", "ent_count"),
+                headings={
+                    "team": "Team",
+                    "eq_record_id": "EQ Record",
+                    "rows": "Rows",
+                    "mode": "Mode",
+                    "ent_count": "ENT Count",
+                },
+                rows=linked_rows,
+                empty_message="No parser-backed EQ->JUG linked rosters were found.",
+                widths={"team": 320, "eq_record_id": 90, "rows": 80, "mode": 80, "ent_count": 90},
+            )
+
+        same_entry_tab = ttk.Frame(notebook)
+        notebook.add(same_entry_tab, text="Same-Entry")
+        if query_text:
+            same_entry_rows = []
+            for item in requested:
+                team_name = str(item.get("team_name") or "")
+                full_club_name = str(item.get("full_club_name") or "")
+                display = f"{team_name} ({full_club_name})" if full_club_name and full_club_name != team_name else team_name
+                status = str(item.get("status") or "")
+                team_offset = item.get("team_offset")
+                preferred = dict(item.get("preferred_roster_match") or {})
+                preferred_provenance = str(preferred.get("provenance") or "")
+                if preferred_provenance:
+                    source = dict(preferred.get("source") or {})
+                    entry_offset = source.get("entry_offset")
+                    rows = [row for row in list(preferred.get("rows") or []) if not bool(row.get("is_empty_slot"))]
+                    for index, row in enumerate(rows, start=1):
+                        tail_hex = str(row.get("tail_bytes_hex") or "").strip().lower()
+                        if not tail_hex:
+                            row5_raw_hex = str(row.get("row5_raw_hex") or "").strip().lower()
+                            if len(row5_raw_hex) == 10:
+                                tail_hex = row5_raw_hex[4:10]
+                        same_entry_rows.append(
+                            (
+                                f"{display} [{preferred_provenance}]",
+                                status,
+                                f"0x{int(team_offset):08X}" if isinstance(team_offset, int) else "",
+                                f"0x{int(entry_offset):08X}" if isinstance(entry_offset, int) else "",
+                                index,
+                                int(row.get("pid_candidate", 0) or 0),
+                                tail_hex,
+                                row.get("tail_byte_2"),
+                                row.get("tail_byte_3"),
+                                row.get("tail_byte_4"),
+                                str(row.get("dd6361_name") or "").strip() or "(name unresolved)",
+                            )
+                        )
+                else:
+                    same_entry_rows.append(
+                        (
+                            display,
+                            status,
+                            f"0x{int(team_offset):08X}" if isinstance(team_offset, int) else "",
+                            "",
+                            "-",
+                            "",
+                            "",
+                            "",
+                            "",
+                            "",
+                            "(no preferred same-entry roster mapping)",
+                        )
+                    )
+            self._add_report_tree(
+                same_entry_tab,
+                columns=("team", "status", "team_offset", "entry_offset", "slot", "pid", "tail", "b2", "b3", "b4", "player"),
+                headings={
+                    "team": "Team",
+                    "status": "Status",
+                    "team_offset": "Team Offset",
+                    "entry_offset": "Entry",
+                    "slot": "Slot",
+                    "pid": "PID",
+                    "tail": "Tail",
+                    "b2": "B2",
+                    "b3": "B3",
+                    "b4": "B4",
+                    "player": "Player",
+                },
+                rows=same_entry_rows,
+                empty_message="No same-entry team results matched the requested team.",
+                widths={
+                    "team": 260,
+                    "status": 190,
+                    "team_offset": 110,
+                    "entry_offset": 110,
+                    "slot": 70,
+                    "pid": 80,
+                    "tail": 90,
+                    "b2": 55,
+                    "b3": 55,
+                    "b4": 55,
+                    "player": 220,
+                },
+            )
+        else:
+            coverage_rows = []
+            for section_name, payload in (
+                ("same_entry_overlap_coverage", same_entry_coverage),
+                ("final_extraction_coverage", final_coverage),
+                ("preferred_roster_coverage", preferred_coverage),
+            ):
+                for key, value in dict(payload or {}).items():
+                    coverage_rows.append((f"{section_name}.{key}", value))
+            coverage_rows.append(("note", "Use a team query to inspect authoritative row-level same-entry mappings."))
+            self._add_report_tree(
+                same_entry_tab,
+                columns=("metric", "value"),
+                headings={"metric": "Coverage Metric", "value": "Value"},
+                rows=coverage_rows,
+                empty_message="No same-entry coverage metrics are available.",
+                widths={"metric": 320, "value": 420},
+            )
+
+        if outer is not None:
+            btn_row = ttk.Frame(outer)
+            btn_row.pack(fill=tk.X, pady=(8, 0))
+            ttk.Button(btn_row, text="Close", command=dialog.destroy).pack(side=tk.RIGHT)
+
+    @staticmethod
+    def _normalize_name_lookup_key(text):
+        return "".join(ch.lower() for ch in str(text or "") if ch.isalnum())
+
+    def _find_local_player_still_path(self, player_name):
+        """Return a matching local player still from .local/PlayerStills when available."""
+        still_dir = Path(".local/PlayerStills")
+        if not still_dir.exists():
+            return None
+        target_key = PM99DatabaseEditor._normalize_name_lookup_key(player_name)
+        if not target_key:
+            return None
+        for path in sorted(still_dir.glob("*.png")):
+            if PM99DatabaseEditor._normalize_name_lookup_key(path.stem) == target_key:
+                return path
+        return None
+
+    def _show_local_player_still_panel(self, parent, *, player_name, still_path):
+        """Render a best-effort local still preview when a matching asset exists."""
+        frame = ttk.Frame(parent, padding="8")
+        frame.pack(fill=tk.BOTH, expand=True)
+        ttk.Label(
+            frame,
+            text=f"Matched local still for {player_name}",
+            font=("TkDefaultFont", 10, "bold"),
+        ).pack(anchor=tk.W, pady=(0, 4))
+        ttk.Label(frame, text=str(still_path), justify=tk.LEFT, wraplength=880).pack(anchor=tk.W, pady=(0, 8))
+
+        try:
+            image = tk.PhotoImage(file=str(still_path))
+            max_dim = max(int(image.width()), int(image.height()))
+            factor = max(1, (max_dim + 359) // 360)
+            preview = image.subsample(factor, factor) if factor > 1 else image
+            image_label = ttk.Label(frame, image=preview)
+            image_label.image = preview
+            image_label.pack(anchor=tk.W)
+        except Exception:
+            ttk.Label(
+                frame,
+                text="Preview unavailable in this environment, but the local still path resolved correctly.",
+                justify=tk.LEFT,
+                wraplength=880,
+            ).pack(anchor=tk.W)
+
+    def _show_player_metadata_inspect_dialog_view(self, *, result):
+        """Show structured player metadata inspection output for the stable parser-backed contract."""
+        notebook = PM99DatabaseEditor._start_analysis_notebook(self, "Inspect Player Metadata")
+        outer = None
+        if notebook is None:
+            dialog = tk.Toplevel(self.root)
+            dialog.title("Inspect Player Metadata")
+            try:
+                dialog.transient(self.root)
+            except Exception:
+                pass
+            dialog.geometry("1120x720")
+
+            outer = ttk.Frame(dialog, padding="8")
+            outer.pack(fill=tk.BOTH, expand=True)
+
+            notebook = ttk.Notebook(outer)
+            notebook.pack(fill=tk.BOTH, expand=True)
+
+        records = list(getattr(result, "records", []) or [])
+        first_record = records[0] if records else None
+        still_path = None
+        if first_record is not None:
+            still_path = PM99DatabaseEditor._find_local_player_still_path(self, getattr(first_record, "name", ""))
+
+        storage_mode = str(getattr(result, "storage_mode", "indexed") or "indexed")
+        count_label = "Indexed entries" if storage_mode == "indexed" else "Parsed records"
+        post_weight_counts = {}
+        trailer_counts = {}
+        sidecar_counts = {}
+        for row in records:
+            post_weight_value = getattr(row, "post_weight_byte", None)
+            if post_weight_value is not None:
+                post_weight_counts[post_weight_value] = int(post_weight_counts.get(post_weight_value, 0) or 0) + 1
+            trailer_value = getattr(row, "trailer_byte", None)
+            if trailer_value is not None:
+                trailer_counts[trailer_value] = int(trailer_counts.get(trailer_value, 0) or 0) + 1
+            sidecar_value = getattr(row, "sidecar_byte", None)
+            if sidecar_value is not None:
+                sidecar_counts[sidecar_value] = int(sidecar_counts.get(sidecar_value, 0) or 0) + 1
+        summary_rows = [
+            ("Storage mode", storage_mode),
+            ("Player file", str(getattr(result, "file_path", ""))),
+            (count_label, int(getattr(result, "record_count", 0) or 0)),
+            ("Matched records", int(getattr(result, "matched_count", 0) or 0)),
+            (
+                "Top post-weight byte",
+                PM99DatabaseEditor._format_profile_count_summary(
+                    sorted(post_weight_counts.items(), key=lambda item: (-item[1], item[0])),
+                    label="postwt",
+                    limit=1,
+                ) if post_weight_counts else "",
+            ),
+            (
+                "Top trailer byte",
+                PM99DatabaseEditor._format_profile_count_summary(
+                    sorted(trailer_counts.items(), key=lambda item: (-item[1], item[0])),
+                    label="trail",
+                    limit=1,
+                ) if trailer_counts else "",
+            ),
+            (
+                "Top sidecar byte",
+                PM99DatabaseEditor._format_profile_count_summary(
+                    sorted(sidecar_counts.items(), key=lambda item: (-item[1], item[0])),
+                    label="sidecar",
+                    limit=1,
+                ) if sidecar_counts else "",
+            ),
+            ("Local still", str(still_path) if still_path else "not found"),
+        ]
+        summary_tab = ttk.Frame(notebook)
+        notebook.add(summary_tab, text="Summary")
+        self._add_report_tree(
+            summary_tab,
+            columns=("metric", "value"),
+            headings={"metric": "Metric", "value": "Value"},
+            rows=summary_rows,
+            empty_message="No player metadata records matched.",
+            widths={"metric": 220, "value": 620},
+        )
+
+        rows_tab = ttk.Frame(notebook)
+        notebook.add(rows_tab, text="Records")
+        record_rows = []
+        for row in records:
+            dob_text = (
+                f"{int(row.birth_day or 0):02d}/{int(row.birth_month or 0):02d}/{int(row.birth_year or 0):04d}"
+                if row.birth_day is not None and row.birth_month is not None and row.birth_year is not None
+                else "n/a"
+            )
+            anchor_text = f"0x{row.suffix_anchor:02X}" if isinstance(row.suffix_anchor, int) else "n/a"
+            hint_parts = []
+            u1_hint = PM99DatabaseEditor._player_u1_display_hint(getattr(row, "indexed_unknown_1", None))
+            if u1_hint:
+                hint_parts.append(u1_hint)
+            guard_hint = PM99DatabaseEditor._player_leading_guard_hint(
+                getattr(row, "indexed_unknown_0", None),
+                getattr(row, "indexed_unknown_1", None),
+            )
+            if guard_hint:
+                hint_parts.append(guard_hint)
+            suffix_hint = PM99DatabaseEditor._player_suffix_pair_hint(
+                getattr(row, "indexed_unknown_9", None),
+                getattr(row, "indexed_unknown_10", None),
+            )
+            if suffix_hint:
+                hint_parts.append(suffix_hint)
+            if (
+                getattr(row, "post_weight_byte", None) is not None
+                and getattr(row, "nationality", None) is not None
+            ):
+                if getattr(row, "post_weight_byte", None) == getattr(row, "nationality", None):
+                    hint_parts.append("postwt=nat-search")
+                else:
+                    hint_parts.append("postwt=nat-group")
+            face_text = ", ".join(str(v) for v in list(getattr(row, "face_components", []) or []))
+            prefix_text = ", ".join(str(v) for v in list(getattr(row, "attribute_prefix", []) or []))
+            record_rows.append(
+                (
+                    f"0x{int(getattr(row, 'offset', 0) or 0):08X}",
+                    int(getattr(row, "record_id", 0) or 0),
+                    str(getattr(row, "name", "") or ""),
+                    getattr(row, "nationality", None),
+                    getattr(row, "position", None),
+                    dob_text,
+                    getattr(row, "height", None),
+                    getattr(row, "weight", None),
+                    anchor_text,
+                    prefix_text,
+                    getattr(row, "post_weight_byte", None),
+                    getattr(row, "trailer_byte", None),
+                    getattr(row, "sidecar_byte", None),
+                    getattr(row, "indexed_unknown_0", None),
+                    getattr(row, "indexed_unknown_1", None),
+                    getattr(row, "indexed_unknown_9", None),
+                    getattr(row, "indexed_unknown_10", None),
+                    face_text,
+                    " | ".join(hint_parts),
+                )
+            )
+        self._add_report_tree(
+            rows_tab,
+            columns=("offset", "record_id", "name", "nat", "pos", "dob", "height", "weight", "anchor", "tail_prefix", "postwt", "trail", "sidecar", "u0", "u1", "u9", "u10", "face", "hints"),
+            headings={
+                "offset": "Offset",
+                "record_id": "RID",
+                "name": "Name",
+                "nat": "Nat",
+                "pos": "Pos",
+                "dob": "DOB",
+                "height": "Ht",
+                "weight": "Wt",
+                "anchor": "Anchor",
+                "tail_prefix": "Tail Prefix",
+                "postwt": "PostWt",
+                "trail": "Trail",
+                "sidecar": "Sidecar",
+                "u0": "U0",
+                "u1": "U1",
+                "u9": "U9",
+                "u10": "U10",
+                "face": "Face",
+                "hints": "Hints",
+            },
+            rows=record_rows,
+            empty_message="No player metadata records matched.",
+            widths={
+                "offset": 110,
+                "record_id": 70,
+                "name": 200,
+                "nat": 60,
+                "pos": 60,
+                "dob": 100,
+                "height": 60,
+                "weight": 60,
+                "anchor": 80,
+                "tail_prefix": 120,
+                "postwt": 70,
+                "trail": 60,
+                "sidecar": 70,
+                "u0": 55,
+                "u1": 55,
+                "u9": 55,
+                "u10": 60,
+                "face": 120,
+                "hints": 260,
+            },
+        )
+
+        if first_record is not None and still_path:
+            still_tab = ttk.Frame(notebook)
+            notebook.add(still_tab, text="Local Still")
+            self._show_local_player_still_panel(
+                still_tab,
+                player_name=str(getattr(first_record, "name", "") or ""),
+                still_path=still_path,
+            )
+
+        if outer is not None:
+            btn_row = ttk.Frame(outer)
+            btn_row.pack(fill=tk.X, pady=(8, 0))
+            ttk.Button(btn_row, text="Close", command=dialog.destroy).pack(side=tk.RIGHT)
+
+    def _show_player_indexed_profiles_dialog_view(
+        self,
+        *,
+        player_file,
+        suffix_result,
+        leading_result,
+        tail_prefix_result=None,
+        legacy_weight_result=None,
+    ):
+        """Show structured indexed byte profile output for the stable read-side probes."""
+        notebook = PM99DatabaseEditor._start_analysis_notebook(self, "Inspect Indexed Player Byte Profiles")
+        outer = None
+        if notebook is None:
+            dialog = tk.Toplevel(self.root)
+            dialog.title("Inspect Indexed Player Byte Profiles")
+            try:
+                dialog.transient(self.root)
+            except Exception:
+                pass
+            dialog.geometry("1120x720")
+
+            outer = ttk.Frame(dialog, padding="8")
+            outer.pack(fill=tk.BOTH, expand=True)
+
+            notebook = ttk.Notebook(outer)
+            notebook.pack(fill=tk.BOTH, expand=True)
+
+        summary_rows = [
+            ("Player file", str(player_file)),
+            ("Anchored records", int(getattr(leading_result, "anchored_count", 0) or 0)),
+            ("Filtered records", int(getattr(leading_result, "filtered_count", 0) or 0)),
+            ("Nationality filter", getattr(leading_result, "nationality_filter", None)),
+            ("Position filter", getattr(leading_result, "position_filter", None)),
+            ("U0 filter", getattr(leading_result, "indexed_unknown_0_filter", None)),
+            ("U1 filter", getattr(leading_result, "indexed_unknown_1_filter", None)),
+            ("U9 filter", getattr(leading_result, "indexed_unknown_9_filter", None)),
+            ("U10 filter", getattr(leading_result, "indexed_unknown_10_filter", None)),
+            ("Attr 0 filter", getattr(tail_prefix_result, "attribute_0_filter", None) if tail_prefix_result is not None else None),
+            ("Attr 1 filter", getattr(tail_prefix_result, "attribute_1_filter", None) if tail_prefix_result is not None else None),
+            ("Attr 2 filter", getattr(tail_prefix_result, "attribute_2_filter", None) if tail_prefix_result is not None else None),
+            ("Post-weight byte filter", getattr(tail_prefix_result, "post_weight_byte_filter", None) if tail_prefix_result is not None else None),
+            ("Trailer byte filter", getattr(tail_prefix_result, "trailer_byte_filter", None) if tail_prefix_result is not None else None),
+            ("Sidecar byte filter", getattr(tail_prefix_result, "sidecar_byte_filter", None) if tail_prefix_result is not None else None),
+        ]
+        if legacy_weight_result is not None:
+            summary_rows.extend(
+                [
+                    ("Legacy weight offset", getattr(legacy_weight_result, "recommended_offset", None)),
+                    (
+                        "Legacy exact ratio",
+                        f"{float(getattr(legacy_weight_result, 'legacy_exact_match_ratio', 0.0) or 0.0):.4f}",
+                    ),
+                ]
+            )
+        if getattr(tail_prefix_result, "buckets", None):
+            top_prefix = tail_prefix_result.buckets[0]
+            summary_rows.append(
+                (
+                    "Top tail prefix",
+                    f"[{getattr(top_prefix, 'attribute_0', None)}, "
+                    f"{getattr(top_prefix, 'attribute_1', None)}, "
+                    f"{getattr(top_prefix, 'attribute_2', None)}]",
+                )
+            )
+        if getattr(tail_prefix_result, "signature_buckets", None):
+            top_signature = tail_prefix_result.signature_buckets[0]
+            summary_rows.append(
+                (
+                    "Top tail signature",
+                    f"[{getattr(top_signature, 'attribute_0', None)}, "
+                    f"{getattr(top_signature, 'attribute_1', None)}, "
+                    f"{getattr(top_signature, 'attribute_2', None)} | "
+                    f"trail={getattr(top_signature, 'trailer_byte', None)} "
+                    f"sidecar={getattr(top_signature, 'sidecar_byte', None)}]",
+                )
+            )
+        if tail_prefix_result is not None:
+            summary_rows.extend(
+                [
+                    (
+                        "Tail layout verification",
+                        f"verified={int(getattr(tail_prefix_result, 'layout_verified_count', 0) or 0)} "
+                        f"mismatch={int(getattr(tail_prefix_result, 'layout_mismatch_count', 0) or 0)}",
+                    ),
+                    (
+                        "Top Attr 0 values",
+                        PM99DatabaseEditor._format_profile_count_summary(
+                            getattr(tail_prefix_result, "attribute_0_counts", []),
+                            label="a0",
+                        ),
+                    ),
+                    (
+                        "Top Attr 1 values",
+                        PM99DatabaseEditor._format_profile_count_summary(
+                            getattr(tail_prefix_result, "attribute_1_counts", []),
+                            label="a1",
+                        ),
+                    ),
+                    (
+                        "Top Attr 2 values",
+                        PM99DatabaseEditor._format_profile_count_summary(
+                            getattr(tail_prefix_result, "attribute_2_counts", []),
+                            label="a2",
+                        ),
+                    ),
+                    (
+                        "Top post-weight bytes",
+                        PM99DatabaseEditor._format_profile_count_summary(
+                            getattr(tail_prefix_result, "post_weight_byte_counts", []),
+                            label="postwt",
+                        ),
+                    ),
+                    (
+                        "Post-weight vs nationality",
+                        (
+                            f"match={int(getattr(tail_prefix_result, 'post_weight_nationality_match_count', 0) or 0)}"
+                            + "/"
+                            + f"{int(getattr(tail_prefix_result, 'post_weight_nationality_eligible_count', 0) or 0)} "
+                            + f"ratio={float(getattr(tail_prefix_result, 'post_weight_nationality_match_ratio', 0.0) or 0.0):.4f}"
+                        )
+                        if int(getattr(tail_prefix_result, "post_weight_nationality_eligible_count", 0) or 0)
+                        else "",
+                    ),
+                    (
+                        "Top divergent post-weight keys",
+                        PM99DatabaseEditor._format_profile_count_summary(
+                            getattr(tail_prefix_result, "post_weight_divergent_counts", []),
+                            label="postwt",
+                            limit=5,
+                        ),
+                    ),
+                    (
+                        "Top post-weight mismatches",
+                        ", ".join(
+                            f"postwt={post_value}->nat={nat_value}({count})"
+                            for post_value, nat_value, count in list(
+                                getattr(tail_prefix_result, "post_weight_nationality_mismatch_pairs", []) or []
+                            )[:5]
+                        ),
+                    ),
+                    (
+                        "Top trailer bytes",
+                        PM99DatabaseEditor._format_profile_count_summary(
+                            getattr(tail_prefix_result, "trailer_byte_counts", []),
+                            label="trail",
+                        ),
+                    ),
+                    (
+                        "Top sidecar bytes",
+                        PM99DatabaseEditor._format_profile_count_summary(
+                            getattr(tail_prefix_result, "sidecar_byte_counts", []),
+                            label="sidecar",
+                        ),
+                    ),
+                ]
+            )
+            summary_rows.append(
+                (
+                    "Tail prefix status",
+                    "read-only structural signature / sidecar block "
+                    "(the post-weight byte is fixed at [player+0x48] and acts as a secondary nationality/search key: "
+                    "FUN_0043d960 is called from the search-options builder against the same 0x4B2E90 nationality table "
+                    "used by the player-view nationality label, "
+                    "two post-attribute bytes are discrete and rendered separately in DBASEPRE UI paths, "
+                    "then the remainder is copied in bulk; "
+                    "no fixed named offsets proven)",
+                )
+            )
+        summary_tab = ttk.Frame(notebook)
+        notebook.add(summary_tab, text="Summary")
+        self._add_report_tree(
+            summary_tab,
+            columns=("metric", "value"),
+            headings={"metric": "Metric", "value": "Value"},
+            rows=summary_rows,
+            empty_message="No indexed profile data is available.",
+            widths={"metric": 220, "value": 620},
+        )
+
+        suffix_tab = ttk.Frame(notebook)
+        notebook.add(suffix_tab, text="Suffix Bytes")
+        suffix_rows = []
+        reference_rows = []
+        seen_reference_paths = set()
+        for bucket in list(getattr(suffix_result, "buckets", []) or []):
+            sample_names = list(getattr(bucket, "sample_names", []) or [])
+            hint = PM99DatabaseEditor._player_suffix_pair_hint(
+                getattr(bucket, "indexed_unknown_9", None),
+                getattr(bucket, "indexed_unknown_10", None),
+            )
+            still_count = 0
+            for sample_name in sample_names:
+                path = PM99DatabaseEditor._find_local_player_still_path(self, sample_name)
+                if path:
+                    still_count += 1
+                    path_key = str(path)
+                    if path_key not in seen_reference_paths:
+                        seen_reference_paths.add(path_key)
+                        reference_rows.append((sample_name, path_key))
+            suffix_rows.append(
+                (
+                    getattr(bucket, "indexed_unknown_9", None),
+                    getattr(bucket, "indexed_unknown_10", None),
+                    getattr(bucket, "count", None),
+                    hint,
+                    ", ".join(sample_names),
+                    still_count,
+                )
+            )
+        self._add_report_tree(
+            suffix_tab,
+            columns=("u9", "u10", "count", "hint", "examples", "local_stills"),
+            headings={
+                "u9": "U9",
+                "u10": "U10",
+                "count": "Count",
+                "hint": "Hint",
+                "examples": "Examples",
+                "local_stills": "Local Stills",
+            },
+            rows=suffix_rows,
+            empty_message="No indexed suffix profile buckets matched.",
+            widths={"u9": 60, "u10": 60, "count": 70, "hint": 180, "examples": 360, "local_stills": 90},
+        )
+
+        leading_tab = ttk.Frame(notebook)
+        notebook.add(leading_tab, text="Leading Bytes")
+        leading_rows = []
+        for bucket in list(getattr(leading_result, "buckets", []) or []):
+            sample_names = list(getattr(bucket, "sample_names", []) or [])
+            hint = PM99DatabaseEditor._player_u1_display_hint(getattr(bucket, "indexed_unknown_1", None))
+            guard = PM99DatabaseEditor._player_leading_guard_hint(
+                getattr(bucket, "indexed_unknown_0", None),
+                getattr(bucket, "indexed_unknown_1", None),
+            )
+            still_count = 0
+            for sample_name in sample_names:
+                path = PM99DatabaseEditor._find_local_player_still_path(self, sample_name)
+                if path:
+                    still_count += 1
+                    path_key = str(path)
+                    if path_key not in seen_reference_paths:
+                        seen_reference_paths.add(path_key)
+                        reference_rows.append((sample_name, path_key))
+            leading_rows.append(
+                (
+                    getattr(bucket, "indexed_unknown_0", None),
+                    getattr(bucket, "indexed_unknown_1", None),
+                    getattr(bucket, "count", None),
+                    hint,
+                    guard,
+                    ", ".join(sample_names),
+                    still_count,
+                )
+            )
+        self._add_report_tree(
+            leading_tab,
+            columns=("u0", "u1", "count", "hint", "guard", "examples", "local_stills"),
+            headings={
+                "u0": "U0",
+                "u1": "U1",
+                "count": "Count",
+                "hint": "Hint",
+                "guard": "Guard",
+                "examples": "Examples",
+                "local_stills": "Local Stills",
+            },
+            rows=leading_rows,
+            empty_message="No indexed leading-byte profile buckets matched.",
+            widths={"u0": 60, "u1": 60, "count": 70, "hint": 130, "guard": 130, "examples": 320, "local_stills": 90},
+        )
+
+        prefix_tab = ttk.Frame(notebook)
+        notebook.add(prefix_tab, text="Tail Prefix")
+        prefix_rows = []
+        for bucket in list(getattr(tail_prefix_result, "buckets", []) or []):
+            sample_names = list(getattr(bucket, "sample_names", []) or [])
+            still_count = 0
+            for sample_name in sample_names:
+                path = PM99DatabaseEditor._find_local_player_still_path(self, sample_name)
+                if path:
+                    still_count += 1
+                    path_key = str(path)
+                    if path_key not in seen_reference_paths:
+                        seen_reference_paths.add(path_key)
+                        reference_rows.append((sample_name, path_key))
+            prefix_rows.append(
+                (
+                    getattr(bucket, "attribute_0", None),
+                    getattr(bucket, "attribute_1", None),
+                    getattr(bucket, "attribute_2", None),
+                    getattr(bucket, "count", None),
+                    ", ".join(sample_names),
+                    still_count,
+                )
+            )
+        self._add_report_tree(
+            prefix_tab,
+            columns=("a0", "a1", "a2", "count", "examples", "local_stills"),
+            headings={
+                "a0": "Attr 0",
+                "a1": "Attr 1",
+                "a2": "Attr 2",
+                "count": "Count",
+                "examples": "Examples",
+                "local_stills": "Local Stills",
+            },
+            rows=prefix_rows,
+            empty_message="No indexed tail-prefix profile buckets matched.",
+            widths={"a0": 70, "a1": 70, "a2": 70, "count": 70, "examples": 420, "local_stills": 90},
+        )
+
+        signature_tab = ttk.Frame(notebook)
+        notebook.add(signature_tab, text="Tail Signatures")
+        signature_rows = []
+        for bucket in list(getattr(tail_prefix_result, "signature_buckets", []) or []):
+            sample_names = list(getattr(bucket, "sample_names", []) or [])
+            still_count = 0
+            for sample_name in sample_names:
+                path = PM99DatabaseEditor._find_local_player_still_path(self, sample_name)
+                if path:
+                    still_count += 1
+                    path_key = str(path)
+                    if path_key not in seen_reference_paths:
+                        seen_reference_paths.add(path_key)
+                        reference_rows.append((sample_name, path_key))
+            signature_rows.append(
+                (
+                    getattr(bucket, "attribute_0", None),
+                    getattr(bucket, "attribute_1", None),
+                    getattr(bucket, "attribute_2", None),
+                    getattr(bucket, "trailer_byte", None),
+                    getattr(bucket, "sidecar_byte", None),
+                    getattr(bucket, "count", None),
+                    ", ".join(sample_names),
+                    still_count,
+                )
+            )
+        self._add_report_tree(
+            signature_tab,
+            columns=("a0", "a1", "a2", "trail", "sidecar", "count", "examples", "local_stills"),
+            headings={
+                "a0": "Attr 0",
+                "a1": "Attr 1",
+                "a2": "Attr 2",
+                "trail": "Trail",
+                "sidecar": "Sidecar",
+                "count": "Count",
+                "examples": "Examples",
+                "local_stills": "Local Stills",
+            },
+            rows=signature_rows,
+            empty_message="No indexed tail-signature profile buckets matched.",
+            widths={
+                "a0": 70,
+                "a1": 70,
+                "a2": 70,
+                "trail": 70,
+                "sidecar": 80,
+                "count": 70,
+                "examples": 360,
+                "local_stills": 90,
+            },
+        )
+
+        counts_tab = ttk.Frame(notebook)
+        notebook.add(counts_tab, text="Cohorts")
+        cohort_rows = []
+        for value, count in list(getattr(leading_result, "position_counts", []) or []):
+            cohort_rows.append(("Position", value, count))
+        for value, count in list(getattr(leading_result, "nationality_counts", []) or []):
+            cohort_rows.append(("Nationality", value, count))
+        self._add_report_tree(
+            counts_tab,
+            columns=("group", "value", "count"),
+            headings={"group": "Group", "value": "Value", "count": "Count"},
+            rows=cohort_rows,
+            empty_message="No cohort count data is available.",
+            widths={"group": 140, "value": 100, "count": 100},
+        )
+
+        if legacy_weight_result is not None:
+            legacy_tab = ttk.Frame(notebook)
+            notebook.add(legacy_tab, text="Legacy Weight")
+
+            legacy_summary_box = ttk.LabelFrame(legacy_tab, text="Control Set + Name-Only Validation")
+            legacy_summary_box.pack(fill=tk.X, expand=False, padx=8, pady=(8, 0))
+            legacy_summary_rows = [
+                ("Recommended offset", getattr(legacy_weight_result, "recommended_offset", None)),
+                ("Indexed entries", int(getattr(legacy_weight_result, "record_count", 0) or 0)),
+                ("Control records", int(getattr(legacy_weight_result, "candidate_record_count", 0) or 0)),
+                (
+                    "Height baseline exact ratio",
+                    f"{float(getattr(legacy_weight_result, 'height_baseline_exact_ratio', 0.0) or 0.0):.4f}",
+                ),
+                ("Name-only valid records", int(getattr(legacy_weight_result, "legacy_valid_record_count", 0) or 0)),
+                ("Name-only slot records", int(getattr(legacy_weight_result, "legacy_slot_record_count", 0) or 0)),
+                ("Name-only uniquely matched", int(getattr(legacy_weight_result, "legacy_matched_record_count", 0) or 0)),
+                ("Name-only exact matches", int(getattr(legacy_weight_result, "legacy_exact_match_count", 0) or 0)),
+                (
+                    "Name-only exact ratio",
+                    f"{float(getattr(legacy_weight_result, 'legacy_exact_match_ratio', 0.0) or 0.0):.4f}",
+                ),
+            ]
+            self._add_report_tree(
+                legacy_summary_box,
+                columns=("metric", "value"),
+                headings={"metric": "Metric", "value": "Value"},
+                rows=legacy_summary_rows,
+                empty_message="No legacy weight validation data is available.",
+                widths={"metric": 240, "value": 220},
+            )
+
+            legacy_offsets_box = ttk.LabelFrame(legacy_tab, text="Marker-Relative Candidates")
+            legacy_offsets_box.pack(fill=tk.BOTH, expand=True, padx=8, pady=(8, 8))
+            legacy_offset_rows = []
+            for row in list(getattr(legacy_weight_result, "offsets", []) or []):
+                top_values = ", ".join(
+                    f"{value}({count})"
+                    for value, count in list(getattr(row, "top_values", []) or [])
+                )
+                legacy_offset_rows.append(
+                    (
+                        f"marker+{int(getattr(row, 'relative_offset', 0) or 0)}",
+                        int(getattr(row, "eligible_count", 0) or 0),
+                        int(getattr(row, "exact_match_count", 0) or 0),
+                        f"{float(getattr(row, 'exact_match_ratio', 0.0) or 0.0):.4f}",
+                        f"{float(getattr(row, 'mean_abs_error', 0.0) or 0.0):.2f}",
+                        top_values,
+                    )
+                )
+            self._add_report_tree(
+                legacy_offsets_box,
+                columns=("offset", "eligible", "exact", "ratio", "mae", "top"),
+                headings={
+                    "offset": "Offset",
+                    "eligible": "Eligible",
+                    "exact": "Exact",
+                    "ratio": "Exact Ratio",
+                    "mae": "MAE",
+                    "top": "Top Values",
+                },
+                rows=legacy_offset_rows,
+                empty_message="No legacy weight candidate offsets were profiled.",
+                widths={"offset": 90, "eligible": 80, "exact": 80, "ratio": 90, "mae": 70, "top": 360},
+            )
+
+        if reference_rows:
+            still_tab = ttk.Frame(notebook)
+            notebook.add(still_tab, text="Local Still Matches")
+            self._add_report_tree(
+                still_tab,
+                columns=("name", "path"),
+                headings={"name": "Sample Name", "path": "Local Still Path"},
+                rows=reference_rows,
+                empty_message="No local still assets matched the current sample names.",
+                widths={"name": 220, "path": 620},
+            )
+
+        if outer is not None:
+            btn_row = ttk.Frame(outer)
+            btn_row.pack(fill=tk.X, pady=(8, 0))
+            ttk.Button(btn_row, text="Close", command=dialog.destroy).pack(side=tk.RIGHT)
+
+    def _format_player_metadata_inspect_report(self, result):
+        if not getattr(result, "records", None):
+            return "No player metadata records matched."
+        storage_mode = str(getattr(result, "storage_mode", "indexed") or "indexed")
+        count_label = "indexed_entries" if storage_mode == "indexed" else "parsed_records"
+        lines = [
+            f"Matched {len(result.records)} player record(s) ({count_label}={getattr(result, 'record_count', 0)})",
+            "",
+        ]
+        for row in list(result.records or [])[:20]:
+            anchor_text = f"0x{row.suffix_anchor:02X}" if isinstance(row.suffix_anchor, int) else "n/a"
+            dob_text = (
+                f"{int(row.birth_day or 0):02d}/{int(row.birth_month or 0):02d}/{int(row.birth_year or 0):04d}"
+                if row.birth_day is not None and row.birth_month is not None and row.birth_year is not None
+                else "n/a"
+            )
+            lines.append(f"0x{row.offset:08X} rid={row.record_id:5d}: {row.name}")
+            lines.append(
+                "  "
+                + f"nat={row.nationality} pos={row.position} dob={dob_text} ht={row.height} wt={row.weight} anchor={anchor_text}"
+            )
+            lines.append(
+                "  "
+                + f"u0={row.indexed_unknown_0} u1={row.indexed_unknown_1} "
+                + f"u9={row.indexed_unknown_9} u10={row.indexed_unknown_10}"
+            )
+            if list(getattr(row, "attribute_prefix", []) or []):
+                lines.append(
+                    "  "
+                    + f"tail_prefix={list(getattr(row, 'attribute_prefix', []) or [])} "
+                    + "(read-only non-stat prefix)"
+                )
+            if getattr(row, "post_weight_byte", None) is not None:
+                lines.append("  " + f"post_weight_byte={getattr(row, 'post_weight_byte', None)}")
+                if getattr(row, "nationality", None) is not None:
+                    if getattr(row, "post_weight_byte", None) == getattr(row, "nationality", None):
+                        lines.append("  post_weight_hint=mirrors nationality search key")
+                    else:
+                        lines.append("  post_weight_hint=grouped nationality search key")
+            if getattr(row, "trailer_byte", None) is not None:
+                lines.append("  " + f"trailer_byte={getattr(row, 'trailer_byte', None)}")
+            if getattr(row, "sidecar_byte", None) is not None:
+                lines.append("  " + f"sidecar_byte={getattr(row, 'sidecar_byte', None)}")
+            if row.face_components:
+                lines.append(f"  face={list(row.face_components)}")
+            u1_hint = PM99DatabaseEditor._player_u1_display_hint(row.indexed_unknown_1)
+            if u1_hint:
+                lines.append(f"  u1_hint={u1_hint}")
+            guard_hint = PM99DatabaseEditor._player_leading_guard_hint(row.indexed_unknown_0, row.indexed_unknown_1)
+            if guard_hint:
+                lines.append(f"  guard_hint={guard_hint}")
+            suffix_hint = PM99DatabaseEditor._player_suffix_pair_hint(row.indexed_unknown_9, row.indexed_unknown_10)
+            if suffix_hint:
+                lines.append(f"  suffix_hint={suffix_hint}")
+            lines.append("")
+        extra = len(list(result.records or [])) - min(len(list(result.records or [])), 20)
+        if extra > 0:
+            lines.append(f"... and {extra} more record(s)")
+        return "\n".join(lines).rstrip()
+
+    def _format_player_suffix_profile_report(self, result):
+        if not getattr(result, "buckets", None):
+            return "No indexed suffix profile buckets matched."
+        filter_bits = []
+        if getattr(result, "nationality_filter", None) is not None:
+            filter_bits.append(f"nat={result.nationality_filter}")
+        if getattr(result, "position_filter", None) is not None:
+            filter_bits.append(f"pos={result.position_filter}")
+        filter_text = f" [{' '.join(filter_bits)}]" if filter_bits else ""
+        lines = [
+            f"Indexed suffix profile{filter_text}: anchored={result.anchored_count}, filtered={result.filtered_count}, indexed_entries={result.record_count}",
+        ]
+        for bucket in list(result.buckets or []):
+            names = ", ".join(list(bucket.sample_names or []))
+            line = (
+                f"  u9={bucket.indexed_unknown_9} u10={bucket.indexed_unknown_10}: "
+                f"count={bucket.count}"
+            )
+            hint = PM99DatabaseEditor._player_suffix_pair_hint(
+                bucket.indexed_unknown_9,
+                bucket.indexed_unknown_10,
+            )
+            if hint:
+                line += f" hint={hint}"
+            if names:
+                line += f" examples={names}"
+            lines.append(line)
+        return "\n".join(lines)
+
+    def _format_player_leading_profile_report(self, result):
+        if not getattr(result, "buckets", None):
+            return "No indexed leading-byte profile buckets matched."
+        filter_bits = []
+        if getattr(result, "nationality_filter", None) is not None:
+            filter_bits.append(f"nat={result.nationality_filter}")
+        if getattr(result, "position_filter", None) is not None:
+            filter_bits.append(f"pos={result.position_filter}")
+        if getattr(result, "indexed_unknown_0_filter", None) is not None:
+            filter_bits.append(f"u0={result.indexed_unknown_0_filter}")
+        if getattr(result, "indexed_unknown_1_filter", None) is not None:
+            filter_bits.append(f"u1={result.indexed_unknown_1_filter}")
+        if getattr(result, "indexed_unknown_9_filter", None) is not None:
+            filter_bits.append(f"u9={result.indexed_unknown_9_filter}")
+        if getattr(result, "indexed_unknown_10_filter", None) is not None:
+            filter_bits.append(f"u10={result.indexed_unknown_10_filter}")
+        filter_text = f" [{' '.join(filter_bits)}]" if filter_bits else ""
+        lines = [
+            f"Indexed leading-byte profile{filter_text}: anchored={result.anchored_count}, filtered={result.filtered_count}, indexed_entries={result.record_count}",
+        ]
+        position_text = PM99DatabaseEditor._format_profile_count_summary(
+            getattr(result, "position_counts", []),
+            label="pos",
+        )
+        if position_text:
+            lines.append(f"  positions={position_text}")
+        nationality_text = PM99DatabaseEditor._format_profile_count_summary(
+            getattr(result, "nationality_counts", []),
+            label="nat",
+        )
+        if nationality_text:
+            lines.append(f"  nationalities={nationality_text}")
+        for bucket in list(result.buckets or []):
+            names = ", ".join(list(bucket.sample_names or []))
+            line = f"  u0={bucket.indexed_unknown_0} u1={bucket.indexed_unknown_1}: count={bucket.count}"
+            hint = PM99DatabaseEditor._player_u1_display_hint(bucket.indexed_unknown_1)
+            if hint:
+                line += f" hint={hint}"
+            guard_hint = PM99DatabaseEditor._player_leading_guard_hint(
+                bucket.indexed_unknown_0,
+                bucket.indexed_unknown_1,
+            )
+            if guard_hint:
+                line += f" guard={guard_hint}"
+            if names:
+                line += f" examples={names}"
+            lines.append(line)
+        return "\n".join(lines)
+
+    def _format_team_roster_sources_report(self, *, team_file, player_file, team_query, linked_rosters, same_entry_result):
+        query_text = str(team_query or "").strip()
+        lines = [
+            "Team Roster Sources",
+            "",
+            f"Team file: {team_file}",
+            f"Player file: {player_file}",
+            f"Team query: {query_text if query_text else '(coverage summary)'}",
+            "",
+        ]
+
+        if not query_text:
+            linked_count = len(list(linked_rosters or []))
+            lines.append(f"Parser-backed EQ->JUG linked coverage: {linked_count} linked team record(s)")
+            preferred = dict(getattr(same_entry_result, "preferred_roster_coverage", {}) or {})
+            covered_count = preferred.get("covered_count")
+            club_like_team_count = preferred.get("club_like_team_count")
+            club_like_covered_count = preferred.get("club_like_covered_count")
+            lines.append(
+                "Authoritative same-entry preferred coverage: "
+                + ", ".join(
+                    part
+                    for part in (
+                        f"covered={covered_count}" if covered_count is not None else "",
+                        f"club_like_total={club_like_team_count}" if club_like_team_count is not None else "",
+                        f"club_like_covered={club_like_covered_count}" if club_like_covered_count is not None else "",
+                    )
+                    if part
+                )
+            )
+            return "\n".join(lines)
+
+        if not list(linked_rosters or []):
+            lines.append("No parser-backed EQ->JUG linked roster matched the requested team.")
+        else:
+            lines.append(f"Parser-backed EQ->JUG linked matches: {len(list(linked_rosters or []))}")
+            for item in list(linked_rosters or []):
+                team_name = str(item.get("team_name") or "")
+                full_club_name = str(item.get("full_club_name") or "")
+                eq_record_id = int(item.get("eq_record_id") or 0)
+                ent_count = int(item.get("ent_count") or 0)
+                mode_byte = int(item.get("mode_byte") or 0)
+                rows = list(item.get("rows") or [])
+                display = team_name
+                if full_club_name and full_club_name != team_name:
+                    display = f"{team_name} ({full_club_name})"
+                lines.append(
+                    f"  {display}: eq_record_id={eq_record_id} mode={mode_byte} ent_count={ent_count} rows={len(rows)}"
+                )
+                for idx, row in enumerate(rows, start=1):
+                    pid = int(row.get("pid") or 0)
+                    flag = int(row.get("flag") or 0)
+                    player_name = str(row.get("player_name") or "").strip() or "(name unresolved)"
+                    lines.append(f"    slot={idx:02d} pid={pid:5d} flag={flag} {player_name}")
+
+        lines.append("")
+        requested = list(getattr(same_entry_result, "requested_team_results", []) or [])
+        if not requested:
+            lines.append("No same-entry team results matched the requested team.")
+            return "\n".join(lines)
+
+        lines.append(f"Same-entry extraction matches: {len(requested)}")
+        for item in requested:
+            team_name = str(item.get("team_name") or "")
+            full_club_name = str(item.get("full_club_name") or "")
+            display = team_name
+            if full_club_name and full_club_name != team_name:
+                display = f"{team_name} ({full_club_name})"
+            status = str(item.get("status") or "")
+            team_offset = item.get("team_offset")
+            lines.append(
+                "  "
+                + display
+                + (
+                    f" status={status}"
+                    + (f", team_offset=0x{int(team_offset):08X}" if isinstance(team_offset, int) else "")
+                )
+            )
+
+            preferred = dict(item.get("preferred_roster_match") or {})
+            preferred_provenance = str(preferred.get("provenance") or "")
+            if not preferred_provenance:
+                lines.append("    No preferred same-entry roster mapping.")
+                continue
+
+            source = dict(preferred.get("source") or {})
+            entry_offset = source.get("entry_offset")
+            rows = [row for row in list(preferred.get("rows") or []) if not bool(row.get("is_empty_slot"))]
+            lines.append(
+                "    "
+                + f"preferred_roster={preferred_provenance} rows={len(rows)}"
+                + (f", entry=0x{int(entry_offset):08X}" if isinstance(entry_offset, int) else "")
+            )
+            for index, row in enumerate(rows, start=1):
+                pid = int(row.get("pid_candidate", 0) or 0)
+                dd_name = str(row.get("dd6361_name") or "").strip() or "(name unresolved)"
+                lines.append(f"      slot={index:02d} pid={pid:5d} {dd_name}")
+
+        return "\n".join(lines)
+
+    def open_player_metadata_inspect_dialog(self):
+        """Show the parser-backed indexed player metadata snapshot for a selected player."""
+        try:
+            player_file = getattr(self, "file_path", None) or "DBDAT/JUG98030.FDI"
+            initial_name = PM99DatabaseEditor._current_player_visible_skill_query(self)
+            current = getattr(self, "current_record", None)
+            initial_offset = ""
+            if isinstance(current, tuple) and len(current) >= 1 and isinstance(current[0], int):
+                initial_offset = f"0x{int(current[0]):X}"
+
+            target_name = str(
+                simpledialog.askstring(
+                    "Inspect Player Metadata",
+                    "Player name:",
+                    initialvalue=initial_name,
+                )
+                or ""
+            ).strip()
+            if not target_name:
+                return
+            offset_text = simpledialog.askstring(
+                "Inspect Player Metadata",
+                "Offset (optional, hex or decimal):",
+                initialvalue=initial_offset,
+            )
+            if offset_text is None:
+                return
+            target_offset = PM99DatabaseEditor._parse_optional_dialog_int(offset_text)
+
+            self.status_var.set("Inspecting player metadata...")
+            self.root.update_idletasks()
+            result = inspect_player_metadata_records(
+                file_path=player_file,
+                target_name=target_name,
+                target_offset=target_offset,
+            )
+            self.status_var.set(
+                f"✓ Player metadata inspection complete ({getattr(result, 'matched_count', 0)} matched)"
+            )
+            PM99DatabaseEditor._show_player_metadata_inspect_dialog_view(self, result=result)
+        except Exception as exc:
+            self.status_var.set("Player metadata inspection failed")
+            messagebox.showerror("Inspect Player Metadata", f"Player metadata inspection failed:\n{exc}")
+
+    def open_player_indexed_profiles_dialog(self):
+        """Show indexed suffix/leading-byte profiles using the current stable read contracts."""
+        try:
+            player_file = getattr(self, "file_path", None) or "DBDAT/JUG98030.FDI"
+            current = getattr(self, "current_record", None)
+            record = current[1] if isinstance(current, tuple) and len(current) >= 2 else None
+            nat_default = "" if getattr(record, "nationality", None) is None else str(getattr(record, "nationality"))
+            pos_default = "" if getattr(record, "position_primary", None) is None else str(getattr(record, "position_primary"))
+            u0_default = "" if getattr(record, "indexed_unknown_0", None) is None else str(getattr(record, "indexed_unknown_0"))
+            u1_default = "" if getattr(record, "indexed_unknown_1", None) is None else str(getattr(record, "indexed_unknown_1"))
+            u9_default = "" if getattr(record, "indexed_unknown_9", None) is None else str(getattr(record, "indexed_unknown_9"))
+            u10_default = "" if getattr(record, "indexed_unknown_10", None) is None else str(getattr(record, "indexed_unknown_10"))
+            attrs_default = list(getattr(record, "attributes", []) or [])
+            a0_default = "" if len(attrs_default) < 1 else str(attrs_default[0])
+            a1_default = "" if len(attrs_default) < 2 else str(attrs_default[1])
+            a2_default = "" if len(attrs_default) < 3 else str(attrs_default[2])
+            post_weight_default = ""
+            trail_default = ""
+            sidecar_default = ""
+
+            nat_text = simpledialog.askstring(
+                "Inspect Indexed Player Byte Profiles",
+                "Nationality filter (optional):",
+                initialvalue=nat_default,
+            )
+            if nat_text is None:
+                return
+            pos_text = simpledialog.askstring(
+                "Inspect Indexed Player Byte Profiles",
+                "Position filter (optional):",
+                initialvalue=pos_default,
+            )
+            if pos_text is None:
+                return
+            u0_text = simpledialog.askstring(
+                "Inspect Indexed Player Byte Profiles",
+                "Leading byte u0 filter (optional):",
+                initialvalue=u0_default,
+            )
+            if u0_text is None:
+                return
+            u1_text = simpledialog.askstring(
+                "Inspect Indexed Player Byte Profiles",
+                "Leading byte u1 filter (optional):",
+                initialvalue=u1_default,
+            )
+            if u1_text is None:
+                return
+            u9_text = simpledialog.askstring(
+                "Inspect Indexed Player Byte Profiles",
+                "Suffix byte u9 filter (optional):",
+                initialvalue=u9_default,
+            )
+            if u9_text is None:
+                return
+            u10_text = simpledialog.askstring(
+                "Inspect Indexed Player Byte Profiles",
+                "Suffix byte u10 filter (optional):",
+                initialvalue=u10_default,
+            )
+            if u10_text is None:
+                return
+            a0_text = simpledialog.askstring(
+                "Inspect Indexed Player Byte Profiles",
+                "Tail-prefix Attr 0 filter (optional):",
+                initialvalue=a0_default,
+            )
+            if a0_text is None:
+                return
+            a1_text = simpledialog.askstring(
+                "Inspect Indexed Player Byte Profiles",
+                "Tail-prefix Attr 1 filter (optional):",
+                initialvalue=a1_default,
+            )
+            if a1_text is None:
+                return
+            a2_text = simpledialog.askstring(
+                "Inspect Indexed Player Byte Profiles",
+                "Tail-prefix Attr 2 filter (optional):",
+                initialvalue=a2_default,
+            )
+            if a2_text is None:
+                return
+            post_weight_text = simpledialog.askstring(
+                "Inspect Indexed Player Byte Profiles",
+                "Indexed post-weight byte filter (optional):",
+                initialvalue=post_weight_default,
+            )
+            if post_weight_text is None:
+                return
+            trail_text = simpledialog.askstring(
+                "Inspect Indexed Player Byte Profiles",
+                "Fixed trailer byte filter (optional):",
+                initialvalue=trail_default,
+            )
+            if trail_text is None:
+                return
+            sidecar_text = simpledialog.askstring(
+                "Inspect Indexed Player Byte Profiles",
+                "First post-trailer sidecar byte filter (optional):",
+                initialvalue=sidecar_default,
+            )
+            if sidecar_text is None:
+                return
+            limit_text = simpledialog.askstring(
+                "Inspect Indexed Player Byte Profiles",
+                "Max buckets to show:",
+                initialvalue="10",
+            )
+            if limit_text is None:
+                return
+
+            nationality = PM99DatabaseEditor._parse_optional_dialog_int(nat_text)
+            position = PM99DatabaseEditor._parse_optional_dialog_int(pos_text)
+            indexed_unknown_0 = PM99DatabaseEditor._parse_optional_dialog_int(u0_text)
+            indexed_unknown_1 = PM99DatabaseEditor._parse_optional_dialog_int(u1_text)
+            indexed_unknown_9 = PM99DatabaseEditor._parse_optional_dialog_int(u9_text)
+            indexed_unknown_10 = PM99DatabaseEditor._parse_optional_dialog_int(u10_text)
+            attribute_0 = PM99DatabaseEditor._parse_optional_dialog_int(a0_text)
+            attribute_1 = PM99DatabaseEditor._parse_optional_dialog_int(a1_text)
+            attribute_2 = PM99DatabaseEditor._parse_optional_dialog_int(a2_text)
+            post_weight_byte = PM99DatabaseEditor._parse_optional_dialog_int(post_weight_text)
+            trailer_byte = PM99DatabaseEditor._parse_optional_dialog_int(trail_text)
+            sidecar_byte = PM99DatabaseEditor._parse_optional_dialog_int(sidecar_text)
+            limit_value = PM99DatabaseEditor._parse_optional_dialog_int(limit_text)
+            limit = max(1, int(limit_value or 10))
+
+            self.status_var.set("Profiling indexed player bytes...")
+            self.root.update_idletasks()
+            suffix_result = profile_indexed_player_suffix_bytes(
+                file_path=player_file,
+                nationality=nationality,
+                position=position,
+                limit=limit,
+            )
+            leading_result = profile_indexed_player_leading_bytes(
+                file_path=player_file,
+                nationality=nationality,
+                position=position,
+                indexed_unknown_0=indexed_unknown_0,
+                indexed_unknown_1=indexed_unknown_1,
+                indexed_unknown_9=indexed_unknown_9,
+                indexed_unknown_10=indexed_unknown_10,
+                attribute_0=attribute_0,
+                attribute_1=attribute_1,
+                attribute_2=attribute_2,
+                post_weight_byte=post_weight_byte,
+                trailer_byte=trailer_byte,
+                sidecar_byte=sidecar_byte,
+                limit=limit,
+            )
+            tail_prefix_result = profile_indexed_player_attribute_prefixes(
+                file_path=player_file,
+                nationality=nationality,
+                position=position,
+                indexed_unknown_0=indexed_unknown_0,
+                indexed_unknown_1=indexed_unknown_1,
+                indexed_unknown_9=indexed_unknown_9,
+                indexed_unknown_10=indexed_unknown_10,
+                attribute_0=attribute_0,
+                attribute_1=attribute_1,
+                attribute_2=attribute_2,
+                post_weight_byte=post_weight_byte,
+                trailer_byte=trailer_byte,
+                sidecar_byte=sidecar_byte,
+                limit=limit,
+            )
+            legacy_weight_result = profile_player_legacy_weight_candidates(
+                file_path=player_file,
+            )
+            self.status_var.set(
+                "✓ Indexed player byte profiles complete "
+                + f"(anchored={getattr(leading_result, 'anchored_count', 0)}, "
+                + f"legacy_offset={getattr(legacy_weight_result, 'recommended_offset', None)}, "
+                + f"tail_prefixes={len(list(getattr(tail_prefix_result, 'buckets', []) or []))})"
+            )
+            PM99DatabaseEditor._show_player_indexed_profiles_dialog_view(
+                self,
+                player_file=player_file,
+                suffix_result=suffix_result,
+                leading_result=leading_result,
+                tail_prefix_result=tail_prefix_result,
+                legacy_weight_result=legacy_weight_result,
+            )
+        except Exception as exc:
+            self.status_var.set("Indexed player byte profiling failed")
+            messagebox.showerror(
+                "Inspect Indexed Player Byte Profiles",
+                f"Indexed player byte profiling failed:\n{exc}",
+            )
+
+    def open_team_roster_sources_dialog(self):
+        """Show the same confirmed team roster sources the CLI exposes today."""
+        try:
+            team_file = getattr(self, "team_file_path", None) or "DBDAT/EQ98030.FDI"
+            player_file = PM99DatabaseEditor._resolve_team_roster_player_file(self)
+            current_team = getattr(self, "current_team", None)
+            initial_team_query = ""
+            if isinstance(current_team, tuple) and len(current_team) >= 2:
+                initial_team_query = str(getattr(current_team[1], "name", "") or "").strip()
+            team_query = simpledialog.askstring(
+                "Inspect Team Roster Sources",
+                "Team query (optional; blank = coverage summary):",
+                initialvalue=initial_team_query,
+            )
+            if team_query is None:
+                return
+            team_query = str(team_query or "").strip()
+            team_queries = [team_query] if team_query else []
+
+            self.status_var.set("Inspecting team roster sources...")
+            self.root.update_idletasks()
+            linked_rosters = extract_team_rosters_eq_jug_linked(
+                team_file=team_file,
+                player_file=player_file,
+                team_queries=team_queries,
+            )
+            same_entry_result = extract_team_rosters_eq_same_entry_overlap(
+                team_file=team_file,
+                player_file=player_file,
+                team_queries=team_queries,
+                top_examples=5,
+                include_fallbacks=True,
+            )
+            PM99DatabaseEditor._show_team_roster_sources_dialog_view(
+                self,
+                team_file=team_file,
+                player_file=player_file,
+                team_query=team_query,
+                linked_rosters=linked_rosters,
+                same_entry_result=same_entry_result,
+            )
+            self.status_var.set("✓ Team roster source inspection complete")
+        except Exception as exc:
+            self.status_var.set("Team roster source inspection failed")
+            messagebox.showerror("Inspect Team Roster Sources", f"Team roster source inspection failed:\n{exc}")
+
     def open_bulk_player_rename_dialog(self):
         """Run deterministic bulk player rename via shared bulk-rename helpers."""
         try:
@@ -1517,6 +3477,281 @@ class PM99DatabaseEditor:
         except Exception as exc:
             self.status_var.set("Bulk player revert failed")
             messagebox.showerror("Revert Bulk Player Rename", f"Bulk revert failed:\n{exc}")
+
+    def open_player_batch_edit_dialog(self):
+        """Apply the shared CSV-driven player edit plan against the current player file."""
+        try:
+            player_file = getattr(self, "file_path", None) or "DBDAT/JUG98030.FDI"
+            csv_path = filedialog.askopenfilename(
+                title="Select player batch-edit CSV",
+                filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+                initialdir=str(Path(".")),
+            )
+            if not csv_path:
+                return
+
+            dry_run = messagebox.askyesno(
+                "Batch Edit Players from CSV",
+                (
+                    f"Apply plan to:\n{player_file}\n\n"
+                    "Run in dry-run mode?\n\n"
+                    "Yes = validate and stage only\n"
+                    "No = write changes immediately"
+                ),
+            )
+            self.status_var.set("Running player batch edit...")
+            self.root.update_idletasks()
+            result = batch_edit_player_metadata_records(
+                file_path=player_file,
+                csv_path=csv_path,
+                write_changes=not dry_run,
+            )
+            warning_count = len(getattr(result, "warnings", []) or [])
+            status_suffix = "dry-run " if dry_run else ""
+            self.status_var.set(
+                f"✓ Player batch edit {status_suffix}complete ({len(getattr(result, 'changes', []) or [])} changed, {warning_count} warning(s))"
+            )
+
+            summary_lines = [
+                f"{'Dry run complete' if dry_run else 'Batch edit complete'}",
+                "",
+                f"Player file: {player_file}",
+                f"Plan: {csv_path}",
+                f"Rows read: {getattr(result, 'row_count', 0)}",
+                f"Matched rows: {getattr(result, 'matched_row_count', 0)}",
+                f"Records changed: {len(getattr(result, 'changes', []) or [])}",
+                f"Warnings: {warning_count}",
+            ]
+            backup_path = getattr(result, "backup_path", None)
+            if backup_path:
+                summary_lines.append(f"Backup: {backup_path}")
+            if warning_count:
+                first_warning = getattr(result, "warnings", [None])[0]
+                if first_warning is not None:
+                    summary_lines.extend(
+                        [
+                            "",
+                            "First warning:",
+                            str(getattr(first_warning, "message", first_warning)),
+                        ]
+                    )
+            if not dry_run:
+                summary_lines.extend(
+                    [
+                        "",
+                        "Reload the database view to refresh the player list if needed.",
+                    ]
+                )
+
+            messagebox.showinfo("Batch Edit Players from CSV", "\n".join(summary_lines))
+        except Exception as exc:
+            self.status_var.set("Player batch edit failed")
+            messagebox.showerror("Batch Edit Players from CSV", f"Player batch edit failed:\n{exc}")
+
+    def open_team_roster_batch_edit_dialog(self):
+        """Apply a shared CSV-driven batch plan against the current team roster file."""
+        try:
+            team_file = getattr(self, "team_file_path", None) or "DBDAT/EQ98030.FDI"
+            player_file = getattr(self, "file_path", None) or "DBDAT/JUG98030.FDI"
+            csv_path = filedialog.askopenfilename(
+                title="Select team roster batch-edit CSV",
+                filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+                initialdir=str(Path(".")),
+            )
+            if not csv_path:
+                return
+
+            dry_run = messagebox.askyesno(
+                "Batch Edit Team Roster from CSV",
+                (
+                    f"Apply roster plan to:\n{team_file}\n\n"
+                    "Run in dry-run mode?\n\n"
+                    "Yes = validate and stage only\n"
+                    "No = write changes immediately"
+                ),
+            )
+            self.status_var.set("Running team roster batch edit...")
+            self.root.update_idletasks()
+            result = batch_edit_team_roster_records(
+                team_file=team_file,
+                player_file=player_file,
+                csv_path=csv_path,
+                write_changes=not dry_run,
+            )
+            linked_count = len(getattr(result, "linked_changes", []) or [])
+            same_entry_count = len(getattr(result, "same_entry_changes", []) or [])
+            warning_count = len(getattr(result, "warnings", []) or [])
+            total_changes = linked_count + same_entry_count
+            status_suffix = "dry-run " if dry_run else ""
+            self.status_var.set(
+                f"✓ Team roster batch edit {status_suffix}complete "
+                f"({total_changes} changed, {warning_count} warning(s))"
+            )
+
+            if not dry_run and hasattr(self, "load_current_team_roster"):
+                try:
+                    self.load_current_team_roster()
+                except Exception:
+                    pass
+
+            summary_lines = [
+                f"{'Dry run complete' if dry_run else 'Batch edit complete'}",
+                "",
+                f"Team file: {team_file}",
+                f"Player file: {player_file}",
+                f"Plan: {csv_path}",
+                f"Rows read: {getattr(result, 'row_count', 0)}",
+                f"Matched rows: {getattr(result, 'matched_row_count', 0)}",
+                f"Linked rows changed: {linked_count}",
+                f"Same-entry rows changed: {same_entry_count}",
+                f"Warnings: {warning_count}",
+            ]
+            backup_path = getattr(result, "backup_path", None)
+            if backup_path:
+                summary_lines.append(f"Backup: {backup_path}")
+            if warning_count:
+                first_warning = getattr(result, "warnings", [None])[0]
+                if first_warning is not None:
+                    summary_lines.extend(
+                        [
+                            "",
+                            "First warning:",
+                            str(getattr(first_warning, "message", first_warning)),
+                        ]
+                    )
+            if not dry_run:
+                summary_lines.extend(
+                    [
+                        "",
+                        "Reload or switch teams if you need to inspect a different updated roster immediately.",
+                    ]
+                )
+
+            messagebox.showinfo("Batch Edit Team Roster from CSV", "\n".join(summary_lines))
+        except Exception as exc:
+            self.status_var.set("Team roster batch edit failed")
+            messagebox.showerror("Batch Edit Team Roster from CSV", f"Team roster batch edit failed:\n{exc}")
+
+    def open_team_roster_edit_linked_dialog(self):
+        """Patch one parser-backed linked EQ->JUG roster slot via the GUI."""
+        try:
+            team_file = getattr(self, "team_file_path", None) or "DBDAT/EQ98030.FDI"
+            player_file = getattr(self, "file_path", None) or "DBDAT/JUG98030.FDI"
+            current_team = getattr(self, "current_team", None)
+            team_query = ""
+            if isinstance(current_team, tuple) and len(current_team) >= 2:
+                team_query = str(getattr(current_team[1], "name", "") or "").strip()
+            if not team_query:
+                team_query = str(
+                    simpledialog.askstring(
+                        "Edit Linked Team Roster Slot",
+                        "Team query:",
+                        initialvalue="",
+                    )
+                    or ""
+                ).strip()
+            if not team_query:
+                return
+
+            slot_text = simpledialog.askstring(
+                "Edit Linked Team Roster Slot",
+                "Slot number (1-based):",
+                initialvalue="1",
+            )
+            if slot_text is None:
+                return
+            slot_text = str(slot_text).strip()
+            if not slot_text:
+                messagebox.showerror("Edit Linked Team Roster Slot", "Slot number is required.")
+                return
+            slot_number = int(slot_text, 0)
+
+            player_id_text = simpledialog.askstring(
+                "Edit Linked Team Roster Slot",
+                "New player record ID (optional):",
+                initialvalue="",
+            )
+            if player_id_text is None:
+                return
+            player_id_text = str(player_id_text).strip()
+            player_record_id = int(player_id_text, 0) if player_id_text else None
+
+            flag_text = simpledialog.askstring(
+                "Edit Linked Team Roster Slot",
+                "New flag byte (optional):",
+                initialvalue="",
+            )
+            if flag_text is None:
+                return
+            flag_text = str(flag_text).strip()
+            flag = int(flag_text, 0) if flag_text else None
+
+            if player_record_id is None and flag is None:
+                messagebox.showinfo("Edit Linked Team Roster Slot", "No changes requested.")
+                return
+
+            dry_run = messagebox.askyesno(
+                "Edit Linked Team Roster Slot",
+                (
+                    f"Patch linked roster slot for:\n{team_query}\n\n"
+                    "Run in dry-run mode?\n\n"
+                    "Yes = validate and stage only\n"
+                    "No = write changes immediately"
+                ),
+            )
+            self.status_var.set("Running linked team roster edit...")
+            self.root.update_idletasks()
+            result = edit_team_roster_eq_jug_linked(
+                team_file=team_file,
+                player_file=player_file,
+                team_query=team_query,
+                slot_number=slot_number,
+                player_record_id=player_record_id,
+                flag=flag,
+                write_changes=not dry_run,
+            )
+            warning_count = len(getattr(result, "warnings", []) or [])
+            status_suffix = "dry-run " if dry_run else ""
+            self.status_var.set(
+                f"✓ Linked team roster edit {status_suffix}complete ({len(getattr(result, 'changes', []) or [])} changed, {warning_count} warning(s))"
+            )
+
+            summary_lines = [
+                f"{'Dry run complete' if dry_run else 'Linked roster edit complete'}",
+                "",
+                f"Team file: {team_file}",
+                f"Player file: {player_file}",
+                f"Team query: {team_query}",
+                f"Slot: {slot_number}",
+                f"Rows changed: {len(getattr(result, 'changes', []) or [])}",
+                f"Warnings: {warning_count}",
+            ]
+            if getattr(result, "changes", None):
+                change = result.changes[0]
+                summary_lines.extend(
+                    [
+                        "",
+                        f"{getattr(change, 'team_name', '') or team_query}: "
+                        f"pid {getattr(change, 'old_player_record_id', '')} -> {getattr(change, 'new_player_record_id', '')}, "
+                        f"flag {getattr(change, 'old_flag', '')} -> {getattr(change, 'new_flag', '')}",
+                    ]
+                )
+            backup_path = getattr(result, "backup_path", None)
+            if backup_path:
+                summary_lines.append(f"Backup: {backup_path}")
+            if warning_count and getattr(result, "warnings", None):
+                summary_lines.extend(
+                    [
+                        "",
+                        "First warning:",
+                        str(getattr(result.warnings[0], "message", result.warnings[0])),
+                    ]
+                )
+
+            messagebox.showinfo("Edit Linked Team Roster Slot", "\n".join(summary_lines))
+        except Exception as exc:
+            self.status_var.set("Linked team roster edit failed")
+            messagebox.showerror("Edit Linked Team Roster Slot", f"Linked team roster edit failed:\n{exc}")
 
     def _current_player_visible_skill_query(self):
         current = getattr(self, "current_record", None)
@@ -2958,7 +5193,7 @@ class PM99DatabaseEditor:
             self.position_var.set('')
 
         # Metadata fields (nationality, DOB, height)
-        self.nationality_var.set(getattr(record, 'nationality_id', 0) or 0)
+        self.nationality_var.set(getattr(record, 'nationality_id', getattr(record, 'nationality', 0)) or 0)
 
         if getattr(record, 'dob', None):
             day, month, year = record.dob
@@ -2972,6 +5207,56 @@ class PM99DatabaseEditor:
             self.dob_year_var.set(1970)
 
         self.height_var.set(getattr(record, 'height', 175) or 175)
+
+        weight_value = getattr(record, 'weight', None)
+        self.weight_var.set("" if weight_value is None else str(weight_value))
+        indexed_weight_editable = False
+        legacy_weight_editable = False
+        try:
+            raw_data = getattr(record, 'raw_data', None) or b''
+            indexed_name = (getattr(record, 'name', '') or f"{getattr(record, 'given_name', '')} {getattr(record, 'surname', '')}".strip()).strip()
+            try:
+                stored_name = PlayerRecord._extract_name(raw_data)
+            except Exception:
+                stored_name = indexed_name
+            indexed_weight_editable = (
+                PlayerRecord._find_indexed_suffix_anchor(raw_data, stored_name) is not None
+                or (
+                    stored_name != indexed_name
+                    and PlayerRecord._find_indexed_suffix_anchor(raw_data, indexed_name) is not None
+                )
+            )
+            if not indexed_weight_editable:
+                legacy_weight_editable = PlayerRecord._find_legacy_weight_offset(raw_data) is not None
+        except Exception:
+            indexed_weight_editable = False
+            legacy_weight_editable = False
+
+        weight_state = 'disabled'
+        weight_hint = "(unavailable for this record)"
+        if indexed_weight_editable:
+            weight_hint = "(indexed JUG only)"
+            if not SAVE_NAME_ONLY:
+                weight_state = 'normal'
+            else:
+                weight_hint = "(read-only in safe mode)"
+        elif legacy_weight_editable:
+            weight_hint = "(legacy marker slot)"
+            if not SAVE_NAME_ONLY:
+                weight_state = 'normal'
+            else:
+                weight_hint = "(read-only in safe mode)"
+        try:
+            self.weight_spinbox.configure(state=weight_state)
+        except Exception:
+            try:
+                self.weight_spinbox.config(state=weight_state)
+            except Exception:
+                pass
+        try:
+            self.weight_hint_var.set(weight_hint)
+        except Exception:
+            pass
 
         # Clear and rebuild attributes
         for widget in self.attr_container.winfo_children():
@@ -2993,13 +5278,14 @@ class PM99DatabaseEditor:
             self.attr_vars.append(var)
  
             # Create spinbox and scale but disable them in safe-name-only mode
-            spin_state = 'disabled' if SAVE_NAME_ONLY else 'normal'
+            slot_editable = i in getattr(self, 'attr_editable_indices', set(PlayerRecord.editable_attribute_indices()))
+            spin_state = 'normal' if (slot_editable and not SAVE_NAME_ONLY) else 'disabled'
             spin = ttk.Spinbox(frame, from_=0, to=100, textvariable=var, width=8, state=spin_state)
             spin.pack(side=tk.LEFT, padx=5)
  
             scale = ttk.Scale(frame, from_=0, to=100, variable=var, orient=tk.HORIZONTAL, length=200)
             scale.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
-            if SAVE_NAME_ONLY:
+            if SAVE_NAME_ONLY or not slot_editable:
                 try:
                     scale.state(['disabled'])
                 except Exception:
@@ -3100,9 +5386,21 @@ class PM99DatabaseEditor:
                     new_height = 175
                 if new_height != getattr(record, 'height', None):
                     non_name_changes.append("Height")
+
+                weight_text = str(self.weight_var.get() or "").strip()
+                if weight_text:
+                    try:
+                        new_weight = int(weight_text)
+                    except Exception:
+                        new_weight = getattr(record, 'weight', None)
+                    old_weight = getattr(record, 'weight', None)
+                    if old_weight is None or new_weight != old_weight:
+                        non_name_changes.append("Weight")
  
                 # Attributes
                 for i, var in enumerate(self.attr_vars):
+                    if i not in getattr(self, 'attr_editable_indices', set(PlayerRecord.editable_attribute_indices())):
+                        continue
                     try:
                         new_val = int(var.get())
                     except Exception:
@@ -3179,7 +5477,7 @@ class PM99DatabaseEditor:
                 new_nat = int(self.nationality_var.get() or 0)
             except Exception:
                 new_nat = 0
-            old_nat = getattr(record, 'nationality_id', None)
+            old_nat = getattr(record, 'nationality_id', getattr(record, 'nationality', None))
             old_nat_display = old_nat if old_nat is not None else 'None'
             if new_nat != (old_nat if old_nat is not None else 0):
                 try:
@@ -3217,9 +5515,29 @@ class PM99DatabaseEditor:
                     changes.append(f"Height: {old_height_display} → {new_height} cm")
                 except Exception:
                     pass
+
+            # Weight (persisted only when the selected record exposes a parser-backed slot; blank means leave unchanged)
+            weight_text = str(self.weight_var.get() or "").strip()
+            if weight_text:
+                try:
+                    new_weight = int(weight_text)
+                except Exception as e:
+                    messagebox.showerror("Invalid Weight", f"Weight error: {e}")
+                    return
+                old_weight = getattr(record, 'weight', None)
+                if old_weight is None or new_weight != old_weight:
+                    try:
+                        record.set_weight(new_weight)
+                        old_weight_display = old_weight if old_weight is not None else 'None'
+                        changes.append(f"Weight: {old_weight_display} → {new_weight} kg")
+                    except Exception as e:
+                        messagebox.showerror("Invalid Weight", f"Weight error: {e}")
+                        return
  
             # Attributes
             for i, var in enumerate(self.attr_vars):
+                if i not in getattr(self, 'attr_editable_indices', set(PlayerRecord.editable_attribute_indices())):
+                    continue
                 try:
                     new_val = int(var.get())
                 except Exception:
@@ -3365,7 +5683,6 @@ class PM99DatabaseEditor:
 
             # Teams
             if n_teams:
-                team_path = Path(self.team_file_path)
                 modified_list = [(o, r) for o, r in self.modified_team_records.items()]
                 # Team loader offsets point inside decoded section records; use the
                 # team-aware writer so we patch and rewrite the enclosing FDI entries.
@@ -3373,9 +5690,44 @@ class PM99DatabaseEditor:
                 self.modified_team_records.clear()
                 if team_backup:
                     backups.append(str(team_backup))
+            validation_result = None
+            validation_error = None
+            try:
+                validation_result = validate_database_files(
+                    player_file=self.file_path if (n_players or n_visible_skill_patches) else None,
+                    team_file=self.team_file_path if n_teams else None,
+                    coach_file=self.coach_file_path if n_coaches else None,
+                )
+            except Exception as exc:
+                validation_error = str(exc)
 
-            self.status_var.set(f"✓ Database saved")
-            messagebox.showinfo("Success", f"Database saved!\nBackups:\n" + "\n".join(backups))
+            summary_lines = ["Database saved!", "Backups:"] + backups
+            if validation_result is not None and getattr(validation_result, "files", None):
+                summary_lines.extend(["", "Validation:"])
+                for item in list(getattr(validation_result, "files", []) or []):
+                    status = "OK" if getattr(item, "success", False) else "FAIL"
+                    summary_lines.append(
+                        f"- {getattr(item, 'category', 'unknown')}: {status} "
+                        f"(valid={int(getattr(item, 'valid_count', 0) or 0)}, "
+                        f"uncertain={int(getattr(item, 'uncertain_count', 0) or 0)})"
+                    )
+                    detail = str(getattr(item, "detail", "") or "").strip()
+                    if detail:
+                        summary_lines.append(f"  {detail}")
+
+            if validation_error:
+                self.status_var.set("⚠ Database saved, but validation could not complete")
+                summary_lines.extend(["", "Validation error:", validation_error])
+                messagebox.showwarning("Saved with Validation Warning", "\n".join(summary_lines))
+                return
+
+            if validation_result is not None and not getattr(validation_result, "all_valid", False):
+                self.status_var.set("⚠ Database saved, but reopen validation reported issues")
+                messagebox.showwarning("Saved with Validation Warning", "\n".join(summary_lines))
+                return
+
+            self.status_var.set("✓ Database saved and revalidated")
+            messagebox.showinfo("Success", "\n".join(summary_lines))
 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save:\n{str(e)}")

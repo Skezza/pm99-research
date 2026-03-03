@@ -47,6 +47,7 @@ class EQLinkedRosterRow:
     flag: int
     player_record_id: int
     player_name: str = ""
+    raw_row_offset: int = -1
 
 
 @dataclass
@@ -59,6 +60,8 @@ class EQLinkedTeamRoster:
     mode_byte: int
     ent_count: int
     rows: List[EQLinkedRosterRow] = field(default_factory=list)
+    payload_offset: int = 0
+    payload_length: int = 0
 
 
 def _alpha_letters(text: str) -> str:
@@ -303,6 +306,7 @@ def parse_eq_external_team_roster_payload(
                 flag=flag,
                 player_record_id=player_record_id,
                 player_name=str(player_name_by_id.get(player_record_id) or ""),
+                raw_row_offset=player_cursor,
             )
         )
         player_cursor += 5
@@ -360,6 +364,8 @@ def load_eq_linked_team_rosters(
         if roster is None:
             continue
         roster.eq_record_id = entry.record_id
+        roster.payload_offset = entry.payload_offset
+        roster.payload_length = entry.payload_length
         rosters.append(roster)
     return rosters
 

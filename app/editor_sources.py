@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Generic, List, Tuple, TypeVar
 
+from app.io import FDIFile
 from app.loaders import load_coaches
 from app.loaders import load_teams
 from app.models import PlayerRecord, TeamRecord
@@ -29,7 +30,23 @@ def _has_name_marker(record: PlayerRecord) -> bool:
 
 
 def gather_player_records(file_path: str) -> Tuple[List[RecordEntry[PlayerRecord]], List[RecordEntry[PlayerRecord]]]:
-    """Return (valid_records, uncertain_records) parsed from the player FDI."""
+    """Return records using the default product load path (strict-first with fallback)."""
+    fdi = FDIFile(file_path)
+    fdi.load()
+    valid: List[RecordEntry[PlayerRecord]] = []
+    uncertain: List[RecordEntry[PlayerRecord]] = []
+    source = f"load ({getattr(fdi, 'record_source_mode', 'unknown')})"
+    for offset, record in fdi.list_players():
+        entry = RecordEntry(offset=offset, record=record, source=source)
+        if _has_name_marker(record):
+            valid.append(entry)
+        else:
+            uncertain.append(entry)
+    return valid, uncertain
+
+
+def gather_player_records_heuristic(file_path: str) -> Tuple[List[RecordEntry[PlayerRecord]], List[RecordEntry[PlayerRecord]]]:
+    """Return scanner-only records for investigation workflows."""
     data = Path(file_path).read_bytes()
     valid: List[RecordEntry[PlayerRecord]] = []
     uncertain: List[RecordEntry[PlayerRecord]] = []

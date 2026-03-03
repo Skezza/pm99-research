@@ -5,3 +5,5 @@ This bucket keeps operator notes, reconciliation writeups, and one-off investiga
 Canonical operational guidance now lives in [../../OPERATIONS.md](../../OPERATIONS.md).
 
 Use the files here only for provenance and older working context.
+Obsolete implementation-planning notes that no longer add unique value should be pruned
+instead of retained indefinitely.

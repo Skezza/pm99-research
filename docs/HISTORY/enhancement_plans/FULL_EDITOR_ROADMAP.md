@@ -1,5 +1,8 @@
 # Building a Full Player Editor - Requirements & Roadmap
 
+> Historical note: this plan is superseded by `docs/CURRENT_ROADMAP.md`.
+> Keep this file for provenance only.
+
 ## Current Status vs Full Editor
 
 ### ✅ What We Have Now

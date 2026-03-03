@@ -46,6 +46,61 @@ def test_cmd_search_uses_offset_aware_entries(monkeypatch, capsys):
     assert "Alex Smith" in out
 
 
+def test_cmd_validate_database_reports_success(monkeypatch, capsys):
+    def fake_validate_database_files(**kwargs):
+        assert kwargs == {
+            "player_file": "DBDAT/JUG98030.FDI",
+            "team_file": "DBDAT/EQ98030.FDI",
+            "coach_file": "DBDAT/ENT98030.FDI",
+        }
+        return SimpleNamespace(
+            all_valid=True,
+            files=[
+                SimpleNamespace(
+                    category="players",
+                    file_path="DBDAT/JUG98030.FDI",
+                    success=True,
+                    valid_count=100,
+                    uncertain_count=2,
+                    detail="re-opened cleanly",
+                ),
+                SimpleNamespace(
+                    category="teams",
+                    file_path="DBDAT/EQ98030.FDI",
+                    success=True,
+                    valid_count=50,
+                    uncertain_count=0,
+                    detail="re-opened cleanly",
+                ),
+                SimpleNamespace(
+                    category="coaches",
+                    file_path="DBDAT/ENT98030.FDI",
+                    success=True,
+                    valid_count=20,
+                    uncertain_count=0,
+                    detail="re-opened cleanly",
+                ),
+            ],
+        )
+
+    monkeypatch.setattr(cli, "validate_database_files", fake_validate_database_files)
+
+    cli.cmd_validate_database(
+        Namespace(
+            players="DBDAT/JUG98030.FDI",
+            teams="DBDAT/EQ98030.FDI",
+            coaches="DBDAT/ENT98030.FDI",
+            json=False,
+        )
+    )
+
+    out = capsys.readouterr().out
+    assert "Database validation: PASS" in out
+    assert "players: ok valid=100 uncertain=2" in out
+    assert "teams: ok valid=50 uncertain=0" in out
+    assert "coaches: ok valid=20 uncertain=0" in out
+
+
 def test_cmd_search_strict_uses_strict_gatherer(monkeypatch, capsys):
     entries = [
         SimpleNamespace(offset=0x44, source="entry (strict)", record=SimpleNamespace(name="Peter THORNE", team_id=12, squad_number=9)),
@@ -108,14 +163,865 @@ def test_cmd_team_search_matches_canonical_alias(monkeypatch, capsys):
 def test_cmd_rename_stages_by_offset_not_id(monkeypatch, capsys):
     FakeFDIFile.instances = []
     monkeypatch.setattr(cli, "FDIFile", FakeFDIFile)
+    monkeypatch.setattr(cli, "_player_offset_is_writable", lambda *_args, **_kwargs: True)
+    captured = {}
+
+    def fake_rename_player_records(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(
+            changes=[SimpleNamespace(offset=0x10, old_name="Old Name", new_name="New Name")],
+            matched_count=1,
+            valid_count=1,
+            uncertain_count=0,
+            backup_path="dummy.fdi.backup",
+            warnings=[],
+        )
+
+    monkeypatch.setattr(cli, "rename_player_records", fake_rename_player_records)
+
+    cli.cmd_rename(Namespace(file="dummy.fdi", id=123, name="New Name", offset=None))
+    out = capsys.readouterr().out
+    assert captured["file_path"] == "dummy.fdi"
+    assert captured["target_old"] == "Old Name"
+    assert captured["new_name"] == "New Name"
+    assert captured["target_offset"] == 0x10
+    assert captured["include_uncertain"] is True
+    assert captured["write_changes"] is True
+    assert "Renamed 1 player record" in out
+    assert "0x00000010" in out
+
+
+def test_cmd_rename_refuses_non_writable_offset(monkeypatch, capsys):
+    FakeFDIFile.instances = []
+    monkeypatch.setattr(cli, "FDIFile", FakeFDIFile)
+    monkeypatch.setattr(cli, "_player_offset_is_writable", lambda *_args, **_kwargs: False)
+    monkeypatch.setattr(
+        cli,
+        "rename_player_records",
+        lambda **_kwargs: (_ for _ in ()).throw(AssertionError("rename_player_records should not be called")),
+    )
 
     cli.cmd_rename(Namespace(file="dummy.fdi", id=123, name="New Name", offset=None))
     out = capsys.readouterr().out
     inst = FakeFDIFile.instances[0]
-    assert inst.saved is True
-    assert 0x10 in inst.modified_records
-    assert 123 not in inst.modified_records
-    assert "0x00000010" in out
+    assert inst.saved is False
+    assert inst.modified_records == {}
+    assert "Refusing to rename player" in out
+
+
+def test_cmd_player_edit_stages_requested_metadata_fields(monkeypatch, capsys):
+    captured = {}
+
+    def fake_edit_player_metadata_records(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(
+            changes=[
+                SimpleNamespace(
+                    offset=0x20,
+                    name="Paul SCHOLES",
+                    changed_fields={"height": (170, 181), "weight": (68, 81)},
+                )
+            ],
+            matched_count=1,
+            record_count=7130,
+            backup_path=None,
+            warnings=[],
+        )
+
+    monkeypatch.setattr(cli, "edit_player_metadata_records", fake_edit_player_metadata_records)
+
+    cli.cmd_player_edit(
+        Namespace(
+            file="DBDAT/JUG98030.FDI",
+            name="Paul SCHOLES",
+            offset="0x20",
+            new_name=None,
+            position=None,
+            nationality=None,
+            dob_day=None,
+            dob_month=None,
+            dob_year=None,
+            height=181,
+            weight=81,
+            dry_run=True,
+            json=False,
+        )
+    )
+
+    out = capsys.readouterr().out
+    assert captured["file_path"] == "DBDAT/JUG98030.FDI"
+    assert captured["target_name"] == "Paul SCHOLES"
+    assert captured["target_offset"] == 0x20
+    assert captured["height"] == 181
+    assert captured["weight"] == 81
+    assert captured["write_changes"] is False
+    assert "Staged 1 player record" in out
+    assert "weight: 68 -> 81" in out
+
+
+def test_cmd_player_edit_stages_name_change(monkeypatch, capsys):
+    captured = {}
+
+    def fake_edit_player_metadata_records(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(
+            changes=[
+                SimpleNamespace(
+                    offset=0x20,
+                    name="Alan SMITH",
+                    changed_fields={"name": ("Paul SCHOLES", "Alan SMITH")},
+                )
+            ],
+            matched_count=1,
+            record_count=7130,
+            backup_path=None,
+            warnings=[],
+        )
+
+    monkeypatch.setattr(cli, "edit_player_metadata_records", fake_edit_player_metadata_records)
+
+    cli.cmd_player_edit(
+        Namespace(
+            file="DBDAT/JUG98030.FDI",
+            name="Paul SCHOLES",
+            offset="0x20",
+            new_name="Alan SMITH",
+            position=None,
+            nationality=None,
+            dob_day=None,
+            dob_month=None,
+            dob_year=None,
+            height=None,
+            weight=None,
+            dry_run=True,
+            json=False,
+        )
+    )
+
+    out = capsys.readouterr().out
+    assert captured["new_name"] == "Alan SMITH"
+    assert captured["write_changes"] is False
+    assert "name: Paul SCHOLES -> Alan SMITH" in out
+
+
+def test_cmd_player_batch_edit_runs_csv_plan(monkeypatch, capsys, tmp_path):
+    captured = {}
+    csv_path = tmp_path / "player_plan.csv"
+    csv_path.write_text("name,offset,new_name,height\nPaul SCHOLES,0x20,Alan SMITH,181\n", encoding="utf-8")
+
+    def fake_batch_edit_player_metadata_records(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(
+            row_count=1,
+            matched_row_count=1,
+            record_count=7130,
+            csv_path=csv_path,
+            changes=[
+                SimpleNamespace(
+                    offset=0x20,
+                    name="Alan SMITH",
+                    changed_fields={"name": ("Paul SCHOLES", "Alan SMITH"), "height": (170, 181)},
+                )
+            ],
+            backup_path=None,
+            warnings=[],
+        )
+
+    monkeypatch.setattr(cli, "batch_edit_player_metadata_records", fake_batch_edit_player_metadata_records)
+
+    cli.cmd_player_batch_edit(
+        Namespace(
+            file="DBDAT/JUG98030.FDI",
+            csv=str(csv_path),
+            dry_run=True,
+            json=False,
+        )
+    )
+
+    out = capsys.readouterr().out
+    assert captured["file_path"] == "DBDAT/JUG98030.FDI"
+    assert captured["csv_path"] == str(csv_path)
+    assert captured["write_changes"] is False
+    assert "Staged 1 player record" in out
+    assert f"Plan: {csv_path}" in out
+    assert "name: Paul SCHOLES -> Alan SMITH" in out
+
+
+def test_cmd_team_roster_edit_linked_stages_slot_change(monkeypatch, capsys):
+    captured = {}
+
+    def fake_edit_team_roster_eq_jug_linked(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(
+            changes=[
+                SimpleNamespace(
+                    eq_record_id=341,
+                    team_name="Stoke C.",
+                    full_club_name="Stoke City",
+                    slot_number=1,
+                    old_flag=0,
+                    new_flag=1,
+                    old_player_record_id=1234,
+                    new_player_record_id=3384,
+                    old_player_name="Old PLAYER",
+                    new_player_name="Paul SCHOLES",
+                )
+            ],
+            backup_path=None,
+            warnings=[],
+        )
+
+    monkeypatch.setattr(cli, "edit_team_roster_eq_jug_linked", fake_edit_team_roster_eq_jug_linked)
+
+    cli.cmd_team_roster_edit_linked(
+        Namespace(
+            file="DBDAT/EQ98030.FDI",
+            player_file="DBDAT/JUG98030.FDI",
+            team="Stoke C.",
+            eq_record_id=None,
+            slot=1,
+            player_id=3384,
+            flag=1,
+            dry_run=True,
+            json=False,
+        )
+    )
+
+    out = capsys.readouterr().out
+    assert captured == {
+        "team_file": "DBDAT/EQ98030.FDI",
+        "player_file": "DBDAT/JUG98030.FDI",
+        "team_query": "Stoke C.",
+        "eq_record_id": None,
+        "slot_number": 1,
+        "player_record_id": 3384,
+        "flag": 1,
+        "write_changes": False,
+    }
+    assert "Staged 1 parser-backed EQ->JUG linked roster row" in out
+    assert "Stoke C. (Stoke City) slot=01" in out
+    assert "pid 1234 -> 3384" in out
+    assert "flag 0 -> 1" in out
+
+
+def test_cmd_team_roster_edit_same_entry_stages_slot_change(monkeypatch, capsys):
+    captured = {}
+
+    def fake_edit_team_roster_same_entry_authoritative(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(
+            changes=[
+                SimpleNamespace(
+                    team_offset=0x1C1DBC,
+                    team_name="C. At. Madrid",
+                    full_club_name="Club Atletico de Madrid",
+                    entry_offset=0x6D03,
+                    slot_number=2,
+                    old_pid_candidate=1234,
+                    new_pid_candidate=3384,
+                    old_player_name="Old PLAYER",
+                    new_player_name="New PLAYER",
+                    preserved_tail_bytes_hex="58595a",
+                )
+            ],
+            backup_path=None,
+            warnings=[],
+        )
+
+    monkeypatch.setattr(cli, "edit_team_roster_same_entry_authoritative", fake_edit_team_roster_same_entry_authoritative)
+
+    cli.cmd_team_roster_edit_same_entry(
+        Namespace(
+            file="DBDAT/EQ98030.FDI",
+            player_file="DBDAT/JUG98030.FDI",
+            team="At. Madrid",
+            team_offset="0x1C1DBC",
+            slot=2,
+            pid=3384,
+            dry_run=True,
+            json=False,
+        )
+    )
+
+    out = capsys.readouterr().out
+    assert captured == {
+        "team_file": "DBDAT/EQ98030.FDI",
+        "player_file": "DBDAT/JUG98030.FDI",
+        "team_query": "At. Madrid",
+        "team_offset": 0x1C1DBC,
+        "slot_number": 2,
+        "pid_candidate": 3384,
+        "write_changes": False,
+    }
+    assert "Staged 1 supported same-entry roster row" in out
+    assert "team_offset=0x001C1DBC" in out
+    assert "slot=02" in out
+    assert "pid 1234 -> 3384" in out
+    assert "entry=0x00006D03" in out
+    assert "preserved_tail=58595a" in out
+
+
+def test_cmd_team_roster_profile_same_entry_prints_tail_buckets(monkeypatch, capsys):
+    captured = {}
+
+    def fake_profile_same_entry_authoritative_tail_bytes(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(
+            requested_team_count=2,
+            authoritative_team_count=1,
+            row_count=3,
+            buckets=[
+                SimpleNamespace(
+                    tail_bytes_hex="58595a",
+                    tail_byte_2=0x58,
+                    tail_byte_3=0x59,
+                    tail_byte_4=0x5A,
+                    count=2,
+                    sample_teams=["Inline FC"],
+                    sample_players=["Old PLAYER"],
+                )
+            ],
+        )
+
+    monkeypatch.setattr(cli, "profile_same_entry_authoritative_tail_bytes", fake_profile_same_entry_authoritative_tail_bytes)
+
+    cli.cmd_team_roster_profile_same_entry(
+        Namespace(
+            file="DBDAT/EQ98030.FDI",
+            player_file="DBDAT/JUG98030.FDI",
+            team=["Inline"],
+            limit=5,
+            include_fallbacks=False,
+            json=False,
+        )
+    )
+
+    out = capsys.readouterr().out
+    assert captured == {
+        "team_file": "DBDAT/EQ98030.FDI",
+        "player_file": "DBDAT/JUG98030.FDI",
+        "team_queries": ["Inline"],
+        "limit": 5,
+        "include_fallbacks": False,
+    }
+    assert "Authoritative same-entry tail-byte profile" in out
+    assert "tail=58595a" in out
+    assert "b2=88, b3=89, b4=90" in out
+    assert "teams=Inline FC" in out
+
+
+def test_cmd_team_roster_profile_same_entry_can_include_fallbacks(monkeypatch, capsys):
+    captured = {}
+
+    def fake_profile_same_entry_authoritative_tail_bytes(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(
+            requested_team_count=2,
+            authoritative_team_count=2,
+            row_count=2,
+            include_fallbacks=True,
+            provenance_counts={
+                "known_lineup_anchor_assisted": 1,
+                "same_entry_authoritative": 1,
+            },
+            buckets=[
+                SimpleNamespace(
+                    provenance="known_lineup_anchor_assisted",
+                    tail_bytes_hex="616161",
+                    tail_byte_2=0x61,
+                    tail_byte_3=0x61,
+                    tail_byte_4=0x61,
+                    count=1,
+                    sample_teams=["Manchester Utd"],
+                    sample_players=["Henning BERG"],
+                )
+            ],
+        )
+
+    monkeypatch.setattr(cli, "profile_same_entry_authoritative_tail_bytes", fake_profile_same_entry_authoritative_tail_bytes)
+
+    cli.cmd_team_roster_profile_same_entry(
+        Namespace(
+            file="DBDAT/EQ98030.FDI",
+            player_file="DBDAT/JUG98030.FDI",
+            team=["Manchester Utd"],
+            limit=5,
+            include_fallbacks=True,
+            json=False,
+        )
+    )
+
+    out = capsys.readouterr().out
+    assert captured == {
+        "team_file": "DBDAT/EQ98030.FDI",
+        "player_file": "DBDAT/JUG98030.FDI",
+        "team_queries": ["Manchester Utd"],
+        "limit": 5,
+        "include_fallbacks": True,
+    }
+    assert "Preferred same-entry tail-byte profile" in out
+    assert "provenance_counts=known_lineup_anchor_assisted=1, same_entry_authoritative=1" in out
+    assert "provenance=known_lineup_anchor_assisted tail=616161" in out
+
+
+def test_cmd_team_roster_batch_edit_stages_mixed_changes(monkeypatch, capsys):
+    captured = {}
+
+    def fake_batch_edit_team_roster_records(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(
+            linked_changes=[
+                SimpleNamespace(
+                    eq_record_id=341,
+                    team_name="Stoke C.",
+                    full_club_name="Stoke City",
+                    slot_number=1,
+                    old_flag=0,
+                    new_flag=1,
+                    old_player_record_id=1234,
+                    new_player_record_id=3384,
+                    old_player_name="Old LINKED",
+                    new_player_name="New PLAYER",
+                )
+            ],
+            same_entry_changes=[
+                SimpleNamespace(
+                    team_offset=0x1111,
+                    team_name="Milan",
+                    full_club_name="Milan",
+                    entry_offset=0x6D03,
+                    slot_number=2,
+                    old_pid_candidate=2510,
+                    new_pid_candidate=2683,
+                    old_player_name="Old INLINE",
+                    new_player_name="New PLAYER",
+                    preserved_tail_bytes_hex="616161",
+                )
+            ],
+            row_count=2,
+            matched_row_count=2,
+            backup_path=None,
+            warnings=[],
+        )
+
+    monkeypatch.setattr(cli, "batch_edit_team_roster_records", fake_batch_edit_team_roster_records)
+
+    cli.cmd_team_roster_batch_edit(
+        Namespace(
+            file="DBDAT/EQ98030.FDI",
+            player_file="DBDAT/JUG98030.FDI",
+            csv="plan.csv",
+            dry_run=True,
+            json=False,
+        )
+    )
+
+    out = capsys.readouterr().out
+    assert captured == {
+        "team_file": "DBDAT/EQ98030.FDI",
+        "player_file": "DBDAT/JUG98030.FDI",
+        "csv_path": "plan.csv",
+        "write_changes": False,
+    }
+    assert "Staged 2 team roster row" in out
+    assert "linked=1, same_entry=1" in out
+    assert "Stoke C. (Stoke City) slot=01" in out
+    assert "team_offset=0x00001111" in out
+
+
+def test_cmd_player_legacy_weight_profile_prints_recommended_offset(monkeypatch, capsys):
+    captured = {}
+
+    def fake_profile_player_legacy_weight_candidates(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(
+            record_count=11479,
+            candidate_record_count=1382,
+            recommended_offset=14,
+            height_baseline_exact_ratio=0.4776,
+            legacy_valid_record_count=512,
+            legacy_slot_record_count=121,
+            legacy_matched_record_count=97,
+            legacy_exact_match_count=89,
+            legacy_exact_match_ratio=0.9175,
+            offsets=[
+                SimpleNamespace(
+                    relative_offset=14,
+                    eligible_count=1382,
+                    exact_match_count=660,
+                    exact_match_ratio=0.4776,
+                    mean_abs_error=22.92,
+                    top_values=[(30, 547), (72, 51)],
+                ),
+                SimpleNamespace(
+                    relative_offset=17,
+                    eligible_count=1382,
+                    exact_match_count=0,
+                    exact_match_ratio=0.0,
+                    mean_abs_error=53.25,
+                    top_values=[(0, 660), (35, 131)],
+                ),
+            ],
+        )
+
+    monkeypatch.setattr(cli, "profile_player_legacy_weight_candidates", fake_profile_player_legacy_weight_candidates)
+
+    cli.cmd_player_legacy_weight_profile(
+        Namespace(
+            file="DBDAT/JUG98030.FDI",
+            start_offset=14,
+            end_offset=18,
+            top_values=8,
+            json=False,
+        )
+    )
+
+    out = capsys.readouterr().out
+    assert captured == {
+        "file_path": "DBDAT/JUG98030.FDI",
+        "start_offset": 14,
+        "end_offset": 18,
+        "top_values": 8,
+    }
+    assert "Legacy weight candidate profile" in out
+    assert "recommended_offset=14" in out
+    assert "baseline height@marker+13 exact_ratio=0.4776" in out
+    assert "name-only validation: valid_records=512 slot_records=121 matched=97 exact=89 ratio=0.9175" in out
+    assert "marker+14: eligible=1382 exact=660 ratio=0.4776" in out
+
+
+def test_cmd_player_inspect_prints_indexed_metadata(monkeypatch, capsys):
+    captured = {}
+
+    def fake_inspect_player_metadata_records(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(
+            record_count=11479,
+            records=[
+                SimpleNamespace(
+                    offset=0x5A8EA,
+                    record_id=3384,
+                    name="Paul SCHOLES",
+                    attribute_prefix=[77, 89, 107],
+                    post_weight_byte=30,
+                    trailer_byte=19,
+                    sidecar_byte=13,
+                    indexed_unknown_0=10,
+                    indexed_unknown_1=0,
+                    face_components=[12, 8, 15, 7],
+                    nationality=30,
+                    indexed_unknown_9=1,
+                    indexed_unknown_10=5,
+                    position=2,
+                    birth_day=16,
+                    birth_month=11,
+                    birth_year=1974,
+                    height=170,
+                    weight=68,
+                    suffix_anchor=0x1A,
+                )
+            ],
+        )
+
+    monkeypatch.setattr(cli, "inspect_player_metadata_records", fake_inspect_player_metadata_records)
+
+    cli.cmd_player_inspect(
+        Namespace(
+            file="DBDAT/JUG98030.FDI",
+            name="Paul SCHOLES",
+            offset="0x5A8EA",
+            json=False,
+        )
+    )
+
+    out = capsys.readouterr().out
+    assert captured["file_path"] == "DBDAT/JUG98030.FDI"
+    assert captured["target_name"] == "Paul SCHOLES"
+    assert captured["target_offset"] == 0x5A8EA
+    assert "Paul SCHOLES" in out
+    assert "u0=10" in out
+    assert "u1=0" in out
+    assert "u9=1" in out
+    assert "u10=5" in out
+    assert "ht=170" in out
+    assert "wt=68" in out
+    assert "tail_prefix=[77, 89, 107]" in out
+    assert "postwt=30" in out
+    assert "posthint=nat-search-mirror" in out
+    assert "trail=19" in out
+    assert "sidecar=13" in out
+    assert "face=[12, 8, 15, 7]" in out
+    assert "ui-grey" in out
+    assert "red/auburn?" in out
+
+
+def test_cmd_player_suffix_profile_prints_top_buckets(monkeypatch, capsys):
+    captured = {}
+
+    def fake_profile_indexed_player_suffix_bytes(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(
+            record_count=11479,
+            anchored_count=1954,
+            filtered_count=23,
+            nationality_filter=44,
+            position_filter=None,
+            buckets=[
+                SimpleNamespace(
+                    indexed_unknown_9=1,
+                    indexed_unknown_10=1,
+                    count=21,
+                    sample_names=["Henning BERG", "Tore KVARME"],
+                )
+            ],
+        )
+
+    monkeypatch.setattr(cli, "profile_indexed_player_suffix_bytes", fake_profile_indexed_player_suffix_bytes)
+
+    cli.cmd_player_suffix_profile(
+        Namespace(
+            file="DBDAT/JUG98030.FDI",
+            nationality=44,
+            position=None,
+            limit=5,
+            json=False,
+        )
+    )
+
+    out = capsys.readouterr().out
+    assert captured["file_path"] == "DBDAT/JUG98030.FDI"
+    assert captured["nationality"] == 44
+    assert captured["position"] is None
+    assert captured["limit"] == 5
+    assert "nat=44" in out
+    assert "u9=1 u10=1" in out
+    assert "count=21" in out
+    assert "Henning BERG" in out
+    assert "fair/blond?" in out
+
+
+def test_cmd_player_leading_profile_prints_top_buckets(monkeypatch, capsys):
+    captured = {}
+
+    def fake_profile_indexed_player_leading_bytes(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(
+            record_count=11479,
+            anchored_count=1954,
+            filtered_count=495,
+            nationality_filter=None,
+            position_filter=None,
+            indexed_unknown_0_filter=None,
+            indexed_unknown_1_filter=1,
+            indexed_unknown_9_filter=None,
+            indexed_unknown_10_filter=None,
+            position_counts=[(1, 167), (3, 143), (2, 135), (0, 50)],
+            nationality_counts=[(30, 324), (45, 25), (19, 23)],
+            buckets=[
+                SimpleNamespace(
+                    indexed_unknown_0=19,
+                    indexed_unknown_1=1,
+                    count=32,
+                    sample_names=["Craig MOORE", "Pavel SRNICEK"],
+                )
+            ],
+        )
+
+    monkeypatch.setattr(cli, "profile_indexed_player_leading_bytes", fake_profile_indexed_player_leading_bytes)
+
+    cli.cmd_player_leading_profile(
+        Namespace(
+            file="DBDAT/JUG98030.FDI",
+            nationality=None,
+            position=None,
+            u0=None,
+            u1=1,
+            u9=None,
+            u10=None,
+            limit=5,
+            json=False,
+        )
+    )
+
+    out = capsys.readouterr().out
+    assert captured["file_path"] == "DBDAT/JUG98030.FDI"
+    assert captured["nationality"] is None
+    assert captured["position"] is None
+    assert captured["indexed_unknown_0"] is None
+    assert captured["indexed_unknown_1"] == 1
+    assert captured["indexed_unknown_9"] is None
+    assert captured["indexed_unknown_10"] is None
+    assert captured["limit"] == 5
+    assert "u1=1" in out
+    assert "positions=pos=1(167), pos=3(143), pos=2(135), pos=0(50)" in out
+    assert "nationalities=nat=30(324), nat=45(25), nat=19(23)" in out
+    assert "u0=19 u1=1" in out
+    assert "count=32" in out
+    assert "Craig MOORE" in out
+    assert "ui-green" in out
+
+
+def test_cmd_player_tail_prefix_profile_prints_top_buckets(monkeypatch, capsys):
+    captured = {}
+
+    def fake_profile_indexed_player_attribute_prefixes(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(
+            record_count=11479,
+            anchored_count=1954,
+            filtered_count=4,
+            nationality_filter=30,
+            position_filter=2,
+            indexed_unknown_0_filter=10,
+            indexed_unknown_1_filter=0,
+            indexed_unknown_9_filter=1,
+            indexed_unknown_10_filter=5,
+            attribute_0_filter=77,
+            attribute_1_filter=89,
+            attribute_2_filter=107,
+            post_weight_byte_filter=30,
+            trailer_byte_filter=19,
+            sidecar_byte_filter=13,
+            layout_verified_count=4,
+            layout_mismatch_count=0,
+            attribute_0_counts=[(77, 4)],
+            attribute_1_counts=[(89, 4)],
+            attribute_2_counts=[(107, 4)],
+            post_weight_byte_counts=[(30, 4)],
+            post_weight_nationality_eligible_count=4,
+            post_weight_nationality_match_count=4,
+            post_weight_nationality_match_ratio=1.0,
+            post_weight_divergent_counts=[(30, 3)],
+            post_weight_nationality_mismatch_pairs=[(30, 31, 2), (30, 45, 1)],
+            trailer_byte_counts=[(19, 4)],
+            sidecar_byte_counts=[(13, 4)],
+            buckets=[
+                SimpleNamespace(
+                    attribute_0=77,
+                    attribute_1=89,
+                    attribute_2=107,
+                    count=4,
+                    sample_names=["Paul SCHOLES"],
+                )
+            ],
+            signature_buckets=[
+                SimpleNamespace(
+                    attribute_0=77,
+                    attribute_1=89,
+                    attribute_2=107,
+                    trailer_byte=19,
+                    sidecar_byte=13,
+                    count=4,
+                    sample_names=["Paul SCHOLES"],
+                )
+            ],
+        )
+
+    monkeypatch.setattr(cli, "profile_indexed_player_attribute_prefixes", fake_profile_indexed_player_attribute_prefixes)
+
+    cli.cmd_player_tail_prefix_profile(
+        Namespace(
+            file="DBDAT/JUG98030.FDI",
+            nationality=30,
+            position=2,
+            u0=10,
+            u1=0,
+            u9=1,
+            u10=5,
+            a0=77,
+            a1=89,
+            a2=107,
+            post_weight=30,
+            trail=19,
+            sidecar=13,
+            limit=5,
+            json=False,
+        )
+    )
+
+    out = capsys.readouterr().out
+    assert captured["file_path"] == "DBDAT/JUG98030.FDI"
+    assert captured["nationality"] == 30
+    assert captured["position"] == 2
+    assert captured["indexed_unknown_0"] == 10
+    assert captured["indexed_unknown_1"] == 0
+    assert captured["indexed_unknown_9"] == 1
+    assert captured["indexed_unknown_10"] == 5
+    assert captured["attribute_0"] == 77
+    assert captured["attribute_1"] == 89
+    assert captured["attribute_2"] == 107
+    assert captured["post_weight_byte"] == 30
+    assert captured["trailer_byte"] == 19
+    assert captured["sidecar_byte"] == 13
+    assert captured["limit"] == 5
+    assert "nat=30" in out
+    assert "u0=10" in out
+    assert "u9=1" in out
+    assert "a0=77" in out
+    assert "a1=89" in out
+    assert "a2=107" in out
+    assert "postwt=30" in out
+    assert "trail=19" in out
+    assert "sidecar=13" in out
+    assert "structural signature" in out
+    assert "layout=verified=4 mismatch=0" in out
+    assert "attr0=a0=77(4)" in out
+    assert "attr1=a1=89(4)" in out
+    assert "attr2=a2=107(4)" in out
+    assert "post_weight=postwt=30(4)" in out
+    assert "post_weight_vs_nat=match=4/4 ratio=1.0000" in out
+    assert "post_weight_group_keys=postwt=30(3)" in out
+    assert "post_weight_mismatches=postwt=30->nat=31(2), postwt=30->nat=45(1)" in out
+    assert "trailer=trail=19(4)" in out
+    assert "sidecar0=13(4)" in out
+    assert "tail_prefix=[77, 89, 107]: count=4" in out
+    assert "tail_signature=[77, 89, 107 | trail=19 sidecar=13]: count=4" in out
+    assert "Paul SCHOLES" in out
+
+
+def test_cmd_player_leading_profile_prints_guard_hints(monkeypatch, capsys):
+    def fake_profile_indexed_player_leading_bytes(**kwargs):
+        return SimpleNamespace(
+            record_count=11479,
+            anchored_count=1954,
+            filtered_count=1,
+            nationality_filter=None,
+            position_filter=None,
+            indexed_unknown_0_filter=None,
+            indexed_unknown_1_filter=None,
+            indexed_unknown_9_filter=None,
+            indexed_unknown_10_filter=None,
+            position_counts=[],
+            nationality_counts=[],
+            buckets=[
+                SimpleNamespace(
+                    indexed_unknown_0=0x63,
+                    indexed_unknown_1=3,
+                    count=1,
+                    sample_names=["Sentinel PLAYER"],
+                )
+            ],
+        )
+
+    monkeypatch.setattr(cli, "profile_indexed_player_leading_bytes", fake_profile_indexed_player_leading_bytes)
+
+    cli.cmd_player_leading_profile(
+        Namespace(
+            file="DBDAT/JUG98030.FDI",
+            nationality=None,
+            position=None,
+            u0=None,
+            u1=None,
+            u9=None,
+            u10=None,
+            limit=5,
+            json=False,
+        )
+    )
+
+    out = capsys.readouterr().out
+    assert "u0=99 u1=3" in out
+    assert "guard=u0-reserved?+u1-excluded?" in out
 
 
 def test_build_club_index_rows_aggregates_and_ranks():

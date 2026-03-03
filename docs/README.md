@@ -12,6 +12,7 @@ These root-level docs define the project’s goals, constraints, and engineering
 ## Canonical Docs
 
 Use these for current truth:
+- [CURRENT_ROADMAP.md](CURRENT_ROADMAP.md)
 - [GETTING_STARTED.md](GETTING_STARTED.md)
 - [EDITOR_README.md](EDITOR_README.md)
 - [OPERATIONS.md](OPERATIONS.md)

@@ -53,6 +53,10 @@ def _extract_roster_rows_from_run(decoded: bytes, run: dict[str, Any]) -> list[d
                 "pos": int(pos),
                 "row5_raw_hex": row5.hex(),
                 "pid_candidate": int(pid),
+                "tail_bytes_hex": row5[2:5].hex(),
+                "tail_byte_2": int(row5[2]),
+                "tail_byte_3": int(row5[3]),
+                "tail_byte_4": int(row5[4]),
                 "is_empty_slot": bool(row5 == b"\x61\x61\x61\x61\x61"),
             }
         )

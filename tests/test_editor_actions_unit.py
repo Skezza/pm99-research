@@ -68,6 +68,60 @@ class FakeFDIFile:
         self.last_backup_path = self.file_path + ".backup"
 
 
+def test_validate_database_files_reports_reopenable_files(monkeypatch, tmp_path):
+    player_path = tmp_path / "JUGTEST.FDI"
+    team_path = tmp_path / "EQTEST.FDI"
+    coach_path = tmp_path / "ENTTEST.FDI"
+    for path in (player_path, team_path, coach_path):
+        path.write_bytes(b"placeholder")
+
+    monkeypatch.setattr(
+        editor_actions,
+        "gather_player_records",
+        lambda _: ([RecordEntry(offset=0x10, record=FakePlayer(), source="load")], []),
+    )
+    monkeypatch.setattr(
+        editor_actions,
+        "gather_team_records",
+        lambda _: ([RecordEntry(offset=0x20, record=FakeTeam(), source="loader")], []),
+    )
+    monkeypatch.setattr(
+        editor_actions,
+        "gather_coach_records",
+        lambda _: ([RecordEntry(offset=0x30, record=FakeCoach(), source="loader")], []),
+    )
+
+    result = editor_actions.validate_database_files(
+        player_file=str(player_path),
+        team_file=str(team_path),
+        coach_file=str(coach_path),
+    )
+
+    assert result.all_valid is True
+    assert len(result.files) == 3
+    assert [row.category for row in result.files] == ["players", "teams", "coaches"]
+    assert all(row.success for row in result.files)
+
+
+def test_validate_database_files_reports_parse_failures(monkeypatch, tmp_path):
+    player_path = tmp_path / "BROKEN.FDI"
+    player_path.write_bytes(b"placeholder")
+
+    monkeypatch.setattr(
+        editor_actions,
+        "gather_player_records",
+        lambda _: (_ for _ in ()).throw(ValueError("broken parse")),
+    )
+
+    result = editor_actions.validate_database_files(player_file=str(player_path))
+
+    assert result.all_valid is False
+    assert len(result.files) == 1
+    assert result.files[0].category == "players"
+    assert result.files[0].success is False
+    assert result.files[0].detail == "broken parse"
+
+
 def test_rename_player_records_staged_mode(monkeypatch, tmp_path):
     monkeypatch.setattr(
         editor_actions,

@@ -12,15 +12,27 @@ from pathlib import Path
 
 from .bulk_rename import bulk_rename_players, revert_player_renames
 from .editor_actions import (
+    batch_edit_player_metadata_records,
+    batch_edit_team_roster_records,
+    edit_player_metadata_records,
+    edit_team_roster_eq_jug_linked,
+    edit_team_roster_same_entry_authoritative,
     extract_team_rosters_eq_jug_linked,
     extract_team_rosters_eq_same_entry_overlap,
     inspect_main_dat_prefix,
+    inspect_player_metadata_records,
     parse_player_skill_patch_assignments,
     patch_main_dat_prefix,
     patch_player_visible_skills_dd6361,
+    profile_indexed_player_attribute_prefixes,
+    profile_player_legacy_weight_candidates,
+    profile_same_entry_authoritative_tail_bytes,
+    profile_indexed_player_leading_bytes,
+    profile_indexed_player_suffix_bytes,
     rename_coach_records,
     rename_player_records,
     rename_team_records,
+    validate_database_files,
 )
 from .editor_helpers import (
     _coach_display_name,
@@ -31,10 +43,12 @@ from .editor_helpers import (
 from .editor_sources import (
     gather_coach_records,
     gather_player_records,
+    gather_player_records_heuristic,
     gather_player_records_strict,
     gather_team_records,
 )
 from .io import FDIFile
+from .models import PlayerRecord
 from .pkf_searcher import PKFSearcher
 from .xor import decode_entry
 
@@ -74,6 +88,26 @@ def _write_json_report(path: str | None, value) -> None:
     Path(path).write_text(json.dumps(_jsonable(value), indent=2) + "\n", encoding="utf-8")
 
 
+def _print_database_validation_result(result) -> None:
+    files = list(getattr(result, "files", []) or [])
+    if not files:
+        print("No database files were validated.")
+        return
+    print(f"Database validation: {'PASS' if getattr(result, 'all_valid', False) else 'FAIL'}")
+    for item in files:
+        status = "ok" if getattr(item, "success", False) else "error"
+        valid_count = int(getattr(item, "valid_count", 0) or 0)
+        uncertain_count = int(getattr(item, "uncertain_count", 0) or 0)
+        detail = str(getattr(item, "detail", "") or "")
+        print(
+            f"  {getattr(item, 'category', 'unknown')}: {status} "
+            f"valid={valid_count} uncertain={uncertain_count} "
+            f"path={getattr(item, 'file_path', '')}"
+        )
+        if detail:
+            print(f"    {detail}")
+
+
 def _print_linked_team_rosters(rosters, row_limit: int) -> None:
     if not rosters:
         print("No parser-backed EQ->JUG roster rows found.")
@@ -108,6 +142,142 @@ def _print_linked_team_rosters(rosters, row_limit: int) -> None:
             print(f"  slot={shown:02d} pid={pid:5d} flag={flag} {label}")
 
 
+def _print_linked_team_roster_edit_result(result, *, dry_run: bool) -> None:
+    if not result.changes:
+        print("No linked team roster rows changed.")
+    else:
+        action = "Staged" if dry_run else "Updated"
+        print(f"{action} {len(result.changes)} parser-backed EQ->JUG linked roster row(s)")
+        for change in result.changes[:20]:
+            display = change.team_name
+            if change.full_club_name and change.full_club_name != change.team_name:
+                display = f"{change.team_name} ({change.full_club_name})"
+            old_name = change.old_player_name or "(name unresolved)"
+            new_name = change.new_player_name or "(name unresolved)"
+            print(
+                f"  eq_record_id={change.eq_record_id} {display} slot={change.slot_number:02d}: "
+                f"pid {change.old_player_record_id} -> {change.new_player_record_id} "
+                f"[{old_name} -> {new_name}], flag {change.old_flag} -> {change.new_flag}"
+            )
+    if result.backup_path:
+        print(f"Backup: {result.backup_path}")
+    for warning in result.warnings:
+        prefix = f"Warning at {warning.offset}" if warning.offset is not None else "Warning"
+        print(f"{prefix}: {warning.message}", file=sys.stderr)
+
+
+def _print_same_entry_team_roster_edit_result(result, *, dry_run: bool) -> None:
+    if not result.changes:
+        print("No same-entry roster rows changed.")
+    else:
+        action = "Staged" if dry_run else "Updated"
+        print(f"{action} {len(result.changes)} supported same-entry roster row(s)")
+        for change in result.changes[:20]:
+            display = change.team_name
+            if change.full_club_name and change.full_club_name != change.team_name:
+                display = f"{change.team_name} ({change.full_club_name})"
+            old_name = change.old_player_name or "(name unresolved)"
+            new_name = change.new_player_name or "(name unresolved)"
+            provenance = str(getattr(change, "provenance", "") or "")
+            provenance_suffix = f" provenance={provenance}" if provenance else ""
+            tail_suffix = (
+                f" preserved_tail={change.preserved_tail_bytes_hex}"
+                if str(getattr(change, "preserved_tail_bytes_hex", "") or "")
+                else ""
+            )
+            print(
+                f"  team_offset=0x{change.team_offset:08X} {display} slot={change.slot_number:02d}: "
+                f"pid {change.old_pid_candidate} -> {change.new_pid_candidate} "
+                f"[{old_name} -> {new_name}] entry=0x{change.entry_offset:08X}{provenance_suffix}{tail_suffix}"
+            )
+    if result.backup_path:
+        print(f"Backup: {result.backup_path}")
+    for warning in result.warnings:
+        prefix = f"Warning at {warning.offset}" if warning.offset is not None else "Warning"
+        print(f"{prefix}: {warning.message}", file=sys.stderr)
+
+
+def _print_team_roster_batch_edit_result(result, *, dry_run: bool) -> None:
+    total_changes = len(getattr(result, "linked_changes", []) or []) + len(getattr(result, "same_entry_changes", []) or [])
+    if total_changes == 0:
+        print("No team roster rows changed.")
+    else:
+        action = "Staged" if dry_run else "Updated"
+        print(
+            f"{action} {total_changes} team roster row(s) "
+            f"(linked={len(getattr(result, 'linked_changes', []) or [])}, "
+            f"same_entry={len(getattr(result, 'same_entry_changes', []) or [])})"
+        )
+        linked_result = argparse.Namespace(
+            changes=list(getattr(result, "linked_changes", []) or []),
+            backup_path=None,
+            warnings=[],
+        )
+        same_entry_result = argparse.Namespace(
+            changes=list(getattr(result, "same_entry_changes", []) or []),
+            backup_path=None,
+            warnings=[],
+        )
+        if linked_result.changes:
+            _print_linked_team_roster_edit_result(linked_result, dry_run=dry_run)
+        if same_entry_result.changes:
+            _print_same_entry_team_roster_edit_result(same_entry_result, dry_run=dry_run)
+    if result.backup_path:
+        print(f"Backup: {result.backup_path}")
+    for warning in result.warnings:
+        prefix = f"Warning at {warning.offset}" if warning.offset is not None else "Warning"
+        print(f"{prefix}: {warning.message}", file=sys.stderr)
+
+
+def _same_entry_row_tail_text(row) -> str:
+    tail_hex = str((row or {}).get("tail_bytes_hex") or "").strip().lower()
+    if len(tail_hex) == 6:
+        return tail_hex
+    row5_raw_hex = str((row or {}).get("row5_raw_hex") or "").strip().lower()
+    if len(row5_raw_hex) == 10:
+        return row5_raw_hex[4:10]
+    return ""
+
+
+def _print_same_entry_tail_profile_result(result) -> None:
+    if not result.buckets:
+        if getattr(result, "include_fallbacks", False):
+            print("No preferred same-entry tail-byte buckets matched.")
+        else:
+            print("No authoritative same-entry tail-byte buckets matched.")
+        return
+    title = "Preferred same-entry tail-byte profile" if getattr(result, "include_fallbacks", False) else "Authoritative same-entry tail-byte profile"
+    print(
+        f"{title}: requested_teams={result.requested_team_count}, "
+        f"authoritative_teams={result.authoritative_team_count}, rows={result.row_count}"
+    )
+    provenance_counts = dict(getattr(result, "provenance_counts", {}) or {})
+    if provenance_counts:
+        counts_text = ", ".join(f"{key}={provenance_counts[key]}" for key in sorted(provenance_counts.keys()))
+        print(f"  provenance_counts={counts_text}")
+    if len(result.buckets) == 1 and int(getattr(result.buckets[0], "count", 0) or 0) == int(getattr(result, "row_count", 0) or 0):
+        only_bucket = result.buckets[0]
+        if str(getattr(only_bucket, "tail_bytes_hex", "") or ""):
+            field_name = "all_preferred_rows_share_tail" if getattr(result, "include_fallbacks", False) else "all_authoritative_rows_share_tail"
+            print(f"  {field_name}={only_bucket.tail_bytes_hex}")
+    for bucket in result.buckets:
+        teams = ", ".join(bucket.sample_teams)
+        players = ", ".join(bucket.sample_players)
+        suffix_parts = []
+        if teams:
+            suffix_parts.append(f"teams={teams}")
+        if players:
+            suffix_parts.append(f"players={players}")
+        suffix = f" {' | '.join(suffix_parts)}" if suffix_parts else ""
+        provenance = str(getattr(bucket, "provenance", "") or "")
+        provenance_prefix = f"provenance={provenance} " if provenance else ""
+        print(
+            f"  {provenance_prefix}tail={bucket.tail_bytes_hex or 'n/a'} "
+            f"(b2={bucket.tail_byte_2}, b3={bucket.tail_byte_3}, b4={bucket.tail_byte_4}): "
+            f"count={bucket.count}{suffix}"
+        )
+
+
 def _gather_player_entries_for_cli(args):
     if getattr(args, "strict", False):
         return gather_player_records_strict(
@@ -115,6 +285,23 @@ def _gather_player_entries_for_cli(args):
             require_team_id=getattr(args, "require_team_id", False),
         )
     return gather_player_records(args.file)
+
+
+def _player_offset_is_writable(file_bytes, offset: int, expected_name: str) -> bool:
+    """Return True when the offset decodes as a real player entry matching the expected name."""
+    if file_bytes is None:
+        # Unit-test stubs may not provide the loaded file image.
+        return True
+    if not isinstance(offset, int) or offset < 0 or offset + 2 > len(file_bytes):
+        return False
+    try:
+        decoded, length = decode_entry(file_bytes, offset)
+        parsed = PlayerRecord.from_bytes(decoded, offset)
+    except Exception:
+        return False
+    if length < 40 or length > 1024:
+        return False
+    return _player_display_name(parsed).strip().lower() == (expected_name or "").strip().lower()
 
 
 def _player_entry_payload(entry):
@@ -125,6 +312,392 @@ def _player_entry_payload(entry):
         "squad_number": getattr(entry.record, "squad_number", None),
         "source": entry.source,
     }
+
+
+def _print_player_rename_result(result, *, dry_run: bool) -> None:
+    if not result.changes:
+        print("No player records changed.")
+        return
+    print(
+        f"{'Staged' if dry_run else 'Renamed'} {len(result.changes)} player record(s) "
+        f"(matched={result.matched_count}, valid={result.valid_count}, uncertain={result.uncertain_count})"
+    )
+    for change in result.changes[:20]:
+        print(f"  0x{change.offset:08X}: {change.old_name} -> {change.new_name}")
+    if len(result.changes) > 20:
+        print(f"  ... and {len(result.changes) - 20} more")
+    if result.backup_path:
+        print(f"Backup: {result.backup_path}")
+    for warning in result.warnings:
+        print(f"Warning at {warning.offset}: {warning.message}", file=sys.stderr)
+
+
+def _print_player_metadata_edit_result(result, *, dry_run: bool) -> None:
+    count_label = "indexed_entries" if getattr(result, "storage_mode", "indexed") == "indexed" else "scanned_records"
+    if not result.changes:
+        print("No player metadata records changed.")
+    else:
+        print(
+            f"{'Staged' if dry_run else 'Updated'} {len(result.changes)} player record(s) "
+            f"(matched={result.matched_count}, {count_label}={result.record_count})"
+        )
+        for change in result.changes[:20]:
+            field_changes = ", ".join(
+                f"{field_name}: {before} -> {after}"
+                for field_name, (before, after) in change.changed_fields.items()
+            )
+            print(f"  0x{change.offset:08X}: {change.name} [{field_changes}]")
+        if len(result.changes) > 20:
+            print(f"  ... and {len(result.changes) - 20} more")
+        if result.backup_path:
+            print(f"Backup: {result.backup_path}")
+    for warning in result.warnings:
+        prefix = f"Warning at {warning.offset}" if warning.offset is not None else "Warning"
+        print(f"{prefix}: {warning.message}", file=sys.stderr)
+
+
+def _print_player_batch_edit_result(result, *, dry_run: bool) -> None:
+    count_label = "indexed_entries" if getattr(result, "storage_mode", "indexed") == "indexed" else "scanned_records"
+    if not result.changes:
+        print("No player batch edits changed any records.")
+    else:
+        print(
+            f"{'Staged' if dry_run else 'Updated'} {len(result.changes)} player record(s) "
+            f"from {result.row_count} CSV row(s) (matched_rows={result.matched_row_count}, {count_label}={result.record_count})"
+        )
+        for change in result.changes[:20]:
+            field_changes = ", ".join(
+                f"{field_name}: {before} -> {after}"
+                for field_name, (before, after) in change.changed_fields.items()
+            )
+            print(f"  0x{change.offset:08X}: {change.name} [{field_changes}]")
+        if len(result.changes) > 20:
+            print(f"  ... and {len(result.changes) - 20} more")
+        print(f"Plan: {result.csv_path}")
+        if result.backup_path:
+            print(f"Backup: {result.backup_path}")
+    for warning in result.warnings:
+        prefix = f"Warning at {warning.offset}" if warning.offset is not None else "Warning"
+        print(f"{prefix}: {warning.message}", file=sys.stderr)
+
+
+def _print_player_metadata_inspect_result(result) -> None:
+    if not result.records:
+        print("No player metadata records matched.")
+        return
+    count_label = "indexed_entries" if getattr(result, "storage_mode", "indexed") == "indexed" else "scanned_records"
+    print(
+        f"Matched {len(result.records)} player record(s) "
+        f"({count_label}={result.record_count})"
+    )
+    for row in result.records[:20]:
+        anchor_text = f"0x{row.suffix_anchor:02X}" if isinstance(row.suffix_anchor, int) else "n/a"
+        dob_text = (
+            f"{int(row.birth_day or 0):02d}/{int(row.birth_month or 0):02d}/{int(row.birth_year or 0):04d}"
+            if row.birth_day is not None and row.birth_month is not None and row.birth_year is not None
+            else "n/a"
+        )
+        hint = _player_suffix_pair_hint(row.indexed_unknown_9, row.indexed_unknown_10)
+        hint_text = f" hint={hint}" if hint else ""
+        face_text = f" face={row.face_components}" if row.face_components else ""
+        prefix_text = ""
+        if list(getattr(row, "attribute_prefix", []) or []):
+            prefix_text = f" tail_prefix={list(getattr(row, 'attribute_prefix', []) or [])}"
+        post_weight_text = ""
+        if getattr(row, "post_weight_byte", None) is not None:
+            post_weight_text = f" postwt={getattr(row, 'post_weight_byte', None)}"
+        post_weight_hint_text = ""
+        if (
+            getattr(row, "post_weight_byte", None) is not None
+            and getattr(row, "nationality", None) is not None
+        ):
+            if getattr(row, "post_weight_byte", None) == getattr(row, "nationality", None):
+                post_weight_hint_text = " posthint=nat-search-mirror"
+            else:
+                post_weight_hint_text = " posthint=nat-search-group"
+        trailer_text = ""
+        if getattr(row, "trailer_byte", None) is not None:
+            trailer_text = f" trail={getattr(row, 'trailer_byte', None)}"
+        sidecar_text = ""
+        if getattr(row, "sidecar_byte", None) is not None:
+            sidecar_text = f" sidecar={getattr(row, 'sidecar_byte', None)}"
+        leading_text = ""
+        if row.indexed_unknown_0 is not None or row.indexed_unknown_1 is not None:
+            leading_text = f" u0={row.indexed_unknown_0} u1={row.indexed_unknown_1}"
+        u1_hint = _player_u1_display_hint(row.indexed_unknown_1)
+        u1_hint_text = f" u1hint={u1_hint}" if u1_hint else ""
+        guard_hint = _player_leading_guard_hint(row.indexed_unknown_0, row.indexed_unknown_1)
+        guard_hint_text = f" guard={guard_hint}" if guard_hint else ""
+        print(
+            f"  0x{row.offset:08X} rid={row.record_id:5d}: {row.name} "
+            f"[nat={row.nationality}{leading_text} u9={row.indexed_unknown_9} u10={row.indexed_unknown_10} "
+            f"pos={row.position} dob={dob_text} ht={row.height} wt={row.weight} anchor={anchor_text}{prefix_text}{post_weight_text}{post_weight_hint_text}{trailer_text}{sidecar_text}{face_text}{u1_hint_text}{guard_hint_text}{hint_text}]"
+        )
+    if len(result.records) > 20:
+        print(f"  ... and {len(result.records) - 20} more")
+
+
+def _print_player_legacy_weight_profile_result(result) -> None:
+    if not getattr(result, "offsets", None):
+        print("No legacy weight candidate offsets were profiled.")
+        return
+    print(
+        f"Legacy weight candidate profile: indexed_entries={result.record_count}, "
+        f"control_records={result.candidate_record_count}, recommended_offset={result.recommended_offset}"
+    )
+    print(f"  baseline height@marker+13 exact_ratio={getattr(result, 'height_baseline_exact_ratio', 0.0):.4f}")
+    if int(getattr(result, "legacy_valid_record_count", 0) or 0):
+        print(
+            "  name-only validation: "
+            + f"valid_records={int(getattr(result, 'legacy_valid_record_count', 0) or 0)} "
+            + f"slot_records={int(getattr(result, 'legacy_slot_record_count', 0) or 0)} "
+            + f"matched={int(getattr(result, 'legacy_matched_record_count', 0) or 0)} "
+            + f"exact={int(getattr(result, 'legacy_exact_match_count', 0) or 0)} "
+            + f"ratio={float(getattr(result, 'legacy_exact_match_ratio', 0.0) or 0.0):.4f}"
+        )
+    for row in result.offsets:
+        values = ", ".join(f"{value}({count})" for value, count in list(getattr(row, "top_values", []) or []))
+        values_suffix = f" top={values}" if values else ""
+        print(
+            f"  marker+{row.relative_offset}: eligible={row.eligible_count} "
+            f"exact={row.exact_match_count} ratio={row.exact_match_ratio:.4f} "
+            f"mae={row.mean_abs_error:.2f}{values_suffix}"
+        )
+
+
+def _print_player_suffix_profile_result(result) -> None:
+    if not result.buckets:
+        print("No indexed suffix profile buckets matched.")
+        return
+    filter_bits = []
+    if result.nationality_filter is not None:
+        filter_bits.append(f"nat={result.nationality_filter}")
+    if result.position_filter is not None:
+        filter_bits.append(f"pos={result.position_filter}")
+    filter_text = f" [{' '.join(filter_bits)}]" if filter_bits else ""
+    print(
+        f"Indexed suffix profile{filter_text}: "
+        f"anchored={result.anchored_count}, filtered={result.filtered_count}, indexed_entries={result.record_count}"
+    )
+    for bucket in result.buckets:
+        names = ", ".join(bucket.sample_names)
+        suffix = f" examples={names}" if names else ""
+        hint = _player_suffix_pair_hint(bucket.indexed_unknown_9, bucket.indexed_unknown_10)
+        hint_text = f" hint={hint}" if hint else ""
+        print(
+            f"  u9={bucket.indexed_unknown_9} u10={bucket.indexed_unknown_10}: "
+            f"count={bucket.count}{hint_text}{suffix}"
+        )
+
+
+def _print_player_leading_profile_result(result) -> None:
+    if not result.buckets:
+        print("No indexed leading-byte profile buckets matched.")
+        return
+    filter_bits = []
+    if result.nationality_filter is not None:
+        filter_bits.append(f"nat={result.nationality_filter}")
+    if result.position_filter is not None:
+        filter_bits.append(f"pos={result.position_filter}")
+    if result.indexed_unknown_0_filter is not None:
+        filter_bits.append(f"u0={result.indexed_unknown_0_filter}")
+    if result.indexed_unknown_1_filter is not None:
+        filter_bits.append(f"u1={result.indexed_unknown_1_filter}")
+    if result.indexed_unknown_9_filter is not None:
+        filter_bits.append(f"u9={result.indexed_unknown_9_filter}")
+    if result.indexed_unknown_10_filter is not None:
+        filter_bits.append(f"u10={result.indexed_unknown_10_filter}")
+    filter_text = f" [{' '.join(filter_bits)}]" if filter_bits else ""
+    print(
+        f"Indexed leading-byte profile{filter_text}: "
+        f"anchored={result.anchored_count}, filtered={result.filtered_count}, indexed_entries={result.record_count}"
+    )
+    position_text = _format_profile_count_summary(
+        getattr(result, "position_counts", []),
+        label="pos",
+    )
+    if position_text:
+        print(f"  positions={position_text}")
+    nationality_text = _format_profile_count_summary(
+        getattr(result, "nationality_counts", []),
+        label="nat",
+    )
+    if nationality_text:
+        print(f"  nationalities={nationality_text}")
+    for bucket in result.buckets:
+        names = ", ".join(bucket.sample_names)
+        suffix = f" examples={names}" if names else ""
+        hint = _player_u1_display_hint(bucket.indexed_unknown_1)
+        hint_text = f" hint={hint}" if hint else ""
+        guard_hint = _player_leading_guard_hint(bucket.indexed_unknown_0, bucket.indexed_unknown_1)
+        guard_hint_text = f" guard={guard_hint}" if guard_hint else ""
+        print(
+            f"  u0={bucket.indexed_unknown_0} u1={bucket.indexed_unknown_1}: "
+            f"count={bucket.count}{hint_text}{guard_hint_text}{suffix}"
+        )
+
+
+def _print_player_attribute_prefix_profile_result(result) -> None:
+    if not result.buckets:
+        print("No indexed tail-prefix profile buckets matched.")
+        return
+    filter_bits = []
+    if result.nationality_filter is not None:
+        filter_bits.append(f"nat={result.nationality_filter}")
+    if result.position_filter is not None:
+        filter_bits.append(f"pos={result.position_filter}")
+    if result.indexed_unknown_0_filter is not None:
+        filter_bits.append(f"u0={result.indexed_unknown_0_filter}")
+    if result.indexed_unknown_1_filter is not None:
+        filter_bits.append(f"u1={result.indexed_unknown_1_filter}")
+    if result.indexed_unknown_9_filter is not None:
+        filter_bits.append(f"u9={result.indexed_unknown_9_filter}")
+    if result.indexed_unknown_10_filter is not None:
+        filter_bits.append(f"u10={result.indexed_unknown_10_filter}")
+    if result.attribute_0_filter is not None:
+        filter_bits.append(f"a0={result.attribute_0_filter}")
+    if result.attribute_1_filter is not None:
+        filter_bits.append(f"a1={result.attribute_1_filter}")
+    if result.attribute_2_filter is not None:
+        filter_bits.append(f"a2={result.attribute_2_filter}")
+    if getattr(result, "post_weight_byte_filter", None) is not None:
+        filter_bits.append(f"postwt={getattr(result, 'post_weight_byte_filter', None)}")
+    if result.trailer_byte_filter is not None:
+        filter_bits.append(f"trail={result.trailer_byte_filter}")
+    if getattr(result, "sidecar_byte_filter", None) is not None:
+        filter_bits.append(f"sidecar={getattr(result, 'sidecar_byte_filter', None)}")
+    filter_text = f" [{' '.join(filter_bits)}]" if filter_bits else ""
+    print(
+        f"Indexed tail-prefix profile{filter_text}: "
+        f"anchored={result.anchored_count}, filtered={result.filtered_count}, indexed_entries={result.record_count}"
+    )
+    print(
+        "  status=read-only structural signature / sidecar block "
+        + "(the post-weight byte is fixed at [player+0x48] and acts as a secondary nationality/search key: "
+        + "FUN_0043d960 is called from the search-options builder against the same 0x4B2E90 nationality table "
+        + "used by the player-view nationality label, "
+        + "two post-attribute bytes are discrete and rendered separately in DBASEPRE UI paths, "
+        + "then the remainder is copied in bulk; "
+        + "no fixed named offsets proven)"
+    )
+    print(
+        "  layout="
+        + f"verified={int(getattr(result, 'layout_verified_count', 0) or 0)} "
+        + f"mismatch={int(getattr(result, 'layout_mismatch_count', 0) or 0)} "
+        + "(attr0..2 in final variable block, attr3..11 in fixed trailer when verified)"
+    )
+    attr0_text = _format_profile_count_summary(getattr(result, "attribute_0_counts", []), label="a0")
+    if attr0_text:
+        print(f"  attr0={attr0_text}")
+    attr1_text = _format_profile_count_summary(getattr(result, "attribute_1_counts", []), label="a1")
+    if attr1_text:
+        print(f"  attr1={attr1_text}")
+    attr2_text = _format_profile_count_summary(getattr(result, "attribute_2_counts", []), label="a2")
+    if attr2_text:
+        print(f"  attr2={attr2_text}")
+    post_weight_text = _format_profile_count_summary(
+        getattr(result, "post_weight_byte_counts", []),
+        label="postwt",
+    )
+    if post_weight_text:
+        print(f"  post_weight={post_weight_text}")
+    post_weight_nat_eligible = int(getattr(result, "post_weight_nationality_eligible_count", 0) or 0)
+    if post_weight_nat_eligible:
+        post_weight_nat_match = int(getattr(result, "post_weight_nationality_match_count", 0) or 0)
+        post_weight_nat_ratio = float(getattr(result, "post_weight_nationality_match_ratio", 0.0) or 0.0)
+        print(
+            "  post_weight_vs_nat="
+            + f"match={post_weight_nat_match}/{post_weight_nat_eligible} "
+            + f"ratio={post_weight_nat_ratio:.4f}"
+        )
+        divergent_text = _format_profile_count_summary(
+            getattr(result, "post_weight_divergent_counts", []),
+            label="postwt",
+            limit=5,
+        )
+        if divergent_text:
+            print(f"  post_weight_group_keys={divergent_text}")
+        mismatch_pairs = list(getattr(result, "post_weight_nationality_mismatch_pairs", []) or [])[:5]
+        if mismatch_pairs:
+            mismatch_text = ", ".join(
+                f"postwt={post_value}->nat={nat_value}({count})"
+                for post_value, nat_value, count in mismatch_pairs
+            )
+            print(f"  post_weight_mismatches={mismatch_text}")
+    trailer_text = _format_profile_count_summary(getattr(result, "trailer_byte_counts", []), label="trail")
+    if trailer_text:
+        print(f"  trailer={trailer_text}")
+    sidecar_entries = list(getattr(result, "sidecar_byte_counts", []) or [])[:4]
+    if sidecar_entries:
+        sidecar_text = ", ".join(f"{value}({count})" for value, count in sidecar_entries)
+        print(f"  sidecar0={sidecar_text}")
+    for bucket in result.buckets:
+        names = ", ".join(bucket.sample_names)
+        suffix = f" examples={names}" if names else ""
+        print(
+            f"  tail_prefix=[{bucket.attribute_0}, {bucket.attribute_1}, {bucket.attribute_2}]: "
+            f"count={bucket.count}{suffix}"
+        )
+    for bucket in list(getattr(result, "signature_buckets", []) or []):
+        names = ", ".join(bucket.sample_names)
+        suffix = f" examples={names}" if names else ""
+        print(
+            f"  tail_signature=[{bucket.attribute_0}, {bucket.attribute_1}, {bucket.attribute_2} | "
+            f"trail={bucket.trailer_byte} sidecar={getattr(bucket, 'sidecar_byte', None)}]: "
+            f"count={bucket.count}{suffix}"
+        )
+
+
+def _format_profile_count_summary(entries, *, label: str, limit: int = 4) -> str:
+    summary_parts = []
+    for value, count in list(entries or [])[: max(1, int(limit or 4))]:
+        summary_parts.append(f"{label}={value}({count})")
+    return ", ".join(summary_parts)
+
+
+def _player_u1_display_hint(indexed_unknown_1) -> str:
+    """Return a cautious UI-color hint for indexed suffix byte +1."""
+    hint_map = {
+        0: "ui-grey",
+        1: "ui-green",
+        2: "ui-red",
+        4: "ui-green(alias)",
+    }
+    return hint_map.get(indexed_unknown_1, "")
+
+
+def _player_leading_guard_hint(indexed_unknown_0, indexed_unknown_1) -> str:
+    """Return a cautious reserved/exclusion hint for leading indexed suffix bytes."""
+    parts = []
+    if isinstance(indexed_unknown_0, int) and indexed_unknown_0 >= 0x62:
+        parts.append("u0-reserved?")
+    if indexed_unknown_1 == 3:
+        parts.append("u1-excluded?")
+    return "+".join(parts)
+
+
+def _player_suffix_pair_hint(indexed_unknown_9, indexed_unknown_10) -> str:
+    """Return a cautious appearance-oriented working hypothesis for indexed suffix bytes."""
+    tone_hint_map = {
+        1: "light-skin?",
+        2: "medium/dark-skin?",
+        3: "dark-skin?",
+    }
+    hair_hint_map = {
+        1: "fair/blond?",
+        3: "black/very-dark?",
+        5: "red/auburn?",
+        6: "brown/dark-brown?",
+    }
+    tone_hint = tone_hint_map.get(indexed_unknown_9)
+    hair_hint = hair_hint_map.get(indexed_unknown_10)
+    if tone_hint and hair_hint:
+        return f"{tone_hint}+{hair_hint}"
+    if tone_hint:
+        return tone_hint
+    if hair_hint:
+        return hair_hint
+    return ""
 
 
 def _find_enclosing_decoded_entry(file_bytes: bytes, target_offset: int):
@@ -622,6 +1195,25 @@ def cmd_info(args):
     print(f"Header: {fdi.header}")
 
 
+def cmd_validate_database(args):
+    """Re-open one or more database files through the shared parser-backed loaders."""
+    if not any((getattr(args, "players", None), getattr(args, "teams", None), getattr(args, "coaches", None))):
+        print("Error: provide at least one of --players, --teams, or --coaches", file=sys.stderr)
+        raise SystemExit(1)
+
+    result = validate_database_files(
+        player_file=getattr(args, "players", None),
+        team_file=getattr(args, "teams", None),
+        coach_file=getattr(args, "coaches", None),
+    )
+    if getattr(args, "json", False):
+        _emit(result, as_json=True)
+    else:
+        _print_database_validation_result(result)
+    if not getattr(result, "all_valid", False):
+        raise SystemExit(1)
+
+
 def cmd_main_dat_inspect(args):
     """Inspect the parser-backed, currently confirmed `main.dat` prefix."""
     result = inspect_main_dat_prefix(file_path=str(args.file))
@@ -749,32 +1341,45 @@ def cmd_search(args):
         print(f"0x{entry.offset:08X}: {_player_display_name(entry.record)} ({getattr(entry.record, 'team_id', '')}) [{entry.source}]")
 
 def cmd_rename(args):
-    """Rename player by ID"""
+    """Legacy compatibility alias: resolve one player by ID, then use the shared rename path."""
     fdi = FDIFile(args.file)
     fdi.load()
     target_offset = _parse_int_auto(getattr(args, "offset", None))
+    file_bytes = getattr(fdi, "file_data", None)
     target = None
+    fallback_target = None
     for offset, record in fdi.list_players():
         if target_offset is not None and offset == target_offset:
             target = (offset, record)
             break
         if target_offset is None and getattr(record, "team_id", None) == args.id:
-            target = (offset, record)
-            break
+            display = _player_display_name(record)
+            if _player_offset_is_writable(file_bytes, offset, display):
+                target = (offset, record)
+                break
+            if fallback_target is None:
+                fallback_target = (offset, record)
+    if target is None:
+        target = fallback_target
     if not target:
         print(f"Player {args.id} not found")
         return
 
     offset, record = target
-    try:
-        record.set_name(args.name)
-        setattr(record, "name_dirty", True)
-    except Exception:
-        record.name = args.name
-        setattr(record, "name_dirty", True)
-    fdi.modified_records[offset] = record
-    fdi.save()
-    print(f"Renamed player at 0x{offset:08X} to {args.name}")
+    old_name = _player_display_name(record)
+    if not _player_offset_is_writable(file_bytes, offset, old_name):
+        print(f"Refusing to rename player at 0x{offset:08X}: offset is not a writable FDI entry boundary")
+        return
+
+    result = rename_player_records(
+        file_path=args.file,
+        target_old=old_name,
+        new_name=args.name,
+        include_uncertain=True,
+        target_offset=offset,
+        write_changes=True,
+    )
+    _print_player_rename_result(result, dry_run=False)
 
 
 def cmd_player_list(args):
@@ -789,7 +1394,7 @@ def cmd_player_investigate(args):
     query = (args.name or "").strip()
     lower_query = query.lower()
 
-    heuristic_valid, heuristic_uncertain = gather_player_records(args.file)
+    heuristic_valid, heuristic_uncertain = gather_player_records_heuristic(args.file)
     strict_valid, strict_uncertain = gather_player_records_strict(args.file)
     strict_tid_valid, strict_tid_uncertain = gather_player_records_strict(args.file, require_team_id=True)
 
@@ -946,7 +1551,7 @@ def cmd_club_investigate(args):
 
     heuristic_hits = []
     if getattr(args, "include_heuristic", False):
-        heuristic_valid, heuristic_uncertain = gather_player_records(args.file)
+        heuristic_valid, heuristic_uncertain = gather_player_records_heuristic(args.file)
         all_heuristic = heuristic_valid + heuristic_uncertain
         strict_offsets = {entry["offset"] for entry in strict_hits}
         heuristic_seen = set()
@@ -1180,21 +1785,153 @@ def cmd_player_rename(args):
     if args.json:
         _emit(result, as_json=True)
         return
-    if not result.changes:
-        print("No player records changed.")
+    _print_player_rename_result(result, dry_run=args.dry_run)
+
+
+def cmd_player_edit(args):
+    try:
+        result = edit_player_metadata_records(
+            file_path=args.file,
+            target_name=args.name,
+            target_offset=_parse_int_auto(args.offset),
+            new_name=args.new_name,
+            position=args.position,
+            nationality=args.nationality,
+            birth_day=args.dob_day,
+            birth_month=args.dob_month,
+            birth_year=args.dob_year,
+            height=args.height,
+            weight=args.weight,
+            write_changes=not args.dry_run,
+        )
+    except Exception as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+
+    if args.json:
+        _emit(result, as_json=True)
         return
-    print(
-        f"{'Staged' if args.dry_run else 'Renamed'} {len(result.changes)} player record(s) "
-        f"(matched={result.matched_count}, valid={result.valid_count}, uncertain={result.uncertain_count})"
-    )
-    for change in result.changes[:20]:
-        print(f"  0x{change.offset:08X}: {change.old_name} -> {change.new_name}")
-    if len(result.changes) > 20:
-        print(f"  ... and {len(result.changes) - 20} more")
-    if result.backup_path:
-        print(f"Backup: {result.backup_path}")
-    for warning in result.warnings:
-        print(f"Warning at {warning.offset}: {warning.message}", file=sys.stderr)
+    _print_player_metadata_edit_result(result, dry_run=args.dry_run)
+
+
+def cmd_player_batch_edit(args):
+    try:
+        result = batch_edit_player_metadata_records(
+            file_path=args.file,
+            csv_path=args.csv,
+            write_changes=not args.dry_run,
+        )
+    except Exception as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+
+    if args.json:
+        _emit(result, as_json=True)
+        return
+    _print_player_batch_edit_result(result, dry_run=args.dry_run)
+
+
+def cmd_player_inspect(args):
+    try:
+        result = inspect_player_metadata_records(
+            file_path=args.file,
+            target_name=args.name,
+            target_offset=_parse_int_auto(args.offset),
+        )
+    except Exception as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+
+    if args.json:
+        _emit(result, as_json=True)
+        return
+    _print_player_metadata_inspect_result(result)
+
+
+def cmd_player_suffix_profile(args):
+    try:
+        result = profile_indexed_player_suffix_bytes(
+            file_path=args.file,
+            nationality=args.nationality,
+            position=args.position,
+            limit=args.limit,
+        )
+    except Exception as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+
+    if args.json:
+        _emit(result, as_json=True)
+        return
+    _print_player_suffix_profile_result(result)
+
+
+def cmd_player_legacy_weight_profile(args):
+    try:
+        result = profile_player_legacy_weight_candidates(
+            file_path=args.file,
+            start_offset=max(1, int(getattr(args, "start_offset", 14) or 14)),
+            end_offset=max(1, int(getattr(args, "end_offset", 18) or 18)),
+            top_values=max(1, int(getattr(args, "top_values", 8) or 8)),
+        )
+    except Exception as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+
+    if args.json:
+        _emit(result, as_json=True)
+        return
+    _print_player_legacy_weight_profile_result(result)
+
+
+def cmd_player_leading_profile(args):
+    try:
+        result = profile_indexed_player_leading_bytes(
+            file_path=args.file,
+            nationality=args.nationality,
+            position=args.position,
+            indexed_unknown_0=args.u0,
+            indexed_unknown_1=args.u1,
+            indexed_unknown_9=args.u9,
+            indexed_unknown_10=args.u10,
+            limit=args.limit,
+        )
+    except Exception as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+
+    if args.json:
+        _emit(result, as_json=True)
+        return
+    _print_player_leading_profile_result(result)
+
+
+def cmd_player_tail_prefix_profile(args):
+    try:
+        result = profile_indexed_player_attribute_prefixes(
+            file_path=args.file,
+            nationality=args.nationality,
+            position=args.position,
+            indexed_unknown_0=args.u0,
+            indexed_unknown_1=args.u1,
+            indexed_unknown_9=args.u9,
+            indexed_unknown_10=args.u10,
+            attribute_0=args.a0,
+            attribute_1=args.a1,
+            attribute_2=args.a2,
+            post_weight_byte=args.post_weight,
+            trailer_byte=args.trail,
+            sidecar_byte=args.sidecar,
+            limit=args.limit,
+        )
+    except Exception as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+
+    if args.json:
+        _emit(result, as_json=True)
+        return
+    _print_player_attribute_prefix_profile_result(result)
 
 
 def cmd_player_skill_patch(args):
@@ -1508,7 +2245,9 @@ def cmd_team_roster_extract(args):
                 dd_name = row.get("dd6361_name")
                 marker = "*" if row.get("xor_pid_found_in_team_raw") else " "
                 name_part = dd_name if dd_name else "(unresolved dd6361 name)"
-                print(f"  {marker} pid={pid:5d}  {name_part}")
+                tail_text = _same_entry_row_tail_text(row)
+                tail_suffix = f" tail={tail_text}" if tail_text else ""
+                print(f"  {marker} pid={pid:5d}  {name_part}{tail_suffix}")
                 shown += 1
         elif not candidate_run:
             print("  No roster run match details available.")
@@ -1544,7 +2283,9 @@ def cmd_team_roster_extract(args):
                     dd_name = row.get("dd6361_name")
                     marker = "A" if row.get("is_anchor_pid") else " "
                     name_part = dd_name if dd_name else "(unresolved dd6361 name)"
-                    print(f"  {marker} pid={pid:5d}  {name_part}")
+                    tail_text = _same_entry_row_tail_text(row)
+                    tail_suffix = f" tail={tail_text}" if tail_text else ""
+                    print(f"  {marker} pid={pid:5d}  {name_part}{tail_suffix}")
                     shown += 1
 
         if include_fallbacks and pseudo_adjacent:
@@ -1568,7 +2309,9 @@ def cmd_team_roster_extract(args):
                 dd_name = row.get("dd6361_name")
                 marker = "*" if row.get("xor_pid_found_in_team_raw") else " "
                 name_part = dd_name if dd_name else "(unresolved dd6361 name)"
-                print(f"  {marker} pid={pid:5d}  {name_part}")
+                tail_text = _same_entry_row_tail_text(row)
+                tail_suffix = f" tail={tail_text}" if tail_text else ""
+                print(f"  {marker} pid={pid:5d}  {name_part}{tail_suffix}")
                 shown += 1
 
         if include_fallbacks and anchor_interval_candidate:
@@ -1593,7 +2336,9 @@ def cmd_team_roster_extract(args):
                 dd_name = row.get("dd6361_name")
                 marker = "*" if row.get("xor_pid_found_in_team_raw") else " "
                 name_part = dd_name if dd_name else "(unresolved dd6361 name)"
-                print(f"  {marker} pid={pid:5d}  {name_part}")
+                tail_text = _same_entry_row_tail_text(row)
+                tail_suffix = f" tail={tail_text}" if tail_text else ""
+                print(f"  {marker} pid={pid:5d}  {name_part}{tail_suffix}")
                 shown += 1
 
         if include_fallbacks and candidate_run:
@@ -1617,7 +2362,9 @@ def cmd_team_roster_extract(args):
                 dd_name = row.get("dd6361_name")
                 marker = "*" if row.get("xor_pid_found_in_team_raw") else " "
                 name_part = dd_name if dd_name else "(unresolved dd6361 name)"
-                print(f"  {marker} pid={pid:5d}  {name_part}")
+                tail_text = _same_entry_row_tail_text(row)
+                tail_suffix = f" tail={tail_text}" if tail_text else ""
+                print(f"  {marker} pid={pid:5d}  {name_part}{tail_suffix}")
                 shown += 1
 
     if args.json_output:
@@ -1649,6 +2396,85 @@ def cmd_team_roster_linked(args):
         return
 
     _print_linked_team_rosters(rosters, max(0, int(getattr(args, "row_limit", 25) or 0)))
+
+
+def cmd_team_roster_edit_linked(args):
+    try:
+        result = edit_team_roster_eq_jug_linked(
+            team_file=args.file,
+            player_file=args.player_file,
+            team_query=args.team,
+            eq_record_id=args.eq_record_id,
+            slot_number=args.slot,
+            player_record_id=args.player_id,
+            flag=args.flag,
+            write_changes=not args.dry_run,
+        )
+    except Exception as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+
+    if args.json:
+        _emit(result, as_json=True)
+        return
+    _print_linked_team_roster_edit_result(result, dry_run=args.dry_run)
+
+
+def cmd_team_roster_edit_same_entry(args):
+    try:
+        result = edit_team_roster_same_entry_authoritative(
+            team_file=args.file,
+            player_file=args.player_file,
+            team_query=args.team,
+            team_offset=_parse_int_auto(args.team_offset),
+            slot_number=args.slot,
+            pid_candidate=args.pid,
+            write_changes=not args.dry_run,
+        )
+    except Exception as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+
+    if args.json:
+        _emit(result, as_json=True)
+        return
+    _print_same_entry_team_roster_edit_result(result, dry_run=args.dry_run)
+
+
+def cmd_team_roster_profile_same_entry(args):
+    try:
+        result = profile_same_entry_authoritative_tail_bytes(
+            team_file=args.file,
+            player_file=args.player_file,
+            team_queries=list(args.team or []),
+            limit=max(1, int(getattr(args, "limit", 10) or 10)),
+            include_fallbacks=bool(getattr(args, "include_fallbacks", False)),
+        )
+    except Exception as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return
+    if args.json:
+        _emit(result, as_json=True)
+        return
+    _print_same_entry_tail_profile_result(result)
+
+
+def cmd_team_roster_batch_edit(args):
+    try:
+        result = batch_edit_team_roster_records(
+            team_file=args.file,
+            player_file=args.player_file,
+            csv_path=args.csv,
+            write_changes=not args.dry_run,
+        )
+    except Exception as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+
+    if args.json:
+        _emit(result, as_json=True)
+        return
+    _print_team_roster_batch_edit_result(result, dry_run=args.dry_run)
 
 
 def cmd_team_search(args):
@@ -1964,6 +2790,16 @@ def main():
     info_parser.add_argument("file", help="FDI file path")
     info_parser.set_defaults(func=cmd_info)
 
+    validate_db_parser = subparsers.add_parser(
+        "validate-database",
+        help="Re-open player/team/coach files through the shared parser-backed loaders",
+    )
+    validate_db_parser.add_argument("--players", help="Player FDI path (for example JUG98030.FDI)")
+    validate_db_parser.add_argument("--teams", help="Team FDI path (for example EQ98030.FDI)")
+    validate_db_parser.add_argument("--coaches", help="Coach FDI path (for example ENT98030.FDI)")
+    validate_db_parser.add_argument("--json", action="store_true", help="Emit JSON output")
+    validate_db_parser.set_defaults(func=cmd_validate_database)
+
     main_dat_parser = subparsers.add_parser(
         "main-dat-inspect",
         help="Inspect the parser-backed, currently confirmed main.dat prefix",
@@ -2116,6 +2952,131 @@ def main():
     player_rename_parser.add_argument("--json", action="store_true", help="Emit JSON result")
     player_rename_parser.set_defaults(func=cmd_player_rename)
 
+    player_edit_parser = subparsers.add_parser(
+        "player-edit",
+        help="Edit parser-backed player metadata for indexed JUG files",
+    )
+    player_edit_parser.add_argument("file", help="FDI file path")
+    player_edit_parser.add_argument("--name", help="Current player name")
+    player_edit_parser.add_argument("--offset", help="Optional indexed payload offset (hex or decimal)")
+    player_edit_parser.add_argument("--new-name", help="New player name")
+    player_edit_parser.add_argument("--position", type=int, help="Primary position ID")
+    player_edit_parser.add_argument("--nationality", type=int, help="Nationality ID")
+    player_edit_parser.add_argument("--dob-day", type=int, help="Birth day")
+    player_edit_parser.add_argument("--dob-month", type=int, help="Birth month")
+    player_edit_parser.add_argument("--dob-year", type=int, help="Birth year")
+    player_edit_parser.add_argument("--height", type=int, help="Height in cm")
+    player_edit_parser.add_argument("--weight", type=int, help="Weight in kg")
+    player_edit_parser.add_argument("--dry-run", action="store_true", help="Validate and stage only (no file write)")
+    player_edit_parser.add_argument("--json", action="store_true", help="Emit JSON result")
+    player_edit_parser.set_defaults(func=cmd_player_edit)
+
+    player_batch_edit_parser = subparsers.add_parser(
+        "player-batch-edit",
+        help="Apply CSV-driven indexed player renames and metadata edits in one pass",
+    )
+    player_batch_edit_parser.add_argument("file", help="FDI file path")
+    player_batch_edit_parser.add_argument("--csv", required=True, help="CSV plan path")
+    player_batch_edit_parser.add_argument("--dry-run", action="store_true", help="Validate and stage only (no file write)")
+    player_batch_edit_parser.add_argument("--json", action="store_true", help="Emit JSON result")
+    player_batch_edit_parser.set_defaults(func=cmd_player_batch_edit)
+
+    player_inspect_parser = subparsers.add_parser(
+        "player-inspect",
+        help="Inspect parser-backed indexed player metadata (including unresolved suffix bytes)",
+    )
+    player_inspect_parser.add_argument("file", help="FDI file path")
+    player_inspect_parser.add_argument("--name", required=True, help="Current player name")
+    player_inspect_parser.add_argument("--offset", help="Optional indexed payload offset (hex or decimal)")
+    player_inspect_parser.add_argument("--json", action="store_true", help="Emit JSON result")
+    player_inspect_parser.set_defaults(func=cmd_player_inspect)
+
+    player_legacy_weight_profile_parser = subparsers.add_parser(
+        "player-legacy-weight-profile",
+        help="Use indexed suffix weights as a control set to test legacy marker-relative weight offsets",
+    )
+    player_legacy_weight_profile_parser.add_argument(
+        "file",
+        nargs="?",
+        default="DBDAT/JUG98030.FDI",
+        help="Path to indexed JUG98030.FDI (default: DBDAT/JUG98030.FDI)",
+    )
+    player_legacy_weight_profile_parser.add_argument(
+        "--start-offset",
+        type=int,
+        default=14,
+        help="First marker-relative offset to test (default: 14)",
+    )
+    player_legacy_weight_profile_parser.add_argument(
+        "--end-offset",
+        type=int,
+        default=18,
+        help="Last marker-relative offset to test (default: 18)",
+    )
+    player_legacy_weight_profile_parser.add_argument(
+        "--top-values",
+        type=int,
+        default=8,
+        help="Top decoded values to print per offset (default: 8)",
+    )
+    player_legacy_weight_profile_parser.add_argument("--json", action="store_true", help="Emit JSON result")
+    player_legacy_weight_profile_parser.set_defaults(func=cmd_player_legacy_weight_profile)
+
+    player_suffix_profile_parser = subparsers.add_parser(
+        "player-suffix-profile",
+        help="Profile unresolved indexed suffix-byte pairs across parser-backed player records",
+    )
+    player_suffix_profile_parser.add_argument("file", help="FDI file path")
+    player_suffix_profile_parser.add_argument("--nationality", type=int, help="Optional nationality filter")
+    player_suffix_profile_parser.add_argument("--position", type=int, help="Optional primary position filter")
+    player_suffix_profile_parser.add_argument("--limit", type=int, default=10, help="Max buckets to print")
+    player_suffix_profile_parser.add_argument("--json", action="store_true", help="Emit JSON result")
+    player_suffix_profile_parser.set_defaults(func=cmd_player_suffix_profile)
+
+    player_leading_profile_parser = subparsers.add_parser(
+        "player-leading-profile",
+        help="Profile the leading indexed suffix-byte pair across parser-backed player records",
+    )
+    player_leading_profile_parser.add_argument("file", help="FDI file path")
+    player_leading_profile_parser.add_argument("--nationality", type=int, help="Optional nationality filter")
+    player_leading_profile_parser.add_argument("--position", type=int, help="Optional primary position filter")
+    player_leading_profile_parser.add_argument("--u0", type=int, help="Optional leading indexed suffix byte +0 filter")
+    player_leading_profile_parser.add_argument("--u1", type=int, help="Optional leading indexed suffix byte +1 filter")
+    player_leading_profile_parser.add_argument("--u9", type=int, help="Optional indexed suffix byte +9 filter")
+    player_leading_profile_parser.add_argument("--u10", type=int, help="Optional indexed suffix byte +10 filter")
+    player_leading_profile_parser.add_argument("--limit", type=int, default=10, help="Max buckets to print")
+    player_leading_profile_parser.add_argument("--json", action="store_true", help="Emit JSON result")
+    player_leading_profile_parser.set_defaults(func=cmd_player_leading_profile)
+
+    player_tail_prefix_profile_parser = subparsers.add_parser(
+        "player-tail-prefix-profile",
+        help="Profile the unresolved 3-byte tail prefix across parser-backed indexed player records",
+    )
+    player_tail_prefix_profile_parser.add_argument("file", help="FDI file path")
+    player_tail_prefix_profile_parser.add_argument("--nationality", type=int, help="Optional nationality filter")
+    player_tail_prefix_profile_parser.add_argument("--position", type=int, help="Optional primary position filter")
+    player_tail_prefix_profile_parser.add_argument("--u0", type=int, help="Optional leading indexed suffix byte +0 filter")
+    player_tail_prefix_profile_parser.add_argument("--u1", type=int, help="Optional leading indexed suffix byte +1 filter")
+    player_tail_prefix_profile_parser.add_argument("--u9", type=int, help="Optional indexed suffix byte +9 filter")
+    player_tail_prefix_profile_parser.add_argument("--u10", type=int, help="Optional indexed suffix byte +10 filter")
+    player_tail_prefix_profile_parser.add_argument("--a0", type=int, help="Optional tail-prefix Attr 0 filter")
+    player_tail_prefix_profile_parser.add_argument("--a1", type=int, help="Optional tail-prefix Attr 1 filter")
+    player_tail_prefix_profile_parser.add_argument("--a2", type=int, help="Optional tail-prefix Attr 2 filter")
+    player_tail_prefix_profile_parser.add_argument(
+        "--post-weight",
+        type=int,
+        help="Optional indexed byte immediately after weight (stored at [player+0x48])",
+    )
+    player_tail_prefix_profile_parser.add_argument("--trail", type=int, help="Optional fixed trailer byte filter")
+    player_tail_prefix_profile_parser.add_argument(
+        "--sidecar",
+        type=int,
+        help="Optional first post-trailer sidecar byte filter",
+    )
+    player_tail_prefix_profile_parser.add_argument("--limit", type=int, default=10, help="Max buckets to print")
+    player_tail_prefix_profile_parser.add_argument("--json", action="store_true", help="Emit JSON result")
+    player_tail_prefix_profile_parser.set_defaults(func=cmd_player_tail_prefix_profile)
+
     player_skill_patch_parser = subparsers.add_parser(
         "player-skill-patch",
         help="Patch dd6361 visible player stats on a copy of JUG98030.FDI",
@@ -2254,6 +3215,158 @@ def main():
     )
     team_roster_linked_parser.add_argument("--json", action="store_true", help="Emit JSON result")
     team_roster_linked_parser.set_defaults(func=cmd_team_roster_linked)
+
+    team_roster_edit_linked_parser = subparsers.add_parser(
+        "team-roster-edit-linked",
+        help="Edit one parser-backed EQ->JUG linked roster slot in place",
+    )
+    team_roster_edit_linked_parser.add_argument(
+        "file",
+        nargs="?",
+        default="DBDAT/EQ98030.FDI",
+        help="Path to EQ98030.FDI (default: DBDAT/EQ98030.FDI)",
+    )
+    team_roster_edit_linked_parser.add_argument(
+        "--player-file",
+        default="DBDAT/JUG98030.FDI",
+        help="Path to JUG98030.FDI for player-id -> player-name resolution",
+    )
+    team_roster_edit_linked_parser.add_argument("--team", help="Team query filter (preferred when unique)")
+    team_roster_edit_linked_parser.add_argument(
+        "--eq-record-id",
+        type=int,
+        help="Exact EQ linked roster record ID (use this to disambiguate)",
+    )
+    team_roster_edit_linked_parser.add_argument(
+        "--slot",
+        type=int,
+        required=True,
+        help="1-based linked roster slot number to edit",
+    )
+    team_roster_edit_linked_parser.add_argument(
+        "--player-id",
+        type=int,
+        help="New JUG player record ID for the slot",
+    )
+    team_roster_edit_linked_parser.add_argument(
+        "--flag",
+        type=int,
+        help="Optional new row flag byte (0-255)",
+    )
+    team_roster_edit_linked_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Validate and stage only (no file write)",
+    )
+    team_roster_edit_linked_parser.add_argument("--json", action="store_true", help="Emit JSON result")
+    team_roster_edit_linked_parser.set_defaults(func=cmd_team_roster_edit_linked)
+
+    team_roster_edit_same_entry_parser = subparsers.add_parser(
+        "team-roster-edit-same-entry",
+        help="Edit the leading 2-byte PID field in one supported same-entry roster slot",
+    )
+    team_roster_edit_same_entry_parser.add_argument(
+        "file",
+        nargs="?",
+        default="DBDAT/EQ98030.FDI",
+        help="Path to EQ98030.FDI (default: DBDAT/EQ98030.FDI)",
+    )
+    team_roster_edit_same_entry_parser.add_argument(
+        "--player-file",
+        default="DBDAT/JUG98030.FDI",
+        help="Path to JUG98030.FDI for dd6361 PID -> player-name resolution",
+    )
+    team_roster_edit_same_entry_parser.add_argument(
+        "--team",
+        required=True,
+        help="Team query filter (must resolve to one authoritative same-entry result)",
+    )
+    team_roster_edit_same_entry_parser.add_argument(
+        "--team-offset",
+        help="Optional exact team offset (hex or decimal) to disambiguate",
+    )
+    team_roster_edit_same_entry_parser.add_argument(
+        "--slot",
+        type=int,
+        required=True,
+        help="1-based non-empty slot number within the authoritative same-entry run",
+    )
+    team_roster_edit_same_entry_parser.add_argument(
+        "--pid",
+        type=int,
+        required=True,
+        help="New 16-bit PID candidate for the slot",
+    )
+    team_roster_edit_same_entry_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Validate and stage only (no file write)",
+    )
+    team_roster_edit_same_entry_parser.add_argument("--json", action="store_true", help="Emit JSON result")
+    team_roster_edit_same_entry_parser.set_defaults(func=cmd_team_roster_edit_same_entry)
+
+    team_roster_batch_edit_parser = subparsers.add_parser(
+        "team-roster-batch-edit",
+        help="Batch edit proven linked and authoritative same-entry roster slots from CSV",
+    )
+    team_roster_batch_edit_parser.add_argument(
+        "file",
+        nargs="?",
+        default="DBDAT/EQ98030.FDI",
+        help="Path to EQ98030.FDI (default: DBDAT/EQ98030.FDI)",
+    )
+    team_roster_batch_edit_parser.add_argument(
+        "--player-file",
+        default="DBDAT/JUG98030.FDI",
+        help="Path to JUG98030.FDI for player-name resolution",
+    )
+    team_roster_batch_edit_parser.add_argument(
+        "--csv",
+        required=True,
+        help="Path to a CSV plan with team, slot, source, and row values",
+    )
+    team_roster_batch_edit_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Validate and stage only (no file write)",
+    )
+    team_roster_batch_edit_parser.add_argument("--json", action="store_true", help="Emit JSON result")
+    team_roster_batch_edit_parser.set_defaults(func=cmd_team_roster_batch_edit)
+
+    team_roster_profile_same_entry_parser = subparsers.add_parser(
+        "team-roster-profile-same-entry",
+        help="Profile the trailing 3 bytes in preferred same-entry roster rows",
+    )
+    team_roster_profile_same_entry_parser.add_argument(
+        "file",
+        nargs="?",
+        default="DBDAT/EQ98030.FDI",
+        help="Path to EQ98030.FDI (default: DBDAT/EQ98030.FDI)",
+    )
+    team_roster_profile_same_entry_parser.add_argument(
+        "--player-file",
+        default="DBDAT/JUG98030.FDI",
+        help="Path to JUG98030.FDI for dd6361 PID -> player-name resolution",
+    )
+    team_roster_profile_same_entry_parser.add_argument(
+        "--team",
+        action="append",
+        default=[],
+        help="Optional team query filter (repeatable). Omit to profile all parsed team names.",
+    )
+    team_roster_profile_same_entry_parser.add_argument(
+        "--limit",
+        type=int,
+        default=10,
+        help="Max buckets to print (default: 10)",
+    )
+    team_roster_profile_same_entry_parser.add_argument(
+        "--include-fallbacks",
+        action="store_true",
+        help="Include all preferred same-entry fallback provenances, not just same_entry_authoritative",
+    )
+    team_roster_profile_same_entry_parser.add_argument("--json", action="store_true", help="Emit JSON result")
+    team_roster_profile_same_entry_parser.set_defaults(func=cmd_team_roster_profile_same_entry)
 
     # Coach commands
     coach_list_parser = subparsers.add_parser("coach-list", help="List coach records")

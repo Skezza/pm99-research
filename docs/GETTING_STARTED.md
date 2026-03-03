@@ -42,6 +42,9 @@ python -m app rename DBDAT/JUG98030.FDI --id 123 --name "Cristiano Ronaldo"
 2) Safety first (backups and integrity)
 - The writer creates backups with [file_writer.create_backup()](../app/file_writer.py:17)
 - In-place record writes adjust directory offsets via [file_writer.write_fdi_record()](../app/file_writer.py:102)
+- The shared editor save path now also re-opens the written player/team/coach files through
+  the parser-backed loaders via [editor_actions.validate_database_files()](../app/editor_actions.py)
+  before it reports success in the main GUI workflow.
 - Parsing and writing are conservative by design:
   - Parser: [PlayerRecord.from_bytes()](../app/models.py:63)
   - Serializer: [PlayerRecord.to_bytes()](../app/models.py:281)

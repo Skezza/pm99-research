@@ -16,6 +16,8 @@ This is the canonical operator-facing workflow for using the current PM99 editor
 3. Make one player, team, or coach edit at a time.
 4. Save changes and confirm a backup was created.
 5. Re-open the edited files and verify the change before doing more work.
+6. Prefer the parser-backed validation pass before calling the edit safe:
+   - `python3 -m app.cli validate-database --players DBDAT/JUG98030.FDI --teams DBDAT/EQ98030.FDI --coaches DBDAT/ENT98030.FDI`
 
 ## Bulk Player Rename Workflow
 
@@ -60,6 +62,7 @@ Guideline:
 - Target edit can be staged and saved.
 - Save creates a backup.
 - Re-opening the file shows the updated value.
+- `validate-database` passes for the files you changed.
 
 ## Release Hygiene
 

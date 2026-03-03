@@ -52,7 +52,7 @@ def test_player_name_growth_preserves_metadata_and_attributes():
     updated_payload = original.to_bytes()
     reparsed = PlayerRecord.from_bytes(updated_payload, 0, 700)
 
-    assert "Manuel LASA" in updated_payload.decode("latin-1")
+    assert "Manuel Lasa" in updated_payload.decode("latin-1")
     assert reparsed.given_name.upper() == "MANUEL"
     assert reparsed.surname.upper() == "LASA"
 
@@ -66,4 +66,3 @@ def test_player_name_growth_preserves_metadata_and_attributes():
         reparsed.height,
         list(reparsed.skills[:10]),
     ) == orig_meta
-

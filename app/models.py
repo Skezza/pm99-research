@@ -884,7 +884,7 @@ class PlayerRecord:
     
     # Physical attributes
     height: int = 175  # cm
-    weight: int = 75   # kg
+    weight: Optional[int] = None  # kg when present; parser-backed for indexed JUG payloads and legacy records with a dedicated marker-backed slot
     
     # Core skill attributes (10 skills, duplicated in two offset locations)
     skills: List[int] = field(default_factory=lambda: [50] * 10)
@@ -910,6 +910,12 @@ class PlayerRecord:
     suppressed: bool = False
     # Internal flag signalling that the raw name bytes need rebuilding before serialization.
     name_dirty: bool = field(default=False, init=False, repr=False)
+    # Indexed suffix bytes adjacent to the confirmed metadata block. Preserved as raw decoded values for investigation.
+    indexed_unknown_0: Optional[int] = field(default=None, init=False)
+    indexed_unknown_1: Optional[int] = field(default=None, init=False)
+    indexed_face_components: List[int] = field(default_factory=list, init=False)
+    indexed_unknown_9: Optional[int] = field(default=None, init=False)
+    indexed_unknown_10: Optional[int] = field(default=None, init=False)
     
     @classmethod
     def from_bytes(cls, data: bytes, offset: int, version: int = 700) -> 'PlayerRecord':
@@ -925,6 +931,9 @@ class PlayerRecord:
         - Nationality at name_end + 8 (double-XOR)
         - DOB at name_end + 9,10,11 (day/month/year, double-XOR)
         - Height at name_end + 13 (double-XOR)
+        - Indexed DMFIv1.0 JUG payloads also expose a second metadata block
+          immediately after the visible name suffix; when that pattern validates,
+          it overrides the conservative marker read and exposes weight
         - Attributes at FIXED offset from end: len-19 to len-7 (double-XOR)
         
         Args:
@@ -952,6 +961,12 @@ class PlayerRecord:
             name_end = cls._find_name_end(data)
             
             # Extract metadata fields using dynamic offsets from name_end
+            weight = None
+            indexed_unknown_0 = None
+            indexed_unknown_1 = None
+            indexed_face_components: List[int] = []
+            indexed_unknown_9 = None
+            indexed_unknown_10 = None
             if name_end is not None:
                 # Position at name_end + 7 (with double-XOR)
                 position = cls._extract_position(data, name_end)
@@ -972,6 +987,7 @@ class PlayerRecord:
                 
                 # Height at name_end + 13 (with double-XOR)
                 height = data[name_end + 13] ^ 0x61 if (name_end + 13) < len(data) else 175
+                weight = cls._extract_legacy_marker_weight(data, name_end)
             else:
                 # Fallback if no name-end marker found
                 position = 0
@@ -980,6 +996,21 @@ class PlayerRecord:
                 birth_month = 1
                 birth_year = 1975
                 height = 175
+
+            indexed_meta = cls._extract_indexed_suffix_metadata(data, name)
+            if indexed_meta is not None:
+                position = indexed_meta["position"]
+                nationality = indexed_meta["nationality"]
+                birth_day = indexed_meta["birth_day"]
+                birth_month = indexed_meta["birth_month"]
+                birth_year = indexed_meta["birth_year"]
+                height = indexed_meta["height"]
+                weight = indexed_meta["weight"]
+                indexed_unknown_0 = indexed_meta["indexed_unknown_0"]
+                indexed_unknown_1 = indexed_meta["indexed_unknown_1"]
+                indexed_face_components = indexed_meta["face_components"]
+                indexed_unknown_9 = indexed_meta["indexed_unknown_9"]
+                indexed_unknown_10 = indexed_meta["indexed_unknown_10"]
             
             # Extract attributes from FIXED offset from end (last 12 bytes with double-XOR)
             skills = []
@@ -1032,7 +1063,7 @@ class PlayerRecord:
                 birth_month=birth_month,
                 birth_year=birth_year,
                 height=height,
-                weight=75,  # Not yet located
+                weight=weight,
                 skills=skills[:10],
                 extended=extended_list,
                 region_code=0x1e,
@@ -1041,6 +1072,15 @@ class PlayerRecord:
                 unknown_blocks=[],
                 raw_data=data  # Store original record for serialization (may be patched below)
             )
+            try:
+                rec.nationality_id = nationality
+            except Exception:
+                pass
+            rec.indexed_unknown_0 = indexed_unknown_0
+            rec.indexed_unknown_1 = indexed_unknown_1
+            rec.indexed_face_components = list(indexed_face_components)
+            rec.indexed_unknown_9 = indexed_unknown_9
+            rec.indexed_unknown_10 = indexed_unknown_10
 
             # If a name-end marker was found, ensure encoded metadata bytes are present
             # in the stored raw_data so tests and downstream consumers can inspect them.
@@ -1168,9 +1208,11 @@ class PlayerRecord:
     @staticmethod
     def _find_name_end(data: bytes) -> Optional[int]:
         """Find the 'aaaa' (0x61 0x61 0x61 0x61) name-end marker."""
-        for i in range(20, min(60, len(data) - 20)):
-            if i + 3 < len(data) and data[i:i+4] == bytes([0x61, 0x61, 0x61, 0x61]):
-                return i
+        search_end = max(0, min(60, len(data) - 4))
+        for start, stop in ((20, search_end), (5, min(20, search_end))):
+            for i in range(start, stop):
+                if data[i:i+4] == bytes([0x61, 0x61, 0x61, 0x61]):
+                    return i
         return None
     
     @staticmethod
@@ -1185,7 +1227,205 @@ class PlayerRecord:
                 if 0 <= pos_value <= 3:
                     return pos_value
         return 0
-    
+
+    @staticmethod
+    def _find_legacy_weight_offset(data: bytes, name_end: Optional[int] = None) -> Optional[int]:
+        """Return the legacy marker-backed weight offset when a dedicated slot exists."""
+        if name_end is None:
+            name_end = PlayerRecord._find_name_end(data)
+        if name_end is None:
+            return None
+
+        attr_start = len(data) - 19
+        weight_offset = name_end + 14
+        if weight_offset >= len(data) or weight_offset >= attr_start:
+            return None
+        return weight_offset
+
+    @staticmethod
+    def _extract_legacy_marker_weight(data: bytes, name_end: Optional[int] = None) -> Optional[int]:
+        """Extract a legacy marker-backed weight byte when the slot validates."""
+        weight_offset = PlayerRecord._find_legacy_weight_offset(data, name_end)
+        if weight_offset is None:
+            return None
+
+        weight = data[weight_offset] ^ 0x61
+        if not (40 <= weight <= 140):
+            return None
+        return weight
+
+    @staticmethod
+    def _find_indexed_suffix_anchor(data: bytes, parsed_name: str) -> Optional[int]:
+        """Return the indexed JUG suffix-metadata anchor when the payload shape matches."""
+        if len(data) < 24 or not parsed_name:
+            return None
+        if data[2:5] != bytes([0xDD, 0x63, 0x61]):
+            return None
+
+        needle = parsed_name.encode("latin-1", errors="ignore")
+        if not needle:
+            return None
+
+        pos = data.find(needle)
+        if pos < 0 or pos > 80:
+            return None
+
+        anchor = pos + len(needle)
+        while anchor < len(data) and 0x41 <= data[anchor] <= 0x5A:
+            anchor += 1
+
+        if anchor + 18 > len(data):
+            return None
+
+        return anchor
+
+    @staticmethod
+    def _extract_indexed_suffix_metadata(data: bytes, parsed_name: str):
+        """Extract richer metadata from indexed DMFIv1.0 JUG payloads.
+
+        These payloads carry a second metadata block after the visible name
+        suffix. The current parser's `aaaa` anchor is not consistently present
+        there, so use the name suffix as an anchor when the indexed header
+        signature matches and the decoded values are internally consistent.
+        """
+        anchor = PlayerRecord._find_indexed_suffix_anchor(data, parsed_name)
+        if anchor is None:
+            return None
+
+        indexed_unknown_0 = data[anchor] ^ 0x61
+        indexed_unknown_1 = data[anchor + 1] ^ 0x61
+
+        face_components: List[int] = []
+        for i in range(6):
+            raw_value = data[anchor + 2 + i] ^ 0x61
+            if 1 <= raw_value <= 18:
+                face_components.append(raw_value - 1)
+            else:
+                break
+
+        nationality = data[anchor + 8] ^ 0x61
+        indexed_unknown_9 = data[anchor + 9] ^ 0x61
+        indexed_unknown_10 = data[anchor + 10] ^ 0x61
+        position = data[anchor + 11] ^ 0x61
+        birth_day = data[anchor + 12] ^ 0x61
+        birth_month = data[anchor + 13] ^ 0x61
+        birth_year = (data[anchor + 14] ^ 0x61) | ((data[anchor + 15] ^ 0x61) << 8)
+        height = data[anchor + 16] ^ 0x61
+        weight = data[anchor + 17] ^ 0x61
+
+        if not (0 <= position <= 3):
+            return None
+        if not (1 <= birth_day <= 31 and 1 <= birth_month <= 12):
+            return None
+        if not (1900 <= birth_year <= 1999):
+            return None
+        if not (150 <= height <= 250):
+            return None
+        if not (40 <= weight <= 140):
+            return None
+
+        return {
+            "indexed_unknown_0": indexed_unknown_0,
+            "indexed_unknown_1": indexed_unknown_1,
+            "face_components": face_components,
+            "nationality": nationality,
+            "indexed_unknown_9": indexed_unknown_9,
+            "indexed_unknown_10": indexed_unknown_10,
+            "position": position,
+            "birth_day": birth_day,
+            "birth_month": birth_month,
+            "birth_year": birth_year,
+            "height": height,
+            "weight": weight,
+        }
+
+    @staticmethod
+    def _extract_indexed_post_weight_byte(data: bytes, parsed_name: str) -> Optional[int]:
+        """Return the decoded byte that FUN_0043d170 stores at [player + 0x48].
+
+        This is the single encoded byte that appears immediately after the confirmed
+        indexed suffix metadata block (through weight) and immediately before the
+        parser advances into the three variable-length string blocks.
+        """
+        anchor = PlayerRecord._find_indexed_suffix_anchor(data, parsed_name)
+        if anchor is None:
+            return None
+        if PlayerRecord._extract_indexed_suffix_metadata(data, parsed_name) is None:
+            return None
+        byte_offset = anchor + 18
+        if not (0 <= byte_offset < len(data)):
+            return None
+        return data[byte_offset] ^ 0x61
+
+    @staticmethod
+    def _analyze_indexed_tail_layout(data: bytes, parsed_name: str):
+        """Locate the indexed tail split between the final variable block and fixed trailer.
+
+        Current DBASEPRE.EXE analysis strongly suggests the indexed player parser consumes:
+        - 1 encoded byte after the suffix metadata (stored at [player + 0x48])
+        - 3 XOR-length-prefixed strings
+        - 7 more XOR-length-prefixed blocks
+        - then a fixed 10-byte trailer skip
+
+        On records that match that layout, the first three trailing attribute bytes live in the
+        payload of the final length-prefixed block, while the remaining nine live in the fixed
+        trailer immediately before the trailing padding.
+        """
+        anchor = PlayerRecord._find_indexed_suffix_anchor(data, parsed_name)
+        if anchor is None:
+            return None
+
+        cursor = anchor + 18
+        if cursor >= len(data):
+            return None
+        cursor += 1
+
+        for _ in range(10):
+            if cursor + 1 >= len(data):
+                return None
+            seg_len = (data[cursor] ^ 0x61) | ((data[cursor + 1] ^ 0x61) << 8)
+            cursor += 2 + seg_len
+            if cursor > len(data):
+                return None
+
+        attr_start = len(data) - 19
+        attr_end = len(data) - 7
+        before_skip = cursor
+        after_skip = cursor + 10
+
+        return {
+            "final_block_cutoff": before_skip,
+            "fixed_skip_end": after_skip,
+            "attribute_start": attr_start,
+            "attribute_end": attr_end,
+            "layout_matches_expected": (
+                before_skip == (attr_start + 3)
+                and after_skip == (len(data) - 6)
+            ),
+        }
+
+    @staticmethod
+    def _extract_indexed_post_attribute_byte(data: bytes, parsed_name: str) -> Optional[int]:
+        """Return the decoded post-attribute byte that DBASEPRE stores at [player + 0x6E]."""
+        layout = PlayerRecord._analyze_indexed_tail_layout(data, parsed_name)
+        if not layout or not bool(layout.get("layout_matches_expected")):
+            return None
+        byte_offset = int(layout.get("attribute_end", -1))
+        if not (0 <= byte_offset < len(data)):
+            return None
+        return data[byte_offset] ^ 0x61
+
+    @staticmethod
+    def _extract_indexed_post_attribute_sidecar_byte(data: bytes, parsed_name: str) -> Optional[int]:
+        """Return the decoded post-attribute byte that DBASEPRE stores at [player + 0x6F]."""
+        layout = PlayerRecord._analyze_indexed_tail_layout(data, parsed_name)
+        if not layout or not bool(layout.get("layout_matches_expected")):
+            return None
+        byte_offset = int(layout.get("fixed_skip_end", -1))
+        if not (0 <= byte_offset < len(data)):
+            return None
+        return data[byte_offset] ^ 0x61
+
     def to_bytes(self) -> bytes:
         """
         Serialize player record to an in-file decoded payload (XOR-decoded, no length prefix).
@@ -1242,6 +1482,32 @@ class PlayerRecord:
                 if height_offset < attr_start and 50 <= self.height <= 250:
                     data[height_offset] = self.height ^ 0x61
 
+                # Legacy weight slot (name_end + 14) when it still lands before the
+                # trailing attribute window.
+                legacy_weight_offset = self._find_legacy_weight_offset(data, name_end)
+                if legacy_weight_offset is not None and self.weight is not None and 40 <= self.weight <= 140:
+                    data[legacy_weight_offset] = self.weight ^ 0x61
+
+            indexed_name = (self.name or f"{self.given_name} {self.surname}".strip()).strip()
+            indexed_anchor = self._find_indexed_suffix_anchor(bytes(data), indexed_name)
+            if indexed_anchor is not None:
+                if 0 <= self.nationality <= 255:
+                    data[indexed_anchor + 8] = self.nationality ^ 0x61
+                if 0 <= self.position_primary <= 3:
+                    data[indexed_anchor + 11] = self.position_primary ^ 0x61
+                if 1 <= self.birth_day <= 31:
+                    data[indexed_anchor + 12] = self.birth_day ^ 0x61
+                if 1 <= self.birth_month <= 12:
+                    data[indexed_anchor + 13] = self.birth_month ^ 0x61
+                if 1900 <= self.birth_year <= 1999:
+                    year_bytes = struct.pack("<H", self.birth_year)
+                    data[indexed_anchor + 14] = year_bytes[0] ^ 0x61
+                    data[indexed_anchor + 15] = year_bytes[1] ^ 0x61
+                if 150 <= self.height <= 250:
+                    data[indexed_anchor + 16] = self.height ^ 0x61
+                if self.weight is not None and 40 <= self.weight <= 140:
+                    data[indexed_anchor + 17] = self.weight ^ 0x61
+
             # Update attributes (double-XOR) - fixed offset from end
             attr_end = len(data) - 7
             for i, attr_val in enumerate(list(self.skills)[:12]):  # Max 12 attributes
@@ -1264,9 +1530,9 @@ class PlayerRecord:
             given_encoded = write_string(given)
             surname_encoded = write_string(surname)
 
-            # Metadata placeholder (position, nationality, DOB, height, etc.)
-            # These will be written properly by the caller or remain zero
-            metadata = b'\x00' * 14
+            # Metadata anchor + placeholder window (position, nationality, DOB, height, etc.).
+            # The current conservative write path keys off the leading 'aaaa' marker.
+            metadata = (b'\x61' * 4) + (b'\x00' * 10)
 
             # Attributes: take up to 12, pad to 12, XOR encode
             attrs = list(self.skills)[:12]
@@ -1421,9 +1687,11 @@ class PlayerRecord:
     @staticmethod
     def _find_name_end_in_data(data: bytes) -> Optional[int]:
         """Find the 'aaaa' (0x61 0x61 0x61 0x61) name-end marker in data."""
-        for i in range(20, min(60, len(data) - 20)):
-            if i + 3 < len(data) and data[i:i+4] == bytes([0x61, 0x61, 0x61, 0x61]):
-                return i
+        search_end = max(0, min(60, len(data) - 4))
+        for start, stop in ((20, search_end), (5, min(20, search_end))):
+            for i in range(start, stop):
+                if data[i:i+4] == bytes([0x61, 0x61, 0x61, 0x61]):
+                    return i
         return None
 
     # Compatibility and mutator helpers used by GUI and scripts
@@ -1622,6 +1890,53 @@ class PlayerRecord:
         if not (50 <= height_cm <= 250):
             raise ValueError("Height must be in cm")
         self.height = height_cm
+        self.modified = True
+
+    @classmethod
+    def attribute_slot_labels(cls) -> List[str]:
+        """Return the current best-known labels for the trailing 12-byte attribute window."""
+        return [
+            "Attr 0 (unresolved, read-only)",
+            "Attr 1 (unresolved, read-only)",
+            "Attr 2 (unresolved, read-only)",
+            "Attr 3 (Speed)",
+            "Attr 4 (Stamina)",
+            "Attr 5 (Aggression)",
+            "Attr 6 (Quality)",
+            "Attr 7 (Heading)",
+            "Attr 8 (Dribbling)",
+            "Attr 9 (Passing)",
+            "Attr 10 (Shooting)",
+            "Attr 11 (Tackling)",
+        ]
+
+    @classmethod
+    def editable_attribute_indices(cls) -> List[int]:
+        """Return the trailing-attribute slots that are currently safe to expose for editing."""
+        return list(range(3, 12))
+
+    def supports_weight_write(self) -> bool:
+        """Return True when this record exposes a parser-backed in-place weight slot."""
+        if self.raw_data is None:
+            return False
+
+        indexed_name = (self.name or f"{self.given_name} {self.surname}".strip()).strip()
+        try:
+            stored_name = self._extract_name(self.raw_data)
+        except Exception:
+            stored_name = indexed_name
+
+        if self._find_indexed_suffix_anchor(self.raw_data, stored_name) is not None:
+            return True
+        if stored_name != indexed_name and self._find_indexed_suffix_anchor(self.raw_data, indexed_name) is not None:
+            return True
+        return self._find_legacy_weight_offset(self.raw_data) is not None
+
+    def set_weight(self, weight_kg: int):
+        """Set player's weight in kg for record shapes that support it."""
+        if not (40 <= weight_kg <= 140):
+            raise ValueError("Weight must be 40-140 kg")
+        self.weight = weight_kg
         self.modified = True
 
     @property

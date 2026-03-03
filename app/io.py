@@ -5,86 +5,86 @@ File I/O operations for Premier Manager 99 database files
 from pathlib import Path
 import struct
 import re
-from typing import List, Tuple, Optional
+from typing import Dict, List, Optional, Tuple
 from .models import PlayerRecord, FDIHeader, DirectoryEntry
 from app.xor import decode_entry
 
-# Scanner implementation is packaged to avoid importing the GUI monolith.
-# Import the scanner from the package rather than the top-level script.
+# Fallback heuristic scanner used only to augment the strict load path.
 from app.scanner import find_player_records
-# Use the package-local writer (placeholder implementation exists in app.file_writer)
 from app.file_writer import save_modified_records, write_name_only_record, create_backup
 from app.settings import SAVE_NAME_ONLY, ALLOW_FULL_RECORD_REWRITE_ON_EXPANSION
-import struct
-import re
 import shutil
-import logging
 
-def _scan_decoded_for_players(decoded: bytes, entry_offset: int):
-    """
-    Scan a decoded directory entry payload for embedded player-like subrecords.
+def _record_display_name(record: PlayerRecord) -> str:
+    """Return a stable display name and backfill the record when it is missing."""
+    display = getattr(record, 'name', None)
+    if not display:
+        display = f"{getattr(record, 'given_name', '') or ''} {getattr(record, 'surname', '') or ''}".strip()
+        if display and not getattr(record, 'name', None):
+            try:
+                record.name = display
+            except Exception:
+                setattr(record, 'name', display)
+    return (display or "").strip()
 
-    Returns a list of (approx_offset, PlayerRecord) tuples where approx_offset is
-    an estimated file offset for the discovered player chunk (based on the entry_offset).
-    """
-    results = []
+
+def _backfill_name_from_decoded_window(decoded: bytes, record: PlayerRecord) -> None:
+    """Use the early printable name window as a conservative fallback for empty names."""
+    if getattr(record, 'surname', None):
+        return
+    if getattr(record, 'given_name', None) not in (None, '', 'Unknown', 'Parse Error'):
+        return
+
+    name_region = decoded[5:45].decode('latin-1', errors='ignore').strip()
+    if not name_region:
+        return
+
+    parts = [part for part in name_region.split() if part]
+    if not parts:
+        return
+
+    record.given_name = parts[0]
+    record.surname = ' '.join(parts[1:]) if len(parts) > 1 else ''
+    record.name = f"{record.given_name} {record.surname}".strip()
+
+
+def _record_has_name_marker(record: PlayerRecord) -> bool:
+    """Return True when the raw payload still exposes the conservative name anchor."""
+    raw = getattr(record, 'raw_data', None)
+    if not raw:
+        return False
     try:
-        text = decoded.decode('latin-1', errors='ignore')
+        return PlayerRecord._find_name_end_in_data(raw) is not None
     except Exception:
-        return results
+        return False
 
-    embedded_pattern = r'([A-Z][a-z]{2,20})((?:[a-z~@\x7f]{1,2}|[^A-Za-z]{1,2})a)([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,3}\s+[A-Z]{3,20})'
-    for match in re.finditer(embedded_pattern, text):
-        try:
-            byte_pos = match.start()
-            scan_start = max(0, byte_pos - 50)
-            candidate = decoded[scan_start : byte_pos + 70]
 
-            best_record = None
-            best_score = -1
+def _is_named_player_record(record: PlayerRecord) -> bool:
+    """Reject placeholders and parse failures from the product record set."""
+    display = _record_display_name(record)
+    if not display:
+        return False
+    if display.upper() in ("UNKNOWN PLAYER", "PARSE ERROR"):
+        return False
+    return True
 
-            # Search small offsets within candidate to find best-aligned 80-byte window
-            max_offset = max(1, min(50, len(candidate) - 80))
-            for off in range(max_offset):
-                test_chunk = candidate[off : off + 80]
-                if len(test_chunk) < 80:
-                    continue
-                try:
-                    # Pass an approximate offset (entry offset as base)
-                    test_rec = PlayerRecord.from_bytes(test_chunk, entry_offset + scan_start + off)
-                    full_name_match = match.group(3).strip()
-                    if not getattr(test_rec, 'name', ''):
-                        continue
-                    if full_name_match.upper() not in getattr(test_rec, 'name', '').upper():
-                        continue
-                    # Basic plausibility checks
-                    if not (len(test_rec.attributes) >= 10 and all(0 <= a <= 100 for a in test_rec.attributes)):
-                        continue
-                    if not (0 <= getattr(test_rec, 'position', 0) <= 3):
-                        continue
 
-                    name_start_in_chunk = byte_pos - (scan_start + off)
-                    alignment_score = 1000 - abs(name_start_in_chunk - 5) * 10
-                    if alignment_score > best_score:
-                        best_score = alignment_score
-                        best_record = test_rec
-                except Exception:
-                    continue
+def _merge_record_candidate(
+    records_by_name: Dict[str, Tuple[int, int, PlayerRecord]],
+    *,
+    offset: int,
+    record: PlayerRecord,
+    priority: int,
+) -> None:
+    """Keep the best candidate per normalized display name."""
+    if not _is_named_player_record(record):
+        return
 
-            if best_record:
-                # Normalize implausible team ids
-                if getattr(best_record, 'team_id', 0) > 5000:
-                    best_record.team_id = 0
-                approx_offset = entry_offset + scan_start + max(0, byte_pos - scan_start - 5)
-                results.append((approx_offset, best_record))
-            else:
-                # Placeholder synthesis removed: do not create synthetic PlayerRecord objects here.
-                # Keep the canonical record set strictly to structured parsed records.
-                continue
-        except Exception:
-            continue
+    key = _record_display_name(record).upper()
+    existing = records_by_name.get(key)
+    if existing is None or priority > existing[0]:
+        records_by_name[key] = (priority, offset, record)
 
-    return results
 
 class FDIFile:
     """File I/O wrapper for FDI database files"""
@@ -97,7 +97,7 @@ class FDIFile:
         self.last_backup_path = None
     
     def load(self):
-        """Load and parse the FDI file (OPTIMIZED VERSION)"""
+        """Load and parse the FDI file using strict boundaries first, then heuristic fallback."""
         if not self.file_path.exists():
             raise FileNotFoundError(f"File not found: {self.file_path}")
 
@@ -111,70 +111,66 @@ class FDIFile:
         # Parse directory entries
         self._parse_directory(file_data)
 
-        # Use optimized scanner for primary record discovery
-        # This replaces 4 separate scanning passes with a single coordinated pass
-        scanner_records = find_player_records(file_data)
-        
-        # Build normalized name lookup for deduplication
-        names_seen = set()
-        records_with_offsets = []
-        
-        # Add scanner results with deduplication
-        for offset, rec in scanner_records:
-            display = getattr(rec, 'name', None)
-            if not display:
-                display = f"{getattr(rec,'given_name','') or ''} {getattr(rec,'surname','') or ''}".strip()
-                if not getattr(rec, 'name', None):
-                    try:
-                        rec.name = display
-                    except Exception:
-                        setattr(rec, 'name', display)
-            
-            key = (display or "").upper()
-            if key and key not in names_seen:
-                names_seen.add(key)
-                records_with_offsets.append((offset, rec))
-        
-        # Augment with directory-tagged 'P' entries (high priority)
-        # Only process if not already found by scanner
+        records_by_name: Dict[str, Tuple[int, int, PlayerRecord]] = {}
+
+        # Product path: trust real directory entry boundaries first.
         for entry in getattr(self, 'directory', []):
-            if entry.tag != ord('P'):
-                continue
-                
             try:
-                decoded, length = decode_entry(file_data, entry.offset)
-                model_rec = PlayerRecord.from_bytes(decoded, entry.offset)
-                
-                # Fallback name extraction
-                if not getattr(model_rec, 'surname', None) and (
-                    not getattr(model_rec, 'given_name', None) or
-                    getattr(model_rec, 'given_name') in ('Unknown', 'Parse Error', '')
-                ):
-                    name_region = decoded[5:45].decode('latin-1', errors='ignore').strip()
-                    if name_region:
-                        parts = [p for p in name_region.split() if p]
-                        if parts:
-                            model_rec.given_name = parts[0]
-                            model_rec.surname = ' '.join(parts[1:]) if len(parts) > 1 else ''
-                            model_rec.name = f"{model_rec.given_name} {model_rec.surname}".strip()
-                
-                display = getattr(model_rec, 'name', None)
-                if not display:
-                    display = f"{getattr(model_rec,'given_name','') or ''} {getattr(model_rec,'surname','') or ''}".strip()
-                    if not getattr(model_rec, 'name', None):
-                        try:
-                            model_rec.name = display
-                        except Exception:
-                            setattr(model_rec, 'name', display)
-                
-                key = (display or "").upper()
-                if key and key not in names_seen:
-                    names_seen.add(key)
-                    records_with_offsets.append((entry.offset, model_rec))
+                if entry.offset + 2 > len(file_data):
+                    continue
+                encoded_length = struct.unpack_from("<H", file_data, entry.offset)[0]
             except Exception:
                 continue
 
+            if entry.tag != ord('P') and not (40 <= encoded_length <= 1024):
+                continue
+
+            try:
+                decoded, _ = decode_entry(file_data, entry.offset)
+            except Exception:
+                continue
+
+            try:
+                model_rec = PlayerRecord.from_bytes(decoded, entry.offset)
+            except Exception:
+                continue
+
+            _backfill_name_from_decoded_window(decoded, model_rec)
+
+            has_marker = _record_has_name_marker(model_rec)
+            if entry.tag != ord('P') and not has_marker:
+                continue
+
+            priority = 300 if entry.tag == ord('P') else 250
+            if has_marker:
+                priority += 10
+
+            _merge_record_candidate(
+                records_by_name,
+                offset=entry.offset,
+                record=model_rec,
+                priority=priority,
+            )
+
+        # Investigation fallback: use the heuristic scanner only to fill gaps.
+        for offset, record in find_player_records(file_data):
+            scanner_priority = 100
+            if _record_has_name_marker(record):
+                scanner_priority += 10
+            _merge_record_candidate(
+                records_by_name,
+                offset=offset,
+                record=record,
+                priority=scanner_priority,
+            )
+
+        records_with_offsets = sorted(
+            [(offset, record) for _priority, offset, record in records_by_name.values()],
+            key=lambda item: item[0],
+        )
+
         # Expose both formats for callers
+        self.record_source_mode = "strict_first_with_scanner_fallback"
         self.records_with_offsets = records_with_offsets
         self.records = [r for _, r in records_with_offsets]
     

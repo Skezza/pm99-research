@@ -25,6 +25,7 @@ Repository layout (operational view)
   - Backups: [file_writer.create_backup()](../app/file_writer.py:17)
   - Decoded text helper: [file_writer.replace_text_in_decoded()](../app/file_writer.py:32)
   - Safe record write + directory fixups: [file_writer.write_fdi_record()](../app/file_writer.py:102)
+  - Post-write reopen check: [editor_actions.validate_database_files()](../app/editor_actions.py)
 - GUI application
   - App entry: [main()](../pm99_database_editor.py:1189)
 
@@ -105,6 +106,7 @@ Follow this checklist:
   - Add an entry to [docs/CHANGELOG.md](./CHANGELOG.md)
 
 Heuristics guardrails
+- Default editor paths should prefer strict/parser-backed record sources; keep heuristic discovery as fallback or investigation-only.
 - Do not write if you cannot find the name-end anchor (keep original bytes)
 - Attributes only within the tail window `len-19 .. len-7`
 - Only write values in valid ranges (e.g., position 0..3). Prefer not to coerce silently.
@@ -120,7 +122,7 @@ Debugging tips
 
 Documentation policy (canonical vs legacy)
 - Canonical: docs/ (concise and maintained)
-  - Entrypoints: [docs/GETTING_STARTED.md](./GETTING_STARTED.md), [docs/ARCHITECTURE.md](./ARCHITECTURE.md), [docs/DATA_FORMATS.md](./DATA_FORMATS.md), [docs/EDITOR_README.md](./EDITOR_README.md)
+  - Entrypoints: [docs/CURRENT_ROADMAP.md](./CURRENT_ROADMAP.md), [docs/GETTING_STARTED.md](./GETTING_STARTED.md), [docs/ARCHITECTURE.md](./ARCHITECTURE.md), [docs/DATA_FORMATS.md](./DATA_FORMATS.md), [docs/EDITOR_README.md](./EDITOR_README.md)
   - Narrative summary: [docs/REVERSE_ENGINEERING_REPORT.md](./REVERSE_ENGINEERING_REPORT.md)
 - Legacy: docs/archive/ and session logs in docs/ preserved for traceability
   - Useful as references (triangulation, verify snapshots)

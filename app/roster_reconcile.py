@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from .editor_helpers import _player_display_name
-from .editor_sources import gather_player_records, gather_player_records_strict
+from .editor_sources import gather_player_records_heuristic, gather_player_records_strict
 from .xor import decode_entry
 
 
@@ -858,7 +858,7 @@ def reconcile_pdf_rosters(
     loaded_name_hints = load_name_hints(name_hints_path) if name_hints_path else []
     name_hint_index = _build_name_hint_index(loaded_name_hints) if loaded_name_hints else {}
 
-    heuristic_valid, heuristic_uncertain = gather_player_records(player_file)
+    heuristic_valid, heuristic_uncertain = gather_player_records_heuristic(player_file)
     strict_valid, strict_uncertain = gather_player_records_strict(player_file)
     heuristic_entries = heuristic_valid + heuristic_uncertain
     strict_entries = strict_valid + strict_uncertain

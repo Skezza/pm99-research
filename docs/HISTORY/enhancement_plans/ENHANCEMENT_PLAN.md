@@ -1,5 +1,8 @@
 # Premier Manager 99 - Full Editor Enhancement Plan
 
+> Historical note: this plan is superseded by `docs/CURRENT_ROADMAP.md`.
+> Keep this file for provenance only.
+
 ## Current State Assessment
 
 ### ✅ What We Have

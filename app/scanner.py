@@ -1,9 +1,8 @@
-﻿"""Scanner for embedded player records.
+﻿"""Fallback heuristic scanner for embedded player records.
 
 Provides find_player_records(file_data) -> List[(offset, PlayerRecord)]
-so IO and tools can discover player records without importing the GUI.
-
-OPTIMIZED VERSION: Single-pass scanning with early deduplication.
+for investigation paths and load-time augmentation when strict entry-boundary
+parsing does not recover a named player record.
 """
 
 import struct
