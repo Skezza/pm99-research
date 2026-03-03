@@ -1,80 +1,155 @@
-﻿# Premier Manager 99 Editor — User Guide
+# Premier Manager 99 Editor
 
-This guide explains how to operate the bundled tooling to inspect and edit Premier Manager 99 database files. It focuses on the Tk desktop editor (`app/gui.py`) and highlights companion CLI helpers for automation.
+This guide describes the current desktop editor experience exposed through
+`python -m app.gui`.
 
-## Launching the GUI
-1. Ensure the `DBDAT` folder containing `JUG98030.FDI`, `ENT98030.FDI`, and `EQ98030.FDI` is present alongside the repository.
-2. From the repository root run:
-   ```bash
-   python -m app.gui
-   ```
-3. The window opens with a default size capped to your screen resolution and immediately loads `DBDAT/JUG98030.FDI`. Status updates appear in the bottom status bar (initially `Ready`).
+The runtime GUI is the refreshed club-first shell implemented in
+`app/gui_refresh.py`. Older notebook-style screenshots or notes should be
+treated as historical only.
 
-### Command-line alternative
-The same library powers a CLI that can inspect and edit records without the GUI:
+## Launching the editor
+
+From the repository root:
+
 ```bash
-python -m app info DBDAT/JUG98030.FDI   # header + counts
-python -m app list DBDAT/JUG98030.FDI   # tabular roster output
-python -m app search DBDAT/JUG98030.FDI "Ronaldo"
-python -m app rename DBDAT/JUG98030.FDI --id 123 --name "New Name"
+python -m app.gui
 ```
-The GUI uses these same parsers; if the CLI works, the GUI will too.
+
+The app opens into the editor shell and waits for a PM99 database set. Use:
+
+- `File -> Open Database Set...`
+- or the landing-screen `Load Database Set` button
+
+You can select any one of the three `.FDI` files (`JUG*.FDI`, `EQ*.FDI`, or
+`ENT*.FDI`) from a folder that contains the full set. The GUI resolves the
+companion player, club, and coach databases automatically.
+
+## Startup behavior
+
+The GUI now uses staged loading.
+
+- Clubs and coaches load first so the shell becomes usable quickly.
+- The player catalog is deferred at startup, then warmed in the background.
+- If you reach a player-dependent surface before that warmup finishes, the GUI
+  can still load the player catalog on demand.
+- The player load still uses the full parser-backed discovery path with the
+  existing scanner fallback; deferred loading is a responsiveness optimization,
+  not a reduced-capability mode.
+
+This means startup is faster, but the first player-heavy action can still incur
+one full player parse if the background warmup has not finished yet.
 
 ## Window layout
-The application hosts a left-hand navigation tree and a right-hand editor that changes with the active tab. Four notebook tabs are available: Players, Coaches, Teams, and ⚽ Leagues.
 
-### Players tab
-* **Search box** — typing filters the tree in real time using `filter_records()` logic; the search matches names and IDs.
-* **Player list** — shows the deduplicated set of players detected by `FDIFile.load()`. Double-click a row to focus the record.
-* **Detail editor** — lets you adjust:
-  - Given name / surname (12 character guidance per field)
-  - Team ID and squad number (`ttk.Spinbox` widgets with numeric ranges)
-  - Position (`Goalkeeper`, `Defender`, `Midfielder`, `Forward`)
-  - Nationality ID, date of birth (day/month/year spinboxes), and height
-* **Attributes panel** — scrollable form containing twelve candidate attribute fields. Labels reflect current best guesses (e.g., "Attr 0 (Speed?)"). Values are stored even if the final semantics change.
-* **Action buttons** —
-  - `💾 Apply Changes` copies widget values into the active `PlayerRecord`, marks it as modified, and reports success in the status bar.
-  - `🔄 Reset` restores the current record to its original values from the file.
-* **Keyboard shortcut** — `Ctrl+S` triggers `save_database()` for the whole file.
+The editor is split into four persistent regions:
 
-### Coaches tab
-* Loaded on demand when you first select the tab. The background thread updates the status bar (`"✓ Loaded … coaches"`).
-* Search operates like the Players tab.
-* The detail form exposes given name and surname fields. Applying changes rebuilds the encoded string blocks inside the `CoachRecord` payload and caches the edit.
+- Top toolbar: current route, save action, and live status.
+- Left rail: global search, primary navigation, and database/validation summary.
+- Center workspace: club browser, player browser, coach browser, or leagues view.
+- Right editor pane: the active record card (player, club, coach, or empty state).
 
-### Teams tab
-* Also lazy-loaded; the application keeps player search responsive while team data loads on a background thread.
-* The roster tree displays leagues/countries pulled from `app/loaders.py`; selecting a team shows stadium and metadata fields in the right-hand overlay.
-* Editable fields include team name, ID, stadium, capacity, car park size, and pitch quality (combo box of known constants).
-* `Show squad lineup` toggles a roster sub-panel listing correlated player names when available.
+The main product flow is club-first:
 
-### ⚽ Leagues tab
-* Presents a hierarchical Country → League → Team tree built from `app/league_definitions.py` combined with parsed team data.
-* Country and free-text filters help narrow large datasets; double-clicking a team row jumps to the Team overlay.
-* Stadium name, capacity, and pitch details display alongside the tree so you can audit metadata without leaving the tab.
+1. Load a database set.
+2. Browse clubs.
+3. Select a club.
+4. Open a squad row.
+5. Edit the player in the right-hand pane.
+6. Save staged changes with `Save All`.
 
-### Tools → Open PKF Viewer…
-The Tools menu launches a file picker for PKF archives. After choosing a file the modal viewer uses [`PKFFile`](../app/pkf.py) to list entries and previews decoded bytes with the same `_format_hex_preview()` helper. Errors encountered while opening the archive are surfaced in the status bar.
+## Main workspaces
 
-## Saving and backups
-* `Apply Changes` queues edits in memory; `Save Database` (menu item or `Ctrl+S`) writes them back to disk.
-* `app/file_writer.py` creates a `.backup` copy before rewriting `JUG98030.FDI` so you can revert quickly.
-* Directory offsets and the header `max_offset` are recomputed automatically; you do not need to adjust them manually even if record sizes change.
+### Clubs
 
-## Safety checklist
-- Work on copies of the original `DBDAT` directory. Each save creates a backup, but keeping an untouched source is recommended.
-- Keep names the same length when possible. If you extend them, reload the player in the GUI or via `python -m app info` to confirm offsets still line up.
-- After major edits run `pytest -q` to ensure regression suites that depend on fixture files still pass.
+This is the default editor surface and the primary workflow.
+
+- Browse the club list with search / country grouping.
+- Select a club to view its summary and roster state.
+- If player data is still deferred, the club card stays usable and explains that
+  the roster will appear once player data is loaded.
+- When roster data is available, single-clicking a squad row loads that player
+  into the editor pane.
+
+### Players
+
+This is the cross-database player browser.
+
+- It is available immediately as a shell surface.
+- If the player catalog is not ready yet, the view shows a clear deferred state
+  and offers `Load Player Data`.
+- Once loaded, it behaves as a searchable player browser rather than the main
+  landing page.
+
+### Coaches
+
+Coach editing is intentionally narrower than player editing.
+
+- Browse coach records across the database.
+- Open a coach in the right-hand editor card.
+- Current write support is limited; the UI reflects the confirmed writable
+  surface instead of implying fields that are not parser-backed yet.
+
+### Leagues
+
+The leagues view is primarily a browse-and-route surface.
+
+- Use it to navigate country -> league -> club.
+- Selecting a club routes you back into the club-first workflow.
+
+### Advanced Workspace
+
+Reverse-engineering and investigation tools live behind:
+
+```text
+Tools -> Advanced Workspace
+```
+
+These tools are intentionally separated from the normal editor workflow. They
+remain useful for:
+
+- player metadata inspection
+- indexed byte profile analysis
+- current-club roster source inspection
+- bitmap / asset reference string probing
+
+They should be treated as research tools, not the main editing surface.
+
+## Saving
+
+All record edits are staged first.
+
+- Field edits mark the record dirty.
+- No write happens during typing.
+- `Save All` writes staged player / club / coach edits together.
+- After writing, the GUI runs the shared reopen validation path and reports
+  whether the write succeeded cleanly, succeeded with validation warnings, or
+  failed.
+
+This separation is intentional: “bytes written” and “database healthy after
+reopen” are distinct checks.
+
+## Current limitations
+
+- Some club rosters still depend on unresolved legacy inline roster families and
+  may show as unavailable until those mappings are decoded.
+- Coach linkage is still partial, so club-to-coach routing is deliberately
+  conservative.
+- Bitmap / image assets are part of the broader PM99 data story, but they are
+  not yet a first-class editor surface. They are tracked as a roadmap item and
+  should be treated as a future read-first reverse-engineering milestone.
 
 ## Troubleshooting
+
 | Symptom | Resolution |
 | --- | --- |
-| `File not found` in status bar | Confirm the `.FDI` paths under `DBDAT/` match the defaults or use **File → Open Database…** to browse to a copy. |
-| Players missing from list | Records without canonical names may be skipped by the deduplication heuristic. Confirm the entry with the CLI `list` command and, if necessary, locate it directly via the directory offsets shown in the console output. |
-| Save fails | The status bar will show the exception message. Check file permissions and ensure the backup file can be created in the same directory. |
-| GUI freezes during load | Large files are processed in background threads, but slow disks can still delay UI updates. Wait for the status bar confirmation before editing. |
+| `Player file not found` or `Load failed` | Select any one of the PM99 `.FDI` files from a folder that contains the full set. |
+| Clubs load but players say `on demand` | This is expected during staged startup. Wait for background warmup or use `Load Player Data`. |
+| First club/player action pauses briefly | The player catalog may still be warming or may be loading on demand for the first time. |
+| Save fails | Check file permissions and review the validation/report dialog for the failing stage. |
 
-Automated tests under `pytest` skip integration cases if the proprietary `DBDAT` assets are missing, so a clean checkout without the data will still report success (with skips). To exercise the full suite, supply the game databases before running the command.
+## Related documentation
 
-For deeper technical detail see [`docs/ARCHITECTURE.md`](./ARCHITECTURE.md) and [`docs/DATA_FORMATS.md`](./DATA_FORMATS.md).
-
+- [Current Roadmap](./CURRENT_ROADMAP.md)
+- [Architecture](./ARCHITECTURE.md)
+- [Data Formats](./DATA_FORMATS.md)
+- [Developer Guide](./DEVELOPER_GUIDE.md)

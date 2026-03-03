@@ -1,9 +1,11 @@
 from argparse import Namespace
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
 import app.cli as cli
+from app.editor_actions import DatabaseFileValidation, DatabaseValidationResult
 from app.main_dat import PM99MainDatFile, PM99MainDatPrefix, PM99PackedDate, load_main_dat
 
 
@@ -207,6 +209,152 @@ def test_cmd_rename_refuses_non_writable_offset(monkeypatch, capsys):
     assert inst.saved is False
     assert inst.modified_records == {}
     assert "Refusing to rename player" in out
+
+
+def test_cmd_player_rename_runs_post_write_validation_by_default(monkeypatch, capsys):
+    captured = {}
+    result = SimpleNamespace(
+        changes=[SimpleNamespace(offset=0x10, old_name="Old Name", new_name="New Name")],
+        matched_count=1,
+        valid_count=1,
+        uncertain_count=0,
+        backup_path=None,
+        warnings=[],
+        applied_to_disk=True,
+    )
+
+    def fake_rename_player_records(**kwargs):
+        captured["rename"] = kwargs
+        return result
+
+    def fake_validate_database_files(**kwargs):
+        captured["validate"] = kwargs
+        return SimpleNamespace(
+            all_valid=True,
+            files=[
+                SimpleNamespace(
+                    category="players",
+                    file_path="DBDAT/JUG98030.FDI",
+                    success=True,
+                    valid_count=1,
+                    uncertain_count=0,
+                    detail="re-opened cleanly",
+                )
+            ],
+        )
+
+    monkeypatch.setattr(cli, "rename_player_records", fake_rename_player_records)
+    monkeypatch.setattr(cli, "validate_database_files", fake_validate_database_files)
+
+    cli.cmd_player_rename(
+        Namespace(
+            file="DBDAT/JUG98030.FDI",
+            old="Old Name",
+            new="New Name",
+            include_uncertain=False,
+            offset=None,
+            dry_run=False,
+            skip_validate=False,
+            json=False,
+        )
+    )
+
+    out = capsys.readouterr().out
+    assert captured["rename"]["write_changes"] is True
+    assert captured["validate"] == {
+        "player_file": "DBDAT/JUG98030.FDI",
+        "team_file": None,
+        "coach_file": None,
+    }
+    assert result.post_write_validation.all_valid is True
+    assert "Renamed 1 player record" in out
+    assert "Database validation: PASS" in out
+
+
+def test_cmd_player_rename_can_skip_post_write_validation(monkeypatch, capsys):
+    result = SimpleNamespace(
+        changes=[SimpleNamespace(offset=0x10, old_name="Old Name", new_name="New Name")],
+        matched_count=1,
+        valid_count=1,
+        uncertain_count=0,
+        backup_path=None,
+        warnings=[],
+        applied_to_disk=True,
+    )
+
+    monkeypatch.setattr(cli, "rename_player_records", lambda **_kwargs: result)
+    monkeypatch.setattr(
+        cli,
+        "validate_database_files",
+        lambda **_kwargs: (_ for _ in ()).throw(AssertionError("validate_database_files should not be called")),
+    )
+
+    cli.cmd_player_rename(
+        Namespace(
+            file="DBDAT/JUG98030.FDI",
+            old="Old Name",
+            new="New Name",
+            include_uncertain=False,
+            offset=None,
+            dry_run=False,
+            skip_validate=True,
+            json=False,
+        )
+    )
+
+    out = capsys.readouterr().out
+    assert "Database validation:" not in out
+    assert not hasattr(result, "post_write_validation")
+
+
+def test_cmd_player_rename_exits_nonzero_when_post_write_validation_fails(monkeypatch, capsys):
+    result = SimpleNamespace(
+        changes=[SimpleNamespace(offset=0x10, old_name="Old Name", new_name="New Name")],
+        matched_count=1,
+        valid_count=1,
+        uncertain_count=0,
+        backup_path=None,
+        warnings=[],
+        applied_to_disk=True,
+    )
+
+    monkeypatch.setattr(cli, "rename_player_records", lambda **_kwargs: result)
+    monkeypatch.setattr(
+        cli,
+        "validate_database_files",
+        lambda **_kwargs: SimpleNamespace(
+            all_valid=False,
+            files=[
+                SimpleNamespace(
+                    category="players",
+                    file_path="DBDAT/JUG98030.FDI",
+                    success=False,
+                    valid_count=0,
+                    uncertain_count=0,
+                    detail="broken parse",
+                )
+            ],
+        ),
+    )
+
+    with pytest.raises(SystemExit) as excinfo:
+        cli.cmd_player_rename(
+            Namespace(
+                file="DBDAT/JUG98030.FDI",
+                old="Old Name",
+                new="New Name",
+                include_uncertain=False,
+                offset=None,
+                dry_run=False,
+                skip_validate=False,
+                json=False,
+            )
+        )
+
+    out = capsys.readouterr().out
+    assert excinfo.value.code == 1
+    assert "Database validation: FAIL" in out
+    assert "broken parse" in out
 
 
 def test_cmd_player_edit_stages_requested_metadata_fields(monkeypatch, capsys):
@@ -893,6 +1041,14 @@ def test_cmd_player_tail_prefix_profile_prints_top_buckets(monkeypatch, capsys):
             post_weight_nationality_match_ratio=1.0,
             post_weight_divergent_counts=[(30, 3)],
             post_weight_nationality_mismatch_pairs=[(30, 31, 2), (30, 45, 1)],
+            post_weight_group_clusters=[
+                SimpleNamespace(
+                    post_weight_byte=30,
+                    total_count=3,
+                    nationality_counts=[(31, 2), (45, 1)],
+                    sample_names=["Mark KENNEDY", "Iwan ROBERTS"],
+                )
+            ],
             trailer_byte_counts=[(19, 4)],
             sidecar_byte_counts=[(13, 4)],
             buckets=[
@@ -972,6 +1128,7 @@ def test_cmd_player_tail_prefix_profile_prints_top_buckets(monkeypatch, capsys):
     assert "post_weight_vs_nat=match=4/4 ratio=1.0000" in out
     assert "post_weight_group_keys=postwt=30(3)" in out
     assert "post_weight_mismatches=postwt=30->nat=31(2), postwt=30->nat=45(1)" in out
+    assert "post_weight_group_clusters=postwt=30[3]: nat=31(2), nat=45(1)" in out
     assert "trailer=trail=19(4)" in out
     assert "sidecar0=13(4)" in out
     assert "tail_prefix=[77, 89, 107]: count=4" in out
@@ -1317,6 +1474,7 @@ def test_cmd_player_skill_patch_delegates_to_dd6361_probe(monkeypatch, capsys, t
             in_place=False,
             no_backup=False,
             json_output=str(report_file),
+            skip_validate=True,
             json=False,
         )
     )
@@ -1369,6 +1527,7 @@ def test_cmd_player_skill_patch_in_place_enables_backup(monkeypatch, capsys):
             in_place=True,
             no_backup=False,
             json_output=None,
+            skip_validate=True,
             json=False,
         )
     )
@@ -1391,11 +1550,78 @@ def test_cmd_player_skill_patch_rejects_no_backup_without_in_place(capsys):
                 in_place=False,
                 no_backup=True,
                 json_output=None,
+                skip_validate=True,
                 json=False,
             )
         )
     err = capsys.readouterr().err
     assert "--no-backup only applies with --in-place" in err
+
+
+def test_cmd_player_skill_patch_json_includes_post_write_validation(monkeypatch, tmp_path):
+    captured = {}
+    output_file = tmp_path / "beckham_patched.fdi"
+
+    monkeypatch.setattr(cli, "parse_player_skill_patch_assignments", lambda items: {"speed": 91})
+    monkeypatch.setattr(
+        cli,
+        "patch_player_visible_skills_dd6361",
+        lambda **kwargs: SimpleNamespace(
+            output_file=Path(kwargs["output_file"]),
+            raw_payload={"ok": True},
+        ),
+    )
+    monkeypatch.setattr(
+        cli,
+        "validate_database_files",
+        lambda **kwargs: captured.setdefault(
+            "validation",
+            {
+                "args": kwargs,
+                "result": DatabaseValidationResult(
+                    all_valid=True,
+                    files=[
+                        DatabaseFileValidation(
+                            category="players",
+                            file_path=Path(output_file),
+                            success=True,
+                            valid_count=1,
+                            uncertain_count=0,
+                            detail="re-opened cleanly",
+                        )
+                    ],
+                ),
+            },
+        )["result"],
+    )
+    monkeypatch.setattr(
+        cli,
+        "_emit",
+        lambda value, as_json=False: captured.setdefault("emit", {"value": value, "as_json": as_json}),
+    )
+
+    cli.cmd_player_skill_patch(
+        Namespace(
+            file="DBDAT/JUG98030.FDI",
+            name="Beckham",
+            set_args=["speed=91"],
+            output_file=str(output_file),
+            in_place=False,
+            no_backup=False,
+            json_output=None,
+            skip_validate=False,
+            json=True,
+        )
+    )
+
+    assert captured["validation"]["args"] == {
+        "player_file": str(output_file),
+        "team_file": None,
+        "coach_file": None,
+    }
+    assert captured["emit"]["as_json"] is True
+    assert captured["emit"]["value"]["ok"] is True
+    assert captured["emit"]["value"]["post_write_validation"]["all_valid"] is True
 
 
 def test_cmd_team_roster_extract_delegates_to_shared_action(monkeypatch, capsys, tmp_path):

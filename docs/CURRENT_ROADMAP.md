@@ -15,6 +15,47 @@ The editor should be built from parser-backed, writable contracts first.
   investigation tools, not the primary source of truth.
 - Unknown regions should be preserved until their layout is confirmed.
 
+## Current Product Shell
+
+The active desktop product path is now the refreshed club-first Tk shell exposed
+through `app.gui` and implemented in `app/gui_refresh.py`.
+
+- The GUI resolves a full PM99 database set (`JUG*.FDI`, `EQ*.FDI`, `ENT*.FDI`)
+  from any one selected file.
+- Startup now prioritizes editor readiness:
+  clubs and coaches load first, then the player catalog is deferred.
+- The player catalog still uses the full parser + fallback recovery path, but it
+  now loads on demand and can warm in the background after the shell becomes
+  usable.
+- Reverse-engineering tools stay available in `Tools -> Advanced Workspace`
+  instead of driving the main editor workflow.
+- The right-hand editor remains the canonical staged-edit surface; saves are
+  still validated through the shared reopen validation path.
+
+## Near-Term Product Milestones
+
+1. Finish roster parity.
+   - Complete the unresolved legacy inline roster family so more clubs resolve
+     through confirmed roster mappings instead of falling back to “unavailable”.
+   - Keep the club editor, CLI, and Advanced workspace aligned on the same
+     authoritative roster contracts.
+
+2. Expand editor parity cautiously.
+   - Improve coach linkage resolution so club cards can route into meaningful
+     linked coach edits.
+   - Continue promoting only parser-backed fields into the normal edit surface.
+
+3. Add an asset/bitmap discovery track.
+   - Treat bitmap / image assets as part of the product plan, even if they are
+     not yet first-class in the editor UI.
+   - Identify where `BMP` / related references are stored in the PM99 data and
+     formalize a read-only contract first.
+   - Use the Advanced Workspace bitmap-reference probe as the first discovery
+     surface, then promote richer asset tooling only after the backing contract
+     is stable.
+   - Build a future asset browser/editor surface only after the file references,
+     ownership model, and write safety are understood.
+
 ## Immediate Baseline
 
 1. Make the default editor load path strict-first.
@@ -49,6 +90,9 @@ The editor should be built from parser-backed, writable contracts first.
 - Extend team-side authoritative editing beyond read-only linked rosters, while keeping writes inside proven fixed-size overlays.
 - Continue promoting same-entry authoritative roster families from read-only analysis into explicit fixed-size overlay contracts.
 - Keep the proven team roster edit surfaces aligned across the shared action layer, CLI, and GUI.
+- Add a read-only asset discovery path for bitmap-backed content once the
+  reference contract is stable, then promote it into the editor shell only when
+  the ownership / write story is clear.
 - Keep confirmed parser-backed inspection/reporting contracts visible in the GUI as well as the CLI, while leaving unstable heuristic investigation flows in tools-first surfaces until their contracts settle.
 - Prefer persistent in-app workspaces (for example, the `Analysis` tab) over transient dialogs when a confirmed inspection surface becomes part of the normal editor workflow.
 - Treat “save succeeded” and “database is healthy” as separate checks:
@@ -98,6 +142,10 @@ The editor should be built from parser-backed, writable contracts first.
   The remaining mismatch cases are now explicitly surfaced in the shared profile view;
   the current dominant divergence is `postwt=30 -> nat=31`, followed by `30 -> 45`,
   and `30` is also the dominant grouped `postwt` key in that non-mirror subset.
+  More importantly, that dominant group is no longer just “nearby IDs”: on the
+  current real corpus, `57` of the `66` `postwt=30` mismatches collapse to the
+  home-nation IDs `31`, `45`, `19`, and `32`, which makes a grouped UK/Ireland-style
+  search umbrella the strongest current hypothesis.
   That makes the next RE target sharper: explain the grouped/non-mirror nationality
   buckets instead of re-proving the mirror cases.
 - Use the new direct `a0/a1/a2` tail-prefix filters to isolate the two current `Attr 2`

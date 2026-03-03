@@ -7,6 +7,8 @@ This is the canonical operator-facing workflow for using the current PM99 editor
 - Always work on a copy of `DBDAT/`.
 - Keep backups created by the editor until you have verified the result.
 - Prefer dry-run modes before any bulk operation.
+- Direct mutating CLI commands now run parser-backed post-write reopen validation by default;
+  only use `--skip-validate` for investigative workflows.
 - Never commit `.FDI`, `.backup*`, generated CSVs, or ad hoc exports.
 
 ## Standard Single-Record Workflow

@@ -47,7 +47,11 @@ def _calculate_confidence(record: PlayerRecord, alignment_score: int) -> int:
     return base_conf
 
 
-def find_player_records(file_data: bytes) -> List[Tuple[int, PlayerRecord]]:
+def find_player_records(
+    file_data: bytes,
+    *,
+    include_embedded_scan: bool = True,
+) -> List[Tuple[int, PlayerRecord]]:
     """Find player records in an FDI/PKF file image.
     
     OPTIMIZED: Single-pass scanning with early hash-based deduplication.
@@ -104,7 +108,10 @@ def find_player_records(file_data: bytes) -> List[Tuple[int, PlayerRecord]]:
 
             # Process embedded records in medium/large sections (lower confidence)
             # Skip embedded scan for sections that yielded separated records, unless section is large enough
-            if (not found_separated and 1000 < length < 200000) or (found_separated and 10000 < length < 200000):
+            if include_embedded_scan and (
+                (not found_separated and 1000 < length < 200000)
+                or (found_separated and 10000 < length < 200000)
+            ):
                 try:
                     text = decoded.decode("latin-1", errors="ignore")
                     

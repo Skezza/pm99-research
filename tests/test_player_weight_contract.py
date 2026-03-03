@@ -437,6 +437,12 @@ def test_indexed_post_weight_byte_mostly_matches_nationality_on_real_corpus():
     assert top_mismatch[0] == 30
     assert top_mismatch[1] == 31
     assert top_mismatch[2] >= 10
+    assert result.post_weight_group_clusters
+    top_group = result.post_weight_group_clusters[0]
+    assert top_group.post_weight_byte == 30
+    assert top_group.total_count >= top_mismatch[2]
+    assert top_group.nationality_counts
+    assert top_group.nationality_counts[0][0] == 31
 
 
 def test_indexed_tail_layout_helper_matches_current_real_record():

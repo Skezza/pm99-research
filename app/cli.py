@@ -108,6 +108,56 @@ def _print_database_validation_result(result) -> None:
             print(f"    {detail}")
 
 
+def _run_post_write_validation(
+    args,
+    result,
+    *,
+    player_file: str | None = None,
+    team_file: str | None = None,
+    coach_file: str | None = None,
+    wrote_to_disk: bool | None = None,
+):
+    if getattr(args, "skip_validate", False):
+        return None
+    if not any((player_file, team_file, coach_file)):
+        return None
+    if wrote_to_disk is None:
+        wrote_to_disk = bool(getattr(result, "applied_to_disk", False))
+    if not wrote_to_disk:
+        return None
+
+    validation_result = validate_database_files(
+        player_file=player_file,
+        team_file=team_file,
+        coach_file=coach_file,
+    )
+    try:
+        setattr(result, "post_write_validation", validation_result)
+    except Exception:
+        pass
+    raw_payload = getattr(result, "raw_payload", None)
+    if isinstance(raw_payload, dict):
+        raw_payload["post_write_validation"] = _jsonable(validation_result)
+    return validation_result
+
+
+def _finish_post_write_validation(validation_result, *, emit_json: bool) -> None:
+    if validation_result is None:
+        return
+    if not emit_json:
+        _print_database_validation_result(validation_result)
+    if not getattr(validation_result, "all_valid", False):
+        raise SystemExit(1)
+
+
+def _add_post_write_validation_argument(parser) -> None:
+    parser.add_argument(
+        "--skip-validate",
+        action="store_true",
+        help="Skip parser-backed post-write reopen validation after writing",
+    )
+
+
 def _print_linked_team_rosters(rosters, row_limit: int) -> None:
     if not rosters:
         print("No parser-backed EQ->JUG roster rows found.")
@@ -624,6 +674,13 @@ def _print_player_attribute_prefix_profile_result(result) -> None:
                 for post_value, nat_value, count in mismatch_pairs
             )
             print(f"  post_weight_mismatches={mismatch_text}")
+        group_cluster_text = _format_post_weight_group_cluster_summary(
+            getattr(result, "post_weight_group_clusters", []),
+            limit=3,
+            per_cluster_limit=4,
+        )
+        if group_cluster_text:
+            print(f"  post_weight_group_clusters={group_cluster_text}")
     trailer_text = _format_profile_count_summary(getattr(result, "trailer_byte_counts", []), label="trail")
     if trailer_text:
         print(f"  trailer={trailer_text}")
@@ -653,6 +710,20 @@ def _format_profile_count_summary(entries, *, label: str, limit: int = 4) -> str
     for value, count in list(entries or [])[: max(1, int(limit or 4))]:
         summary_parts.append(f"{label}={value}({count})")
     return ", ".join(summary_parts)
+
+
+def _format_post_weight_group_cluster_summary(entries, *, limit: int = 3, per_cluster_limit: int = 4) -> str:
+    summary_parts = []
+    for cluster in list(entries or [])[: max(1, int(limit or 3))]:
+        post_weight_value = getattr(cluster, "post_weight_byte", None)
+        total_count = int(getattr(cluster, "total_count", 0) or 0)
+        nationality_counts = list(getattr(cluster, "nationality_counts", []) or [])[: max(1, int(per_cluster_limit or 4))]
+        nationality_text = ", ".join(f"nat={nat_value}({count})" for nat_value, count in nationality_counts)
+        if nationality_text:
+            summary_parts.append(f"postwt={post_weight_value}[{total_count}]: {nationality_text}")
+        else:
+            summary_parts.append(f"postwt={post_weight_value}[{total_count}]")
+    return "; ".join(summary_parts)
 
 
 def _player_u1_display_hint(indexed_unknown_1) -> str:
@@ -1379,7 +1450,13 @@ def cmd_rename(args):
         target_offset=offset,
         write_changes=True,
     )
+    validation_result = _run_post_write_validation(
+        args,
+        result,
+        player_file=args.file,
+    )
     _print_player_rename_result(result, dry_run=False)
+    _finish_post_write_validation(validation_result, emit_json=False)
 
 
 def cmd_player_list(args):
@@ -1782,10 +1859,13 @@ def cmd_player_rename(args):
         target_offset=_parse_int_auto(args.offset),
         write_changes=not args.dry_run,
     )
+    validation_result = _run_post_write_validation(args, result, player_file=args.file)
     if args.json:
         _emit(result, as_json=True)
+        _finish_post_write_validation(validation_result, emit_json=True)
         return
     _print_player_rename_result(result, dry_run=args.dry_run)
+    _finish_post_write_validation(validation_result, emit_json=False)
 
 
 def cmd_player_edit(args):
@@ -1808,10 +1888,13 @@ def cmd_player_edit(args):
         print(f"Error: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc
 
+    validation_result = _run_post_write_validation(args, result, player_file=args.file)
     if args.json:
         _emit(result, as_json=True)
+        _finish_post_write_validation(validation_result, emit_json=True)
         return
     _print_player_metadata_edit_result(result, dry_run=args.dry_run)
+    _finish_post_write_validation(validation_result, emit_json=False)
 
 
 def cmd_player_batch_edit(args):
@@ -1825,10 +1908,13 @@ def cmd_player_batch_edit(args):
         print(f"Error: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc
 
+    validation_result = _run_post_write_validation(args, result, player_file=args.file)
     if args.json:
         _emit(result, as_json=True)
+        _finish_post_write_validation(validation_result, emit_json=True)
         return
     _print_player_batch_edit_result(result, dry_run=args.dry_run)
+    _finish_post_write_validation(validation_result, emit_json=False)
 
 
 def cmd_player_inspect(args):
@@ -1965,8 +2051,15 @@ def cmd_player_skill_patch(args):
         print(f"Error: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc
 
+    validation_result = _run_post_write_validation(
+        args,
+        result,
+        player_file=str(result.output_file),
+        wrote_to_disk=True,
+    )
     if args.json:
         _emit(result.raw_payload or result, as_json=True)
+        _finish_post_write_validation(validation_result, emit_json=True)
         return
 
     print(
@@ -1992,6 +2085,7 @@ def cmd_player_skill_patch(args):
         print(f"Touched entries: {preview}{suffix}")
     if getattr(args, "json_output", None):
         print(f"Report: {args.json_output}")
+    _finish_post_write_validation(validation_result, emit_json=False)
 
 
 def cmd_team_list(args):
@@ -2414,10 +2508,13 @@ def cmd_team_roster_edit_linked(args):
         print(f"Error: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc
 
+    validation_result = _run_post_write_validation(args, result, team_file=args.file)
     if args.json:
         _emit(result, as_json=True)
+        _finish_post_write_validation(validation_result, emit_json=True)
         return
     _print_linked_team_roster_edit_result(result, dry_run=args.dry_run)
+    _finish_post_write_validation(validation_result, emit_json=False)
 
 
 def cmd_team_roster_edit_same_entry(args):
@@ -2435,10 +2532,13 @@ def cmd_team_roster_edit_same_entry(args):
         print(f"Error: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc
 
+    validation_result = _run_post_write_validation(args, result, team_file=args.file)
     if args.json:
         _emit(result, as_json=True)
+        _finish_post_write_validation(validation_result, emit_json=True)
         return
     _print_same_entry_team_roster_edit_result(result, dry_run=args.dry_run)
+    _finish_post_write_validation(validation_result, emit_json=False)
 
 
 def cmd_team_roster_profile_same_entry(args):
@@ -2471,10 +2571,13 @@ def cmd_team_roster_batch_edit(args):
         print(f"Error: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc
 
+    validation_result = _run_post_write_validation(args, result, team_file=args.file)
     if args.json:
         _emit(result, as_json=True)
+        _finish_post_write_validation(validation_result, emit_json=True)
         return
     _print_team_roster_batch_edit_result(result, dry_run=args.dry_run)
+    _finish_post_write_validation(validation_result, emit_json=False)
 
 
 def cmd_team_search(args):
@@ -2525,11 +2628,14 @@ def cmd_team_rename(args):
         target_offsets=target_offsets,
         write_changes=not args.dry_run,
     )
+    validation_result = _run_post_write_validation(args, result, team_file=args.file)
     if args.json:
         _emit(result, as_json=True)
+        _finish_post_write_validation(validation_result, emit_json=True)
         return
     if not result.changes:
         print("No team records changed.")
+        _finish_post_write_validation(validation_result, emit_json=False)
         return
     print(
         f"{'Staged' if args.dry_run else 'Renamed'} {len(result.changes)} team record(s) "
@@ -2544,6 +2650,7 @@ def cmd_team_rename(args):
         print(f"Backup: {result.backup_path}")
     for warning in result.warnings:
         print(f"Warning at {warning.offset}: {warning.message}", file=sys.stderr)
+    _finish_post_write_validation(validation_result, emit_json=False)
 
 
 def cmd_coach_list(args):
@@ -2591,11 +2698,14 @@ def cmd_coach_rename(args):
         target_offset=_parse_int_auto(args.offset),
         write_changes=not args.dry_run,
     )
+    validation_result = _run_post_write_validation(args, result, coach_file=args.file)
     if args.json:
         _emit(result, as_json=True)
+        _finish_post_write_validation(validation_result, emit_json=True)
         return
     if not result.changes:
         print("No coach records changed.")
+        _finish_post_write_validation(validation_result, emit_json=False)
         return
     print(
         f"{'Staged' if args.dry_run else 'Renamed'} {len(result.changes)} coach record(s) "
@@ -2607,6 +2717,7 @@ def cmd_coach_rename(args):
         print(f"Backup: {result.backup_path}")
     for warning in result.warnings:
         print(f"Warning at {warning.offset}: {warning.message}", file=sys.stderr)
+    _finish_post_write_validation(validation_result, emit_json=False)
 
 
 def cmd_bulk_player_rename(args):
@@ -2864,6 +2975,7 @@ def main():
     rename_parser.add_argument("--id", type=int, required=True, help="Player ID")
     rename_parser.add_argument("--name", required=True, help="New name")
     rename_parser.add_argument("--offset", help="Optional record offset (hex or decimal) to disambiguate")
+    _add_post_write_validation_argument(rename_parser)
     rename_parser.set_defaults(func=cmd_rename)
 
     # Player-specific v1 commands
@@ -2949,6 +3061,7 @@ def main():
     player_rename_parser.add_argument("--offset", help="Optional record offset (hex or decimal) to disambiguate")
     player_rename_parser.add_argument("--include-uncertain", action="store_true", help="Include low-confidence matches")
     player_rename_parser.add_argument("--dry-run", action="store_true", help="Validate and stage only (no file write)")
+    _add_post_write_validation_argument(player_rename_parser)
     player_rename_parser.add_argument("--json", action="store_true", help="Emit JSON result")
     player_rename_parser.set_defaults(func=cmd_player_rename)
 
@@ -2968,6 +3081,7 @@ def main():
     player_edit_parser.add_argument("--height", type=int, help="Height in cm")
     player_edit_parser.add_argument("--weight", type=int, help="Weight in kg")
     player_edit_parser.add_argument("--dry-run", action="store_true", help="Validate and stage only (no file write)")
+    _add_post_write_validation_argument(player_edit_parser)
     player_edit_parser.add_argument("--json", action="store_true", help="Emit JSON result")
     player_edit_parser.set_defaults(func=cmd_player_edit)
 
@@ -2978,6 +3092,7 @@ def main():
     player_batch_edit_parser.add_argument("file", help="FDI file path")
     player_batch_edit_parser.add_argument("--csv", required=True, help="CSV plan path")
     player_batch_edit_parser.add_argument("--dry-run", action="store_true", help="Validate and stage only (no file write)")
+    _add_post_write_validation_argument(player_batch_edit_parser)
     player_batch_edit_parser.add_argument("--json", action="store_true", help="Emit JSON result")
     player_batch_edit_parser.set_defaults(func=cmd_player_batch_edit)
 
@@ -3111,6 +3226,7 @@ def main():
         help="With --in-place, skip creating a .backup file",
     )
     player_skill_patch_parser.add_argument("--json-output", help="Optional JSON report file path")
+    _add_post_write_validation_argument(player_skill_patch_parser)
     player_skill_patch_parser.add_argument("--json", action="store_true", help="Emit JSON result")
     player_skill_patch_parser.set_defaults(func=cmd_player_skill_patch)
 
@@ -3138,6 +3254,7 @@ def main():
     team_rename_parser.add_argument("--offset", help="Optional record offset (hex or decimal)")
     team_rename_parser.add_argument("--include-uncertain", action="store_true", help="Include uncertain records")
     team_rename_parser.add_argument("--dry-run", action="store_true", help="Validate and stage only (no file write)")
+    _add_post_write_validation_argument(team_rename_parser)
     team_rename_parser.add_argument("--json", action="store_true", help="Emit JSON result")
     team_rename_parser.set_defaults(func=cmd_team_rename)
 
@@ -3258,6 +3375,7 @@ def main():
         action="store_true",
         help="Validate and stage only (no file write)",
     )
+    _add_post_write_validation_argument(team_roster_edit_linked_parser)
     team_roster_edit_linked_parser.add_argument("--json", action="store_true", help="Emit JSON result")
     team_roster_edit_linked_parser.set_defaults(func=cmd_team_roster_edit_linked)
 
@@ -3302,6 +3420,7 @@ def main():
         action="store_true",
         help="Validate and stage only (no file write)",
     )
+    _add_post_write_validation_argument(team_roster_edit_same_entry_parser)
     team_roster_edit_same_entry_parser.add_argument("--json", action="store_true", help="Emit JSON result")
     team_roster_edit_same_entry_parser.set_defaults(func=cmd_team_roster_edit_same_entry)
 
@@ -3330,6 +3449,7 @@ def main():
         action="store_true",
         help="Validate and stage only (no file write)",
     )
+    _add_post_write_validation_argument(team_roster_batch_edit_parser)
     team_roster_batch_edit_parser.add_argument("--json", action="store_true", help="Emit JSON result")
     team_roster_batch_edit_parser.set_defaults(func=cmd_team_roster_batch_edit)
 
@@ -3390,6 +3510,7 @@ def main():
     coach_rename_parser.add_argument("--offset", help="Optional record offset (hex or decimal)")
     coach_rename_parser.add_argument("--include-uncertain", action="store_true", help="Include uncertain records")
     coach_rename_parser.add_argument("--dry-run", action="store_true", help="Validate and stage only (no file write)")
+    _add_post_write_validation_argument(coach_rename_parser)
     coach_rename_parser.add_argument("--json", action="store_true", help="Emit JSON result")
     coach_rename_parser.set_defaults(func=cmd_coach_rename)
 

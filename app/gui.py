@@ -54,6 +54,7 @@ from app.editor_actions import (
     write_team_staged_records,
 )
 from app.editor_helpers import team_query_matches
+from app.editor_sources import gather_player_records
 from app.models import PlayerRecord, TeamRecord, CoachRecord
 from app.io import FDIFile
 from app.file_writer import save_modified_records
@@ -164,6 +165,8 @@ class PM99DatabaseEditor:
         self.team_records = []             # list of (offset, TeamRecord)
         self.filtered_team_records = []    # filtered view for search
         self.team_lookup = {}              # team_id -> team_name mapping (built after teams parsed)
+        self.team_alias_lookup = {}        # team_id -> (short_name, full_club_name)
+        self.player_uncertain_count = 0
 
         default_pkf_dir = Path("SIMULDAT") if Path("SIMULDAT").exists() else Path(".")
         self._pkf_last_dir = default_pkf_dir.resolve()
@@ -233,10 +236,29 @@ class PM99DatabaseEditor:
         # Search (Players)
         search_frame = ttk.LabelFrame(player_tab, text="Search", padding="5")
         search_frame.pack(fill=tk.X, pady=(0, 5))
+
+        ttk.Label(
+            search_frame,
+            text="Search by player name or team (examples: Beckham, Man Utd, Manchester United)",
+            font=("TkDefaultFont", 8),
+        ).pack(fill=tk.X, anchor=tk.W, pady=(0, 4))
         
         self.search_var = tk.StringVar()
         self.search_var.trace('w', self.filter_records)
         ttk.Entry(search_frame, textvariable=self.search_var).pack(fill=tk.X)
+
+        player_actions = ttk.Frame(player_tab)
+        player_actions.pack(fill=tk.X, pady=(0, 5))
+        ttk.Button(
+            player_actions,
+            text="Inspect Selected Player",
+            command=self.inspect_selected_player_metadata,
+        ).pack(side=tk.LEFT)
+        ttk.Button(
+            player_actions,
+            text="Advanced Research...",
+            command=self.open_player_indexed_profiles_dialog,
+        ).pack(side=tk.LEFT, padx=(6, 0))
         
         # Player tree
         tree_frame = ttk.LabelFrame(player_tab, text="Players", padding="5")
@@ -1733,13 +1755,19 @@ class PM99DatabaseEditor:
     def build_team_lookup(self):
         """Build team id -> name mapping for displaying team names in player list."""
         self.team_lookup = {}
+        self.team_alias_lookup = {}
         try:
             for offset, t in getattr(self, 'team_records', []):
                 tid = getattr(t, 'team_id', None)
                 if tid is not None:
-                    self.team_lookup[int(tid)] = getattr(t, 'name', '')
+                    team_id = int(tid)
+                    short_name = str(getattr(t, 'name', '') or '')
+                    full_club_name = str(getattr(t, 'full_club_name', '') or '')
+                    self.team_lookup[team_id] = short_name
+                    self.team_alias_lookup[team_id] = (short_name, full_club_name)
         except Exception:
             self.team_lookup = {}
+            self.team_alias_lookup = {}
 
     def populate_league_tree(self):
         """Populate a simple leagues/teams hierarchy for the Leagues tab."""
@@ -1782,6 +1810,22 @@ class PM99DatabaseEditor:
         for raw_value, raw_count in list(entries or [])[: max(1, int(limit or 4))]:
             summary_parts.append(f"{label}={raw_value}({raw_count})")
         return ", ".join(summary_parts)
+
+    @staticmethod
+    def _format_post_weight_group_cluster_summary(entries, *, limit: int = 3, per_cluster_limit: int = 4):
+        summary_parts = []
+        for cluster in list(entries or [])[: max(1, int(limit or 3))]:
+            post_weight_value = getattr(cluster, "post_weight_byte", None)
+            total_count = int(getattr(cluster, "total_count", 0) or 0)
+            nationality_counts = list(getattr(cluster, "nationality_counts", []) or [])[: max(1, int(per_cluster_limit or 4))]
+            nationality_text = ", ".join(
+                f"nat={nat_value}({count})" for nat_value, count in nationality_counts
+            )
+            if nationality_text:
+                summary_parts.append(f"postwt={post_weight_value}[{total_count}]: {nationality_text}")
+            else:
+                summary_parts.append(f"postwt={post_weight_value}[{total_count}]")
+        return "; ".join(summary_parts)
 
     @staticmethod
     def _player_suffix_pair_hint(indexed_unknown_9, indexed_unknown_10):
@@ -2546,6 +2590,14 @@ class PM99DatabaseEditor:
                             for post_value, nat_value, count in list(
                                 getattr(tail_prefix_result, "post_weight_nationality_mismatch_pairs", []) or []
                             )[:5]
+                        ),
+                    ),
+                    (
+                        "Grouped post-weight cohorts",
+                        PM99DatabaseEditor._format_post_weight_group_cluster_summary(
+                            getattr(tail_prefix_result, "post_weight_group_clusters", []),
+                            limit=3,
+                            per_cluster_limit=4,
                         ),
                     ),
                     (
@@ -5055,8 +5107,9 @@ class PM99DatabaseEditor:
                 self.file_data = Path(self.file_path).read_bytes()
                 fdi = FDIFile(self.file_path)
                 fdi.load()
-                # Prefer the offset-aware structure when available
-                records = getattr(fdi, 'records_with_offsets', [(None, r) for r in getattr(fdi, 'records', [])])
+                valid_players, uncertain_players = gather_player_records(self.file_path)
+                records = [(entry.offset, entry.record) for entry in valid_players]
+                uncertain_count = len(uncertain_players)
  
                 # Load coaches
                 self.root.after(0, lambda: progress_label.config(text="Loading coaches from ENT98030.FDI..."))
@@ -5069,13 +5122,24 @@ class PM99DatabaseEditor:
                 parsed_teams = load_teams(self.team_file_path)
  
                 # Schedule UI update on main thread
-                self.root.after(0, lambda: self._on_db_loaded_full(progress, progressbar, fdi, records, parsed_coaches, parsed_teams))
+                self.root.after(
+                    0,
+                    lambda: self._on_db_loaded_full(
+                        progress,
+                        progressbar,
+                        fdi,
+                        records,
+                        uncertain_count,
+                        parsed_coaches,
+                        parsed_teams,
+                    ),
+                )
             except Exception as e:
                 self.root.after(0, lambda: self._on_db_load_failed(progress, progressbar, e))
  
         threading.Thread(target=worker, daemon=True).start()
  
-    def _on_db_loaded_full(self, progress, progressbar, fdi, records, coaches, teams):
+    def _on_db_loaded_full(self, progress, progressbar, fdi, records, uncertain_count, coaches, teams):
         """Callback run on the UI thread when full database load completes successfully."""
         try:
             progressbar.config(value=3)
@@ -5086,6 +5150,7 @@ class PM99DatabaseEditor:
         self.fdi_file = fdi
         self.all_records = records
         self.filtered_records = self.all_records.copy()
+        self.player_uncertain_count = int(uncertain_count or 0)
         self.populate_tree()
  
         # Set coaches
@@ -5110,8 +5175,19 @@ class PM99DatabaseEditor:
         total_coaches = len(self.coach_records)
         total_teams = len(self.team_records)
  
-        self.status_var.set(f"✓ Loaded database: {total_players} players, {total_coaches} coaches, {total_teams} teams")
-        messagebox.showinfo("Success", f"Loaded database:\n{total_players} players\n{total_coaches} coaches\n{total_teams} teams")
+        uncertainty_suffix = (
+            f"\n{self.player_uncertain_count} uncertain player rows hidden from the editor list"
+            if self.player_uncertain_count
+            else ""
+        )
+        self.status_var.set(
+            f"✓ Loaded database: {total_players} parser-backed players, {total_coaches} coaches, {total_teams} teams"
+        )
+        messagebox.showinfo(
+            "Success",
+            f"Loaded database:\n{total_players} parser-backed players\n{total_coaches} coaches\n{total_teams} teams"
+            + uncertainty_suffix,
+        )
  
     def _on_db_load_failed(self, progress, progressbar, error):
         """Callback run on the UI thread when background load fails."""
@@ -5155,7 +5231,10 @@ class PM99DatabaseEditor:
                 record.get_position_name()
             ), tags=(str(offset),))
         
-        self.count_label.config(text=f"Players: {len(self.filtered_records)} / {len(self.all_records)}")
+        count_text = f"Players: {len(self.filtered_records)} / {len(self.all_records)}"
+        if getattr(self, "player_uncertain_count", 0):
+            count_text += f" ({self.player_uncertain_count} uncertain hidden)"
+        self.count_label.config(text=count_text)
     
     def on_select(self, event):
         """Handle player selection"""
@@ -5176,6 +5255,75 @@ class PM99DatabaseEditor:
                 self.current_record = (o, r)
                 self.display_record(r)
                 break
+
+    def _player_matches_query(self, record, query: str) -> bool:
+        """Match player search against player names and resolved team aliases."""
+        normalized_query = str(query or "").strip()
+        if not normalized_query:
+            return True
+        lower_query = normalized_query.lower()
+
+        candidate_names = [
+            str(getattr(record, "name", "") or ""),
+            str(getattr(record, "given_name", "") or ""),
+            str(getattr(record, "surname", "") or ""),
+            f"{getattr(record, 'given_name', '') or ''} {getattr(record, 'surname', '') or ''}".strip(),
+        ]
+        for candidate in candidate_names:
+            if candidate and lower_query in candidate.lower():
+                return True
+
+        try:
+            team_id = getattr(record, "team_id", None)
+        except Exception:
+            team_id = None
+        if team_id is not None:
+            team_id_text = str(team_id)
+            if lower_query in team_id_text.lower():
+                return True
+            team_name, full_club_name = (getattr(self, "team_alias_lookup", {}) or {}).get(
+                int(team_id),
+                ("", ""),
+            )
+            if team_query_matches(
+                normalized_query,
+                team_name=str(team_name or ""),
+                full_club_name=str(full_club_name or ""),
+            ):
+                return True
+        return False
+
+    def inspect_selected_player_metadata(self):
+        """Render selected-player metadata into the analysis workspace without prompts."""
+        current = getattr(self, "current_record", None)
+        if not (isinstance(current, tuple) and len(current) >= 2):
+            messagebox.showinfo("Inspect Selected Player", "Select a player first.")
+            return
+
+        offset, record = current
+        target_name = str(
+            getattr(record, "name", None)
+            or f"{getattr(record, 'given_name', '') or ''} {getattr(record, 'surname', '') or ''}".strip()
+        ).strip()
+        if not target_name:
+            messagebox.showinfo("Inspect Selected Player", "The selected player does not have a usable name.")
+            return
+
+        try:
+            self.status_var.set("Inspecting selected player...")
+            self.root.update_idletasks()
+            result = inspect_player_metadata_records(
+                file_path=str(getattr(self, "file_path", None) or "DBDAT/JUG98030.FDI"),
+                target_name=target_name,
+                target_offset=int(offset) if isinstance(offset, int) else None,
+            )
+            self.status_var.set(
+                f"✓ Selected player inspection complete ({getattr(result, 'matched_count', 0)} matched)"
+            )
+            PM99DatabaseEditor._show_player_metadata_inspect_dialog_view(self, result=result)
+        except Exception as exc:
+            self.status_var.set("Selected player inspection failed")
+            messagebox.showerror("Inspect Selected Player", f"Inspection failed:\n{exc}")
 
     def display_record(self, record: PlayerRecord):
         """Display record in editor"""
@@ -5572,13 +5720,13 @@ class PM99DatabaseEditor:
 
     def filter_records(self, *args):
         """Filter players by search"""
-        search = self.search_var.get().lower()
+        search = self.search_var.get().strip()
         if search:
-            try:
-                self.filtered_records = [(o, r) for o, r in self.all_records if search in (getattr(r, 'name','').lower())]
-            except Exception:
-                # Fallback: some records may not expose a name attribute in the expected way
-                self.filtered_records = [(o, r) for o, r in self.all_records if search in str(getattr(r, 'name', '')).lower()]
+            self.filtered_records = [
+                (offset, record)
+                for offset, record in self.all_records
+                if self._player_matches_query(record, search)
+            ]
         else:
             self.filtered_records = self.all_records.copy()
         self.populate_tree()
@@ -5750,6 +5898,14 @@ class PM99DatabaseEditor:
                 self.staged_visible_skill_patches = {}
             # Reload database for the newly chosen file
             self.load_database()
+
+try:
+    from .gui_refresh import PM99DatabaseEditor as RefreshedPM99DatabaseEditor
+except Exception:
+    from app.gui_refresh import PM99DatabaseEditor as RefreshedPM99DatabaseEditor
+
+PM99DatabaseEditor = RefreshedPM99DatabaseEditor
+
 def main():
     root = tk.Tk()
     

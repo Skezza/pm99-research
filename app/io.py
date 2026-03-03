@@ -96,8 +96,13 @@ class FDIFile:
         self.modified_records = {}
         self.last_backup_path = None
     
-    def load(self):
-        """Load and parse the FDI file using strict boundaries first, then heuristic fallback."""
+    def load(
+        self,
+        *,
+        include_scanner_fallback: bool = True,
+        scanner_mode: str = "full",
+    ):
+        """Load and parse the FDI file using strict boundaries first, with optional heuristic fallback."""
         if not self.file_path.exists():
             raise FileNotFoundError(f"File not found: {self.file_path}")
 
@@ -153,16 +158,21 @@ class FDIFile:
             )
 
         # Investigation fallback: use the heuristic scanner only to fill gaps.
-        for offset, record in find_player_records(file_data):
-            scanner_priority = 100
-            if _record_has_name_marker(record):
-                scanner_priority += 10
-            _merge_record_candidate(
-                records_by_name,
-                offset=offset,
-                record=record,
-                priority=scanner_priority,
-            )
+        if include_scanner_fallback:
+            use_embedded_scan = str(scanner_mode or "full").strip().lower() != "separated_only"
+            for offset, record in find_player_records(
+                file_data,
+                include_embedded_scan=use_embedded_scan,
+            ):
+                scanner_priority = 100
+                if _record_has_name_marker(record):
+                    scanner_priority += 10
+                _merge_record_candidate(
+                    records_by_name,
+                    offset=offset,
+                    record=record,
+                    priority=scanner_priority,
+                )
 
         records_with_offsets = sorted(
             [(offset, record) for _priority, offset, record in records_by_name.values()],
@@ -170,7 +180,12 @@ class FDIFile:
         )
 
         # Expose both formats for callers
-        self.record_source_mode = "strict_first_with_scanner_fallback"
+        if not include_scanner_fallback:
+            self.record_source_mode = "strict_only"
+        elif str(scanner_mode or "full").strip().lower() == "separated_only":
+            self.record_source_mode = "strict_first_with_light_scanner_fallback"
+        else:
+            self.record_source_mode = "strict_first_with_scanner_fallback"
         self.records_with_offsets = records_with_offsets
         self.records = [r for _, r in records_with_offsets]
     

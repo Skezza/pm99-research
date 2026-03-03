@@ -68,6 +68,7 @@ class PlayerRenameResult:
     matched_count: int
     staged_records: List[Tuple[int, Any]] = field(default_factory=list)
     warnings: List[RenameIssue] = field(default_factory=list)
+    post_write_validation: Optional[DatabaseValidationResult] = None
 
 
 @dataclass
@@ -91,6 +92,7 @@ class PlayerMetadataEditResult:
     matched_count: int
     staged_records: List[Tuple[int, Any]] = field(default_factory=list)
     warnings: List[RenameIssue] = field(default_factory=list)
+    post_write_validation: Optional[DatabaseValidationResult] = None
 
 
 @dataclass
@@ -107,6 +109,7 @@ class PlayerBatchEditResult:
     applied_to_disk: bool
     staged_records: List[Tuple[int, Any]] = field(default_factory=list)
     warnings: List[RenameIssue] = field(default_factory=list)
+    post_write_validation: Optional[DatabaseValidationResult] = None
 
 
 @dataclass
@@ -234,6 +237,14 @@ class PlayerAttributeSignatureProfileBucket:
 
 
 @dataclass
+class PostWeightGroupCluster:
+    post_weight_byte: Optional[int]
+    total_count: int
+    nationality_counts: List[Tuple[Optional[int], int]]
+    sample_names: List[str]
+
+
+@dataclass
 class PlayerAttributePrefixProfileResult:
     file_path: Path
     record_count: int
@@ -262,6 +273,7 @@ class PlayerAttributePrefixProfileResult:
     post_weight_nationality_match_ratio: float
     post_weight_divergent_counts: List[Tuple[Optional[int], int]]
     post_weight_nationality_mismatch_pairs: List[Tuple[Optional[int], Optional[int], int]]
+    post_weight_group_clusters: List[PostWeightGroupCluster]
     trailer_byte_counts: List[Tuple[Optional[int], int]]
     sidecar_byte_counts: List[Tuple[Optional[int], int]]
     buckets: List[PlayerAttributePrefixProfileBucket]
@@ -309,6 +321,7 @@ class TeamRenameResult:
     matched_count: int
     staged_records: List[Tuple[int, Any]] = field(default_factory=list)
     warnings: List[RenameIssue] = field(default_factory=list)
+    post_write_validation: Optional[DatabaseValidationResult] = None
 
 
 @dataclass
@@ -335,6 +348,7 @@ class TeamLinkedRosterEditResult:
     write_changes: bool
     applied_to_disk: bool
     warnings: List[RenameIssue] = field(default_factory=list)
+    post_write_validation: Optional[DatabaseValidationResult] = None
 
 
 @dataclass
@@ -362,6 +376,7 @@ class TeamSameEntryRosterEditResult:
     write_changes: bool
     applied_to_disk: bool
     warnings: List[RenameIssue] = field(default_factory=list)
+    post_write_validation: Optional[DatabaseValidationResult] = None
 
 
 @dataclass
@@ -401,6 +416,7 @@ class TeamRosterBatchEditResult:
     write_changes: bool
     applied_to_disk: bool
     warnings: List[RenameIssue] = field(default_factory=list)
+    post_write_validation: Optional[DatabaseValidationResult] = None
 
 
 @dataclass
@@ -427,6 +443,7 @@ class CoachRenameResult:
     matched_count: int
     staged_records: List[Tuple[int, Any]] = field(default_factory=list)
     warnings: List[RenameIssue] = field(default_factory=list)
+    post_write_validation: Optional[DatabaseValidationResult] = None
 
 
 @dataclass
@@ -445,6 +462,7 @@ class PlayerSkillPatchResult:
     touched_entry_offsets: List[int] = field(default_factory=list)
     json_output_path: Optional[str] = None
     raw_payload: Dict[str, Any] = field(default_factory=dict)
+    post_write_validation: Optional[DatabaseValidationResult] = None
 
 
 @dataclass
@@ -3370,6 +3388,8 @@ def profile_indexed_player_attribute_prefixes(
     post_weight_nationality_match_count = 0
     post_weight_divergent_counts: Dict[Optional[int], int] = {}
     post_weight_nationality_mismatch_pair_counts: Dict[Tuple[Optional[int], Optional[int]], int] = {}
+    post_weight_group_nationality_counts: Dict[Optional[int], Dict[Optional[int], int]] = {}
+    post_weight_group_samples: Dict[Optional[int], List[str]] = {}
     trailer_byte_counts: Dict[Optional[int], int] = {}
     sidecar_byte_counts: Dict[Optional[int], int] = {}
     layout_verified_count = 0
@@ -3440,6 +3460,12 @@ def profile_indexed_player_attribute_prefixes(
                 post_weight_nationality_mismatch_pair_counts[mismatch_pair] = (
                     post_weight_nationality_mismatch_pair_counts.get(mismatch_pair, 0) + 1
                 )
+                group_counts = post_weight_group_nationality_counts.setdefault(post_weight_value, {})
+                group_counts[nationality_value] = group_counts.get(nationality_value, 0) + 1
+                if display:
+                    group_samples = post_weight_group_samples.setdefault(post_weight_value, [])
+                    if display not in group_samples and len(group_samples) < sample_size:
+                        group_samples.append(display)
         attribute_0_counts[triple[0]] = attribute_0_counts.get(triple[0], 0) + 1
         attribute_1_counts[triple[1]] = attribute_1_counts.get(triple[1], 0) + 1
         attribute_2_counts[triple[2]] = attribute_2_counts.get(triple[2], 0) + 1
@@ -3529,6 +3555,13 @@ def profile_indexed_player_attribute_prefixes(
             item[0][1] if item[0][1] is not None else -1,
         ),
     )
+    ordered_post_weight_group_clusters = sorted(
+        post_weight_group_nationality_counts.items(),
+        key=lambda item: (
+            -sum(item[1].values()),
+            item[0] if item[0] is not None else -1,
+        ),
+    )
     ordered_trailer = sorted(
         trailer_byte_counts.items(),
         key=lambda item: (-item[1], item[0] if item[0] is not None else -1),
@@ -3537,6 +3570,20 @@ def profile_indexed_player_attribute_prefixes(
         sidecar_byte_counts.items(),
         key=lambda item: (-item[1], item[0] if item[0] is not None else -1),
     )
+    post_weight_group_clusters: List[PostWeightGroupCluster] = []
+    for post_weight_key, nationality_counts in ordered_post_weight_group_clusters[: max(1, int(limit or 10))]:
+        ordered_nationality_counts = sorted(
+            nationality_counts.items(),
+            key=lambda item: (-item[1], item[0] if item[0] is not None else -1),
+        )
+        post_weight_group_clusters.append(
+            PostWeightGroupCluster(
+                post_weight_byte=post_weight_key,
+                total_count=sum(nationality_counts.values()),
+                nationality_counts=ordered_nationality_counts,
+                sample_names=list(post_weight_group_samples.get(post_weight_key, [])),
+            )
+        )
 
     return PlayerAttributePrefixProfileResult(
         file_path=path,
@@ -3573,6 +3620,7 @@ def profile_indexed_player_attribute_prefixes(
             (pair[0], pair[1], count)
             for pair, count in ordered_post_weight_mismatch_pairs[: max(1, int(limit or 10))]
         ],
+        post_weight_group_clusters=post_weight_group_clusters,
         trailer_byte_counts=ordered_trailer,
         sidecar_byte_counts=ordered_sidecar,
         buckets=buckets,
@@ -3827,6 +3875,7 @@ __all__ = [
     "PlayerLegacyWeightCandidateProfile",
     "PlayerLegacyWeightProfileResult",
     "PlayerAttributePrefixProfileBucket",
+    "PostWeightGroupCluster",
     "PlayerAttributePrefixProfileResult",
     "PlayerLeadingProfileBucket",
     "PlayerLeadingProfileResult",

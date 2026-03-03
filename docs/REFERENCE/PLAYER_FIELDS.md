@@ -129,13 +129,18 @@ For indexed `DMFIv1.0` JUG entries, the parser can also recover a richer metadat
   on roughly 94% of parsed records, so the safest current reading is that it acts
   as a secondary nationality/search key, not a second physical stat.
   The remaining mismatches are also patterned rather than random. The dominant
-  divergence currently clusters around `postwt=30` paired with nearby nationality
-  IDs such as `31`, `45`, `19`, and `32`, which suggests a fallback/grouped lookup
-  behavior rather than corrupt data. The shared profile now also surfaces the top
-  divergent `postwt` values directly; `30` is currently the dominant grouped search
-  key in the mismatch subset. The CLI/GUI inspect surfaces now annotate the obvious
-  per-record mirror case as a nationality-search mirror, and the non-mirror minority
-  as grouped nationality-search keys.
+  divergence is now much narrower than “nearby IDs”: `postwt=30` is the top grouped
+  key, and on the current real corpus `57` of its `66` mismatch rows land on the
+  four home-nation IDs `31`, `45`, `19`, and `32` (with the leading pairs
+  `30 -> 31`, `30 -> 45`, `30 -> 19`, and `30 -> 32`). Combined with the
+  `FUN_004319f0` search-options builder loop, this makes the strongest current
+  reading a grouped nationality-search umbrella rather than bad physical-stat data:
+  selecting the `30` search key likely exposes a broader UK/Ireland-style bucket,
+  while the primary `nationality` byte still preserves the specific per-country label.
+  The shared profile now also surfaces these grouped cohorts directly, not just the
+  raw mismatch pairs, so the non-mirror minority can be inspected without ad hoc scripts.
+  The CLI/GUI inspect surfaces now annotate the obvious per-record mirror case as a
+  nationality-search mirror, and the non-mirror minority as grouped nationality-search keys.
   but it does not expose the trailing 12-byte attribute window as a comparable set of
   fixed struct-byte writes there. Instead, once it reaches the late opaque region it
   copies a larger trailing block into a player sidecar area in bulk (starting at

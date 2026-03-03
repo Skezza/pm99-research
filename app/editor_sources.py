@@ -29,10 +29,8 @@ def _has_name_marker(record: PlayerRecord) -> bool:
     return marker is not None
 
 
-def gather_player_records(file_path: str) -> Tuple[List[RecordEntry[PlayerRecord]], List[RecordEntry[PlayerRecord]]]:
-    """Return records using the default product load path (strict-first with fallback)."""
-    fdi = FDIFile(file_path)
-    fdi.load()
+def gather_player_records_from_fdi(fdi: FDIFile) -> Tuple[List[RecordEntry[PlayerRecord]], List[RecordEntry[PlayerRecord]]]:
+    """Classify already-loaded FDI player records into authoritative and uncertain sets."""
     valid: List[RecordEntry[PlayerRecord]] = []
     uncertain: List[RecordEntry[PlayerRecord]] = []
     source = f"load ({getattr(fdi, 'record_source_mode', 'unknown')})"
@@ -43,6 +41,17 @@ def gather_player_records(file_path: str) -> Tuple[List[RecordEntry[PlayerRecord
         else:
             uncertain.append(entry)
     return valid, uncertain
+
+
+def gather_player_records(
+    file_path: str,
+    *,
+    include_scanner_fallback: bool = True,
+) -> Tuple[List[RecordEntry[PlayerRecord]], List[RecordEntry[PlayerRecord]]]:
+    """Return records using the shared product load path."""
+    fdi = FDIFile(file_path)
+    fdi.load(include_scanner_fallback=include_scanner_fallback)
+    return gather_player_records_from_fdi(fdi)
 
 
 def gather_player_records_heuristic(file_path: str) -> Tuple[List[RecordEntry[PlayerRecord]], List[RecordEntry[PlayerRecord]]]:
