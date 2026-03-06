@@ -105,6 +105,81 @@ LEAGUE_STRUCTURE = {
     ]
 }
 
+# Best-effort fallback for the observed EQ98030.FDI team stream order.
+# The team parser can recover valid names even when the parsed `team_id` is noisy
+# or zero, but the decoded team list itself is still strongly grouped by
+# competition. These blocks are used only when the primary `team_id` mapping
+# fails, so the parser-backed range mapping stays authoritative where it works.
+TEAM_SEQUENCE_FALLBACKS: List[Dict[str, object]] = [
+    {"index_start": 0, "index_end": 19, "country": "Spain", "league": "La Liga"},
+    {"index_start": 20, "index_end": 37, "country": "Italy", "league": "Serie A"},
+    {"index_start": 38, "index_end": 59, "country": "England", "league": "Premier League"},
+    {"index_start": 60, "index_end": 83, "country": "England", "league": "First Division"},
+    {"index_start": 84, "index_end": 107, "country": "England", "league": "Second Division"},
+    {"index_start": 108, "index_end": 131, "country": "England", "league": "Third Division"},
+    {"index_start": 132, "index_end": 149, "country": "Germany", "league": "Bundesliga"},
+    {"index_start": 150, "index_end": 167, "country": "France", "league": "Division 1"},
+    {"index_start": 168, "index_end": 182, "country": "Portugal", "league": "Primeira Liga"},
+    {"index_start": 183, "index_end": 187, "country": "Yugoslavia", "league": "First League"},
+    {"index_start": 188, "index_end": 194, "country": "Russia", "league": "Top Division"},
+    {"index_start": 195, "index_end": 211, "country": "Netherlands", "league": "Eredivisie"},
+    {"index_start": 212, "index_end": 229, "country": "Belgium", "league": "First Division"},
+    {"index_start": 230, "index_end": 233, "country": "Croatia", "league": "First League"},
+    {"index_start": 234, "index_end": 243, "country": "Sweden", "league": "Allsvenskan"},
+    {"index_start": 244, "index_end": 252, "country": "Turkey", "league": "First League"},
+    {"index_start": 253, "index_end": 263, "country": "Poland", "league": "First Division"},
+    {"index_start": 264, "index_end": 275, "country": "Switzerland", "league": "Nationalliga A"},
+    {"index_start": 276, "index_end": 285, "country": "Austria", "league": "Bundesliga"},
+    {"index_start": 286, "index_end": 296, "country": "Denmark", "league": "Superliga"},
+    {"index_start": 297, "index_end": 307, "country": "Scotland", "league": "Premier Division"},
+    {"index_start": 308, "index_end": 318, "country": "Greece", "league": "Alpha Ethniki"},
+    {"index_start": 319, "index_end": 327, "country": "Norway", "league": "Tippeligaen"},
+    {"index_start": 328, "index_end": 335, "country": "Romania", "league": "Divizia A"},
+    {"index_start": 336, "index_end": 343, "country": "Czech Republic", "league": "First League"},
+    {"index_start": 344, "index_end": 349, "country": "Bulgaria", "league": "A Group"},
+    {"index_start": 350, "index_end": 358, "country": "Slovakia", "league": "First League"},
+    {"index_start": 359, "index_end": 363, "country": "Slovenia", "league": "First League"},
+    {"index_start": 364, "index_end": 368, "country": "Cyprus", "league": "First Division"},
+    {"index_start": 369, "index_end": 377, "country": "Hungary", "league": "NB I"},
+    {"index_start": 378, "index_end": 381, "country": "Ukraine", "league": "Top League"},
+    {"index_start": 382, "index_end": 385, "country": "Luxembourg", "league": "National Division"},
+    {"index_start": 386, "index_end": 397, "country": "Republic of Ireland", "league": "Premier Division"},
+    {"index_start": 398, "index_end": 404, "country": "Northern Ireland", "league": "Premier Division"},
+    {"index_start": 405, "index_end": 406, "country": "Iceland", "league": "Urvalsdeild"},
+    {"index_start": 407, "index_end": 411, "country": "Finland", "league": "Veikkausliiga"},
+    {"index_start": 412, "index_end": 424, "country": "Wales", "league": "League of Wales"},
+    {"index_start": 425, "index_end": 429, "country": "Israel", "league": "Premier League"},
+    {"index_start": 430, "index_end": 432, "country": "Malta", "league": "Premier League"},
+    {"index_start": 433, "index_end": 434, "country": "Faroe Islands", "league": "Premier Division"},
+    {"index_start": 435, "index_end": 437, "country": "Lithuania", "league": "A Lyga"},
+    {"index_start": 438, "index_end": 439, "country": "Albania", "league": "Kategoria Superiore"},
+    {"index_start": 440, "index_end": 441, "country": "Georgia", "league": "Umaglesi Liga"},
+    {"index_start": 442, "index_end": 442, "country": "Moldova", "league": "National Division"},
+    {"index_start": 443, "index_end": 444, "country": "Bolivia", "league": "Liga Profesional"},
+    {"index_start": 445, "index_end": 447, "country": "Ecuador", "league": "Serie A"},
+    {"index_start": 448, "index_end": 448, "country": "Belarus", "league": "Premier League"},
+    {"index_start": 449, "index_end": 451, "country": "Peru", "league": "Primera Division"},
+    {"index_start": 452, "index_end": 460, "country": "Brazil", "league": "Campeonato Brasileiro"},
+    {"index_start": 461, "index_end": 462, "country": "Uruguay", "league": "Primera Division"},
+    {"index_start": 463, "index_end": 464, "country": "Venezuela", "league": "Primera Division"},
+    {"index_start": 465, "index_end": 467, "country": "Chile", "league": "Primera Division"},
+    {"index_start": 468, "index_end": 470, "country": "Colombia", "league": "Primera A"},
+    {"index_start": 471, "index_end": 473, "country": "Paraguay", "league": "Primera Division"},
+    {"index_start": 474, "index_end": 495, "country": "England", "league": "Conference"},
+    {"index_start": 496, "index_end": 505, "country": "England", "league": "Non-League"},
+    {"index_start": 506, "index_end": 507, "country": "Latvia", "league": "Virsliga"},
+    {"index_start": 508, "index_end": 508, "country": "Armenia", "league": "Premier League"},
+    {"index_start": 509, "index_end": 509, "country": "North Macedonia", "league": "First League"},
+    {"index_start": 510, "index_end": 510, "country": "Belarus", "league": "Premier League"},
+    {"index_start": 511, "index_end": 511, "country": "Estonia", "league": "Meistriliiga"},
+    {"index_start": 512, "index_end": 512, "country": "Azerbaijan", "league": "Top Division"},
+    {"index_start": 513, "index_end": 514, "country": "Special", "league": "Selection"},
+    {"index_start": 515, "index_end": 530, "country": "Argentina", "league": "Primera Division"},
+    {"index_start": 531, "index_end": 531, "country": "Special", "league": "All-Stars"},
+    {"index_start": 532, "index_end": 532, "country": "Special", "league": "Free Agents"},
+    {"index_start": 533, "index_end": 533, "country": "Special", "league": "Youth Pool"},
+]
+
 
 def get_country_leagues(country: str) -> List[Dict]:
     """Get all leagues for a country.
@@ -140,6 +215,26 @@ def get_team_league(team_id: int) -> Tuple[Optional[str], Optional[str]]:
         for league in leagues:
             if league["id_start"] <= team_id <= league["id_end"]:
                 return country, league["name"]
+    return None, None
+
+
+def get_team_league_by_sequence(team_index: int) -> Tuple[Optional[str], Optional[str]]:
+    """Best-effort league lookup by the recovered team stream order.
+
+    This is a fallback for cases where the parsed `team_id` is zero or clearly
+    unreliable. It should not replace `get_team_league()` when a valid team-ID
+    range match exists.
+    """
+    try:
+        index_value = int(team_index)
+    except Exception:
+        return None, None
+
+    for block in TEAM_SEQUENCE_FALLBACKS:
+        start = int(block["index_start"])
+        end = int(block["index_end"])
+        if start <= index_value <= end:
+            return str(block["country"]), str(block["league"])
     return None, None
 
 

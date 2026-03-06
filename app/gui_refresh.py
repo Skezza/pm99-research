@@ -3,7 +3,7 @@ from __future__ import annotations
 import copy
 import csv
 import threading
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -12,19 +12,27 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
 from app.editor_actions import (
+    batch_edit_team_roster_records,
     build_player_visible_skill_index_dd6361,
     edit_team_roster_eq_jug_linked,
     edit_team_roster_same_entry_authoritative,
     extract_team_rosters_eq_jug_linked,
     extract_team_rosters_eq_same_entry_overlap,
+    export_team_roster_batch_template,
+    inspect_bitmap_references,
+    inspect_player_name_capacities,
     inspect_player_metadata_records,
     inspect_player_visible_skills_dd6361,
     patch_player_visible_skills_dd6361,
+    promote_linked_roster_player_name_bulk,
+    promote_team_roster_player,
     profile_indexed_player_attribute_prefixes,
+    summarize_team_roster_bulk_promotion,
     profile_indexed_player_leading_bytes,
     profile_indexed_player_suffix_bytes,
     validate_database_files,
     write_coach_staged_records,
+    write_player_staged_records,
     write_team_staged_records,
 )
 from app.editor_helpers import team_query_matches
@@ -44,6 +52,7 @@ from app.io import FDIFile
 from app.loaders import load_coaches, load_teams
 from app.models import PlayerRecord
 from app.settings import SAVE_NAME_ONLY
+from app.team_competition_analysis import analyze_competition_codebook, format_secondary_signature
 
 
 VISIBLE_SKILL_ORDER = [
@@ -75,6 +84,15 @@ POSITION_TO_CODE = {name: idx for idx, name in enumerate(POSITION_OPTIONS)}
 ATTRIBUTE_LABELS = PlayerRecord.attribute_slot_labels()
 TEAM_ROSTER_SUPPORTED_PROVENANCES = {"same_entry_authoritative", "known_lineup_anchor_assisted"}
 UNSUPPORTED_COACH_LINK_TEXT = "Link not resolved by current parser"
+LEAGUE_VIEW_FILTER_OPTIONS = [
+    "All",
+    "Promoted",
+    "Confirmed",
+    "Supported",
+    "Fallback",
+    "Review",
+    "Unresolved",
+]
 
 
 def _normalize_spaces(value: str) -> str:
@@ -90,6 +108,52 @@ def _safe_int(value: Any, default: int = 0) -> int:
         return int(str(value).strip() or default)
     except Exception:
         return int(default)
+
+
+def _league_view_status_bucket(*, source: str, status: str, confidence: str) -> str:
+    normalized_source = _normalize_spaces(source).lower()
+    normalized_status = _normalize_spaces(status).lower()
+    normalized_confidence = _normalize_spaces(confidence).lower()
+
+    if normalized_source == "competition_probe_contract" or normalized_status == "probe-promoted":
+        return "Promoted"
+    if normalized_source == "team_id_range" or normalized_status == "confirmed":
+        return "Confirmed"
+    if normalized_status in {"supported", "weakly-supported"}:
+        return "Supported"
+    if normalized_status in {"probe-mismatch", "review"} or normalized_confidence == "review":
+        return "Review"
+    if normalized_source == "sequence_fallback" or normalized_status in {"fallback", "probe-weak"}:
+        return "Fallback"
+    return "Unresolved"
+
+
+def _league_view_matches_filters(
+    *,
+    query: str,
+    selected_bucket: str,
+    team_name: str,
+    country: str,
+    league: str,
+    team_id: Any,
+    bucket: str,
+) -> bool:
+    query_text = _normalize_spaces(query).lower()
+    if query_text:
+        searchable = " ".join(
+            [
+                _normalize_spaces(team_name).lower(),
+                _normalize_spaces(country).lower(),
+                _normalize_spaces(league).lower(),
+                _normalize_spaces(str(team_id or "")).lower(),
+            ]
+        )
+        if query_text not in searchable:
+            return False
+    selected = _normalize_spaces(selected_bucket)
+    if selected and selected not in {"All", "*"} and _normalize_spaces(bucket) != selected:
+        return False
+    return True
 
 
 class PM99DatabaseEditor:
@@ -124,6 +188,10 @@ class PM99DatabaseEditor:
         self.modified_coach_records: dict[int, Any] = {}
         self.modified_team_records: dict[int, Any] = {}
         self.staged_visible_skill_patches: dict[tuple[str, str], dict[str, Any]] = {}
+        self.staged_roster_slot_changes: dict[tuple[Any, ...], dict[str, Any]] = {}
+        self.staged_roster_promotions: dict[tuple[Any, ...], dict[str, Any]] = {}
+        self.staged_roster_promotion_skips: dict[tuple[Any, ...], dict[str, Any]] = {}
+        self._staged_roster_team_offsets: set[int] = set()
 
         self.selection_state = SelectionState()
         self.dirty_state = DirtyRecordState()
@@ -148,6 +216,7 @@ class PM99DatabaseEditor:
         self._player_catalog_loading = False
         self._player_catalog_loading_mode = "idle"
         self._player_catalog_preload_after_id: str | None = None
+        self._pane_rebalance_after_id: str | None = None
         self._player_catalog_generation = 0
         self._search_item_map: dict[str, SearchResultItem] = {}
         self._club_item_map: dict[str, int] = {}
@@ -217,18 +286,26 @@ class PM99DatabaseEditor:
         self.main_paned = ttk.PanedWindow(self.root, orient=tk.HORIZONTAL)
         self.main_paned.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0, 8))
 
-        self.left_rail = ttk.Frame(self.main_paned, padding=8)
+        self.left_rail = ttk.Frame(self.main_paned, padding=8, width=300)
         self.main_paned.add(self.left_rail, weight=1)
         self._build_left_rail()
 
         self.center_and_right = ttk.PanedWindow(self.main_paned, orient=tk.HORIZONTAL)
         self.main_paned.add(self.center_and_right, weight=6)
 
-        self.center_host = ttk.Frame(self.center_and_right, padding=(0, 0, 10, 0))
+        self.center_host = ttk.Frame(self.center_and_right, padding=(0, 0, 10, 0), width=760)
         self.center_and_right.add(self.center_host, weight=5)
 
-        self.right_host = ttk.Frame(self.center_and_right)
+        self.right_host = ttk.Frame(self.center_and_right, width=500)
         self.center_and_right.add(self.right_host, weight=2)
+        try:
+            self.right_host.pack_propagate(False)
+        except Exception:
+            pass
+        try:
+            self.center_and_right.bind("<Configure>", lambda _event: self._schedule_rebalance_editor_panes())
+        except Exception:
+            pass
 
         self.center_view_stack = ttk.Frame(self.center_host)
         self.center_view_stack.pack(fill=tk.BOTH, expand=True)
@@ -270,6 +347,7 @@ class PM99DatabaseEditor:
         self._build_coaches_view()
         self._build_leagues_view()
         self._build_right_pane()
+        self.root.after(80, self._rebalance_editor_panes)
 
         self.status_var = tk.StringVar(value="Ready")
         ttk.Label(self.root, textvariable=self.status_var, relief=tk.SUNKEN, anchor=tk.W).pack(side=tk.BOTTOM, fill=tk.X)
@@ -604,18 +682,82 @@ class PM99DatabaseEditor:
         frame = self.view_frames[EditorWorkspaceRoute.LEAGUES]
 
         ttk.Label(frame, text="Browse-only league navigator", font=("TkDefaultFont", 11, "bold")).pack(anchor="w", pady=(0, 6))
+        toolbar = ttk.Frame(frame, padding=(0, 0, 0, 6))
+        toolbar.pack(fill=tk.X)
+        ttk.Label(toolbar, text="Search").pack(side=tk.LEFT)
+        self.league_search_var = tk.StringVar()
+        self.league_search_var.trace_add("write", lambda *_: self.refresh_leagues_view())
+        tk.Entry(toolbar, textvariable=self.league_search_var, relief=tk.SOLID, bd=1, width=24).pack(side=tk.LEFT, padx=(6, 10))
 
-        self.league_tree = ttk.Treeview(frame, columns=("team_id",), show="tree headings")
+        ttk.Label(toolbar, text="Assignment").pack(side=tk.LEFT)
+        self.league_assignment_filter_var = tk.StringVar(value="All")
+        self.league_assignment_filter_combo = ttk.Combobox(
+            toolbar,
+            textvariable=self.league_assignment_filter_var,
+            state="readonly",
+            values=LEAGUE_VIEW_FILTER_OPTIONS,
+            width=14,
+        )
+        self.league_assignment_filter_combo.pack(side=tk.LEFT, padx=(6, 10))
+        self.league_assignment_filter_combo.bind("<<ComboboxSelected>>", lambda _event: self.refresh_leagues_view())
+
+        self.league_summary_var = tk.StringVar(value="No league data loaded")
+        ttk.Label(toolbar, textvariable=self.league_summary_var).pack(side=tk.LEFT, padx=(8, 0))
+
+        self.league_tree = ttk.Treeview(
+            frame,
+            columns=("team_id", "source", "confidence", "status"),
+            show="tree headings",
+        )
         self.league_tree.heading("#0", text="Country / League / Club")
         self.league_tree.heading("team_id", text="Team ID")
-        self.league_tree.column("#0", width=420)
+        self.league_tree.heading("source", text="Source")
+        self.league_tree.heading("confidence", text="Confidence")
+        self.league_tree.heading("status", text="Status")
+        self.league_tree.column("#0", width=340)
         self.league_tree.column("team_id", width=72, anchor=tk.CENTER)
+        self.league_tree.column("source", width=160, anchor=tk.W)
+        self.league_tree.column("confidence", width=84, anchor=tk.CENTER)
+        self.league_tree.column("status", width=120, anchor=tk.W)
         self.league_tree.pack(fill=tk.BOTH, expand=True)
+        try:
+            self.league_tree.tag_configure("league_promoted", foreground="#1b6e1b")
+            self.league_tree.tag_configure("league_review", foreground="#8a4f00")
+            self.league_tree.tag_configure("league_unresolved", foreground="#6d6d6d")
+        except Exception:
+            pass
         self.league_tree.bind("<<TreeviewSelect>>", self._on_league_tree_select)
 
     def _build_right_pane(self) -> None:
-        self.right_stack = ttk.Frame(self.right_host)
-        self.right_stack.pack(fill=tk.BOTH, expand=True)
+        self.right_scroller = ttk.Frame(self.right_host)
+        self.right_scroller.pack(fill=tk.BOTH, expand=True)
+
+        self.right_canvas = tk.Canvas(
+            self.right_scroller,
+            highlightthickness=0,
+            bd=0,
+            relief=tk.FLAT,
+            width=500,
+        )
+        self.right_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        self.right_scrollbar = ttk.Scrollbar(
+            self.right_scroller,
+            orient=tk.VERTICAL,
+            command=self.right_canvas.yview,
+        )
+        self.right_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.right_canvas.configure(yscrollcommand=self.right_scrollbar.set)
+
+        self.right_stack = ttk.Frame(self.right_canvas, width=500)
+        self.right_canvas_window = self.right_canvas.create_window((0, 0), window=self.right_stack, anchor="nw")
+        self.right_stack.bind("<Configure>", self._on_right_stack_configure)
+        self.right_canvas.bind("<Configure>", self._on_right_canvas_configure)
+        self.right_canvas.bind("<MouseWheel>", self._on_right_canvas_mousewheel)
+        self.right_canvas.bind("<Button-4>", self._on_right_canvas_mousewheel)
+        self.right_canvas.bind("<Button-5>", self._on_right_canvas_mousewheel)
+        self.right_stack.grid_columnconfigure(0, weight=1)
+        self._active_editor_card = "empty"
 
         self.editor_frames: dict[str, ttk.Frame] = {
             "empty": ttk.Frame(self.right_stack, padding=12),
@@ -624,13 +766,41 @@ class PM99DatabaseEditor:
             "coach": ttk.Frame(self.right_stack, padding=12),
         }
         for frame in self.editor_frames.values():
-            frame.place(relx=0, rely=0, relwidth=1, relheight=1)
+            frame.grid(row=0, column=0, sticky="nsew")
 
         self._build_empty_editor()
         self._build_player_editor()
         self._build_team_editor()
         self._build_coach_editor()
         self._show_editor_card("empty")
+
+    def _on_right_stack_configure(self, _event: Any) -> None:
+        try:
+            self.right_canvas.configure(scrollregion=self.right_canvas.bbox("all"))
+        except Exception:
+            pass
+
+    def _on_right_canvas_configure(self, event: Any) -> None:
+        try:
+            self.right_canvas.itemconfigure(self.right_canvas_window, width=max(1, int(event.width)))
+        except Exception:
+            pass
+
+    def _on_right_canvas_mousewheel(self, event: Any) -> str:
+        try:
+            if getattr(event, "num", None) == 4:
+                delta = -1
+            elif getattr(event, "num", None) == 5:
+                delta = 1
+            else:
+                raw_delta = int(getattr(event, "delta", 0) or 0)
+                if raw_delta == 0:
+                    return "break"
+                delta = -1 if raw_delta > 0 else 1
+            self.right_canvas.yview_scroll(delta, "units")
+        except Exception:
+            pass
+        return "break"
 
     def _build_empty_editor(self) -> None:
         frame = self.editor_frames["empty"]
@@ -878,12 +1048,24 @@ class PM99DatabaseEditor:
             command=lambda: self._open_roster_edit_dialog("same_entry"),
         )
         self.team_same_entry_button.grid(row=1, column=0, sticky="ew", padx=(0, 4), pady=2)
+        self.team_promote_player_button = ttk.Button(
+            roster_action_grid,
+            text="Promote Slot Player",
+            command=self._open_roster_promote_dialog,
+        )
+        self.team_promote_player_button.grid(row=1, column=1, sticky="ew", padx=(4, 0), pady=2)
+        self.team_bulk_promote_button = ttk.Button(
+            roster_action_grid,
+            text="Bulk Promote Linked Slots",
+            command=self._open_roster_bulk_promote_dialog,
+        )
+        self.team_bulk_promote_button.grid(row=2, column=0, columnspan=2, sticky="ew", padx=0, pady=(2, 0))
         self.team_batch_import_button = ttk.Button(
             roster_action_grid,
             text="Batch Import CSV",
-            command=self._show_batch_roster_placeholder,
+            command=self._open_roster_batch_import_dialog,
         )
-        self.team_batch_import_button.grid(row=1, column=1, sticky="ew", padx=(4, 0), pady=2)
+        self.team_batch_import_button.grid(row=3, column=0, columnspan=2, sticky="ew", padx=0, pady=(2, 0))
         roster_action_grid.grid_columnconfigure(0, weight=1)
         roster_action_grid.grid_columnconfigure(1, weight=1)
 
@@ -1035,9 +1217,63 @@ class PM99DatabaseEditor:
         self._update_route_label()
 
     def _show_editor_card(self, key: str) -> None:
+        if getattr(self, "_active_editor_card", None) != key:
+            for frame_key, frame in self.editor_frames.items():
+                if frame_key == key:
+                    frame.grid()
+                else:
+                    frame.grid_remove()
+            self._active_editor_card = key
         frame = self.editor_frames.get(key)
         if frame is not None:
             frame.lift()
+        try:
+            self.right_canvas.yview_moveto(0.0)
+        except Exception:
+            pass
+        self._rebalance_editor_panes()
+
+    def _schedule_rebalance_editor_panes(self) -> None:
+        if self._pane_rebalance_after_id is not None:
+            try:
+                self.root.after_cancel(self._pane_rebalance_after_id)
+            except Exception:
+                pass
+        self._pane_rebalance_after_id = self.root.after(40, self._rebalance_editor_panes)
+
+    def _rebalance_editor_panes(self) -> None:
+        self._pane_rebalance_after_id = None
+        if not self._right_pane_visible:
+            return
+        try:
+            self.root.update_idletasks()
+            total_width = int(self.center_and_right.winfo_width() or 0)
+        except Exception:
+            total_width = 0
+        if total_width <= 0:
+            return
+        target_right_width = max(440, min(560, total_width // 3))
+        target_center_width = max(640, total_width - target_right_width)
+        try:
+            self.right_host.configure(width=target_right_width)
+        except Exception:
+            pass
+        try:
+            self.right_stack.configure(width=target_right_width)
+        except Exception:
+            pass
+        try:
+            self.right_canvas.configure(width=target_right_width)
+        except Exception:
+            pass
+        try:
+            self.right_canvas.itemconfigure(self.right_canvas_window, width=target_right_width)
+        except Exception:
+            pass
+        try:
+            self.center_host.configure(width=target_center_width)
+        except Exception:
+            pass
 
     def _show_player_load_overlay(self, reason_label: str) -> None:
         self.player_load_overlay_title_var.set("Loading Player Data")
@@ -1080,6 +1316,7 @@ class PM99DatabaseEditor:
         if not self._right_pane_visible:
             self.center_and_right.add(self.right_host, weight=2)
             self._right_pane_visible = True
+        self._rebalance_editor_panes()
 
     def _set_navigation_enabled(self, enabled: bool) -> None:
         button_state = "!disabled" if enabled else "disabled"
@@ -1572,6 +1809,10 @@ class PM99DatabaseEditor:
             self.modified_team_records.clear()
             self.modified_coach_records.clear()
             self.staged_visible_skill_patches.clear()
+            self.staged_roster_slot_changes.clear()
+            self.staged_roster_promotions.clear()
+            self.staged_roster_promotion_skips.clear()
+            self._staged_roster_team_offsets.clear()
             self.dirty_state = DirtyRecordState()
             if not team_path.exists() or not coach_path.exists():
                 missing_parts = []
@@ -1716,7 +1957,8 @@ class PM99DatabaseEditor:
         else:
             self.db_files_var.set("No files loaded")
 
-        if self.dirty_state.any_dirty() or self.staged_visible_skill_patches:
+        staged_roster_op_count = self._staged_roster_operation_count()
+        if self.dirty_state.any_dirty() or self.staged_visible_skill_patches or staged_roster_op_count:
             parts = []
             if self.dirty_state.dirty_players:
                 parts.append(f"{len(self.dirty_state.dirty_players)} player(s)")
@@ -1726,6 +1968,10 @@ class PM99DatabaseEditor:
                 parts.append(f"{len(self.dirty_state.dirty_coaches)} coach(es)")
             if self.staged_visible_skill_patches:
                 parts.append(f"{len(self.staged_visible_skill_patches)} skill patch(es)")
+            if staged_roster_op_count:
+                parts.append(
+                    f"{staged_roster_op_count} roster op(s) across {len(self._staged_roster_team_offsets)} club(s)"
+                )
             self.db_dirty_var.set("Staged: " + ", ".join(parts))
         else:
             self.db_dirty_var.set("No staged changes")
@@ -1747,7 +1993,29 @@ class PM99DatabaseEditor:
             or self.modified_team_records
             or self.modified_coach_records
             or self.staged_visible_skill_patches
+            or self.staged_roster_slot_changes
+            or self.staged_roster_promotions
         )
+
+    def _staged_roster_operation_count(self) -> int:
+        return len(self.staged_roster_slot_changes) + len(self.staged_roster_promotions)
+
+    def _is_team_dirty(self, offset: int | None) -> bool:
+        if offset is None:
+            return False
+        return int(offset) in self.dirty_state.dirty_teams or int(offset) in self._staged_roster_team_offsets
+
+    def _rebuild_staged_roster_team_offsets(self) -> None:
+        offsets: set[int] = set()
+        for op in self.staged_roster_slot_changes.values():
+            value = op.get("club_offset")
+            if isinstance(value, int):
+                offsets.add(int(value))
+        for op in self.staged_roster_promotions.values():
+            value = op.get("club_offset")
+            if isinstance(value, int):
+                offsets.add(int(value))
+        self._staged_roster_team_offsets = offsets
 
     def refresh_global_search(self) -> None:
         tree = self.global_search_tree
@@ -1904,7 +2172,7 @@ class PM99DatabaseEditor:
                     country=country,
                     coach_name=UNSUPPORTED_COACH_LINK_TEXT,
                     roster_count=player_team_counts.get(team_id, 0),
-                    is_dirty=offset in self.dirty_state.dirty_teams,
+                    is_dirty=self._is_team_dirty(offset),
                 )
             )
         out.sort(key=lambda item: (item.country, item.league, item.club_name))
@@ -2097,14 +2365,15 @@ class PM99DatabaseEditor:
     def _set_team_editor_action_state(self, *, has_club: bool, has_roster: bool, has_selected_slot: bool) -> None:
         selected_row = self._selected_roster_row()
         selected_mode = str((selected_row.meta or {}).get("mode") or "") if selected_row is not None else ""
-        team_dirty = bool(
-            self.current_club_offset is not None and self.current_club_offset in self.dirty_state.dirty_teams
-        )
+        has_linked_rows = any(str((row.meta or {}).get("mode") or "") == "linked" for row in (self.current_roster_rows or []))
+        team_dirty = self._is_team_dirty(self.current_club_offset)
 
         button_rules = (
             ("team_edit_slot_button", has_selected_slot),
             ("team_linked_edit_button", has_selected_slot and selected_mode == "linked"),
             ("team_same_entry_button", has_selected_slot and selected_mode == "same_entry"),
+            ("team_promote_player_button", has_selected_slot and selected_mode == "linked"),
+            ("team_bulk_promote_button", has_linked_rows),
             ("team_batch_import_button", has_roster),
             ("team_revert_button", has_club and team_dirty),
             ("team_load_players_button", has_club and not self._player_catalog_loaded and not self._player_catalog_loading),
@@ -2135,10 +2404,196 @@ class PM99DatabaseEditor:
                 self.team_roster_hint_var.set("Choose a squad row in the Clubs view to enable slot-specific roster tools.")
             else:
                 source_label = "linked source" if selected_mode == "linked" else "same-entry source" if selected_mode == "same_entry" else "available source"
-                self.team_roster_hint_var.set(
-                    f"Selected slot {selected_row.slot_number}: {selected_row.player_name}. "
-                    f"Use the {source_label} edit path shown below."
-                )
+                if selected_mode == "linked":
+                    self.team_roster_hint_var.set(
+                        f"Selected slot {selected_row.slot_number}: {selected_row.player_name}. "
+                        "Use Promote Slot Player for combined name + rating upgrades, or edit the linked row directly."
+                    )
+                else:
+                    self.team_roster_hint_var.set(
+                        f"Selected slot {selected_row.slot_number}: {selected_row.player_name}. "
+                        f"Use the {source_label} edit path shown below."
+                    )
+
+    def _resolve_club_offset_for_roster_operation(
+        self,
+        *,
+        team_query: str | None = None,
+        full_club_name: str | None = None,
+        eq_record_id: int | None = None,
+        team_offset: int | None = None,
+    ) -> int | None:
+        if isinstance(team_offset, int) and team_offset in self.team_index:
+            return int(team_offset)
+        if isinstance(eq_record_id, int):
+            for offset, _ in self.team_records:
+                team = self._team_for_offset(offset)
+                if _safe_int(getattr(team, "eq_record_id", -1), -1) == int(eq_record_id):
+                    return int(offset)
+        normalized_queries = [
+            _normalize_spaces(str(value or ""))
+            for value in (team_query, full_club_name)
+            if _normalize_spaces(str(value or ""))
+        ]
+        if normalized_queries:
+            for offset, _ in self.team_records:
+                team = self._team_for_offset(offset)
+                team_name = self._team_name(team)
+                full_name = _normalize_spaces(getattr(team, "full_club_name", "") or "")
+                if any(team_query_matches(query, team_name, full_name) for query in normalized_queries):
+                    return int(offset)
+        return None
+
+    @staticmethod
+    def _roster_slot_stage_key(
+        *,
+        mode: str,
+        slot_number: int,
+        team_query: str | None,
+        eq_record_id: int | None,
+        team_offset: int | None,
+    ) -> tuple[Any, ...]:
+        normalized_mode = str(mode or "").strip().lower()
+        if normalized_mode == "linked":
+            selector: Any = (
+                ("eq_record_id", int(eq_record_id))
+                if isinstance(eq_record_id, int) and int(eq_record_id) > 0
+                else ("team_query", _normalize_spaces(str(team_query or "")).casefold())
+            )
+            return ("linked", selector, int(slot_number))
+        selector = (
+            ("team_offset", int(team_offset))
+            if isinstance(team_offset, int) and int(team_offset) >= 0
+            else ("team_query", _normalize_spaces(str(team_query or "")).casefold())
+        )
+        return ("same_entry", selector, int(slot_number))
+
+    @staticmethod
+    def _roster_promotion_selector(*, team_query: str | None, eq_record_id: int | None) -> tuple[str, Any]:
+        return (
+            ("eq_record_id", int(eq_record_id))
+            if isinstance(eq_record_id, int) and int(eq_record_id) > 0
+            else ("team_query", _normalize_spaces(str(team_query or "")).casefold())
+        )
+
+    @staticmethod
+    def _roster_promotion_stage_key(
+        *,
+        slot_number: int,
+        team_query: str | None,
+        eq_record_id: int | None,
+    ) -> tuple[Any, ...]:
+        selector = PM99DatabaseEditor._roster_promotion_selector(
+            team_query=team_query,
+            eq_record_id=eq_record_id,
+        )
+        return ("promote", selector, int(slot_number))
+
+    @staticmethod
+    def _roster_promotion_skip_key(
+        *,
+        slot_number: int,
+        team_query: str | None,
+        eq_record_id: int | None,
+    ) -> tuple[Any, ...]:
+        selector = PM99DatabaseEditor._roster_promotion_selector(
+            team_query=team_query,
+            eq_record_id=eq_record_id,
+        )
+        return ("promotion_skip", selector, int(slot_number))
+
+    def _replace_staged_roster_promotion_skips(
+        self,
+        *,
+        team_query: str | None,
+        eq_record_id: int | None,
+        club_offset: int | None,
+        skipped: list[Any],
+    ) -> None:
+        skip_map = getattr(self, "staged_roster_promotion_skips", None)
+        if not isinstance(skip_map, dict):
+            skip_map = {}
+            setattr(self, "staged_roster_promotion_skips", skip_map)
+
+        selector = PM99DatabaseEditor._roster_promotion_selector(
+            team_query=team_query,
+            eq_record_id=eq_record_id,
+        )
+        for key in list(skip_map.keys()):
+            if len(key) >= 2 and key[1] == selector:
+                skip_map.pop(key, None)
+
+        for item in list(skipped or []):
+            slot_number = _safe_int(getattr(item, "slot_number", 0), 0)
+            if slot_number <= 0:
+                continue
+            key = PM99DatabaseEditor._roster_promotion_skip_key(
+                slot_number=slot_number,
+                team_query=team_query,
+                eq_record_id=eq_record_id,
+            )
+            skip_map[key] = {
+                "team_query": _normalize_spaces(str(team_query or "")),
+                "eq_record_id": _safe_int(eq_record_id, 0) or None,
+                "club_offset": int(club_offset) if isinstance(club_offset, int) and club_offset >= 0 else None,
+                "slot_number": slot_number,
+                "player_record_id": _safe_int(getattr(item, "player_record_id", 0), 0),
+                "player_name": _normalize_spaces(str(getattr(item, "player_name", "") or "")),
+                "reason_code": _normalize_spaces(str(getattr(item, "reason_code", "") or "unknown")).lower() or "unknown",
+                "reason_message": _normalize_spaces(str(getattr(item, "reason_message", "") or "")),
+            }
+
+    def _upsert_staged_roster_slot_change(self, operation: dict[str, Any]) -> bool:
+        key = self._roster_slot_stage_key(
+            mode=str(operation.get("mode") or ""),
+            slot_number=_safe_int(operation.get("slot_number", 0), 0),
+            team_query=str(operation.get("team_query") or ""),
+            eq_record_id=(
+                _safe_int(operation.get("eq_record_id"), -1)
+                if operation.get("eq_record_id") is not None
+                else None
+            ),
+            team_offset=(
+                _safe_int(operation.get("team_offset"), -1)
+                if operation.get("team_offset") is not None
+                else None
+            ),
+        )
+        is_new = key not in self.staged_roster_slot_changes
+        self.staged_roster_slot_changes[key] = dict(operation)
+        self._rebuild_staged_roster_team_offsets()
+        return is_new
+
+    def _upsert_staged_roster_promotion(self, operation: dict[str, Any]) -> bool:
+        slot_number = _safe_int(operation.get("slot_number", 0), 0)
+        team_query = str(operation.get("team_query") or "")
+        eq_record_id = (
+            _safe_int(operation.get("eq_record_id"), -1)
+            if operation.get("eq_record_id") is not None
+            else None
+        )
+        key = self._roster_promotion_stage_key(
+            slot_number=slot_number,
+            team_query=team_query,
+            eq_record_id=eq_record_id,
+        )
+        is_new = key not in self.staged_roster_promotions
+        self.staged_roster_promotions[key] = dict(operation)
+        skip_key = self._roster_promotion_skip_key(
+            slot_number=slot_number,
+            team_query=team_query,
+            eq_record_id=eq_record_id,
+        )
+        self.staged_roster_promotion_skips.pop(skip_key, None)
+        self._rebuild_staged_roster_team_offsets()
+        return is_new
+
+    def _refresh_after_roster_staging_update(self) -> None:
+        self._rebuild_staged_roster_team_offsets()
+        self._refresh_all_views()
+        self._refresh_footer_state()
+        if self.current_club_offset is not None:
+            self.display_team(self._team_for_offset(self.current_club_offset))
 
     def _resolve_player_file_for_roster(self) -> str:
         player_path = Path(self.file_path)
@@ -2228,6 +2683,8 @@ class PM99DatabaseEditor:
                         meta={
                             "mode": "linked",
                             "team_query": str(selected.get("team_name") or team_name),
+                            "full_club_name": str(selected.get("full_club_name") or ""),
+                            "eq_record_id": _safe_int(selected.get("eq_record_id", 0), 0),
                             "slot_number": _safe_int(raw_row.get("slot_index", 0), 0) + 1,
                             "current_pid": pid,
                             "current_flag": _safe_int(raw_row.get("flag", 0), 0),
@@ -2277,6 +2734,7 @@ class PM99DatabaseEditor:
                     meta={
                         "mode": "same_entry",
                         "team_query": str(selected.get("team_name") or team_name),
+                        "full_club_name": str(selected.get("full_club_name") or ""),
                         "slot_number": len(rows) + 1,
                         "current_pid": pid,
                         "team_offset": _safe_int(selected.get("team_offset", 0), 0),
@@ -2450,22 +2908,75 @@ class PM99DatabaseEditor:
         tree = self.league_tree
         tree.delete(*tree.get_children())
         self._league_item_map = {}
+        query = _normalize_spaces(self.league_search_var.get()).lower() if hasattr(self, "league_search_var") else ""
+        selected_bucket = (
+            _normalize_spaces(self.league_assignment_filter_var.get())
+            if hasattr(self, "league_assignment_filter_var")
+            else "All"
+        )
 
         countries: dict[str, dict[str, list[tuple[int, Any]]]] = defaultdict(lambda: defaultdict(list))
+        bucket_counts: Counter[str] = Counter()
+        total_team_rows = 0
         for offset, _original in self.team_records:
             team = self._team_for_offset(offset)
-            countries[self._team_country(team)][self._team_league(team)].append((offset, team))
+            source = str(getattr(team, "league_source", "") or "unknown")
+            status = str(getattr(team, "league_assignment_status", "") or "unresolved")
+            confidence = str(getattr(team, "league_assignment_confidence", "") or "unresolved")
+            bucket = _league_view_status_bucket(source=source, status=status, confidence=confidence)
+            country = self._team_country(team)
+            league = self._team_league(team)
+            team_name = self._team_name(team)
+            team_id = getattr(team, "team_id", "")
+            if not _league_view_matches_filters(
+                query=query,
+                selected_bucket=selected_bucket,
+                team_name=team_name,
+                country=country,
+                league=league,
+                team_id=team_id,
+                bucket=bucket,
+            ):
+                continue
+            countries[country][league].append((offset, team))
+            bucket_counts[bucket] += 1
+            total_team_rows += 1
+
+        if hasattr(self, "league_summary_var"):
+            summary_bits = [f"{label.lower()}={bucket_counts.get(label, 0)}" for label in LEAGUE_VIEW_FILTER_OPTIONS if label != "All"]
+            self.league_summary_var.set(
+                f"Visible clubs: {total_team_rows} | " + ", ".join(summary_bits)
+            )
 
         for country in sorted(countries):
             country_item = tree.insert("", tk.END, text=country, open=True)
             for league in sorted(countries[country]):
                 league_item = tree.insert(country_item, tk.END, text=league, open=True)
                 for offset, team in sorted(countries[country][league], key=lambda item: self._team_name(item[1])):
+                    source = str(getattr(team, "league_source", "") or "unknown")
+                    confidence = str(getattr(team, "league_assignment_confidence", "") or "unresolved")
+                    status = str(getattr(team, "league_assignment_status", "") or "unresolved")
+                    bucket = _league_view_status_bucket(source=source, status=status, confidence=confidence)
+                    tag = (
+                        "league_promoted"
+                        if bucket == "Promoted"
+                        else "league_review"
+                        if bucket == "Review"
+                        else "league_unresolved"
+                        if bucket == "Unresolved"
+                        else ""
+                    )
                     item_id = tree.insert(
                         league_item,
                         tk.END,
                         text=self._team_name(team),
-                        values=(getattr(team, "team_id", ""),),
+                        values=(
+                            getattr(team, "team_id", ""),
+                            source,
+                            confidence,
+                            status,
+                        ),
+                        tags=(tag,) if tag else (),
                     )
                     self._league_item_map[item_id] = offset
 
@@ -2490,6 +3001,7 @@ class PM99DatabaseEditor:
     def _select_player_by_offset(self, offset: int, *, route_if_needed: bool) -> None:
         if route_if_needed:
             self.set_route(EditorWorkspaceRoute.PLAYERS)
+        self._ensure_right_pane()
         record = self._player_for_offset(offset)
         self.current_record = (offset, record)
         self.selection_state.selected_player_offset = offset
@@ -2500,6 +3012,7 @@ class PM99DatabaseEditor:
     def _select_coach_by_offset(self, offset: int, *, route_if_needed: bool) -> None:
         if route_if_needed:
             self.set_route(EditorWorkspaceRoute.COACHES)
+        self._ensure_right_pane()
         coach = self._coach_for_offset(offset)
         self.current_coach = (offset, coach)
         self.selection_state.selected_coach_offset = offset
@@ -3147,7 +3660,7 @@ class PM99DatabaseEditor:
         self.team_header_team_id_var.set(str(getattr(team, "team_id", "") or "-"))
         self.team_header_league_var.set(self._team_league(team))
         self.team_header_country_var.set(self._team_country(team))
-        self.team_header_dirty_var.set("Staged" if offset in self.dirty_state.dirty_teams else "Clean")
+        self.team_header_dirty_var.set("Staged" if self._is_team_dirty(offset) else "Clean")
 
         roster_count = len(self.current_roster_rows)
         roster_status = self.club_summary_status_var.get() or ("Roster loaded" if roster_count else "No roster loaded")
@@ -3165,7 +3678,7 @@ class PM99DatabaseEditor:
             self.team_header_note_var.set(
                 "Club ready for editing. Load player data when you want roster tools and player profiles."
             )
-        elif offset in self.dirty_state.dirty_teams:
+        elif self._is_team_dirty(offset):
             self.team_header_note_var.set("Club changes are staged. Review the details below, then use Save All to write them.")
         else:
             self.team_header_note_var.set("Club ready for editing. Rename the club or use roster tools from the current squad.")
@@ -3184,7 +3697,218 @@ class PM99DatabaseEditor:
         self.team_coach_summary_var.set(
             "Linked coach editing is not available yet. Coach data is still surfaced separately in the Coaches browser."
         )
+        league_source = str(getattr(team, "league_source", "") or "unknown")
+        if league_source == "team_id_range":
+            league_note = "League placement: parser-backed team-ID range."
+        elif league_source == "competition_probe_contract":
+            promoted_method = str(getattr(team, "league_assignment_promoted_method", "") or "probe")
+            promoted_confidence = str(getattr(team, "league_assignment_promoted_probe_confidence", "") or "medium")
+            league_note = (
+                "League placement: promoted competition-signal contract "
+                f"(method={promoted_method}, confidence={promoted_confidence})."
+            )
+        elif league_source == "sequence_fallback":
+            league_note = "League placement: best-effort file-order fallback (useful for browsing, still not a decoded dedicated field)."
+        else:
+            league_note = "League placement: unresolved."
+        assignment_confidence = str(getattr(team, "league_assignment_confidence", "") or "unresolved")
+        assignment_status = str(getattr(team, "league_assignment_status", "") or "unresolved")
+        if assignment_confidence == "high":
+            assignment_note = f"League assignment confidence: high ({assignment_status})"
+        elif assignment_confidence == "medium":
+            assignment_note = f"League assignment confidence: medium ({assignment_status})"
+        elif assignment_confidence == "low":
+            assignment_note = f"League assignment confidence: low ({assignment_status})"
+        elif assignment_confidence == "review":
+            assignment_note = f"League assignment confidence: review ({assignment_status})"
+        else:
+            assignment_note = "League assignment confidence: unresolved"
+        probe_confidence = str(getattr(team, "league_probe_confidence", "") or "unresolved")
+        probe_matches = getattr(team, "league_probe_matches_assigned", None)
+        probe_method = str(getattr(team, "league_probe_method", "") or "unresolved")
+        probe_signal = str(getattr(team, "league_probe_signal", "") or "unresolved")
+        probe_signal_offset = getattr(team, "league_probe_signal_offset", None)
+        probe_signal_value = str(getattr(team, "league_probe_signal_value", "") or "unavailable")
+        probe_candidate_country = str(getattr(team, "league_probe_candidate_country", "") or "Unknown")
+        probe_candidate_league = str(getattr(team, "league_probe_candidate_league", "") or "Unknown League")
+        probe_purity = float(getattr(team, "league_probe_purity", 0.0) or 0.0)
+        probe_support = int(getattr(team, "league_probe_support", 0) or 0)
+        probe_total = int(getattr(team, "league_probe_total", 0) or 0)
+        if probe_confidence == "unresolved":
+            league_probe_note = "Competition-signal league probe: unresolved"
+        else:
+            probe_match_label = "matches assigned league" if probe_matches is True else (
+                "mismatch vs assigned league" if probe_matches is False else "match unknown"
+            )
+            offset_text = f"+0x{int(probe_signal_offset):02X}" if probe_signal_offset is not None else "n/a"
+            league_probe_note = (
+                "Competition-signal league probe: {country} / {league} ({match_label}) "
+                "[{method} {signal} {offset}={value}, purity {purity:.0%}, support {support}/{total}, confidence {confidence}]".format(
+                    country=probe_candidate_country,
+                    league=probe_candidate_league,
+                    match_label=probe_match_label,
+                    method=probe_method,
+                    signal=probe_signal,
+                    offset=offset_text,
+                    value=probe_signal_value,
+                    purity=probe_purity,
+                    support=probe_support,
+                    total=max(1, probe_total),
+                    confidence=probe_confidence,
+                )
+            )
+        sequence_note = "Sequence index: "
+        sequence_index = getattr(team, "sequence_index", None)
+        if sequence_index is None:
+            sequence_note += "unknown"
+        else:
+            sequence_note += str(int(sequence_index))
+        competition_code = getattr(team, "competition_code_candidate", None)
+        if competition_code is None and hasattr(team, "get_competition_code_candidate"):
+            try:
+                competition_code = team.get_competition_code_candidate()
+            except Exception:
+                competition_code = None
+        if competition_code is None:
+            competition_note = "Competition byte +0x00 candidate: unavailable"
+        else:
+            competition_note = f"Competition byte +0x00 candidate: 0x{int(competition_code):02X} ({int(competition_code)})"
+        secondary_signature = getattr(team, "competition_secondary_signature", None)
+        if secondary_signature is None and hasattr(team, "get_competition_secondary_signature"):
+            try:
+                secondary_signature = team.get_competition_secondary_signature()
+            except Exception:
+                secondary_signature = None
+        secondary_signature_display = str(
+            getattr(team, "competition_secondary_signature_display", "") or format_secondary_signature(secondary_signature)
+        )
+        secondary_signature_note = f"Secondary signature (+0x08/+0x0A): {secondary_signature_display}"
+        tertiary_offset = getattr(team, "competition_tertiary_offset", None)
+        tertiary_value = getattr(team, "competition_tertiary_value", None)
+        tertiary_signature_display = str(
+            getattr(team, "competition_tertiary_signature_display", "") or "unavailable"
+        )
+        if tertiary_offset is None:
+            tertiary_signature_note = "Tertiary family byte: unresolved"
+        else:
+            tertiary_signature_note = (
+                f"Tertiary family byte (+0x{int(tertiary_offset):02X}): "
+                + (f"0x{int(tertiary_value):02X}" if tertiary_value is not None else "unavailable")
+                + f" | composite {tertiary_signature_display}"
+            )
+        cluster_kind = str(getattr(team, "competition_code_cluster_kind", "") or "unknown")
+        cluster_team_count = int(getattr(team, "competition_code_cluster_team_count", 0) or 0)
+        cluster_competition_count = int(getattr(team, "competition_code_cluster_competition_count", 0) or 0)
+        dominant_cluster_competition = str(getattr(team, "competition_code_cluster_dominant_competition", "") or "").strip()
+        if cluster_team_count > 0 and cluster_kind != "unknown":
+            cluster_note = (
+                f"Competition code cluster: {cluster_kind} "
+                f"({cluster_team_count} clubs / {cluster_competition_count} competitions"
+            )
+            if dominant_cluster_competition:
+                cluster_note += f", dominant {dominant_cluster_competition}"
+            cluster_note += ")"
+        else:
+            cluster_note = "Competition code cluster: unresolved"
+        secondary_kind = str(getattr(team, "competition_secondary_signature_kind", "") or "unresolved")
+        secondary_signature_count = int(getattr(team, "competition_secondary_signature_count", 0) or 0)
+        secondary_strong_groups = int(getattr(team, "competition_secondary_signature_strong_groups", 0) or 0)
+        secondary_avg_purity = float(getattr(team, "competition_secondary_signature_average_purity", 0.0) or 0.0)
+        if secondary_signature_count > 0 and secondary_kind != "unresolved":
+            secondary_split_note = (
+                f"Secondary split strength: {secondary_kind} "
+                f"({secondary_signature_count} signatures, "
+                f"{secondary_strong_groups} strong competition groups, "
+                f"avg purity {secondary_avg_purity:.0%})"
+            )
+        else:
+            secondary_split_note = "Secondary split strength: unresolved"
+        tertiary_kind = str(getattr(team, "competition_tertiary_signature_kind", "") or "unresolved")
+        tertiary_signature_count = int(getattr(team, "competition_tertiary_signature_count", 0) or 0)
+        tertiary_strong_groups = int(getattr(team, "competition_tertiary_signature_strong_groups", 0) or 0)
+        tertiary_avg_purity = float(getattr(team, "competition_tertiary_signature_average_purity", 0.0) or 0.0)
+        if tertiary_offset is not None and tertiary_signature_count > 0 and tertiary_kind != "unresolved":
+            tertiary_split_note = (
+                f"Tertiary split strength: {tertiary_kind} "
+                f"({tertiary_signature_count} signatures, "
+                f"{tertiary_strong_groups} strong competition groups, "
+                f"avg purity {tertiary_avg_purity:.0%})"
+            )
+        else:
+            tertiary_split_note = "Tertiary split strength: unresolved"
+        family_metadata_offset = getattr(team, "competition_family_metadata_offset", None)
+        family_metadata_value = getattr(team, "competition_family_metadata_value", None)
+        family_metadata_kind = str(getattr(team, "competition_family_metadata_kind", "") or "unresolved")
+        family_metadata_non_text_ratio = float(getattr(team, "competition_family_metadata_non_text_ratio", 0.0) or 0.0)
+        family_metadata_avg_purity = float(getattr(team, "competition_family_metadata_average_purity", 0.0) or 0.0)
+        family_metadata_strong_groups = int(getattr(team, "competition_family_metadata_strong_groups", 0) or 0)
+        family_metadata_distinct_dominants = int(
+            getattr(team, "competition_family_metadata_distinct_dominants", 0) or 0
+        )
+        if family_metadata_offset is None:
+            family_metadata_note = "Non-text family candidate: unresolved"
+        else:
+            family_metadata_note = (
+                f"Non-text family candidate (+0x{int(family_metadata_offset):02X}): "
+                + (f"0x{int(family_metadata_value):02X}" if family_metadata_value is not None else "unavailable")
+            )
+        if family_metadata_offset is None or family_metadata_kind == "unresolved":
+            family_metadata_detail_note = "Non-text family signal: unresolved"
+        else:
+            family_metadata_detail_note = (
+                f"Non-text family signal: {family_metadata_kind} "
+                f"(avg purity {family_metadata_avg_purity:.0%}, "
+                f"{family_metadata_strong_groups} strong competition groups, "
+                f"{family_metadata_distinct_dominants} dominant values, "
+                f"non-text {family_metadata_non_text_ratio:.0%})"
+            )
+        subgroup_offset = getattr(team, "competition_dominant_country_subgroup_offset", None)
+        subgroup_value = getattr(team, "competition_dominant_country_subgroup_value", None)
+        subgroup_kind = str(getattr(team, "competition_dominant_country_subgroup_kind", "") or "unresolved")
+        subgroup_non_text_ratio = float(
+            getattr(team, "competition_dominant_country_subgroup_non_text_ratio", 0.0) or 0.0
+        )
+        subgroup_avg_purity = float(
+            getattr(team, "competition_dominant_country_subgroup_average_purity", 0.0) or 0.0
+        )
+        subgroup_strong_groups = int(
+            getattr(team, "competition_dominant_country_subgroup_strong_groups", 0) or 0
+        )
+        subgroup_distinct_dominants = int(
+            getattr(team, "competition_dominant_country_subgroup_distinct_dominants", 0) or 0
+        )
+        dominant_country = str(getattr(team, "competition_code_cluster_dominant_country", "") or "").strip()
+        if subgroup_offset is None:
+            subgroup_note = "Dominant-country subgroup byte: unresolved"
+            subgroup_detail_note = "Dominant-country subgroup signal: unresolved"
+        else:
+            subgroup_note = (
+                f"Dominant-country subgroup byte ({dominant_country or 'cluster'} @ +0x{int(subgroup_offset):02X}): "
+                + (f"0x{int(subgroup_value):02X}" if subgroup_value is not None else "unavailable")
+            )
+            subgroup_detail_note = (
+                f"Dominant-country subgroup signal: {subgroup_kind} "
+                f"(avg purity {subgroup_avg_purity:.0%}, "
+                f"{subgroup_strong_groups} strong groups, "
+                f"{subgroup_distinct_dominants} dominant values, "
+                f"non-text {subgroup_non_text_ratio:.0%})"
+            )
         self.team_provenance_var.set(
+            f"{league_note}\n"
+            f"{assignment_note}\n"
+            f"{league_probe_note}\n"
+            f"{sequence_note}\n"
+            f"{competition_note}\n"
+            f"{cluster_note}\n"
+            f"{secondary_signature_note}\n"
+            f"{secondary_split_note}\n"
+            f"{tertiary_signature_note}\n"
+            f"{tertiary_split_note}\n"
+            f"{family_metadata_note}\n"
+            f"{family_metadata_detail_note}\n"
+            f"{subgroup_note}\n"
+            f"{subgroup_detail_note}\n"
+            "Advanced RE: use Inspect Competition Candidates, Inspect Primary-Code Family, and Profile Country Subgroups for competition-byte investigation.\n"
             "Writable here: club name and team ID.\n"
             "Roster slot tools operate on the selected squad row from the Clubs view.\n"
             "Stadium stays visible for context only while coach links remain unresolved."
@@ -3270,11 +3994,27 @@ class PM99DatabaseEditor:
             return
         self.modified_team_records.pop(offset, None)
         self.dirty_state.clear_record("teams", offset)
+        removed_roster_ops = 0
+        for key, op in list(self.staged_roster_slot_changes.items()):
+            if int(op.get("club_offset", -1) or -1) == int(offset):
+                self.staged_roster_slot_changes.pop(key, None)
+                removed_roster_ops += 1
+        for key, op in list(self.staged_roster_promotions.items()):
+            if int(op.get("club_offset", -1) or -1) == int(offset):
+                self.staged_roster_promotions.pop(key, None)
+                removed_roster_ops += 1
+        for key, item in list(self.staged_roster_promotion_skips.items()):
+            if int((item or {}).get("club_offset", -1) or -1) == int(offset):
+                self.staged_roster_promotion_skips.pop(key, None)
+        self._rebuild_staged_roster_team_offsets()
         self._rebuild_team_lookup()
         self._refresh_all_views()
         self._refresh_footer_state()
         self.display_team(self._team_for_offset(offset))
-        self.status_var.set("Reverted staged club changes")
+        if removed_roster_ops:
+            self.status_var.set(f"Reverted staged club changes and {removed_roster_ops} roster operation(s)")
+        else:
+            self.status_var.set("Reverted staged club changes")
 
     def display_coach(self, offset: int) -> None:
         coach = self._coach_for_offset(offset)
@@ -3393,10 +4133,14 @@ class PM99DatabaseEditor:
 
         ttk.Label(dialog, text=f"{row.player_name} (slot {row.slot_number})", font=("TkDefaultFont", 11, "bold")).pack(anchor="w", padx=12, pady=(12, 4))
         ttk.Label(dialog, text=f"Source: {mode}").pack(anchor="w", padx=12)
+        ttk.Label(
+            dialog,
+            text="Changes are staged now and written when you use Save All.",
+            justify=tk.LEFT,
+        ).pack(anchor="w", padx=12, pady=(2, 0))
 
         pid_var = tk.StringVar(value=str(row.meta.get("current_pid", "")))
         flag_var = tk.StringVar(value=str(row.meta.get("current_flag", "")))
-        dry_run_var = tk.BooleanVar(value=True)
 
         form = ttk.Frame(dialog, padding=12)
         form.pack(fill=tk.BOTH, expand=True)
@@ -3409,7 +4153,13 @@ class PM99DatabaseEditor:
         else:
             next_row = 1
         form.grid_columnconfigure(1, weight=1)
-        ttk.Checkbutton(form, text="Dry run (stage only)", variable=dry_run_var).grid(row=next_row, column=0, columnspan=2, sticky="w", pady=(6, 0))
+        ttk.Label(form, text="Use Save All to apply this staged slot update.").grid(
+            row=next_row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(6, 0),
+        )
 
         button_row = ttk.Frame(dialog, padding=(12, 0, 12, 12))
         button_row.pack(fill=tk.X)
@@ -3418,22 +4168,457 @@ class PM99DatabaseEditor:
             try:
                 pid = _safe_int(pid_var.get(), _safe_int(row.meta.get("current_pid", 0), 0))
                 flag = _safe_int(flag_var.get(), _safe_int(row.meta.get("current_flag", 0), 0))
-                result_lines = self._apply_roster_slot_edit(row, pid=pid, flag=flag, dry_run=bool(dry_run_var.get()))
+                result_lines = self._stage_roster_slot_edit(row, pid=pid, flag=flag)
                 dialog.destroy()
                 messagebox.showinfo("Roster Slot Editor", "\n".join(result_lines))
             except Exception as exc:
                 messagebox.showerror("Roster Slot Editor", f"Roster slot edit failed:\n{exc}")
 
-        ttk.Button(button_row, text="Apply", command=_apply).pack(side=tk.LEFT)
+        ttk.Button(button_row, text="Stage", command=_apply).pack(side=tk.LEFT)
         ttk.Button(button_row, text="Cancel", command=dialog.destroy).pack(side=tk.LEFT, padx=(6, 0))
 
-    def _apply_roster_slot_edit(
+    def _open_roster_bulk_promote_dialog(self) -> None:
+        if self.current_team is None:
+            messagebox.showinfo("Bulk Promote Linked Slots", "Select a club first.")
+            return
+
+        linked_rows = [
+            row
+            for row in list(self.current_roster_rows or [])
+            if str((row.meta or {}).get("mode") or "") == "linked"
+        ]
+        if not linked_rows:
+            messagebox.showinfo(
+                "Bulk Promote Linked Slots",
+                "No linked roster rows are available for this club.",
+            )
+            return
+
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Bulk Promote Linked Slots")
+        dialog.transient(self.root)
+        dialog.grab_set()
+
+        default_name = _normalize_spaces(linked_rows[0].player_name or "")
+        slot_default = min(25, len(linked_rows))
+        name_var = tk.StringVar(value=default_name)
+        elite_var = tk.BooleanVar(value=True)
+        slot_limit_var = tk.StringVar(value=str(slot_default))
+
+        ttk.Label(dialog, text="Bulk Promote Linked Roster Slots", font=("TkDefaultFont", 11, "bold")).pack(
+            anchor="w",
+            padx=12,
+            pady=(12, 4),
+        )
+        ttk.Label(
+            dialog,
+            text=(
+                "Stages linked-slot promotions for the selected club using fixed-size safe guards. "
+                "Unsupported slots are skipped with diagnostics."
+            ),
+            justify=tk.LEFT,
+            wraplength=480,
+        ).pack(anchor="w", padx=12)
+
+        form = ttk.Frame(dialog, padding=12)
+        form.pack(fill=tk.BOTH, expand=True)
+        ttk.Label(form, text="Target Full Name", width=18).grid(row=0, column=0, sticky="w", pady=2)
+        tk.Entry(form, textvariable=name_var, relief=tk.SOLID, bd=1).grid(row=0, column=1, sticky="ew", pady=2)
+
+        ttk.Label(form, text="Slot Limit", width=18).grid(row=1, column=0, sticky="w", pady=2)
+        tk.Spinbox(
+            form,
+            from_=1,
+            to=max(1, len(linked_rows)),
+            textvariable=slot_limit_var,
+            width=8,
+            relief=tk.SOLID,
+            bd=1,
+        ).grid(row=1, column=1, sticky="w", pady=2)
+
+        ttk.Checkbutton(
+            form,
+            text="Apply elite visible skills (all mapped10 = 99)",
+            variable=elite_var,
+        ).grid(row=2, column=0, columnspan=2, sticky="w", pady=(6, 0))
+        ttk.Label(form, text="Use Save All to write staged promotions.").grid(
+            row=3,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(4, 0),
+        )
+        form.grid_columnconfigure(1, weight=1)
+
+        button_row = ttk.Frame(dialog, padding=(12, 0, 12, 12))
+        button_row.pack(fill=tk.X)
+
+        def _apply() -> None:
+            try:
+                new_name = _normalize_spaces(name_var.get())
+                if not new_name:
+                    raise ValueError("Provide a full player name")
+                slot_limit = _safe_int(slot_limit_var.get(), slot_default)
+                slot_limit = max(1, min(slot_limit, len(linked_rows)))
+                lines = self._stage_roster_bulk_promotions(
+                    new_name=new_name,
+                    elite_skills=bool(elite_var.get()),
+                    slot_limit=slot_limit,
+                )
+                dialog.destroy()
+                messagebox.showinfo("Bulk Promote Linked Slots", "\n".join(lines))
+            except Exception as exc:
+                messagebox.showerror("Bulk Promote Linked Slots", f"Bulk promotion failed:\n{exc}")
+
+        ttk.Button(button_row, text="Stage", command=_apply).pack(side=tk.LEFT)
+        ttk.Button(button_row, text="Cancel", command=dialog.destroy).pack(side=tk.LEFT, padx=(6, 0))
+
+    def _stage_roster_bulk_promotions(
+        self,
+        *,
+        new_name: str,
+        elite_skills: bool,
+        slot_limit: int,
+    ) -> list[str]:
+        if self.current_team is None:
+            raise ValueError("No team selected")
+
+        linked_rows = [
+            row
+            for row in list(self.current_roster_rows or [])
+            if str((row.meta or {}).get("mode") or "") == "linked"
+        ]
+        if not linked_rows:
+            raise ValueError("No linked roster rows are available for this club")
+
+        team_query = str((linked_rows[0].meta or {}).get("team_query") or self._team_name(self.current_team[1]))
+        eq_record_id = _safe_int((linked_rows[0].meta or {}).get("eq_record_id", 0), 0) or None
+        team_file = self.team_file_path
+        player_file = self._resolve_player_file_for_roster()
+
+        self.status_var.set("Staging bulk roster promotion...")
+        self.root.update_idletasks()
+
+        result = promote_linked_roster_player_name_bulk(
+            team_file=team_file,
+            player_file=player_file,
+            team_query=team_query,
+            eq_record_id=eq_record_id,
+            new_name=new_name,
+            slot_limit=max(1, int(slot_limit)),
+            apply_elite_skills=elite_skills,
+            fixed_name_bytes=True,
+            write_changes=False,
+        )
+
+        selector_club_offset = self._resolve_club_offset_for_roster_operation(
+            team_query=team_query,
+            full_club_name="",
+            eq_record_id=eq_record_id,
+        )
+        skipped = list(getattr(result, "skipped_slots", []) or [])
+        PM99DatabaseEditor._replace_staged_roster_promotion_skips(
+            self,
+            team_query=team_query,
+            eq_record_id=eq_record_id,
+            club_offset=selector_club_offset,
+            skipped=skipped,
+        )
+
+        staged_new = 0
+        staged_updated = 0
+        for promotion in list(getattr(result, "promotions", []) or []):
+            club_offset = self._resolve_club_offset_for_roster_operation(
+                team_query=str(getattr(promotion, "team_name", "") or team_query),
+                full_club_name=str(getattr(promotion, "full_club_name", "") or ""),
+                eq_record_id=int(getattr(promotion, "eq_record_id", 0) or 0) or None,
+            )
+            operation = {
+                "team_query": str(getattr(promotion, "team_name", "") or team_query),
+                "full_club_name": str(getattr(promotion, "full_club_name", "") or ""),
+                "eq_record_id": int(getattr(promotion, "eq_record_id", 0) or 0) or None,
+                "slot_number": int(getattr(promotion, "slot_number", 0) or 0),
+                "new_name": str(getattr(promotion, "new_player_name", new_name) or new_name),
+                "apply_elite_skills": bool(elite_skills),
+                "skill_updates": dict(getattr(promotion, "skill_updates_requested", {}) or {}),
+                "club_offset": club_offset,
+            }
+            if self._upsert_staged_roster_promotion(operation):
+                staged_new += 1
+            else:
+                staged_updated += 1
+
+        self._refresh_after_roster_staging_update()
+
+        warnings = list(getattr(result, "warnings", []) or [])
+        warning_count = len(warnings)
+        skipped_count = len(skipped)
+        staged_total = staged_new + staged_updated
+        self.toolbar_status_var.set("Bulk roster promotion staged")
+        self.status_var.set(
+            f"Staged bulk roster promotion ({staged_total} promotion(s), {skipped_count} skipped, {warning_count} warning(s))"
+        )
+
+        lines = [
+            "Bulk promotion staged",
+            f"Club: {team_query}",
+            f"Target name: {new_name}",
+            f"Processed slots: {int(getattr(result, 'slot_count', slot_limit) or slot_limit)}",
+            f"Matched promotions: {int(getattr(result, 'matched_slot_count', staged_total) or staged_total)}",
+            f"Operation: staged new={staged_new}, updated existing={staged_updated}",
+            f"Skipped slots: {skipped_count}",
+            f"Warnings: {warning_count}",
+            "Write path: Save All",
+        ]
+
+        if skipped:
+            lines.append("Skip diagnostics:")
+            for item in skipped[:8]:
+                lines.append(
+                    f"  slot {int(getattr(item, 'slot_number', 0) or 0):02d} "
+                    f"pid {int(getattr(item, 'player_record_id', 0) or 0)} "
+                    f"[{getattr(item, 'reason_code', 'unknown')}]"
+                )
+                detail = _normalize_spaces(str(getattr(item, "reason_message", "") or ""))
+                if detail:
+                    lines.append(f"    {detail}")
+            if len(skipped) > 8:
+                lines.append(f"  ... and {len(skipped) - 8} more")
+
+        if warnings:
+            first_warning = warnings[0]
+            lines.append(
+                "First warning: " + _normalize_spaces(str(getattr(first_warning, "message", "") or ""))
+            )
+
+        return lines
+
+    def _profile_bulk_promotion_safety(
+        self,
+        *,
+        team_query: str,
+        eq_record_id: int | None,
+        new_name: str,
+        slot_limit: int = 25,
+        sample_limit: int = 12,
+    ) -> list[str]:
+        result = promote_linked_roster_player_name_bulk(
+            team_file=self.team_file_path,
+            player_file=self._resolve_player_file_for_roster(),
+            team_query=team_query,
+            eq_record_id=eq_record_id,
+            new_name=new_name,
+            slot_limit=max(1, int(slot_limit or 1)),
+            apply_elite_skills=False,
+            skill_updates={},
+            fixed_name_bytes=True,
+            write_changes=False,
+        )
+        summary = summarize_team_roster_bulk_promotion(
+            result,
+            sample_limit=max(0, int(sample_limit or 0)),
+        )
+
+        display = _normalize_spaces(str(getattr(summary, "team_name", "") or "")) or team_query
+        full = _normalize_spaces(str(getattr(summary, "full_club_name", "") or ""))
+        if full and full != display:
+            display = f"{display} ({full})"
+
+        lines = [
+            "Linked Roster Promotion Safety Profile",
+            f"Club: {display}",
+            f"eq_record_id: {int(getattr(summary, 'eq_record_id', 0) or 0)}",
+            f"Target name: {getattr(summary, 'new_player_name', '')}",
+            (
+                f"Safe slots: {int(getattr(summary, 'matched_slot_count', 0) or 0)}"
+                f"/{int(getattr(summary, 'slot_count', 0) or 0)}"
+            ),
+            f"Skipped slots: {int(getattr(summary, 'skipped_slot_count', 0) or 0)}",
+            (
+                "Skip split: "
+                f"fixed_name_unsafe={int(getattr(summary, 'fixed_name_unsafe_count', 0) or 0)}, "
+                f"already_target={int(getattr(summary, 'already_target_count', 0) or 0)}, "
+                f"other={int(getattr(summary, 'other_skip_count', 0) or 0)}"
+            ),
+        ]
+
+        reason_counts = dict(getattr(summary, "reason_counts", {}) or {})
+        if reason_counts:
+            lines.extend(["", "Reason counts:"])
+            for reason, count in sorted(reason_counts.items(), key=lambda item: (-int(item[1]), str(item[0]))):
+                lines.append(f"  {reason}: {int(count)}")
+
+        sample_skips = list(getattr(summary, "sample_skips", []) or [])
+        if sample_skips:
+            lines.extend(["", "Sample skipped slots:"])
+            for item in sample_skips:
+                lines.append(
+                    f"  slot {int(getattr(item, 'slot_number', 0) or 0):02d} "
+                    f"pid {int(getattr(item, 'player_record_id', 0) or 0)} "
+                    f"[{getattr(item, 'reason_code', 'unknown')}] "
+                    f"{getattr(item, 'player_name', '')}"
+                )
+                detail = _normalize_spaces(str(getattr(item, "reason_message", "") or ""))
+                if detail:
+                    lines.append(f"    {detail}")
+
+        lines.extend(
+            [
+                "",
+                "Use this report to prioritize reverse-engineering for the dominant skip families before promoting broader write contracts.",
+            ]
+        )
+        return lines
+
+
+    def _open_roster_promote_dialog(self) -> None:
+        selection = self.roster_tree.selection()
+        if not selection:
+            messagebox.showinfo("Promote Slot Player", "Select a roster row first.")
+            return
+        row = self.current_roster_meta_by_item.get(selection[0])
+        if row is None:
+            messagebox.showinfo("Promote Slot Player", "The selected row does not have editable roster metadata.")
+            return
+        mode = str(row.meta.get("mode") or "")
+        if mode != "linked":
+            messagebox.showinfo(
+                "Promote Slot Player",
+                "Promotion currently supports linked roster rows only.",
+            )
+            return
+
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Promote Roster Player")
+        dialog.transient(self.root)
+        dialog.grab_set()
+
+        ttk.Label(
+            dialog,
+            text=f"{row.player_name} (slot {row.slot_number})",
+            font=("TkDefaultFont", 11, "bold"),
+        ).pack(anchor="w", padx=12, pady=(12, 4))
+        ttk.Label(dialog, text="Creates a promoted player identity + optional elite visible skills.").pack(
+            anchor="w",
+            padx=12,
+        )
+        ttk.Label(
+            dialog,
+            text="This promotion is staged now and written when you use Save All.",
+            justify=tk.LEFT,
+        ).pack(anchor="w", padx=12, pady=(2, 0))
+
+        name_var = tk.StringVar(value=row.player_name or "")
+        elite_var = tk.BooleanVar(value=True)
+
+        form = ttk.Frame(dialog, padding=12)
+        form.pack(fill=tk.BOTH, expand=True)
+        ttk.Label(form, text="New Full Name", width=16).grid(row=0, column=0, sticky="w", pady=2)
+        tk.Entry(form, textvariable=name_var, relief=tk.SOLID, bd=1).grid(row=0, column=1, sticky="ew", pady=2)
+        ttk.Checkbutton(
+            form,
+            text="Apply elite visible skills (all mapped10 = 99)",
+            variable=elite_var,
+        ).grid(row=1, column=0, columnspan=2, sticky="w", pady=(6, 0))
+        ttk.Label(form, text="Use Save All to apply the staged promotion.").grid(
+            row=2, column=0, columnspan=2, sticky="w", pady=(4, 0)
+        )
+        form.grid_columnconfigure(1, weight=1)
+
+        button_row = ttk.Frame(dialog, padding=(12, 0, 12, 12))
+        button_row.pack(fill=tk.X)
+
+        def _apply() -> None:
+            try:
+                new_name = _normalize_spaces(name_var.get())
+                if not new_name:
+                    raise ValueError("Provide a full player name")
+                lines = self._apply_roster_player_promotion(
+                    row,
+                    new_name=new_name,
+                    elite_skills=bool(elite_var.get()),
+                )
+                dialog.destroy()
+                messagebox.showinfo("Promote Slot Player", "\n".join(lines))
+            except Exception as exc:
+                messagebox.showerror("Promote Slot Player", f"Promotion failed:\n{exc}")
+
+        ttk.Button(button_row, text="Stage", command=_apply).pack(side=tk.LEFT)
+        ttk.Button(button_row, text="Cancel", command=dialog.destroy).pack(side=tk.LEFT, padx=(6, 0))
+
+    def _apply_roster_player_promotion(
+        self,
+        row: RosterRowView,
+        *,
+        new_name: str,
+        elite_skills: bool,
+    ) -> list[str]:
+        if self.current_team is None:
+            raise ValueError("No team selected")
+
+        team_query = str(row.meta.get("team_query") or self._team_name(self.current_team[1]))
+        eq_record_id = _safe_int(row.meta.get("eq_record_id", 0), 0) or None
+        team_file = self.team_file_path
+        player_file = self._resolve_player_file_for_roster()
+
+        self.status_var.set("Staging roster player promotion...")
+        self.root.update_idletasks()
+
+        result = promote_team_roster_player(
+            team_file=team_file,
+            player_file=player_file,
+            team_query=team_query,
+            eq_record_id=eq_record_id,
+            slot_number=_safe_int(row.meta.get("slot_number", row.slot_number), row.slot_number),
+            new_name=new_name,
+            apply_elite_skills=elite_skills,
+            fixed_name_bytes=True,
+            write_changes=False,
+        )
+
+        club_offset = self._resolve_club_offset_for_roster_operation(
+            team_query=str(getattr(result, "team_name", "") or team_query),
+            full_club_name=str(getattr(result, "full_club_name", "") or ""),
+            eq_record_id=int(getattr(result, "eq_record_id", 0) or 0) or None,
+        )
+        operation = {
+            "team_query": str(getattr(result, "team_name", "") or team_query),
+            "full_club_name": str(getattr(result, "full_club_name", "") or ""),
+            "eq_record_id": int(getattr(result, "eq_record_id", 0) or 0) or None,
+            "slot_number": int(getattr(result, "slot_number", row.slot_number) or row.slot_number),
+            "new_name": str(getattr(result, "new_player_name", new_name) or new_name),
+            "apply_elite_skills": bool(elite_skills),
+            "skill_updates": dict(getattr(result, "skill_updates_requested", {}) or {}),
+            "club_offset": club_offset,
+        }
+        is_new_stage = self._upsert_staged_roster_promotion(operation)
+        self._refresh_after_roster_staging_update()
+
+        warning_count = len(getattr(result, "warnings", []) or [])
+        self.status_var.set(f"Staged roster promotion ({warning_count} warning(s))")
+        lines = [
+            "Promotion staged",
+            f"Club: {team_query}",
+            f"Slot: {int(getattr(result, 'slot_number', row.slot_number))}",
+            f"Player: {getattr(result, 'old_player_name', row.player_name)} -> {getattr(result, 'new_player_name', new_name)}",
+            "Operation: " + ("staged new promotion" if is_new_stage else "updated existing staged promotion"),
+        ]
+        updates = dict(getattr(result, "skill_updates_requested", {}) or {})
+        if updates:
+            lines.append("Skill updates: " + ", ".join(f"{field}={value}" for field, value in sorted(updates.items())))
+        replacements = dict(getattr(result, "alias_replacements", {}) or {})
+        if replacements:
+            lines.append("Name alias sync: " + ", ".join(f"{label}={count}" for label, count in sorted(replacements.items())))
+        lines.append(f"Warnings: {warning_count}")
+        lines.append("Write path: Save All")
+        return lines
+
+    def _stage_roster_slot_edit(
         self,
         row: RosterRowView,
         *,
         pid: int,
         flag: int,
-        dry_run: bool,
     ) -> list[str]:
         if self.current_team is None:
             raise ValueError("No team selected")
@@ -3442,8 +4627,9 @@ class PM99DatabaseEditor:
         team_query = str(row.meta.get("team_query") or self._team_name(self.current_team[1]))
         team_file = self.team_file_path
         player_file = self._resolve_player_file_for_roster()
+        slot_number = _safe_int(row.meta.get("slot_number", row.slot_number), row.slot_number)
 
-        self.status_var.set("Applying roster slot edit...")
+        self.status_var.set("Staging roster slot edit...")
         self.root.update_idletasks()
 
         if mode == "linked":
@@ -3451,10 +4637,21 @@ class PM99DatabaseEditor:
                 team_file=team_file,
                 player_file=player_file,
                 team_query=team_query,
-                slot_number=_safe_int(row.meta.get("slot_number", row.slot_number), row.slot_number),
+                slot_number=slot_number,
                 player_record_id=pid,
                 flag=flag,
-                write_changes=not dry_run,
+                write_changes=False,
+            )
+            stage_key = self._roster_slot_stage_key(
+                mode="linked",
+                slot_number=slot_number,
+                team_query=team_query,
+                eq_record_id=(
+                    _safe_int(row.meta.get("eq_record_id"), -1)
+                    if row.meta.get("eq_record_id") is not None
+                    else None
+                ),
+                team_offset=None,
             )
         elif mode == "same_entry":
             result = edit_team_roster_same_entry_authoritative(
@@ -3462,107 +4659,819 @@ class PM99DatabaseEditor:
                 player_file=player_file,
                 team_query=team_query,
                 team_offset=_safe_int(row.meta.get("team_offset", 0), 0),
-                slot_number=_safe_int(row.meta.get("slot_number", row.slot_number), row.slot_number),
+                slot_number=slot_number,
                 pid_candidate=pid,
-                write_changes=not dry_run,
+                write_changes=False,
+            )
+            stage_key = self._roster_slot_stage_key(
+                mode="same_entry",
+                slot_number=slot_number,
+                team_query=team_query,
+                eq_record_id=None,
+                team_offset=_safe_int(row.meta.get("team_offset", 0), 0),
             )
         else:
             raise ValueError(f"Unsupported roster edit mode: {mode}")
 
-        if not dry_run and getattr(result, "applied_to_disk", False):
-            self._select_club_by_offset(self.current_club_offset, focus_editor=False)
+        change_count = len(getattr(result, "changes", []) or [])
+        if change_count <= 0:
+            cleared = self.staged_roster_slot_changes.pop(stage_key, None) is not None
+            if cleared:
+                self._refresh_after_roster_staging_update()
+                self.status_var.set("Cleared staged roster slot edit (no file delta)")
+            else:
+                self._refresh_footer_state()
+                self.status_var.set("No roster slot change to stage")
+            lines = [
+                "No change detected in on-disk data for that slot.",
+                "Operation: cleared existing staged slot update" if cleared else "Operation: no staged update created",
+            ]
+            warning_count = len(getattr(result, "warnings", []) or [])
+            lines.append(f"Warnings: {warning_count}")
+            return lines
+
+        first_change = (getattr(result, "changes", []) or [None])[0]
+        club_offset = self._resolve_club_offset_for_roster_operation(
+            team_query=str(getattr(first_change, "team_name", "") or team_query),
+            full_club_name=str(getattr(first_change, "full_club_name", "") or ""),
+            eq_record_id=(
+                int(getattr(first_change, "eq_record_id", 0) or 0)
+                if mode == "linked"
+                else None
+            ),
+            team_offset=(
+                int(getattr(first_change, "team_offset", 0) or 0)
+                if mode == "same_entry"
+                else None
+            ),
+        )
+        if mode == "linked":
+            operation = {
+                "mode": "linked",
+                "team_query": str(getattr(first_change, "team_name", "") or team_query),
+                "full_club_name": str(getattr(first_change, "full_club_name", "") or ""),
+                "eq_record_id": int(getattr(first_change, "eq_record_id", 0) or 0) or None,
+                "slot_number": int(getattr(first_change, "slot_number", slot_number) or slot_number),
+                "player_record_id": int(getattr(first_change, "new_player_record_id", pid) or pid),
+                "flag": int(getattr(first_change, "new_flag", flag) or flag),
+                "club_offset": club_offset,
+                "source": "manual",
+            }
+        else:
+            operation = {
+                "mode": "same_entry",
+                "team_query": str(getattr(first_change, "team_name", "") or team_query),
+                "full_club_name": str(getattr(first_change, "full_club_name", "") or ""),
+                "team_offset": int(getattr(first_change, "team_offset", row.meta.get("team_offset", 0)) or 0),
+                "slot_number": int(getattr(first_change, "slot_number", slot_number) or slot_number),
+                "pid_candidate": int(getattr(first_change, "new_pid_candidate", pid) or pid),
+                "provenance": str(getattr(first_change, "provenance", "") or ""),
+                "club_offset": club_offset,
+                "source": "manual",
+            }
+        is_new_stage = self._upsert_staged_roster_slot_change(operation)
+        self._refresh_after_roster_staging_update()
 
         warning_count = len(getattr(result, "warnings", []) or [])
-        self.status_var.set(
-            f"Roster slot edit complete ({len(getattr(result, 'changes', []) or [])} changed, {warning_count} warning(s))"
-        )
+        self.status_var.set(f"Staged roster slot edit ({warning_count} warning(s))")
         lines = [
-            "Dry run complete" if dry_run else "Roster edit complete",
+            "Roster slot edit staged",
             f"Club: {team_query}",
             f"Player: {row.player_name}",
-            f"Rows changed: {len(getattr(result, 'changes', []) or [])}",
+            f"Rows validated: {change_count}",
+            "Operation: " + ("staged new slot update" if is_new_stage else "updated existing staged slot update"),
             f"Warnings: {warning_count}",
+            "Write path: Save All",
         ]
-        backup = getattr(result, "backup_path", None)
-        if backup:
-            lines.append(f"Backup: {backup}")
         return lines
 
-    def _show_batch_roster_placeholder(self) -> None:
-        messagebox.showinfo(
-            "Roster Tools",
-            "Batch roster CSV import has not been migrated into the refreshed shell yet.\n"
-            "Use the Advanced Workspace for research and keep Save All for staged editor changes.",
+    def _open_roster_batch_import_dialog(self) -> None:
+        team_path = Path(self.team_file_path)
+        if not team_path.exists():
+            messagebox.showerror("Batch Import CSV", f"Team file not found:\n{team_path}")
+            return
+
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Batch Import Roster CSV")
+        dialog.transient(self.root)
+        dialog.grab_set()
+
+        ttk.Label(dialog, text="Batch Import Roster CSV", font=("TkDefaultFont", 11, "bold")).pack(
+            anchor="w",
+            padx=12,
+            pady=(12, 4),
+        )
+        ttk.Label(
+            dialog,
+            text=(
+                "Preview a parser-backed team roster batch plan before staging.\n"
+                "Row-level diff output comes from the shared batch backend payload."
+            ),
+            justify=tk.LEFT,
+        ).pack(anchor="w", padx=12)
+
+        csv_var = tk.StringVar()
+        preview_summary_var = tk.StringVar(value="Preview pending. Select a CSV plan, then click Preview Plan.")
+        preview_state: dict[str, Any] = {
+            "result": None,
+            "team_file": "",
+            "player_file": "",
+            "csv_file": None,
+        }
+
+        form = ttk.Frame(dialog, padding=12)
+        form.pack(fill=tk.X)
+        ttk.Label(form, text="CSV Plan", width=14).grid(row=0, column=0, sticky="w", pady=2)
+        tk.Entry(form, textvariable=csv_var, relief=tk.SOLID, bd=1).grid(row=0, column=1, sticky="ew", pady=2)
+
+        def _browse_csv() -> None:
+            selected = filedialog.askopenfilename(
+                title="Select Team Roster Batch CSV",
+                filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+                initialdir=str(team_path.parent),
+            )
+            if selected:
+                csv_var.set(selected)
+
+        ttk.Button(form, text="Browse...", command=_browse_csv).grid(row=0, column=2, sticky="ew", padx=(6, 0), pady=2)
+        ttk.Label(form, text="Preview first, then Stage Valid Rows. Use Save All to write staged changes.").grid(
+            row=1, column=0, columnspan=3, sticky="w", pady=(6, 0)
+        )
+        form.grid_columnconfigure(1, weight=1)
+
+        preview_frame = ttk.LabelFrame(dialog, text="Plan Preview", padding=8)
+        preview_frame.pack(fill=tk.BOTH, expand=True, padx=12, pady=(0, 8))
+        ttk.Label(preview_frame, textvariable=preview_summary_var, justify=tk.LEFT).pack(anchor="w", pady=(0, 6))
+
+        columns = ("row", "status", "source", "team", "slot", "diff")
+        preview_tree = ttk.Treeview(preview_frame, columns=columns, show="headings", height=10)
+        headings = {
+            "row": "Row",
+            "status": "Status",
+            "source": "Source",
+            "team": "Team",
+            "slot": "Slot",
+            "diff": "Diff / Warning",
+        }
+        widths = {"row": 60, "status": 90, "source": 100, "team": 220, "slot": 60, "diff": 500}
+        anchors = {"row": tk.CENTER, "status": tk.W, "source": tk.W, "team": tk.W, "slot": tk.CENTER, "diff": tk.W}
+        for column in columns:
+            preview_tree.heading(column, text=headings[column])
+            preview_tree.column(column, width=widths[column], anchor=anchors[column], stretch=(column == "diff"))
+        preview_scroll = ttk.Scrollbar(preview_frame, orient=tk.VERTICAL, command=preview_tree.yview)
+        preview_tree.configure(yscrollcommand=preview_scroll.set)
+        preview_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        preview_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+
+        button_row = ttk.Frame(dialog, padding=(12, 0, 12, 12))
+        button_row.pack(fill=tk.X)
+
+        def _preview() -> None:
+            try:
+                csv_path = _normalize_spaces(csv_var.get())
+                if not csv_path:
+                    raise ValueError("Choose a CSV plan file first")
+                result, team_file, player_file, csv_file = PM99DatabaseEditor._preview_roster_batch_import(
+                    self,
+                    csv_path=csv_path,
+                )
+                preview_state["result"] = result
+                preview_state["team_file"] = team_file
+                preview_state["player_file"] = player_file
+                preview_state["csv_file"] = csv_file
+                PM99DatabaseEditor._render_roster_batch_plan_preview(self, preview_tree=preview_tree, result=result)
+
+                plan_rows = list(getattr(result, "plan_preview", []) or [])
+                change_count = sum(1 for item in plan_rows if str(getattr(item, "status", "")) == "change")
+                no_change_count = sum(1 for item in plan_rows if str(getattr(item, "status", "")) == "no_change")
+                warning_count = len(getattr(result, "warnings", []) or [])
+                preview_summary_var.set(
+                    f"Preview ready: {change_count} change row(s), {no_change_count} no-change row(s), {warning_count} warning(s)."
+                )
+                stage_button.state(["!disabled"])
+            except Exception as exc:
+                stage_button.state(["disabled"])
+                preview_state["result"] = None
+                preview_summary_var.set("Preview failed. Fix the plan and run Preview again.")
+                messagebox.showerror("Batch Import Roster CSV", f"Batch preview failed:\n{exc}")
+
+        def _apply() -> None:
+            try:
+                result = preview_state.get("result")
+                team_file = str(preview_state.get("team_file") or "")
+                player_file = str(preview_state.get("player_file") or "")
+                csv_file = preview_state.get("csv_file")
+                if result is None or not team_file or not player_file or csv_file is None:
+                    raise ValueError("Run Preview Plan first so you can inspect the diff before staging")
+                staged_linked, staged_same_entry = PM99DatabaseEditor._stage_roster_batch_changes_from_result(
+                    self,
+                    result=result,
+                )
+                warning_count = len(getattr(result, "warnings", []) or [])
+                staged_total = staged_linked + staged_same_entry
+                self.toolbar_status_var.set("Roster batch staged")
+                self.status_var.set(
+                    f"Staged roster batch import ({staged_total} slot op(s), {warning_count} warning(s))"
+                )
+                lines = PM99DatabaseEditor._build_roster_batch_import_summary_lines(
+                    self,
+                    heading="Batch import staged",
+                    team_file=team_file,
+                    player_file=player_file,
+                    csv_file=Path(str(csv_file)),
+                    result=result,
+                    staged_linked=staged_linked,
+                    staged_same_entry=staged_same_entry,
+                )
+                dialog.destroy()
+                messagebox.showinfo("Batch Import Roster CSV", "\n".join(lines))
+            except Exception as exc:
+                messagebox.showerror("Batch Import Roster CSV", f"Batch import failed:\n{exc}")
+
+        ttk.Button(button_row, text="Preview Plan", command=_preview).pack(side=tk.LEFT)
+        stage_button = ttk.Button(button_row, text="Stage Valid Rows", command=_apply)
+        stage_button.pack(side=tk.LEFT, padx=(6, 0))
+        stage_button.state(["disabled"])
+        ttk.Button(button_row, text="Cancel", command=dialog.destroy).pack(side=tk.LEFT, padx=(6, 0))
+
+    def _preview_roster_batch_import(self, *, csv_path: str) -> tuple[Any, str, str, Path]:
+        team_file = str(Path(self.team_file_path))
+        player_file = self._resolve_player_file_for_roster()
+        csv_file = Path(csv_path).expanduser()
+        if not csv_file.exists():
+            raise ValueError(f"CSV plan not found: {csv_file}")
+
+        self.status_var.set("Previewing team roster batch import...")
+        self.toolbar_status_var.set("Previewing roster batch...")
+        self.root.update_idletasks()
+
+        result = batch_edit_team_roster_records(
+            team_file=team_file,
+            player_file=player_file,
+            csv_path=str(csv_file),
+            write_changes=False,
+        )
+
+        linked_count = len(getattr(result, "linked_changes", []) or [])
+        same_entry_count = len(getattr(result, "same_entry_changes", []) or [])
+        warning_count = len(getattr(result, "warnings", []) or [])
+        change_count = linked_count + same_entry_count
+        self.toolbar_status_var.set("Roster batch preview ready")
+        self.status_var.set(
+            f"Roster batch preview ready ({change_count} change row(s), {warning_count} warning(s))"
+        )
+        return result, team_file, player_file, csv_file
+
+    def _stage_roster_batch_changes_from_result(self, *, result: Any) -> tuple[int, int]:
+        staged_linked = 0
+        staged_same_entry = 0
+
+        for change in list(getattr(result, "linked_changes", []) or []):
+            operation = {
+                "mode": "linked",
+                "team_query": str(getattr(change, "team_name", "") or ""),
+                "full_club_name": str(getattr(change, "full_club_name", "") or ""),
+                "eq_record_id": int(getattr(change, "eq_record_id", 0) or 0) or None,
+                "slot_number": int(getattr(change, "slot_number", 0) or 0),
+                "player_record_id": int(getattr(change, "new_player_record_id", 0) or 0),
+                "flag": int(getattr(change, "new_flag", 0) or 0),
+                "club_offset": self._resolve_club_offset_for_roster_operation(
+                    team_query=str(getattr(change, "team_name", "") or ""),
+                    full_club_name=str(getattr(change, "full_club_name", "") or ""),
+                    eq_record_id=int(getattr(change, "eq_record_id", 0) or 0) or None,
+                ),
+                "source": "batch",
+            }
+            self._upsert_staged_roster_slot_change(operation)
+            staged_linked += 1
+
+        for change in list(getattr(result, "same_entry_changes", []) or []):
+            operation = {
+                "mode": "same_entry",
+                "team_query": str(getattr(change, "team_name", "") or ""),
+                "full_club_name": str(getattr(change, "full_club_name", "") or ""),
+                "team_offset": int(getattr(change, "team_offset", 0) or 0),
+                "slot_number": int(getattr(change, "slot_number", 0) or 0),
+                "pid_candidate": int(getattr(change, "new_pid_candidate", 0) or 0),
+                "provenance": str(getattr(change, "provenance", "") or ""),
+                "club_offset": self._resolve_club_offset_for_roster_operation(
+                    team_query=str(getattr(change, "team_name", "") or ""),
+                    full_club_name=str(getattr(change, "full_club_name", "") or ""),
+                    team_offset=int(getattr(change, "team_offset", 0) or 0),
+                ),
+                "source": "batch",
+            }
+            self._upsert_staged_roster_slot_change(operation)
+            staged_same_entry += 1
+
+        self._refresh_after_roster_staging_update()
+        return staged_linked, staged_same_entry
+
+    def _build_roster_batch_import_summary_lines(
+        self,
+        *,
+        heading: str,
+        team_file: str,
+        player_file: str,
+        csv_file: Path,
+        result: Any,
+        staged_linked: int | None = None,
+        staged_same_entry: int | None = None,
+    ) -> list[str]:
+        linked_count = len(getattr(result, "linked_changes", []) or [])
+        same_entry_count = len(getattr(result, "same_entry_changes", []) or [])
+        warning_count = len(getattr(result, "warnings", []) or [])
+        plan_rows = list(getattr(result, "plan_preview", []) or [])
+        plan_change_count = sum(1 for item in plan_rows if str(getattr(item, "status", "")) == "change")
+        plan_no_change_count = sum(1 for item in plan_rows if str(getattr(item, "status", "")) == "no_change")
+
+        summary_lines = [
+            heading,
+            "",
+            f"Team file: {team_file}",
+            f"Player file: {player_file}",
+            f"Plan: {csv_file}",
+            f"Rows read: {int(getattr(result, 'row_count', 0) or 0)}",
+            f"Matched rows: {int(getattr(result, 'matched_row_count', 0) or 0)}",
+            f"Linked rows validated: {linked_count}",
+            f"Same-entry rows validated: {same_entry_count}",
+        ]
+        if plan_rows:
+            summary_lines.extend(
+                [
+                    f"Plan rows with changes: {plan_change_count}",
+                    f"Plan rows with no change: {plan_no_change_count}",
+                ]
+            )
+        if staged_linked is not None and staged_same_entry is not None:
+            summary_lines.extend(
+                [
+                    f"Linked rows staged: {staged_linked}",
+                    f"Same-entry rows staged: {staged_same_entry}",
+                ]
+            )
+        summary_lines.extend([f"Warnings: {warning_count}", "Write path: Save All"])
+        if warning_count:
+            first_warning = (getattr(result, "warnings", []) or [None])[0]
+            if first_warning is not None:
+                summary_lines.extend(["", "First warning:", str(getattr(first_warning, "message", first_warning))])
+        return summary_lines
+
+    def _render_roster_batch_plan_preview(self, *, preview_tree: Any, result: Any) -> None:
+        preview_tree.delete(*preview_tree.get_children())
+        rows = list(getattr(result, "plan_preview", []) or [])
+        if not rows:
+            preview_tree.insert("", tk.END, values=("-", "Info", "-", "-", "-", "No row-level preview returned"))
+            return
+
+        for item in rows:
+            row_number = getattr(item, "row_number", None)
+            status = str(getattr(item, "status", "") or "warning")
+            source = str(getattr(item, "source", "") or "auto")
+            team_name = (
+                str(getattr(item, "resolved_team_name", "") or "")
+                or str(getattr(item, "team_query", "") or "")
+                or "-"
+            )
+            slot_number = getattr(item, "slot_number", None)
+            diff_summary = str(getattr(item, "diff_summary", "") or "")
+            warning_text = str(getattr(item, "warning_message", "") or "")
+            old_name = str(getattr(item, "old_player_name", "") or "")
+            new_name = str(getattr(item, "new_player_name", "") or "")
+            name_delta = ""
+            if old_name or new_name:
+                name_delta = f"{old_name or '?'} -> {new_name or '?'}"
+            detail_parts = [part for part in [diff_summary, warning_text, name_delta] if part]
+            detail = " | ".join(detail_parts) if detail_parts else "-"
+            preview_tree.insert(
+                "",
+                tk.END,
+                values=(
+                    "-" if row_number is None else row_number,
+                    status.replace("_", " ").title(),
+                    source,
+                    team_name,
+                    "-" if slot_number is None else slot_number,
+                    detail,
+                ),
+            )
+
+    def _run_roster_batch_import(self, *, csv_path: str) -> list[str]:
+        result, team_file, player_file, csv_file = PM99DatabaseEditor._preview_roster_batch_import(
+            self,
+            csv_path=csv_path,
+        )
+        staged_linked, staged_same_entry = PM99DatabaseEditor._stage_roster_batch_changes_from_result(
+            self,
+            result=result,
+        )
+        warning_count = len(getattr(result, "warnings", []) or [])
+        staged_total = staged_linked + staged_same_entry
+        self.toolbar_status_var.set("Roster batch staged")
+        self.status_var.set(f"Staged roster batch import ({staged_total} slot op(s), {warning_count} warning(s))")
+        return PM99DatabaseEditor._build_roster_batch_import_summary_lines(
+            self,
+            heading="Batch import staged",
+            team_file=team_file,
+            player_file=player_file,
+            csv_file=csv_file,
+            result=result,
+            staged_linked=staged_linked,
+            staged_same_entry=staged_same_entry,
         )
 
     def export_current_roster_csv(self) -> None:
-        if not self.current_roster_rows:
+        if not self.current_roster_rows or self.current_team is None:
             messagebox.showinfo("Export Roster CSV", "No roster is available for the selected club.")
             return
+
         filename = filedialog.asksaveasfilename(
-            title="Export Club Roster",
+            title="Export Roster Batch Template",
             defaultextension=".csv",
             filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
         )
         if not filename:
             return
-        with open(filename, "w", newline="", encoding="utf-8") as handle:
-            writer = csv.writer(handle)
-            writer.writerow(["slot", "player", "position", "nationality", "speed", "stamina", "aggression", "quality", "status"])
-            for row in self.current_roster_rows:
-                writer.writerow(
-                    [
-                        row.slot_number,
-                        row.player_name,
-                        row.position_label,
-                        row.nationality_label,
-                        row.skills.get("speed", ""),
-                        row.skills.get("stamina", ""),
-                        row.skills.get("aggression", ""),
-                        row.skills.get("quality", ""),
-                        ", ".join(row.status_badges),
-                    ]
+
+        team_name = _normalize_spaces(self._team_name(self.current_team[1]))
+        if not team_name:
+            messagebox.showerror("Export Roster CSV", "Selected club name is unavailable.")
+            return
+
+        mode_counts = Counter(str((row.meta or {}).get("mode") or "") for row in self.current_roster_rows)
+        preferred_source = "linked" if mode_counts.get("linked", 0) >= mode_counts.get("same_entry", 0) else "same_entry"
+
+        eq_record_id = None
+        team_offset = None
+        for row in self.current_roster_rows:
+            meta = dict(row.meta or {})
+            if preferred_source == "linked" and meta.get("eq_record_id") is not None:
+                parsed = _safe_int(meta.get("eq_record_id"), 0)
+                if parsed > 0:
+                    eq_record_id = parsed
+                    break
+            if preferred_source == "same_entry" and meta.get("team_offset") is not None:
+                parsed = _safe_int(meta.get("team_offset"), 0)
+                if parsed > 0:
+                    team_offset = parsed
+                    break
+
+        try:
+            result = export_team_roster_batch_template(
+                team_file=self.team_file_path,
+                player_file=self._resolve_player_file_for_roster(),
+                output_csv=filename,
+                team_query=team_name,
+                eq_record_id=eq_record_id,
+                team_offset=team_offset,
+                source=preferred_source,
+            )
+        except Exception as exc:
+            messagebox.showerror("Export Roster CSV", f"Template export failed:\n{exc}")
+            return
+
+        warning_count = len(getattr(result, "warnings", []) or [])
+        self.status_var.set(
+            f"Exported batch template to {filename} ({int(getattr(result, 'row_count', 0) or 0)} rows, {warning_count} warning(s))"
+        )
+        messagebox.showinfo(
+            "Export Roster CSV",
+            "Exported an import-ready roster batch template.\n"
+            "Edit the CSV and use Batch Import CSV to stage full-squad changes.",
+        )
+
+    def _apply_staged_roster_slot_changes_to_disk(
+        self,
+        *,
+        rollback_backups: dict[Path, Path],
+        summary_lines: list[str],
+    ) -> tuple[int, int]:
+        changed_rows = 0
+        warning_count = 0
+        if not self.staged_roster_slot_changes:
+            return changed_rows, warning_count
+
+        for operation in list(self.staged_roster_slot_changes.values()):
+            mode = str(operation.get("mode") or "")
+            if mode == "linked":
+                result = edit_team_roster_eq_jug_linked(
+                    team_file=self.team_file_path,
+                    player_file=self._resolve_player_file_for_roster(),
+                    team_query=str(operation.get("team_query") or ""),
+                    eq_record_id=(
+                        _safe_int(operation.get("eq_record_id"), 0)
+                        if operation.get("eq_record_id") is not None
+                        else None
+                    ),
+                    slot_number=_safe_int(operation.get("slot_number", 0), 0),
+                    player_record_id=_safe_int(operation.get("player_record_id", 0), 0),
+                    flag=_safe_int(operation.get("flag", 0), 0),
+                    write_changes=True,
                 )
-        self.status_var.set(f"Exported roster CSV to {filename}")
+            elif mode == "same_entry":
+                result = edit_team_roster_same_entry_authoritative(
+                    team_file=self.team_file_path,
+                    player_file=self._resolve_player_file_for_roster(),
+                    team_query=str(operation.get("team_query") or ""),
+                    team_offset=_safe_int(operation.get("team_offset", 0), 0),
+                    slot_number=_safe_int(operation.get("slot_number", 0), 0),
+                    pid_candidate=_safe_int(operation.get("pid_candidate", 0), 0),
+                    write_changes=True,
+                )
+            else:
+                raise ValueError(f"Unsupported staged roster slot mode: {mode}")
+
+            backup_path = getattr(result, "backup_path", None)
+            team_path = Path(self.team_file_path)
+            if backup_path and team_path not in rollback_backups:
+                rollback_backups[team_path] = Path(str(backup_path))
+                summary_lines.append(f"Teams backup: {backup_path}")
+
+            changed_rows += len(getattr(result, "changes", []) or [])
+            warning_count += len(getattr(result, "warnings", []) or [])
+
+        return changed_rows, warning_count
+
+    def _apply_staged_roster_promotions_to_disk(
+        self,
+        *,
+        rollback_backups: dict[Path, Path],
+        summary_lines: list[str],
+    ) -> tuple[int, int]:
+        applied_promotions = 0
+        warning_count = 0
+        if not self.staged_roster_promotions:
+            return applied_promotions, warning_count
+
+        for operation in list(self.staged_roster_promotions.values()):
+            result = promote_team_roster_player(
+                team_file=self.team_file_path,
+                player_file=self._resolve_player_file_for_roster(),
+                team_query=str(operation.get("team_query") or ""),
+                eq_record_id=(
+                    _safe_int(operation.get("eq_record_id"), 0)
+                    if operation.get("eq_record_id") is not None
+                    else None
+                ),
+                slot_number=_safe_int(operation.get("slot_number", 0), 0),
+                new_name=str(operation.get("new_name") or ""),
+                apply_elite_skills=bool(operation.get("apply_elite_skills")),
+                skill_updates=dict(operation.get("skill_updates") or {}),
+                fixed_name_bytes=True,
+                write_changes=True,
+            )
+            backup_path = getattr(result, "backup_path", None)
+            player_path = Path(self.file_path)
+            if backup_path and player_path not in rollback_backups:
+                rollback_backups[player_path] = Path(str(backup_path))
+                summary_lines.append(f"Players backup: {backup_path}")
+            applied_promotions += 1
+            warning_count += len(getattr(result, "warnings", []) or [])
+
+        return applied_promotions, warning_count
+
+    def _collect_save_plan(self) -> dict[str, Any]:
+        changed_players = dict(getattr(self, "modified_records", {}) or {})
+        changed_teams = dict(getattr(self, "modified_team_records", {}) or {})
+        changed_coaches = dict(getattr(self, "modified_coach_records", {}) or {})
+        staged_skills = dict(getattr(self, "staged_visible_skill_patches", {}) or {})
+        staged_slot_changes = list((getattr(self, "staged_roster_slot_changes", {}) or {}).values())
+        staged_promotions = list((getattr(self, "staged_roster_promotions", {}) or {}).values())
+        staged_promotion_skips = list((getattr(self, "staged_roster_promotion_skips", {}) or {}).values())
+
+        dirty_map_obj = getattr(getattr(self, "dirty_state", None), "field_dirty_map", None)
+        has_dirty_map = isinstance(dirty_map_obj, dict)
+        dirty_map = dict(dirty_map_obj or {})
+        name_only_player_count = 0
+        non_name_player_count = 0
+        unknown_player_count = 0
+
+        for offset, record in changed_players.items():
+            try:
+                offset_key = int(offset)
+            except Exception:
+                offset_key = None
+            player_dirty_fields = set()
+            if offset_key is not None:
+                player_dirty_fields = {
+                    str(field)
+                    for field in (dirty_map.get(f"players:{offset_key}") or set())
+                    if not str(field).startswith("skill:")
+                }
+
+            if player_dirty_fields:
+                if player_dirty_fields.issubset({"given_name", "surname"}):
+                    name_only_player_count += 1
+                else:
+                    non_name_player_count += 1
+                continue
+
+            if bool(getattr(record, "name_dirty", False)):
+                name_only_player_count += 1
+            else:
+                unknown_player_count += 1
+
+        return {
+            "changed_players": changed_players,
+            "changed_teams": changed_teams,
+            "changed_coaches": changed_coaches,
+            "staged_skills": staged_skills,
+            "staged_slot_changes": staged_slot_changes,
+            "staged_promotions": staged_promotions,
+            "staged_promotion_skips": staged_promotion_skips,
+            "name_only_player_count": name_only_player_count,
+            "non_name_player_count": non_name_player_count,
+            "unknown_player_count": unknown_player_count,
+            "has_dirty_map": has_dirty_map,
+            "had_player_related_changes": bool(changed_players or staged_skills or staged_promotions),
+            "had_team_related_changes": bool(changed_teams or staged_slot_changes),
+        }
+
+    @staticmethod
+    def _build_save_plan_confirmation_lines(save_plan: dict[str, Any]) -> list[str]:
+        changed_players = dict(save_plan.get("changed_players") or {})
+        changed_teams = dict(save_plan.get("changed_teams") or {})
+        changed_coaches = dict(save_plan.get("changed_coaches") or {})
+        staged_skills = dict(save_plan.get("staged_skills") or {})
+        staged_slot_changes = list(save_plan.get("staged_slot_changes") or [])
+        staged_promotions = list(save_plan.get("staged_promotions") or [])
+        staged_promotion_skips = list(save_plan.get("staged_promotion_skips") or [])
+
+        lines = [
+            "Write all staged editor changes now?",
+            "",
+            "Save plan:",
+            f"- Player records: {len(changed_players)}",
+            f"- Name-only player edits: {int(save_plan.get('name_only_player_count', 0) or 0)}",
+            f"- Non-name player edits: {int(save_plan.get('non_name_player_count', 0) or 0)}",
+            f"- Club records: {len(changed_teams)}",
+            f"- Coach records: {len(changed_coaches)}",
+            f"- Visible skill patches: {len(staged_skills)}",
+            f"- Roster slot updates: {len(staged_slot_changes)}",
+            f"- Roster promotions: {len(staged_promotions)}",
+            f"- Promotion skips (diagnostics): {len(staged_promotion_skips)}",
+            "",
+            "This save runs once and then re-opens the written files for validation.",
+        ]
+
+        if staged_promotion_skips:
+            lines.extend(["", "Bulk promotion skips (not written):"])
+            for item in staged_promotion_skips[:8]:
+                team_label = _normalize_spaces(str((item or {}).get("team_query") or "")) or "<team>"
+                slot_number = _safe_int((item or {}).get("slot_number", 0), 0)
+                player_record_id = _safe_int((item or {}).get("player_record_id", 0), 0)
+                reason_code = _normalize_spaces(str((item or {}).get("reason_code") or "unknown")) or "unknown"
+                lines.append(
+                    f"- {team_label} slot {slot_number:02d} pid {player_record_id}: {reason_code}"
+                )
+                reason_message = _normalize_spaces(str((item or {}).get("reason_message") or ""))
+                if reason_message:
+                    if len(reason_message) > 140:
+                        reason_message = reason_message[:137].rstrip() + "..."
+                    lines.append(f"  {reason_message}")
+            if len(staged_promotion_skips) > 8:
+                lines.append(f"- ... and {len(staged_promotion_skips) - 8} more")
+
+        return lines
+
+    @staticmethod
+    def _build_save_plan_safety_issues(editor: Any, save_plan: dict[str, Any]) -> list[str]:
+        issues: list[str] = []
+        changed_players = dict(save_plan.get("changed_players") or {})
+        changed_teams = dict(save_plan.get("changed_teams") or {})
+        changed_coaches = dict(save_plan.get("changed_coaches") or {})
+        staged_slot_changes = list(save_plan.get("staged_slot_changes") or [])
+        staged_promotions = list(save_plan.get("staged_promotions") or [])
+        had_player_related_changes = bool(save_plan.get("had_player_related_changes"))
+        had_team_related_changes = bool(save_plan.get("had_team_related_changes"))
+
+        player_path = Path(str(getattr(editor, "file_path", "") or ""))
+        team_path = Path(str(getattr(editor, "team_file_path", "") or ""))
+        coach_path = Path(str(getattr(editor, "coach_file_path", "") or ""))
+
+        if had_player_related_changes and (not str(player_path) or not player_path.exists()):
+            issues.append("Player database path is missing or does not exist.")
+        if had_team_related_changes and (not str(team_path) or not team_path.exists()):
+            issues.append("Team database path is missing or does not exist.")
+        if changed_coaches and (not str(coach_path) or not coach_path.exists()):
+            issues.append("Coach database path is missing or does not exist.")
+
+        if SAVE_NAME_ONLY:
+            non_name_count = int(save_plan.get("non_name_player_count", 0) or 0)
+            unknown_count = int(save_plan.get("unknown_player_count", 0) or 0)
+            has_dirty_map = bool(save_plan.get("has_dirty_map"))
+            if non_name_count > 0:
+                issues.append(
+                    f"Safe mode is active: {non_name_count} staged player edit(s) include non-name fields."
+                )
+            if has_dirty_map and unknown_count > 0:
+                issues.append(
+                    f"Safe mode is active: {unknown_count} staged player edit(s) could not be verified as name-only."
+                )
+
+        for idx, operation in enumerate(staged_slot_changes, start=1):
+            mode = _normalize_spaces(str((operation or {}).get("mode") or "")).lower()
+            slot = _safe_int((operation or {}).get("slot_number", 0), 0)
+            if mode not in {"linked", "same_entry"}:
+                issues.append(f"Staged roster slot op #{idx}: unsupported mode {mode!r}.")
+                continue
+            if slot <= 0:
+                issues.append(f"Staged roster slot op #{idx}: invalid slot number {slot}.")
+            if mode == "linked":
+                eq_record_id = _safe_int((operation or {}).get("eq_record_id"), 0)
+                team_query = _normalize_spaces(str((operation or {}).get("team_query") or ""))
+                new_player_id = _safe_int((operation or {}).get("player_record_id"), 0)
+                if eq_record_id <= 0 and not team_query:
+                    issues.append(
+                        f"Staged linked roster slot op #{idx}: missing team selector (eq_record_id/team_query)."
+                    )
+                if new_player_id <= 0:
+                    issues.append(
+                        f"Staged linked roster slot op #{idx}: invalid target player_record_id {new_player_id}."
+                    )
+            else:
+                team_offset = _safe_int((operation or {}).get("team_offset"), -1)
+                team_query = _normalize_spaces(str((operation or {}).get("team_query") or ""))
+                pid_candidate = _safe_int((operation or {}).get("pid_candidate"), 0)
+                if team_offset < 0 and not team_query:
+                    issues.append(
+                        f"Staged same-entry roster slot op #{idx}: missing team selector (team_offset/team_query)."
+                    )
+                if pid_candidate <= 0:
+                    issues.append(
+                        f"Staged same-entry roster slot op #{idx}: invalid pid_candidate {pid_candidate}."
+                    )
+
+        for idx, operation in enumerate(staged_promotions, start=1):
+            slot = _safe_int((operation or {}).get("slot_number", 0), 0)
+            eq_record_id = _safe_int((operation or {}).get("eq_record_id"), 0)
+            team_query = _normalize_spaces(str((operation or {}).get("team_query") or ""))
+            new_name = _normalize_spaces(str((operation or {}).get("new_name") or ""))
+            if slot <= 0:
+                issues.append(f"Staged roster promotion #{idx}: invalid slot number {slot}.")
+            if eq_record_id <= 0 and not team_query:
+                issues.append(
+                    f"Staged roster promotion #{idx}: missing team selector (eq_record_id/team_query)."
+                )
+            if not new_name:
+                issues.append(f"Staged roster promotion #{idx}: missing new player name.")
+
+        return issues
 
     def save_database(self) -> bool:
         if not self._has_staged_changes():
             messagebox.showinfo("Save All", "No staged changes to save.")
             return False
 
+        save_plan = PM99DatabaseEditor._collect_save_plan(self)
+        safety_issues = PM99DatabaseEditor._build_save_plan_safety_issues(self, save_plan)
+        if safety_issues:
+            plan_lines = PM99DatabaseEditor._build_save_plan_confirmation_lines(save_plan)
+            messagebox.showerror(
+                "Save All",
+                "\n".join(["Save blocked by safety checks:", *safety_issues, "", *plan_lines]),
+            )
+            return False
+
+        confirm_lines = PM99DatabaseEditor._build_save_plan_confirmation_lines(save_plan)
         if not messagebox.askyesno(
             "Save All",
-            "Write all staged player, club, coach, and visible-skill changes now?\n\n"
-            "The save runs once and then re-opens the written files for validation.",
+            "\n".join(confirm_lines),
         ):
             return False
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         summary_lines: list[str] = []
+        rollback_backups: dict[Path, Path] = {}
+        rollback_notes: list[str] = []
 
         try:
             self.status_var.set("Saving staged changes...")
             self.toolbar_status_var.set("Saving...")
             self.root.update_idletasks()
-            had_player_related_changes = bool(changed_players or self.staged_visible_skill_patches)
+            changed_players = dict(save_plan.get("changed_players") or {})
+            changed_teams = dict(save_plan.get("changed_teams") or {})
+            changed_coaches = dict(save_plan.get("changed_coaches") or {})
+            staged_slot_changes = list(save_plan.get("staged_slot_changes") or [])
+            staged_promotions = list(save_plan.get("staged_promotions") or [])
+            had_player_related_changes = bool(save_plan.get("had_player_related_changes"))
+            had_team_related_changes = bool(save_plan.get("had_team_related_changes"))
 
-            if self.modified_records or self.staged_visible_skill_patches:
+            if had_player_related_changes:
                 player_backup = Path(self.file_path + f".backup_{timestamp}")
                 if self.file_data is not None:
                     player_backup.write_bytes(self.file_data)
                 else:
                     player_backup.write_bytes(Path(self.file_path).read_bytes())
+                rollback_backups[Path(self.file_path)] = player_backup
                 summary_lines.append(f"Players backup: {player_backup}")
 
-            changed_players = dict(self.modified_records)
-            changed_teams = dict(self.modified_team_records)
-            changed_coaches = dict(self.modified_coach_records)
-
             if changed_players:
-                fdi = FDIFile(self.file_path)
-                fdi.file_data = self.file_data
-                fdi.modified_records = dict(changed_players)
-                fdi.save()
+                write_player_staged_records(
+                    self.file_path,
+                    list(changed_players.items()),
+                    create_backup_before_write=False,
+                )
                 self.file_data = Path(self.file_path).read_bytes()
 
             if self.staged_visible_skill_patches:
@@ -3572,18 +5481,49 @@ class PM99DatabaseEditor:
             if changed_coaches:
                 coach_backup = write_coach_staged_records(self.coach_file_path, list(changed_coaches.items()))
                 if coach_backup:
+                    rollback_backups[Path(self.coach_file_path)] = Path(str(coach_backup))
                     summary_lines.append(f"Coaches backup: {coach_backup}")
 
             if changed_teams:
                 team_backup = write_team_staged_records(self.team_file_path, list(changed_teams.items()))
                 if team_backup:
+                    rollback_backups[Path(self.team_file_path)] = Path(str(team_backup))
                     summary_lines.append(f"Teams backup: {team_backup}")
+
+            staged_slot_changed_rows = 0
+            staged_slot_warning_count = 0
+            if staged_slot_changes:
+                self.status_var.set("Applying staged roster slot updates...")
+                self.root.update_idletasks()
+                staged_slot_changed_rows, staged_slot_warning_count = self._apply_staged_roster_slot_changes_to_disk(
+                    rollback_backups=rollback_backups,
+                    summary_lines=summary_lines,
+                )
+
+            staged_promotion_count = 0
+            staged_promotion_warning_count = 0
+            if staged_promotions:
+                self.status_var.set("Applying staged roster promotions...")
+                self.root.update_idletasks()
+                staged_promotion_count, staged_promotion_warning_count = self._apply_staged_roster_promotions_to_disk(
+                    rollback_backups=rollback_backups,
+                    summary_lines=summary_lines,
+                )
+
+            if staged_slot_changes:
+                summary_lines.append(
+                    f"Staged roster slot updates applied: {staged_slot_changed_rows} row(s), {staged_slot_warning_count} warning(s)"
+                )
+            if staged_promotions:
+                summary_lines.append(
+                    f"Staged roster promotions applied: {staged_promotion_count} promotion(s), {staged_promotion_warning_count} warning(s)"
+                )
 
             self._commit_staged_records_to_loaded_state(changed_players, changed_teams, changed_coaches)
 
             validation = validate_database_files(
                 player_file=self.file_path if had_player_related_changes else None,
-                team_file=self.team_file_path if changed_teams else None,
+                team_file=self.team_file_path if had_team_related_changes else None,
                 coach_file=self.coach_file_path if changed_coaches else None,
             )
 
@@ -3614,11 +5554,39 @@ class PM99DatabaseEditor:
             messagebox.showwarning("Save All", "\n".join(["Save complete with validation warnings", *summary_lines, "", *details]))
             return True
         except Exception as exc:
+            for target_path, backup_path in rollback_backups.items():
+                try:
+                    if backup_path.exists():
+                        target_path.write_bytes(backup_path.read_bytes())
+                        rollback_notes.append(f"Restored {target_path.name} from {backup_path.name}")
+                    else:
+                        rollback_notes.append(f"Backup missing for {target_path.name}: {backup_path}")
+                except Exception as restore_exc:
+                    rollback_notes.append(f"Failed restoring {target_path.name}: {restore_exc}")
+            if Path(self.file_path) in rollback_backups:
+                try:
+                    self.file_data = Path(self.file_path).read_bytes()
+                except Exception:
+                    pass
             self.validation_state = ValidationBannerState(status="error", message="Save failed")
-            self.status_var.set("Save failed")
+            self.status_var.set("Save failed; rollback attempted" if rollback_backups else "Save failed")
             self.toolbar_status_var.set("Save failed")
             self._refresh_footer_state()
-            messagebox.showerror("Save All", f"Save failed:\n{exc}")
+            if rollback_notes:
+                messagebox.showerror(
+                    "Save All",
+                    "\n".join(
+                        [
+                            "Save failed.",
+                            str(exc),
+                            "",
+                            "Rollback summary:",
+                            *rollback_notes,
+                        ]
+                    ),
+                )
+            else:
+                messagebox.showerror("Save All", f"Save failed:\n{exc}")
             return False
 
     def _apply_staged_visible_skill_patches(self) -> None:
@@ -3640,6 +5608,8 @@ class PM99DatabaseEditor:
         changed_teams: dict[int, Any],
         changed_coaches: dict[int, Any],
     ) -> None:
+        had_staged_roster_slot_changes = bool(self.staged_roster_slot_changes)
+        had_staged_roster_promotions = bool(self.staged_roster_promotions)
         if changed_players:
             for offset, record in changed_players.items():
                 if offset in self.player_index:
@@ -3662,7 +5632,11 @@ class PM99DatabaseEditor:
         self.modified_team_records.clear()
         self.modified_coach_records.clear()
         self.staged_visible_skill_patches.clear()
-        if changed_players or changed_teams:
+        self.staged_roster_slot_changes.clear()
+        self.staged_roster_promotions.clear()
+        self.staged_roster_promotion_skips.clear()
+        self._staged_roster_team_offsets.clear()
+        if changed_players or changed_teams or had_staged_roster_slot_changes or had_staged_roster_promotions:
             self._dd6361_pid_stat_cache.clear()
             self._linked_roster_catalog_cache.clear()
             self._same_entry_overlap_cache.clear()
@@ -3717,6 +5691,7 @@ class PM99DatabaseEditor:
 
         advanced_nationality_var = tk.StringVar()
         advanced_position_var = tk.StringVar(value="Any")
+        advanced_proposed_name_var = tk.StringVar()
 
         ttk.Label(filter_row, text="Nationality").pack(side=tk.LEFT)
         tk.Entry(filter_row, textvariable=advanced_nationality_var, relief=tk.SOLID, bd=1, width=8).pack(side=tk.LEFT, padx=(6, 12))
@@ -3728,6 +5703,11 @@ class PM99DatabaseEditor:
             values=["Any", *POSITION_OPTIONS],
             width=12,
         ).pack(side=tk.LEFT, padx=(6, 0))
+        ttk.Label(filter_row, text="Proposed Name").pack(side=tk.LEFT, padx=(12, 0))
+        tk.Entry(filter_row, textvariable=advanced_proposed_name_var, relief=tk.SOLID, bd=1, width=26).pack(
+            side=tk.LEFT,
+            padx=(6, 0),
+        )
 
         button_row = ttk.Frame(window, padding=(12, 0, 12, 8))
         button_row.pack(fill=tk.X)
@@ -3744,6 +5724,7 @@ class PM99DatabaseEditor:
         def _read_advanced_filters() -> tuple[int | None, int | None, list[str]]:
             nationality_text = _normalize_spaces(advanced_nationality_var.get())
             position_text = advanced_position_var.get()
+            proposed_name_text = _normalize_spaces(advanced_proposed_name_var.get())
             if nationality_text:
                 try:
                     nationality_value = int(nationality_text, 0)
@@ -3756,9 +5737,69 @@ class PM99DatabaseEditor:
                 "Advanced Filters",
                 f"nationality={nationality_value if nationality_value is not None else 'any'}",
                 f"position={position_text if position_value is not None else 'Any'}",
+                f"proposed_name={proposed_name_text if proposed_name_text else 'none'}",
                 "",
             ]
             return nationality_value, position_value, header_lines
+
+        def _inspect_selected_player_name_capacity() -> None:
+            offset = self.selection_state.selected_player_offset
+            if offset is None:
+                _write_lines(["No player is selected."])
+                return
+            try:
+                _nat_value, _pos_value, header_lines = _read_advanced_filters()
+                proposed_name = _normalize_spaces(advanced_proposed_name_var.get()) or None
+                record = self._player_for_offset(offset)
+                result = inspect_player_name_capacities(
+                    file_path=self._resolve_player_file_for_roster(),
+                    target_name=self._player_display_name(record),
+                    target_offset=offset,
+                    proposed_name=proposed_name,
+                    include_uncertain=True,
+                    limit=8,
+                )
+                lines = [
+                    *header_lines,
+                    "Player Name-Capacity Probe",
+                    f"Matches: {int(getattr(result, 'matched_count', 0) or 0)}",
+                    f"Storage mode: {getattr(result, 'storage_mode', 'unknown')}",
+                    f"Record limit: {int(getattr(result, 'limit', 0) or 0)}",
+                ]
+                for snapshot in list(getattr(result, "records", []) or [])[:8]:
+                    lines.extend(
+                        [
+                            "",
+                            f"{snapshot.name} @ 0x{int(snapshot.offset):08X}",
+                            f"current_bytes={int(getattr(snapshot, 'current_name_bytes', 0) or 0)}",
+                            (
+                                "exact_max={exact} plain_max={plain} lenpref_max={lenpref} window_max={window}".format(
+                                    exact=int(getattr(snapshot, "exact_full_name_max_bytes", 0) or 0),
+                                    plain=getattr(snapshot, "plain_text_max_bytes", None),
+                                    lenpref=getattr(snapshot, "length_prefixed_max_bytes", None),
+                                    window=int(getattr(snapshot, "structured_window_max_bytes", 0) or 0),
+                                )
+                            ),
+                            f"can_expand_without_growth={bool(getattr(snapshot, 'can_expand_without_growth', False))}",
+                        ]
+                    )
+                    if getattr(snapshot, "proposed_name_bytes", None) is not None:
+                        lines.append(
+                            "proposed_bytes={size} within_limit={within} may_truncate={truncate} overflow_by={overflow}".format(
+                                size=int(getattr(snapshot, "proposed_name_bytes", 0) or 0),
+                                within=bool(getattr(snapshot, "proposed_within_exact_limit", False)),
+                                truncate=bool(getattr(snapshot, "proposed_may_truncate", False)),
+                                overflow=int(getattr(snapshot, "proposed_overflow_by", 0) or 0),
+                            )
+                        )
+                    for note in list(getattr(snapshot, "notes", []) or [])[:3]:
+                        lines.append(f"note: {note}")
+                if bool(getattr(result, "truncated", False)):
+                    lines.append("")
+                    lines.append("Output truncated by limit.")
+                _write_lines(lines)
+            except Exception as exc:
+                _write_lines([f"Player name-capacity inspection failed: {exc}"])
 
         def _inspect_selected_player() -> None:
             offset = self.selection_state.selected_player_offset
@@ -3925,62 +5966,142 @@ class PM99DatabaseEditor:
                 _write_lines([f"Roster source inspection failed: {exc}"])
 
         def _inspect_bitmap_references() -> None:
-            lines = [
-                "Bitmap / Asset Reference Probe",
-                "Scanning the currently selected PM99 database set for .BMP / .TGA string markers.",
-                "",
-            ]
-            targets = [
-                ("Players", self.file_path),
-                ("Clubs", self.team_file_path),
-                ("Coaches", self.coach_file_path),
-            ]
+            try:
+                result = inspect_bitmap_references(
+                    player_file=str(self.file_path),
+                    team_file=str(self.team_file_path),
+                    coach_file=str(self.coach_file_path),
+                    markers=[".BMP", ".TGA"],
+                    max_hits_per_file=8,
+                )
+                lines = [
+                    "Bitmap / Asset Reference Probe",
+                    "Shared parser-backed asset probe (same payload as CLI JSON output).",
+                    f"Markers: {', '.join(list(getattr(result, 'markers', []) or []))}",
+                    f"Max hits per file: {int(getattr(result, 'max_hits_per_file', 0) or 0)}",
+                    f"Total hits: {int(getattr(result, 'total_hits', 0) or 0)}",
+                    "",
+                ]
+                for file_result in list(getattr(result, "files", []) or []):
+                    label = str(getattr(file_result, "label", "") or "Unknown")
+                    path = Path(str(getattr(file_result, "file_path", "") or ""))
+                    exists = bool(getattr(file_result, "exists", False))
+                    read_error = str(getattr(file_result, "read_error", "") or "")
+                    lines.append(f"{label}: {path.name or path}")
+                    if not exists:
+                        lines.append(f"  {read_error or 'file missing'}")
+                        lines.append("")
+                        continue
+                    if read_error:
+                        lines.append(f"  read failed ({read_error})")
+                        lines.append("")
+                        continue
+                    hits = list(getattr(file_result, "hits", []) or [])
+                    if not hits:
+                        lines.append("  no .BMP or .TGA markers found")
+                        lines.append("")
+                        continue
+                    for hit in hits:
+                        offset = int(getattr(hit, "offset", 0) or 0)
+                        marker_name = str(getattr(hit, "marker", "") or "")
+                        snippet = str(getattr(hit, "snippet", "") or "")
+                        lines.append(f"  0x{offset:08X} {marker_name} {snippet}")
+                    lines.append("")
 
-            for label, file_name in targets:
-                path = Path(str(file_name or ""))
-                if not path.exists():
-                    lines.extend([f"{label}: file missing", ""])
-                    continue
+                lines.append(
+                    "This is a read-only probe to locate candidate bitmap-reference contracts before any write-capable asset editor is introduced."
+                )
+                _write_lines(lines)
+            except Exception as exc:
+                _write_lines([f"Bitmap reference inspection failed: {exc}"])
 
-                try:
-                    data = path.read_bytes()
-                except Exception as exc:
-                    lines.extend([f"{label}: read failed ({exc})", ""])
-                    continue
+        def _inspect_competition_candidates() -> None:
+            if self.current_team is None:
+                _write_lines(["No club is selected."])
+                return
+            try:
+                _nat_value, _pos_value, header_lines = _read_advanced_filters()
+                team = self.current_team[1]
+                lines = [*header_lines, *self._format_team_competition_candidate_lines(team)]
+                _write_lines(lines)
+            except Exception as exc:
+                _write_lines([f"Competition candidate inspection failed: {exc}"])
 
-                data_upper = data.upper()
-                hits: list[tuple[int, str, str]] = []
-                for marker in (b".BMP", b".TGA"):
-                    search_at = 0
-                    while len(hits) < 8:
-                        found_at = data_upper.find(marker, search_at)
-                        if found_at < 0:
-                            break
-                        snippet_start = max(0, found_at - 24)
-                        snippet_end = min(len(data), found_at + 32)
-                        snippet = "".join(
-                            chr(byte) if 32 <= byte <= 126 else "."
-                            for byte in data[snippet_start:snippet_end]
-                        )
-                        hits.append((found_at, marker.decode("ascii"), snippet))
-                        search_at = found_at + len(marker)
+        def _inspect_primary_family() -> None:
+            if self.current_team is None:
+                _write_lines(["No club is selected."])
+                return
+            try:
+                _nat_value, _pos_value, header_lines = _read_advanced_filters()
+                team = self.current_team[1]
+                lines = [*header_lines, *self._format_primary_family_probe_lines(team)]
+                _write_lines(lines)
+            except Exception as exc:
+                _write_lines([f"Primary-code family inspection failed: {exc}"])
 
-                lines.append(f"{label}: {path.name}")
-                if hits:
-                    for found_at, marker_name, snippet in hits:
-                        lines.append(f"  0x{found_at:08X} {marker_name} {snippet}")
-                else:
-                    lines.append("  no .BMP or .TGA markers found")
-                lines.append("")
+        def _profile_competition_signatures() -> None:
+            try:
+                _nat_value, _pos_value, header_lines = _read_advanced_filters()
+                lines = [*header_lines, *self._format_competition_signature_profile_lines()]
+                _write_lines(lines)
+            except Exception as exc:
+                _write_lines([f"Competition signature profiling failed: {exc}"])
 
-            lines.append(
-                "This is a read-only string probe. It helps locate likely image-reference contracts before any bitmap-aware editor surface is added."
-            )
-            _write_lines(lines)
+        def _profile_dominant_country_subgroups() -> None:
+            try:
+                _nat_value, _pos_value, header_lines = _read_advanced_filters()
+                lines = [*header_lines, *self._format_dominant_country_subgroup_profile_lines()]
+                _write_lines(lines)
+            except Exception as exc:
+                _write_lines([f"Dominant-country subgroup profiling failed: {exc}"])
+
+        def _profile_roster_promotion_safety() -> None:
+            if self.current_team is None:
+                _write_lines(["No club is selected."])
+                return
+            try:
+                _nat_value, _pos_value, header_lines = _read_advanced_filters()
+                proposed_name = _normalize_spaces(advanced_proposed_name_var.get())
+                if not proposed_name:
+                    raise ValueError("Set Proposed Name in Advanced Filters first")
+
+                team_name = self._team_name(self.current_team[1])
+                eq_record_id = None
+                for roster_row in list(getattr(self, "current_roster_rows", []) or []):
+                    meta = dict(getattr(roster_row, "meta", {}) or {})
+                    if str(meta.get("mode") or "") != "linked":
+                        continue
+                    candidate = _safe_int(meta.get("eq_record_id", 0), 0)
+                    if candidate > 0:
+                        eq_record_id = candidate
+                        break
+
+                lines = [
+                    *header_lines,
+                    *self._profile_bulk_promotion_safety(
+                        team_query=team_name,
+                        eq_record_id=eq_record_id,
+                        new_name=proposed_name,
+                        slot_limit=25,
+                        sample_limit=12,
+                    ),
+                ]
+                _write_lines(lines)
+            except Exception as exc:
+                _write_lines([f"Roster promotion safety profiling failed: {exc}"])
 
         ttk.Button(button_row, text="Inspect Selected Player Metadata", command=_inspect_selected_player).pack(side=tk.LEFT)
+        ttk.Button(button_row, text="Inspect Player Name Capacity", command=_inspect_selected_player_name_capacity).pack(
+            side=tk.LEFT,
+            padx=(6, 0),
+        )
         ttk.Button(button_row, text="Indexed Byte Profiles", command=_inspect_indexed_profiles).pack(side=tk.LEFT, padx=(6, 0))
         ttk.Button(button_row, text="Inspect Current Club Roster Sources", command=_inspect_current_roster_sources).pack(side=tk.LEFT, padx=(6, 0))
+        ttk.Button(button_row, text="Inspect Competition Candidates", command=_inspect_competition_candidates).pack(side=tk.LEFT, padx=(6, 0))
+        ttk.Button(button_row, text="Inspect Primary-Code Family", command=_inspect_primary_family).pack(side=tk.LEFT, padx=(6, 0))
+        ttk.Button(button_row, text="Profile Competition Signatures", command=_profile_competition_signatures).pack(side=tk.LEFT, padx=(6, 0))
+        ttk.Button(button_row, text="Profile Country Subgroups", command=_profile_dominant_country_subgroups).pack(side=tk.LEFT, padx=(6, 0))
+        ttk.Button(button_row, text="Profile Roster Promotion Safety", command=_profile_roster_promotion_safety).pack(side=tk.LEFT, padx=(6, 0))
         ttk.Button(button_row, text="Inspect Bitmap References", command=_inspect_bitmap_references).pack(side=tk.LEFT, padx=(6, 0))
 
     def _select_tree_item_by_value(self, tree: ttk.Treeview, mapping: dict[str, int], target_value: int) -> None:
@@ -4031,3 +6152,796 @@ class PM99DatabaseEditor:
 
     def _team_league(self, team: Any) -> str:
         return _normalize_spaces(getattr(team, "league", "") or "") or "Unknown League"
+
+    def _team_metadata_anchor(self, team: Any) -> int:
+        if hasattr(team, "get_known_text_anchor"):
+            try:
+                return int(team.get_known_text_anchor())
+            except Exception:
+                pass
+        raw = bytes(getattr(team, "raw_data", b"") or b"")
+        return min(len(raw), max(0, int(getattr(team, "stadium_end", 0) or 0), int(getattr(team, "name_end", 0) or 0)))
+
+    def _format_team_competition_candidate_lines(self, team: Any) -> list[str]:
+        raw = bytes(getattr(team, "raw_data", b"") or b"")
+        anchor = self._team_metadata_anchor(team)
+        if hasattr(team, "get_competition_probe_bytes"):
+            try:
+                tail = bytes(team.get_competition_probe_bytes(32))
+            except Exception:
+                tail = raw[anchor:anchor + 32]
+        else:
+            tail = raw[anchor:anchor + 32]
+        club_name = self._team_name(team)
+        country = self._team_country(team)
+        league = self._team_league(team)
+        source = str(getattr(team, "league_source", "") or "unknown")
+        sequence_index = getattr(team, "sequence_index", None)
+
+        lines = [
+            "Competition Field Candidates",
+            f"Club: {club_name}",
+            f"Assigned: {country} / {league} ({source})",
+            (
+                "Sequence index: "
+                + (str(int(sequence_index)) if sequence_index is not None else "unknown")
+            ),
+            f"Record offset: 0x{int(getattr(team, 'record_offset', 0) or 0):08X}",
+            (
+                "Container offset: "
+                + (
+                    f"0x{int(getattr(team, 'container_offset', 0) or 0):08X}"
+                    if getattr(team, "container_offset", None) is not None
+                    else "n/a"
+                )
+            ),
+            f"Known-text anchor: +0x{anchor:02X} within decoded team subrecord",
+            f"Raw subrecord length: {len(raw)} bytes",
+            "",
+        ]
+
+        primary_code = getattr(team, "competition_code_candidate", None)
+        if primary_code is None and hasattr(team, "get_competition_code_candidate"):
+            try:
+                primary_code = team.get_competition_code_candidate()
+            except Exception:
+                primary_code = None
+        secondary_signature = getattr(team, "competition_secondary_signature", None)
+        if secondary_signature is None and hasattr(team, "get_competition_secondary_signature"):
+            try:
+                secondary_signature = team.get_competition_secondary_signature()
+            except Exception:
+                secondary_signature = None
+        if primary_code is None:
+            lines.append("Primary candidate (+0x00): unavailable")
+        else:
+            lines.append(f"Primary candidate (+0x00): 0x{int(primary_code):02X} ({int(primary_code)})")
+        lines.append(f"Secondary signature (+0x08/+0x0A): {format_secondary_signature(secondary_signature)}")
+        tertiary_offset = getattr(team, "competition_tertiary_offset", None)
+        tertiary_value = getattr(team, "competition_tertiary_value", None)
+        tertiary_signature_display = str(
+            getattr(team, "competition_tertiary_signature_display", "") or "unavailable"
+        )
+        if tertiary_offset is None:
+            lines.append("Tertiary family byte: unresolved")
+        else:
+            lines.append(
+                "Tertiary family byte (+0x{offset:02X}): {value} | {signature}".format(
+                    offset=int(tertiary_offset),
+                    value=(f"0x{int(tertiary_value):02X}" if tertiary_value is not None else "unavailable"),
+                    signature=tertiary_signature_display,
+                )
+            )
+        family_metadata_offset = getattr(team, "competition_family_metadata_offset", None)
+        family_metadata_value = getattr(team, "competition_family_metadata_value", None)
+        family_metadata_kind = str(getattr(team, "competition_family_metadata_kind", "") or "unresolved")
+        if family_metadata_offset is None:
+            lines.append("Best non-text family byte: unresolved")
+        else:
+            lines.append(
+                "Best non-text family byte (+0x{offset:02X}): {value} ({kind})".format(
+                    offset=int(family_metadata_offset),
+                    value=(f"0x{int(family_metadata_value):02X}" if family_metadata_value is not None else "unavailable"),
+                    kind=family_metadata_kind,
+                )
+            )
+        lines.append("")
+
+        if tail:
+            lines.append("Bytes after known text anchor (first 32):")
+            lines.append("  " + " ".join(f"{byte:02X}" for byte in tail))
+            lines.append("")
+            lines.append("Little-endian u16 candidates from that anchor:")
+            for rel in range(0, min(12, len(tail) - 1)):
+                value = int(tail[rel]) | (int(tail[rel + 1]) << 8)
+                lines.append(f"  +0x{rel:02X}: 0x{value:04X} ({value})")
+        else:
+            lines.append("No bytes remain after the current known-text anchor.")
+
+        peers: list[bytes] = []
+        for offset, _original in self.team_records:
+            peer = self._team_for_offset(offset)
+            if self._team_country(peer) != country or self._team_league(peer) != league:
+                continue
+            peer_raw = bytes(getattr(peer, "raw_data", b"") or b"")
+            if not peer_raw:
+                continue
+            peer_anchor = self._team_metadata_anchor(peer)
+            peers.append(peer_raw[peer_anchor:peer_anchor + 16])
+
+        if peers:
+            lines.extend(["", f"Peer byte histogram at the same anchor ({len(peers)} teams):"])
+            max_rel = min(12, max(len(item) for item in peers))
+            for rel in range(max_rel):
+                values = [chunk[rel] for chunk in peers if rel < len(chunk)]
+                if len(values) < 2:
+                    continue
+                counts = Counter(values).most_common(3)
+                histogram = ", ".join(f"{value:02X}({count})" for value, count in counts)
+                lines.append(f"  byte +0x{rel:02X}: {histogram}")
+
+        lines.extend(
+            [
+                "",
+                "This is a read-only reverse-engineering aid. The goal is to find stable bytes after the known text region that correlate with competition placement.",
+            ]
+        )
+        return lines
+
+    def _format_competition_signature_profile_lines(self) -> list[str]:
+        teams = [self._team_for_offset(offset) for offset, _original in self.team_records]
+        codebook = analyze_competition_codebook(teams)
+        groups: dict[tuple[str, str], list[Any]] = defaultdict(list)
+        for offset, _original in self.team_records:
+            team = self._team_for_offset(offset)
+            groups[(self._team_country(team), self._team_league(team))].append(team)
+
+        profiled_groups = {
+            key: members
+            for key, members in groups.items()
+            if members and key != ("Unknown", "Unknown League")
+        }
+        lines = [
+            "Competition Signature Profile",
+            f"Profiled competitions: {len(profiled_groups)}",
+            f"Profiled clubs: {sum(len(members) for members in profiled_groups.values())}",
+            "",
+        ]
+        if not profiled_groups:
+            lines.append("No competition groups are available.")
+            return lines
+
+        if codebook.clusters:
+            lines.extend(["Primary candidate byte (+0x00) by competition:"])
+            competition_summaries: list[tuple[float, int, tuple[str, str], int, int, int]] = []
+            for (country, league), members in sorted(profiled_groups.items()):
+                values = [int(getattr(team, "competition_code_candidate")) for team in members if getattr(team, "competition_code_candidate", None) is not None]
+                if not values:
+                    continue
+                code_counts = Counter(values)
+                dominant_value, dominant_count = code_counts.most_common(1)[0]
+                competition_summaries.append(
+                    (dominant_count / len(values), len(values), (country, league), dominant_value, dominant_count, len(code_counts))
+                )
+            for purity, total, (country, league), value, count, distinct_codes in sorted(
+                competition_summaries,
+                key=lambda item: (-item[0], -item[1], item[2][0], item[2][1]),
+            )[:12]:
+                lines.append(
+                    f"  {country} / {league}: 0x{value:02X} ({count}/{total}, distinct_codes={distinct_codes})"
+                )
+
+            lines.extend(["", "Primary candidate byte (+0x00) codebook clusters:"])
+            for cluster in codebook.clusters[:12]:
+                lines.append(
+                    "  0x{code:02X}: {kind} | teams={teams} competitions={competitions} countries={countries}".format(
+                        code=cluster.code,
+                        kind=cluster.inferred_kind,
+                        teams=cluster.team_count,
+                        competitions=cluster.competition_count,
+                        countries=cluster.country_count,
+                    )
+                )
+                lines.append("    " + ", ".join(cluster.sample_competitions))
+            lines.append("")
+
+            lines.extend(["Secondary family splits (+0x08/+0x0A within each +0x00 cluster):"])
+            secondary_kind_counts = Counter(cluster.secondary_inferred_kind for cluster in codebook.clusters)
+            if secondary_kind_counts:
+                lines.append(
+                    "  Cluster summary: "
+                    + ", ".join(
+                        f"{kind}={count}"
+                        for kind, count in sorted(
+                            secondary_kind_counts.items(),
+                            key=lambda item: (-item[1], item[0]),
+                        )
+                    )
+                )
+            ranked_secondary_clusters = sorted(
+                codebook.clusters,
+                key=lambda item: (
+                    item.secondary_inferred_kind != "competition-splitting",
+                    -item.secondary_strong_competition_count,
+                    -item.secondary_average_competition_purity,
+                    -item.secondary_signature_count,
+                    item.code,
+                ),
+            )
+            for cluster in ranked_secondary_clusters[:12]:
+                lines.append(
+                    "  0x{code:02X}: {kind} | signatures={signatures} "
+                    "strong_competitions={strong}/{competitions} avg_purity={purity:.1%}".format(
+                        code=cluster.code,
+                        kind=cluster.secondary_inferred_kind,
+                        signatures=cluster.secondary_signature_count,
+                        strong=cluster.secondary_strong_competition_count,
+                        competitions=cluster.competition_count,
+                        purity=cluster.secondary_average_competition_purity,
+                    )
+                )
+                if cluster.sample_secondary_signatures:
+                    lines.append("    " + ", ".join(cluster.sample_secondary_signatures[:3]))
+            lines.append("")
+
+            lines.extend(["Tertiary family refinement (secondary + one extra byte):"])
+            ranked_tertiary_clusters = sorted(
+                codebook.clusters,
+                key=lambda item: (
+                    item.tertiary_inferred_kind != "refining",
+                    item.tertiary_inferred_kind != "improving",
+                    -item.tertiary_strong_competition_count,
+                    -item.tertiary_average_competition_purity,
+                    -item.tertiary_signature_count,
+                    item.code,
+                ),
+            )
+            for cluster in ranked_tertiary_clusters[:12]:
+                offset_text = (
+                    f"+0x{int(cluster.tertiary_offset):02X}"
+                    if cluster.tertiary_offset is not None
+                    else "n/a"
+                )
+                lines.append(
+                    "  0x{code:02X}: {kind} | offset={offset} signatures={signatures} "
+                    "strong_competitions={strong}/{competitions} avg_purity={purity:.1%}".format(
+                        code=cluster.code,
+                        kind=cluster.tertiary_inferred_kind,
+                        offset=offset_text,
+                        signatures=cluster.tertiary_signature_count,
+                        strong=cluster.tertiary_strong_competition_count,
+                        competitions=cluster.competition_count,
+                        purity=cluster.tertiary_average_competition_purity,
+                    )
+                )
+                if cluster.sample_tertiary_signatures:
+                    lines.append("    " + ", ".join(cluster.sample_tertiary_signatures[:3]))
+            largest_cluster = codebook.clusters[0] if codebook.clusters else None
+            if largest_cluster is not None:
+                lines.append(
+                    "  Largest family 0x{code:02X}: {primary_kind} -> {secondary_kind} "
+                    "({teams} clubs / {competitions} competitions, avg_purity={purity:.1%})".format(
+                        code=largest_cluster.code,
+                        primary_kind=largest_cluster.inferred_kind,
+                        secondary_kind=largest_cluster.secondary_inferred_kind,
+                        teams=largest_cluster.team_count,
+                        competitions=largest_cluster.competition_count,
+                        purity=largest_cluster.secondary_average_competition_purity,
+                    )
+                )
+                lines.append(
+                    "    Tertiary refinement: {kind} at {offset} "
+                    "(avg_purity={purity:.1%}, strong_competitions={strong}/{competitions})".format(
+                        kind=largest_cluster.tertiary_inferred_kind,
+                        offset=(
+                            f"+0x{int(largest_cluster.tertiary_offset):02X}"
+                            if largest_cluster.tertiary_offset is not None
+                            else "n/a"
+                        ),
+                        purity=largest_cluster.tertiary_average_competition_purity,
+                        strong=largest_cluster.tertiary_strong_competition_count,
+                        competitions=largest_cluster.competition_count,
+                    )
+                )
+            lines.append("")
+
+            lines.extend(["Best non-text family byte candidates (primary-code families):"])
+            ranked_family_clusters = sorted(
+                codebook.clusters,
+                key=lambda item: (
+                    item.family_metadata_inferred_kind != "promising",
+                    item.family_metadata_inferred_kind != "exploratory",
+                    -item.family_metadata_average_competition_purity,
+                    -item.family_metadata_strong_competition_count,
+                    -item.family_metadata_non_text_ratio,
+                    -item.family_metadata_distinct_dominants,
+                    item.code,
+                ),
+            )
+            for cluster in ranked_family_clusters[:12]:
+                offset_text = (
+                    f"+0x{int(cluster.family_metadata_offset):02X}"
+                    if cluster.family_metadata_offset is not None
+                    else "n/a"
+                )
+                lines.append(
+                    "  0x{code:02X}: {kind} | offset={offset} avg_purity={purity:.1%} "
+                    "strong_competitions={strong}/{competitions} dominant_values={dominants} non_text={non_text:.1%}".format(
+                        code=cluster.code,
+                        kind=cluster.family_metadata_inferred_kind,
+                        offset=offset_text,
+                        purity=cluster.family_metadata_average_competition_purity,
+                        strong=cluster.family_metadata_strong_competition_count,
+                        competitions=cluster.competition_count,
+                        dominants=cluster.family_metadata_distinct_dominants,
+                        non_text=cluster.family_metadata_non_text_ratio,
+                    )
+                )
+                if cluster.sample_family_metadata_values:
+                    lines.append("    " + ", ".join(cluster.sample_family_metadata_values[:3]))
+            if largest_cluster is not None:
+                lines.append(
+                    "  Largest family non-text candidate: {kind} at {offset} "
+                    "(avg_purity={purity:.1%}, strong_competitions={strong}/{competitions}, non_text={non_text:.1%})".format(
+                        kind=largest_cluster.family_metadata_inferred_kind,
+                        offset=(
+                            f"+0x{int(largest_cluster.family_metadata_offset):02X}"
+                            if largest_cluster.family_metadata_offset is not None
+                            else "n/a"
+                        ),
+                        purity=largest_cluster.family_metadata_average_competition_purity,
+                        strong=largest_cluster.family_metadata_strong_competition_count,
+                        competitions=largest_cluster.competition_count,
+                        non_text=largest_cluster.family_metadata_non_text_ratio,
+                    )
+                )
+            lines.append("")
+
+            lines.extend(["Dominant-country subgroup candidates (for country-like families):"])
+            ranked_subgroup_clusters = sorted(
+                codebook.clusters,
+                key=lambda item: (
+                    item.dominant_country_subgroup_inferred_kind != "exploratory",
+                    item.dominant_country_subgroup_inferred_kind != "tentative",
+                    -item.dominant_country_subgroup_average_competition_purity,
+                    -item.dominant_country_subgroup_distinct_dominants,
+                    -item.dominant_country_subgroup_non_text_ratio,
+                    item.code,
+                ),
+            )
+            for cluster in ranked_subgroup_clusters[:12]:
+                offset_text = (
+                    f"+0x{int(cluster.dominant_country_subgroup_offset):02X}"
+                    if cluster.dominant_country_subgroup_offset is not None
+                    else "n/a"
+                )
+                lines.append(
+                    "  0x{code:02X}: {kind} | country={country} offset={offset} avg_purity={purity:.1%} "
+                    "dominant_values={dominants} strong_groups={strong} non_text={non_text:.1%}".format(
+                        code=cluster.code,
+                        kind=cluster.dominant_country_subgroup_inferred_kind,
+                        country=cluster.dominant_country or "Unknown",
+                        offset=offset_text,
+                        purity=cluster.dominant_country_subgroup_average_competition_purity,
+                        dominants=cluster.dominant_country_subgroup_distinct_dominants,
+                        strong=cluster.dominant_country_subgroup_strong_competition_count,
+                        non_text=cluster.dominant_country_subgroup_non_text_ratio,
+                    )
+                )
+                if cluster.sample_dominant_country_subgroup_values:
+                    lines.append("    " + ", ".join(cluster.sample_dominant_country_subgroup_values[:3]))
+            if largest_cluster is not None:
+                lines.append(
+                    "  Largest family dominant-country candidate: {kind} at {offset} "
+                    "(country={country}, avg_purity={purity:.1%}, dominant_values={dominants}, non_text={non_text:.1%})".format(
+                        kind=largest_cluster.dominant_country_subgroup_inferred_kind,
+                        offset=(
+                            f"+0x{int(largest_cluster.dominant_country_subgroup_offset):02X}"
+                            if largest_cluster.dominant_country_subgroup_offset is not None
+                            else "n/a"
+                        ),
+                        country=largest_cluster.dominant_country or "Unknown",
+                        purity=largest_cluster.dominant_country_subgroup_average_competition_purity,
+                        dominants=largest_cluster.dominant_country_subgroup_distinct_dominants,
+                        non_text=largest_cluster.dominant_country_subgroup_non_text_ratio,
+                    )
+                )
+            lines.append("")
+
+        offset_summaries: list[tuple[int, int, int, int, float, list[str]]] = []
+        for rel in range(12):
+            group_results: list[tuple[int, int, int, str]] = []
+            for (country, league), members in sorted(profiled_groups.items()):
+                values: list[int] = []
+                for team in members:
+                    if hasattr(team, "get_competition_probe_bytes"):
+                        try:
+                            probe = bytes(team.get_competition_probe_bytes(16))
+                        except Exception:
+                            probe = b""
+                    else:
+                        raw = bytes(getattr(team, "raw_data", b"") or b"")
+                        anchor = self._team_metadata_anchor(team)
+                        probe = raw[anchor:anchor + 16]
+                    if rel < len(probe):
+                        values.append(int(probe[rel]))
+                if len(values) < 2:
+                    continue
+                dominant_value, dominant_count = Counter(values).most_common(1)[0]
+                group_results.append((dominant_value, dominant_count, len(values), f"{country} / {league}"))
+
+            if len(group_results) < 3:
+                continue
+
+            distinct_dominants = len({value for value, _count, _total, _label in group_results})
+            strong_groups = sum(1 for _value, count, total, _label in group_results if count / max(1, total) >= 0.8)
+            avg_purity = sum(count / max(1, total) for _value, count, total, _label in group_results) / len(group_results)
+            non_filler_results = [
+                (value, count, total, label)
+                for value, count, total, label in group_results
+                if value != 0x61
+            ]
+            distinct_non_filler = len({value for value, _count, _total, _label in non_filler_results})
+            strong_non_filler = sum(
+                1 for _value, count, total, _label in non_filler_results if count / max(1, total) >= 0.8
+            )
+            examples = []
+            example_source = non_filler_results or group_results
+            for value, count, total, label in sorted(
+                example_source,
+                key=lambda item: (-(item[1] / max(1, item[2])), item[3]),
+            )[:6]:
+                examples.append(f"{label}={value:02X}({count}/{total})")
+            offset_summaries.append(
+                (rel, strong_non_filler, distinct_non_filler, strong_groups, avg_purity, examples)
+            )
+
+        if offset_summaries:
+            lines.append("Candidate byte offsets after the known-text anchor:")
+            for rel, strong_non_filler, distinct_non_filler, strong_groups, avg_purity, examples in sorted(
+                offset_summaries,
+                key=lambda item: (-item[1], -item[2], -item[3], -item[4], item[0]),
+            )[:6]:
+                lines.append(
+                    "  +0x{rel:02X}: non_filler_strong={nfs} "
+                    "distinct_non_filler={dnf} strong_groups={sg} avg_purity={ap:.1%}".format(
+                        rel=rel,
+                        nfs=strong_non_filler,
+                        dnf=distinct_non_filler,
+                        sg=strong_groups,
+                        ap=avg_purity,
+                    )
+                )
+                lines.append("    " + ", ".join(examples))
+        else:
+            lines.append("No stable multi-team competition offsets were found in the current probe window.")
+
+        lines.extend(["", "Sample competition probe prefixes:"])
+        for (country, league), members in sorted(
+            profiled_groups.items(),
+            key=lambda item: (-len(item[1]), item[0][0], item[0][1]),
+        )[:12]:
+            team = members[0]
+            if hasattr(team, "get_competition_probe_bytes"):
+                try:
+                    probe = bytes(team.get_competition_probe_bytes(8))
+                except Exception:
+                    probe = b""
+            else:
+                raw = bytes(getattr(team, "raw_data", b"") or b"")
+                anchor = self._team_metadata_anchor(team)
+                probe = raw[anchor:anchor + 8]
+            prefix = " ".join(f"{byte:02X}" for byte in probe) if probe else "(none)"
+            lines.append(f"  {country} / {league} [{len(members)}]: {prefix}")
+
+        lines.extend(
+            [
+                "",
+                "Use this profile to spot anchor-relative bytes that stay stable within a competition but vary across competitions.",
+            ]
+        )
+        return lines
+
+    def _format_primary_family_probe_lines(self, team: Any) -> list[str]:
+        club_name = self._team_name(team)
+        primary_code = getattr(team, "competition_code_candidate", None)
+        if primary_code is None and hasattr(team, "get_competition_code_candidate"):
+            try:
+                primary_code = team.get_competition_code_candidate()
+            except Exception:
+                primary_code = None
+        if primary_code is None:
+            return [
+                "Primary-Code Family Probe",
+                f"Club: {club_name}",
+                "No primary +0x00 competition-code candidate is available for this club.",
+            ]
+
+        family_members = [
+            self._team_for_offset(offset)
+            for offset, _original in self.team_records
+            if getattr(self._team_for_offset(offset), "competition_code_candidate", None) == primary_code
+        ]
+        if not family_members:
+            return [
+                "Primary-Code Family Probe",
+                f"Club: {club_name}",
+                f"No clubs are currently assigned to primary code 0x{int(primary_code):02X}.",
+            ]
+
+        family_groups: dict[str, list[Any]] = defaultdict(list)
+        for member in family_members:
+            family_groups[f"{self._team_country(member)} / {self._team_league(member)}"].append(member)
+
+        family_offset = getattr(team, "competition_family_metadata_offset", None)
+        family_kind = str(getattr(team, "competition_family_metadata_kind", "") or "unresolved")
+        family_avg_purity = float(getattr(team, "competition_family_metadata_average_purity", 0.0) or 0.0)
+        family_non_text_ratio = float(getattr(team, "competition_family_metadata_non_text_ratio", 0.0) or 0.0)
+        family_strong_groups = int(getattr(team, "competition_family_metadata_strong_groups", 0) or 0)
+        subgroup_offset = getattr(team, "competition_dominant_country_subgroup_offset", None)
+        subgroup_value = getattr(team, "competition_dominant_country_subgroup_value", None)
+        subgroup_kind = str(getattr(team, "competition_dominant_country_subgroup_kind", "") or "unresolved")
+        subgroup_avg_purity = float(
+            getattr(team, "competition_dominant_country_subgroup_average_purity", 0.0) or 0.0
+        )
+        subgroup_non_text_ratio = float(
+            getattr(team, "competition_dominant_country_subgroup_non_text_ratio", 0.0) or 0.0
+        )
+        subgroup_strong_groups = int(
+            getattr(team, "competition_dominant_country_subgroup_strong_groups", 0) or 0
+        )
+        subgroup_distinct_dominants = int(
+            getattr(team, "competition_dominant_country_subgroup_distinct_dominants", 0) or 0
+        )
+        dominant_country = str(getattr(team, "competition_code_cluster_dominant_country", "") or "").strip()
+
+        lines = [
+            "Primary-Code Family Probe",
+            f"Club: {club_name}",
+            f"Primary +0x00 code: 0x{int(primary_code):02X} ({int(primary_code)})",
+            f"Family size: {len(family_members)} clubs across {len(family_groups)} assigned competitions",
+            f"Cluster kind: {getattr(team, 'competition_code_cluster_kind', 'unknown') or 'unknown'}",
+        ]
+
+        if family_offset is None:
+            lines.append("Best non-text family byte: unresolved")
+            return lines
+
+        lines.extend(
+            [
+                "Best non-text family byte: +0x{offset:02X} ({kind})".format(
+                    offset=int(family_offset),
+                    kind=family_kind,
+                ),
+                "Family-byte quality: avg purity {purity:.1%}, strong competitions {strong}/{total}, non-text {non_text:.1%}".format(
+                    purity=family_avg_purity,
+                    strong=family_strong_groups,
+                    total=len(family_groups),
+                    non_text=family_non_text_ratio,
+                ),
+                "",
+                "Dominant values by assigned competition:",
+            ]
+        )
+
+        competition_rows: list[tuple[float, str, int, int, int]] = []
+        for label, members in sorted(family_groups.items()):
+            values = [
+                value
+                for value in (
+                    getattr(member, "competition_family_metadata_value", None)
+                    for member in members
+                )
+                if value is not None
+            ]
+            if not values:
+                continue
+            counts = Counter(int(value) for value in values)
+            dominant_value, dominant_count = counts.most_common(1)[0]
+            competition_rows.append((dominant_count / len(values), label, dominant_value, dominant_count, len(values)))
+        for purity, label, dominant_value, dominant_count, total in sorted(
+            competition_rows,
+            key=lambda item: (-item[0], item[1]),
+        )[:16]:
+            lines.append(
+                f"  {label}: 0x{dominant_value:02X} ({dominant_count}/{total}, purity={purity:.0%})"
+            )
+
+        all_values = [
+            int(getattr(member, "competition_family_metadata_value"))
+            for member in family_members
+            if getattr(member, "competition_family_metadata_value", None) is not None
+        ]
+        if all_values:
+            lines.extend(["", "Family-byte histogram:"])
+            for value, count in Counter(all_values).most_common(8):
+                lines.append(f"  0x{value:02X}: {count}")
+
+        if hasattr(team, "get_competition_probe_bytes"):
+            try:
+                probe = bytes(team.get_competition_probe_bytes(max(int(family_offset) + 4, 8)))
+            except Exception:
+                probe = b""
+        else:
+            raw = bytes(getattr(team, "raw_data", b"") or b"")
+            anchor = self._team_metadata_anchor(team)
+            probe = raw[anchor:anchor + max(int(family_offset) + 4, 8)]
+        if probe:
+            start = max(0, int(family_offset) - 2)
+            end = min(len(probe), int(family_offset) + 4)
+            window = probe[start:end]
+            lines.extend(
+                [
+                    "",
+                    "Selected club probe window around the best family byte:",
+                    f"  offsets +0x{start:02X}..+0x{max(start, end - 1):02X}: " + " ".join(f"{byte:02X}" for byte in window),
+                ]
+            )
+            if int(family_offset) + 1 < len(probe):
+                value = int(probe[int(family_offset)]) | (int(probe[int(family_offset) + 1]) << 8)
+                lines.append(f"  little-endian u16 @ +0x{int(family_offset):02X}: 0x{value:04X} ({value})")
+            if int(family_offset) > 0 and int(family_offset) < len(probe):
+                value = int(probe[int(family_offset) - 1]) | (int(probe[int(family_offset)]) << 8)
+                lines.append(f"  little-endian u16 @ +0x{int(family_offset) - 1:02X}: 0x{value:04X} ({value})")
+
+        if subgroup_offset is not None:
+            lines.extend(
+                [
+                    "",
+                    "Dominant-country subgroup candidate:",
+                    "  {country} byte +0x{offset:02X}: {value} ({kind})".format(
+                        country=dominant_country or "cluster",
+                        offset=int(subgroup_offset),
+                        value=(f"0x{int(subgroup_value):02X}" if subgroup_value is not None else "unavailable"),
+                        kind=subgroup_kind,
+                    ),
+                    "  subgroup quality: avg purity {purity:.1%}, strong groups {strong}, dominant values {dominants}, non-text {non_text:.1%}".format(
+                        purity=subgroup_avg_purity,
+                        strong=subgroup_strong_groups,
+                        dominants=subgroup_distinct_dominants,
+                        non_text=subgroup_non_text_ratio,
+                    ),
+                ]
+            )
+            if probe and int(subgroup_offset) != int(family_offset):
+                sub_start = max(0, int(subgroup_offset) - 2)
+                sub_end = min(len(probe), int(subgroup_offset) + 4)
+                sub_window = probe[sub_start:sub_end]
+                lines.append(
+                    "  subgroup window +0x{start:02X}..+0x{end:02X}: ".format(
+                        start=sub_start,
+                        end=max(sub_start, sub_end - 1),
+                    ) + " ".join(f"{byte:02X}" for byte in sub_window)
+                )
+                if int(subgroup_offset) + 1 < len(probe):
+                    value = int(probe[int(subgroup_offset)]) | (int(probe[int(subgroup_offset) + 1]) << 8)
+                    lines.append(
+                        f"  little-endian u16 @ +0x{int(subgroup_offset):02X}: 0x{value:04X} ({value})"
+                    )
+
+        lines.extend(["", "Sample clubs in this primary-code family:"])
+        for member in sorted(family_members, key=lambda item: (self._team_country(item), self._team_league(item), self._team_name(item)))[:14]:
+            member_value = getattr(member, "competition_family_metadata_value", None)
+            value_text = f"0x{int(member_value):02X}" if member_value is not None else "n/a"
+            lines.append(
+                f"  {self._team_country(member)} / {self._team_league(member)}: {self._team_name(member)} [{value_text}]"
+            )
+
+        lines.extend(
+            [
+                "",
+                "Use this view to inspect one primary +0x00 family directly. The goal is to separate real metadata candidates from text spill inside the same broad family.",
+            ]
+        )
+        return lines
+
+    def _format_dominant_country_subgroup_profile_lines(self) -> list[str]:
+        teams = [self._team_for_offset(offset) for offset, _original in self.team_records]
+        codebook = analyze_competition_codebook(teams)
+        country_like_clusters = [cluster for cluster in codebook.clusters if cluster.inferred_kind == "country-like"]
+
+        lines = [
+            "Dominant-Country Subgroup Profile",
+            f"Country-like primary-code families: {len(country_like_clusters)}",
+            "",
+        ]
+        if not country_like_clusters:
+            lines.append("No country-like clusters are available in the current dataset.")
+            return lines
+
+        ranked_clusters = sorted(
+            country_like_clusters,
+            key=lambda item: (
+                item.dominant_country_subgroup_inferred_kind != "exploratory",
+                item.dominant_country_subgroup_inferred_kind != "tentative",
+                -item.dominant_country_subgroup_average_competition_purity,
+                -item.dominant_country_subgroup_distinct_dominants,
+                -item.team_count,
+                item.code,
+            ),
+        )
+
+        lines.append("Cluster summaries:")
+        for cluster in ranked_clusters[:12]:
+            offset_text = (
+                f"+0x{int(cluster.dominant_country_subgroup_offset):02X}"
+                if cluster.dominant_country_subgroup_offset is not None
+                else "n/a"
+            )
+            lines.append(
+                "  0x{code:02X} ({country}): {kind} | offset={offset} "
+                "avg_purity={purity:.1%} dominant_values={dominants} strong_groups={strong} non_text={non_text:.1%}".format(
+                    code=cluster.code,
+                    country=cluster.dominant_country or "Unknown",
+                    kind=cluster.dominant_country_subgroup_inferred_kind,
+                    offset=offset_text,
+                    purity=cluster.dominant_country_subgroup_average_competition_purity,
+                    dominants=cluster.dominant_country_subgroup_distinct_dominants,
+                    strong=cluster.dominant_country_subgroup_strong_competition_count,
+                    non_text=cluster.dominant_country_subgroup_non_text_ratio,
+                )
+            )
+            if cluster.sample_dominant_country_subgroup_values:
+                lines.append("    " + ", ".join(cluster.sample_dominant_country_subgroup_values[:3]))
+
+        target_cluster = ranked_clusters[0]
+        target_code = target_cluster.code
+        target_country = target_cluster.dominant_country
+        target_offset = target_cluster.dominant_country_subgroup_offset
+
+        lines.extend(
+            [
+                "",
+                "Focused breakdown:",
+                "  primary code 0x{code:02X}, dominant country {country}, subgroup offset {offset}".format(
+                    code=target_code,
+                    country=target_country or "Unknown",
+                    offset=(
+                        f"+0x{int(target_offset):02X}"
+                        if target_offset is not None
+                        else "n/a"
+                    ),
+                ),
+            ]
+        )
+        if target_offset is None:
+            lines.append("No subgroup offset is available for the selected focus cluster.")
+            return lines
+
+        focused_members = [
+            team
+            for team in teams
+            if getattr(team, "competition_code_candidate", None) == target_code
+            and self._team_country(team) == (target_country or self._team_country(team))
+        ]
+        by_league: dict[str, list[Any]] = defaultdict(list)
+        for member in focused_members:
+            by_league[self._team_league(member)].append(member)
+
+        lines.append("  by-league dominant subgroup-byte values:")
+        for league, members in sorted(by_league.items()):
+            values = [
+                value
+                for value in (
+                    getattr(member, "competition_dominant_country_subgroup_value", None)
+                    for member in members
+                )
+                if value is not None
+            ]
+            if not values:
+                lines.append(f"    {league}: n/a")
+                continue
+            counts = Counter(int(value) for value in values)
+            dominant_value, dominant_count = counts.most_common(1)[0]
+            purity = dominant_count / len(values)
+            lines.append(
+                f"    {league}: 0x{dominant_value:02X} ({dominant_count}/{len(values)}, purity={purity:.0%})"
+            )
+
+        lines.extend(
+            [
+                "",
+                "Use this profile after identifying a country-like primary family. It isolates one dominant-country subset so you can track whether a later byte separates leagues better than the broad family candidate.",
+            ]
+        )
+        return lines

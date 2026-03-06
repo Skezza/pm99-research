@@ -9,6 +9,15 @@ from pathlib import Path
 import sys
 from typing import List, Tuple, Any
 from app.fdi_indexed import IndexedFDIFile
+from app.league_definitions import get_team_league, get_team_league_by_sequence
+from app.team_competition_analysis import (
+    SECONDARY_SIGNATURE_OFFSETS,
+    analyze_competition_codebook,
+    derive_league_assignment_probes,
+    format_probe_signature,
+    format_secondary_signature,
+    resolve_league_assignment_contract,
+)
 from app.xor import xor_decode
 from app.models import TeamRecord
 from app.coach_models import parse_coaches_from_record, EditableCoachRecord
@@ -173,6 +182,208 @@ def load_teams(file_path: str) -> List[Tuple[int, TeamRecord]]:
 
         if not parsed:
             parsed = _load_teams_by_sequential_scan(data)
+        if parsed:
+            for index, (_offset, team) in enumerate(parsed):
+                team.sequence_index = index
+                team_id = int(getattr(team, "team_id", 0) or 0)
+                current_league = str(getattr(team, "league", "") or "").strip()
+                current_country = str(getattr(team, "country", "") or "").strip()
+                primary_country, primary_league = get_team_league(team_id)
+                if primary_country and primary_league:
+                    if not current_league or current_league == "Unknown League":
+                        team.league = primary_league
+                    if not current_country or current_country == "Unknown":
+                        team.country = primary_country
+                    team.league_source = "team_id_range"
+                    try:
+                        team.competition_code_candidate = team.get_competition_code_candidate()
+                    except Exception:
+                        team.competition_code_candidate = None
+                    try:
+                        team.competition_secondary_signature = team.get_competition_secondary_signature()
+                    except Exception:
+                        team.competition_secondary_signature = None
+                    continue
+                fallback_country, fallback_league = get_team_league_by_sequence(index)
+                used_fallback = False
+                if fallback_league and (not current_league or current_league == "Unknown League"):
+                    team.league = fallback_league
+                    used_fallback = True
+                if fallback_country and (not current_country or current_country == "Unknown"):
+                    team.country = fallback_country
+                    used_fallback = True
+                team.league_source = "sequence_fallback" if used_fallback else "unknown"
+                try:
+                    team.competition_code_candidate = team.get_competition_code_candidate()
+                except Exception:
+                    team.competition_code_candidate = None
+                try:
+                    team.competition_secondary_signature = team.get_competition_secondary_signature()
+                except Exception:
+                    team.competition_secondary_signature = None
+            codebook = analyze_competition_codebook([team for _offset, team in parsed])
+            for _offset, team in parsed:
+                cluster = codebook.cluster_by_code.get(getattr(team, "competition_code_candidate", None))
+                if cluster is None:
+                    team.competition_code_cluster_kind = "unknown"
+                    team.competition_code_cluster_team_count = 0
+                    team.competition_code_cluster_competition_count = 0
+                    team.competition_code_cluster_country_count = 0
+                    team.competition_code_cluster_dominant_country = ""
+                    team.competition_code_cluster_dominant_competition = ""
+                    team.competition_secondary_signature_display = format_secondary_signature(
+                        getattr(team, "competition_secondary_signature", None)
+                    )
+                    team.competition_secondary_signature_count = 0
+                    team.competition_secondary_signature_kind = "unresolved"
+                    team.competition_secondary_signature_average_purity = 0.0
+                    team.competition_secondary_signature_strong_groups = 0
+                    team.competition_tertiary_offset = None
+                    team.competition_tertiary_value = None
+                    team.competition_tertiary_signature_display = "unavailable"
+                    team.competition_tertiary_signature_count = 0
+                    team.competition_tertiary_signature_kind = "unresolved"
+                    team.competition_tertiary_signature_average_purity = 0.0
+                    team.competition_tertiary_signature_strong_groups = 0
+                    team.competition_family_metadata_offset = None
+                    team.competition_family_metadata_value = None
+                    team.competition_family_metadata_kind = "unresolved"
+                    team.competition_family_metadata_non_text_ratio = 0.0
+                    team.competition_family_metadata_average_purity = 0.0
+                    team.competition_family_metadata_strong_groups = 0
+                    team.competition_family_metadata_distinct_dominants = 0
+                    team.competition_dominant_country_subgroup_offset = None
+                    team.competition_dominant_country_subgroup_value = None
+                    team.competition_dominant_country_subgroup_kind = "unresolved"
+                    team.competition_dominant_country_subgroup_non_text_ratio = 0.0
+                    team.competition_dominant_country_subgroup_average_purity = 0.0
+                    team.competition_dominant_country_subgroup_strong_groups = 0
+                    team.competition_dominant_country_subgroup_distinct_dominants = 0
+                    continue
+                team.competition_code_cluster_kind = cluster.inferred_kind
+                team.competition_code_cluster_team_count = cluster.team_count
+                team.competition_code_cluster_competition_count = cluster.competition_count
+                team.competition_code_cluster_country_count = cluster.country_count
+                team.competition_code_cluster_dominant_country = cluster.dominant_country
+                team.competition_code_cluster_dominant_competition = cluster.dominant_competition
+                team.competition_secondary_signature_display = format_secondary_signature(
+                    getattr(team, "competition_secondary_signature", None)
+                )
+                team.competition_secondary_signature_count = cluster.secondary_signature_count
+                team.competition_secondary_signature_kind = cluster.secondary_inferred_kind
+                team.competition_secondary_signature_average_purity = cluster.secondary_average_competition_purity
+                team.competition_secondary_signature_strong_groups = cluster.secondary_strong_competition_count
+                team.competition_tertiary_offset = cluster.tertiary_offset
+                tertiary_value = None
+                tertiary_signature = None
+                if cluster.tertiary_offset is not None:
+                    try:
+                        tertiary_value = team.get_competition_probe_byte(cluster.tertiary_offset)
+                    except Exception:
+                        tertiary_value = None
+                    try:
+                        tertiary_signature = team.get_competition_tertiary_signature(
+                            cluster.tertiary_offset,
+                            SECONDARY_SIGNATURE_OFFSETS,
+                        )
+                    except Exception:
+                        tertiary_signature = None
+                team.competition_tertiary_value = tertiary_value
+                team.competition_tertiary_signature_display = format_probe_signature(tertiary_signature)
+                team.competition_tertiary_signature_count = cluster.tertiary_signature_count
+                team.competition_tertiary_signature_kind = cluster.tertiary_inferred_kind
+                team.competition_tertiary_signature_average_purity = cluster.tertiary_average_competition_purity
+                team.competition_tertiary_signature_strong_groups = cluster.tertiary_strong_competition_count
+                team.competition_family_metadata_offset = cluster.family_metadata_offset
+                family_metadata_value = None
+                if cluster.family_metadata_offset is not None:
+                    try:
+                        family_metadata_value = team.get_competition_probe_byte(cluster.family_metadata_offset)
+                    except Exception:
+                        family_metadata_value = None
+                team.competition_family_metadata_value = family_metadata_value
+                team.competition_family_metadata_kind = cluster.family_metadata_inferred_kind
+                team.competition_family_metadata_non_text_ratio = cluster.family_metadata_non_text_ratio
+                team.competition_family_metadata_average_purity = cluster.family_metadata_average_competition_purity
+                team.competition_family_metadata_strong_groups = cluster.family_metadata_strong_competition_count
+                team.competition_family_metadata_distinct_dominants = cluster.family_metadata_distinct_dominants
+                team.competition_dominant_country_subgroup_offset = cluster.dominant_country_subgroup_offset
+                subgroup_value = None
+                if cluster.dominant_country_subgroup_offset is not None:
+                    try:
+                        subgroup_value = team.get_competition_probe_byte(cluster.dominant_country_subgroup_offset)
+                    except Exception:
+                        subgroup_value = None
+                team.competition_dominant_country_subgroup_value = subgroup_value
+                team.competition_dominant_country_subgroup_kind = cluster.dominant_country_subgroup_inferred_kind
+                team.competition_dominant_country_subgroup_non_text_ratio = cluster.dominant_country_subgroup_non_text_ratio
+                team.competition_dominant_country_subgroup_average_purity = cluster.dominant_country_subgroup_average_competition_purity
+                team.competition_dominant_country_subgroup_strong_groups = cluster.dominant_country_subgroup_strong_competition_count
+                team.competition_dominant_country_subgroup_distinct_dominants = cluster.dominant_country_subgroup_distinct_dominants
+            league_probes = derive_league_assignment_probes([team for _offset, team in parsed])
+            for _offset, team in parsed:
+                probe = league_probes.get(id(team))
+                initial_source = str(getattr(team, "league_source", "") or "unknown")
+                initial_country = str(getattr(team, "country", "") or "").strip() or "Unknown"
+                initial_league = str(getattr(team, "league", "") or "").strip() or "Unknown League"
+                if probe is None:
+                    team.league_probe_method = "unresolved"
+                    team.league_probe_signal = "unresolved"
+                    team.league_probe_signal_offset = None
+                    team.league_probe_signal_value = "unavailable"
+                    team.league_probe_candidate_country = ""
+                    team.league_probe_candidate_league = ""
+                    team.league_probe_candidate_competition = ""
+                    team.league_probe_purity = 0.0
+                    team.league_probe_support = 0
+                    team.league_probe_total = 0
+                    team.league_probe_confidence = "unresolved"
+                    team.league_probe_matches_assigned = None
+                else:
+                    team.league_probe_method = probe.method
+                    team.league_probe_signal = probe.signal_name
+                    team.league_probe_signal_offset = probe.signal_offset
+                    team.league_probe_signal_value = probe.signal_value_display
+                    team.league_probe_candidate_country = probe.candidate_country
+                    team.league_probe_candidate_league = probe.candidate_league
+                    team.league_probe_candidate_competition = probe.candidate_competition
+                    team.league_probe_purity = probe.purity
+                    team.league_probe_support = probe.support_count
+                    team.league_probe_total = probe.total_count
+                    team.league_probe_confidence = probe.confidence
+                    team.league_probe_matches_assigned = bool(probe.matches_assigned_competition)
+
+                team.league_source_initial = initial_source
+                team.league_country_initial = initial_country
+                team.league_initial = initial_league
+                team.league_probe_matches_original_assigned = getattr(team, "league_probe_matches_assigned", None)
+
+                resolution = resolve_league_assignment_contract(
+                    current_country=initial_country,
+                    current_league=initial_league,
+                    current_source=initial_source,
+                    probe=probe,
+                )
+
+                team.league_source = resolution.source
+                team.country = resolution.country
+                team.league = resolution.league
+                team.league_assignment_confidence = resolution.confidence
+                team.league_assignment_status = resolution.status
+                team.league_assignment_promoted = bool(resolution.promoted)
+                team.league_assignment_promoted_from_source = str(resolution.promoted_from_source or "")
+                team.league_assignment_promoted_method = str(resolution.promoted_method or "")
+                team.league_assignment_promoted_probe_confidence = str(
+                    resolution.promoted_probe_confidence or ""
+                )
+
+                if probe is not None:
+                    assigned_competition = f"{resolution.country} / {resolution.league}"
+                    team.league_probe_matches_assigned = (
+                        str(getattr(probe, "candidate_competition", "") or "") == assigned_competition
+                    )
+                else:
+                    team.league_probe_matches_assigned = None
     except Exception as e:
         print(f"[TEAM LOADER] Error loading teams: {e}", file=sys.stderr)
 

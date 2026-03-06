@@ -27,8 +27,44 @@ through `app.gui` and implemented in `app/gui_refresh.py`.
 - The player catalog still uses the full parser + fallback recovery path, but it
   now loads on demand and can warm in the background after the shell becomes
   usable.
+- Team editor roster tools now include a structured `Batch Import CSV` flow in
+  the refreshed shell (shared backend with CLI), replacing the previous
+  placeholder path.
+- Team roster batch import now supports a row-level preview/diff contract
+  (`plan_preview`) shared by GUI and CLI JSON output before staging/apply.
+- Team loading now promotes strong competition-signal probes into a read-only
+  `competition_probe_contract` league assignment source, while preserving
+  initial fallback provenance for audit (`league_source_initial` and
+  `league_probe_matches_original_assigned`).
+- The Leagues workspace now surfaces assignment provenance directly (`source`,
+  `confidence`, `status`) with bucket filters so promoted vs fallback clubs are
+  inspectable without leaving the main shell.
+- Roster tools in the refreshed shell are now staged-first and commit through
+  `Save All` (slot edits, promotions, batch CSV), keeping write semantics
+  aligned with the core editor model.
+- `Save All` now includes rollback attempts when a multi-file write fails
+  mid-transaction, so open/save/edit workflows are safer during ongoing parser
+  expansion.
+- `Save All` now also runs a preflight save-plan gate (structured plan preview
+  plus safety checks) before any write begins, reducing avoidable mid-save
+  failures from malformed staged payloads.
 - Reverse-engineering tools stay available in `Tools -> Advanced Workspace`
   instead of driving the main editor workflow.
+- Bitmap/asset discovery now uses a shared read-only contract in both GUI
+  (`Inspect Bitmap References`) and CLI (`bitmap-reference-probe`) so the
+  discovery payload is scriptable and consistent.
+- Player-name capacity preflight is now also a shared read-only contract in GUI
+  Advanced and CLI (`player-name-capacity`) so future API/batch imports can
+  validate name-length constraints before writes.
+- Indexed staged player writes now support variable-length payload rewrites
+  (directory offset/length repointing), and GUI `Save All` now uses the same
+  shared staged-player write path as CLI contracts.
+- Linked roster promotions now use that same player staged-writer path,
+  replacing the old fixed-width alias patch behavior for promoted player names.
+- Full-squad linked operations now have explicit reusable contracts: template
+  export (`team-roster-export-template`), slot-for-slot clone
+  (`team-roster-clone-linked`), and one-name bulk promotion
+  (`team-roster-promote-bulk-name`).
 - The right-hand editor remains the canonical staged-edit surface; saves are
   still validated through the shared reopen validation path.
 
@@ -44,12 +80,75 @@ through `app.gui` and implemented in `app/gui_refresh.py`.
    - Improve coach linkage resolution so club cards can route into meaningful
      linked coach edits.
    - Continue promoting only parser-backed fields into the normal edit surface.
+   - Keep the new file-order league fallback honest: it now covers the full
+     known EQ team stream for browsing/routing, but it still needs to be
+     replaced with stronger parser-backed competition contracts as they are
+     decoded.
+   - Use the Advanced Workspace competition-candidate probe to drive that next
+     decode step instead of extending the fallback blindly.
+   - Compare candidate offsets across leagues with the competition-signature
+     profiler so the next promoted field is backed by cross-league evidence.
+   - Current first-pass signal: byte `+0x00` after the known-text anchor is the
+     strongest non-filler discriminator across the profiled competitions, with
+     `+0x08` / `+0x0A` as secondary candidates.
+   - Treat that `+0x00` byte as the current strongest read-only candidate field
+     and keep the profiler focused on its code clusters before promoting any
+     parser-backed semantic label.
+   - Use the new derived cluster metadata (`competition-like` /
+     `country-like` / `shared-family`) to decide whether `+0x00` should be
+     promoted as a direct competition field or treated as a broader family code.
+   - Current corpus signal: the dominant `0x7F` cluster is now inferred as
+     `country-like` and is overwhelmingly England-heavy, which suggests `+0x00`
+     may be a country/family discriminator rather than a clean league code.
+   - The new secondary read-only signature (`+0x08` + `+0x0A`) is now worth
+     tracking alongside `+0x00`: on the current real corpus it classifies `48`
+     of `102` primary-code clusters as `competition-splitting`, which means it
+     often separates the smaller shared families into cleaner competition-like
+     groups.
+   - That secondary signature is not enough yet for the largest family. The
+     dominant `0x7F` cluster still only profiles as `weak` at about `50.6%`
+     average within-competition purity, so it remains supporting evidence, not
+     a replacement for a true decoded dedicated competition field.
+   - A first third-byte refinement pass is now in place. The current best
+     tested extra byte is `+0x01`, but on the real corpus it is still `no-gain`
+     for the dominant `0x7F` family and does not materially improve the
+     `+0x08/+0x0A` split. Treat it as evidence about what does *not* help yet,
+     not as a promoted field.
+   - The next better read-only lead is now the family-specific non-text byte
+     scan. Once text-like spill bytes are excluded, the dominant `0x7F` family
+     currently points to `+0x16` as its best non-text candidate (`exploratory`,
+     about `64.2%` average within-competition purity). That is still not a
+     decoded field, but it is a better target than the earlier text-heavy bytes.
+   - The new `Inspect Primary-Code Family` view should now be the default way
+     to pursue that lead from the GUI: it narrows the analysis to one selected
+     club's primary-code family and shows the local probe window around the
+     current best non-text candidate so text spill and structural bytes are
+     easier to distinguish.
+   - The next follow-on within the dominant `0x7F` family is now a
+     dominant-country subgroup scan. For the England-heavy bucket, the current
+     best subgroup candidate is `+0x19` (`tentative`, about `42.9%` average
+     within-league purity, `3` dominant values). That is still read-only, but
+     it is a more focused lead for splitting the English tiers than the broader
+     family-wide `+0x16` byte.
+   - This subgroup phase is now promoted into the Advanced workspace through
+     `Profile Country Subgroups`, which should be the default report when
+     validating country-like families before attempting any parser-backed field
+     promotion.
+   - Keep those same probes available in CLI form (`team-competition-profile`,
+     `team-primary-family`, `team-country-subgroup-profile`) so investigation
+     remains scriptable and consistent with the GUI.
+   - Keep league placement explicitly auditable through shared probe metadata
+     and `team-league-audit`, so sequence-fallback placements can be reviewed
+     without silently rewriting clubs into different competitions.
 
 3. Add an asset/bitmap discovery track.
    - Treat bitmap / image assets as part of the product plan, even if they are
      not yet first-class in the editor UI.
    - Identify where `BMP` / related references are stored in the PM99 data and
      formalize a read-only contract first.
+   - The first shared contract is now in place (`inspect_bitmap_references`),
+     exposed in GUI Advanced (`Inspect Bitmap References`) and CLI
+     (`bitmap-reference-probe`) with aligned payloads.
    - Use the Advanced Workspace bitmap-reference probe as the first discovery
      surface, then promote richer asset tooling only after the backing contract
      is stable.
@@ -104,6 +203,12 @@ through `app.gui` and implemented in `app/gui_refresh.py`.
 - Finish the unresolved team roster families beyond the currently supported same-entry overlay set
   (`same_entry_authoritative` plus the strongest proven fallback) before attempting broader
   team structural writes.
+- Use the staged promotion skip diagnostics (CLI + GUI Save plan) as the primary RE queue for
+  unsafe linked-name payload families, and only promote additional fixed-name write contracts after
+  those slot families are decoded and validated in-game.
+- Keep the skip-diagnostics triage scriptable and in-app: use CLI `team-roster-promotion-safety`
+  and Advanced `Profile Roster Promotion Safety` to rank `fixed_name_unsafe` families before promoting
+  any broader linked-name write contracts.
 - Use the now-broader `player-inspect` read path on non-indexed files to drive the remaining
   legacy player parity work, especially non-indexed `weight` and the trailing attribute contract.
 - The legacy `marker + 14` weight candidate is now promoted for records that expose a real

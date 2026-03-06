@@ -3,7 +3,8 @@ import struct
 import app.editor_actions as editor_actions
 import app.loaders as loaders
 from app.fdi_indexed import IndexedFDIFile
-from app.xor import xor_encode
+from app.models import PlayerRecord
+from app.xor import write_string, xor_encode
 
 
 def _build_indexed_fdi(records):
@@ -146,3 +147,146 @@ def test_write_coach_staged_records_supports_indexed_xor(tmp_path):
     updated_bytes = path.read_bytes()
     updated_payload = IndexedFDIFile.from_bytes(updated_bytes).entries[0].decode_payload(updated_bytes)
     assert updated_payload == b"Alan Ferguson"
+
+
+def test_write_modified_entries_supports_variable_length_indexed_payloads(tmp_path):
+    file_bytes = _build_indexed_fdi(
+        [
+            (10, "A", b"ALAN"),
+            (11, "B", b"BOB"),
+        ]
+    )
+    path = tmp_path / "JUGWRITE.FDI"
+    path.write_bytes(file_bytes)
+
+    parsed = IndexedFDIFile.from_bytes(file_bytes)
+    first = parsed.entries[0]
+    second = parsed.entries[1]
+
+    class FakeIndexedRecord:
+        def __init__(self, payload: bytes, *, container_offset: int, container_length: int):
+            self._payload = payload
+            self.container_offset = container_offset
+            self.container_length = container_length
+            self.container_encoding = "indexed_xor"
+
+        def to_bytes(self) -> bytes:
+            return self._payload
+
+    staged = FakeIndexedRecord(
+        b"ALEXANDER",
+        container_offset=first.payload_offset,
+        container_length=first.payload_length,
+    )
+
+    backup_path = editor_actions._write_modified_entries(path, file_bytes, [(first.payload_offset, staged)])
+    assert backup_path is not None
+
+    updated_bytes = path.read_bytes()
+    reparsed = IndexedFDIFile.from_bytes(updated_bytes)
+    updated_first = reparsed.entries[0]
+    updated_second = reparsed.entries[1]
+
+    assert updated_first.decode_payload(updated_bytes) == b"ALEXANDER"
+    assert updated_first.payload_length == len(xor_encode(b"ALEXANDER"))
+    assert updated_second.decode_payload(updated_bytes) == b"BOB"
+    expected_delta = len(xor_encode(b"ALEXANDER")) - first.payload_length
+    assert updated_second.payload_offset == second.payload_offset + expected_delta
+
+
+def test_write_player_staged_records_can_skip_backup_creation(tmp_path):
+    file_bytes = _build_indexed_fdi([(10, "", b"ALAN")])
+    path = tmp_path / "JUGNOBACKUP.FDI"
+    path.write_bytes(file_bytes)
+    parsed = IndexedFDIFile.from_bytes(file_bytes)
+    entry = parsed.entries[0]
+
+    class FakeIndexedRecord:
+        def __init__(self, payload: bytes, *, container_offset: int, container_length: int):
+            self._payload = payload
+            self.container_offset = container_offset
+            self.container_length = container_length
+            self.container_encoding = "indexed_xor"
+
+        def to_bytes(self) -> bytes:
+            return self._payload
+
+    staged = FakeIndexedRecord(
+        b"ALEXANDER",
+        container_offset=entry.payload_offset,
+        container_length=entry.payload_length,
+    )
+
+    backup_path = editor_actions.write_player_staged_records(
+        str(path),
+        [(entry.payload_offset, staged)],
+        create_backup_before_write=False,
+    )
+    assert backup_path is None
+    assert not list(tmp_path.glob("JUGNOBACKUP.FDI.backup*"))
+
+    updated_bytes = path.read_bytes()
+    reparsed = IndexedFDIFile.from_bytes(updated_bytes)
+    assert reparsed.entries[0].decode_payload(updated_bytes) == b"ALEXANDER"
+
+
+def _build_minimal_player_payload(*, team_id: int, squad_number: int, given: str, surname: str) -> bytes:
+    header = struct.pack("<H", int(team_id)) + bytes([int(squad_number) & 0xFF]) + b"\x00\x00"
+    metadata = (b"\x61" * 4) + (b"\x00" * 10)
+    attr_encoded = bytes([50 ^ 0x61] * 12)
+    trailing = b"\x00" * 7
+    return header + write_string(given) + write_string(surname) + metadata + attr_encoded + trailing
+
+
+def test_promote_team_roster_player_supports_variable_length_indexed_name(tmp_path, monkeypatch):
+    original_payload = _build_minimal_player_payload(
+        team_id=3425,
+        squad_number=13,
+        given="Paul",
+        surname="SCHOLES",
+    )
+    file_bytes = _build_indexed_fdi([(15578, "", original_payload)])
+    player_path = tmp_path / "JUG98030.FDI"
+    team_path = tmp_path / "EQ98030.FDI"
+    player_path.write_bytes(file_bytes)
+    team_path.write_bytes(b"EQ")
+
+    class _FakeRow:
+        player_record_id = 15578
+        player_name = "Paul SCHOLES"
+
+    class _FakeRoster:
+        eq_record_id = 341
+        short_name = "Stoke C."
+        full_club_name = "Stoke City"
+        rows = [_FakeRow()]
+
+    monkeypatch.setattr(
+        editor_actions,
+        "load_eq_linked_team_rosters",
+        lambda **_kwargs: [_FakeRoster()],
+    )
+
+    result = editor_actions.promote_team_roster_player(
+        team_file=str(team_path),
+        player_file=str(player_path),
+        team_query="Stoke",
+        slot_number=1,
+        new_name="Joseph Skerratt",
+        write_changes=True,
+    )
+
+    assert result.applied_to_disk is True
+    assert result.old_player_name == "Paul SCHOLES"
+    assert result.new_player_name == "Joseph Skerratt"
+    assert result.alias_replacements.get("display_name") == 1
+    assert result.backup_path is not None
+
+    updated_bytes = player_path.read_bytes()
+    reparsed = IndexedFDIFile.from_bytes(updated_bytes)
+    updated_entry = reparsed.entries[0]
+    updated_payload = updated_entry.decode_payload(updated_bytes)
+    updated_record = PlayerRecord.from_bytes(updated_payload, updated_entry.payload_offset)
+
+    assert updated_record.name == "Joseph Skerratt"
+    assert updated_entry.payload_length > len(original_payload)

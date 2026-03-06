@@ -401,6 +401,10 @@ def test_batch_edit_team_roster_records_writes_linked_and_same_entry(tmp_path, m
     assert result.matched_row_count == 2
     assert len(result.linked_changes) == 1
     assert len(result.same_entry_changes) == 1
+    assert len(result.plan_preview) == 2
+    assert [int(getattr(row, "row_number", 0) or 0) for row in result.plan_preview] == [2, 3]
+    assert [str(getattr(row, "status", "") or "") for row in result.plan_preview] == ["change", "change"]
+    assert [str(getattr(row, "source", "") or "") for row in result.plan_preview] == ["linked", "same_entry"]
     assert data[12] == 1
     assert int.from_bytes(data[13:17], "little") == 3384
 

@@ -548,6 +548,89 @@ class TeamRecord:
         
         return "Unknown League"
 
+    def get_known_text_anchor(self) -> int:
+        """Return the conservative anchor after the currently known text fields.
+
+        This is used as a read-only reverse-engineering probe boundary for team
+        metadata investigation. It does not imply that everything after this
+        anchor is unknown-only; it simply marks the first byte after the best
+        currently known name/stadium text region.
+        """
+        raw = bytes(self.raw_data)
+        anchor = max(
+            int(getattr(self, "stadium_end", 0) or 0),
+            int(getattr(self, "name_end", 0) or 0),
+        )
+        if anchor < 0:
+            anchor = 0
+        if anchor > len(raw):
+            anchor = len(raw)
+        return anchor
+
+    def get_competition_probe_bytes(self, length: int = 32) -> bytes:
+        """Return a fixed probe window after the known-text anchor."""
+        raw = bytes(self.raw_data)
+        anchor = self.get_known_text_anchor()
+        try:
+            probe_len = max(0, int(length))
+        except Exception:
+            probe_len = 32
+        return raw[anchor:anchor + probe_len]
+
+    def get_competition_probe_byte(self, relative_offset: int) -> int | None:
+        """Return one byte from the read-only probe window after the known-text anchor."""
+        try:
+            rel = max(0, int(relative_offset))
+        except Exception:
+            return None
+        probe = self.get_competition_probe_bytes(rel + 1)
+        if rel >= len(probe):
+            return None
+        return int(probe[rel])
+
+    def get_competition_probe_signature(
+        self,
+        offsets: tuple[int, ...],
+    ) -> tuple[int, ...] | None:
+        """Return a read-only signature made from arbitrary probe-window offsets."""
+        values: list[int] = []
+        for rel in offsets:
+            value = self.get_competition_probe_byte(rel)
+            if value is None:
+                return None
+            values.append(value)
+        return tuple(values)
+
+    def get_competition_code_candidate(self) -> int | None:
+        """Return the current strongest read-only competition-byte candidate.
+
+        This is the first byte after the known-text anchor. It is not yet a
+        confirmed semantic field, but current cross-league profiling suggests it
+        is the strongest non-filler discriminator in the decoded team payload.
+        """
+        return self.get_competition_probe_byte(0)
+
+    def get_competition_secondary_signature(
+        self,
+        offsets: tuple[int, ...] = (8, 10),
+    ) -> tuple[int, ...] | None:
+        """Return a read-only secondary signature inside the current probe window.
+
+        The current working signature uses bytes `+0x08` and `+0x0A` after the
+        known-text anchor. This is still an investigation aid, not a confirmed
+        semantic field, and is intended to split broader `+0x00` families into
+        more competition-like subgroups.
+        """
+        return self.get_competition_probe_signature(offsets)
+
+    def get_competition_tertiary_signature(
+        self,
+        tertiary_offset: int,
+        secondary_offsets: tuple[int, ...] = (8, 10),
+    ) -> tuple[int, ...] | None:
+        """Return the secondary signature extended by one cluster-specific byte."""
+        return self.get_competition_probe_signature(secondary_offsets + (int(tertiary_offset),))
+
     def _sync_stadium_detail_aliases(self):
         """Maintain legacy attribute names used by older GUI/export code paths."""
         try:
@@ -558,6 +641,9 @@ class TeamRecord:
     
     def get_country(self) -> str:
         """Get the country this team belongs to."""
+        explicit_country = str(getattr(self, "country", "") or "").strip()
+        if explicit_country and explicit_country != "Unknown":
+            return explicit_country
         try:
             from app.league_definitions import get_team_league
             country, _ = get_team_league(self.team_id)
@@ -1605,6 +1691,26 @@ class PlayerRecord:
             parsed_names_end = pos
         except Exception:
             parsed_names_end = None
+
+        # Preferred path: preserve the native two length-prefixed string layout.
+        # This allows safe variable-length name growth/shrink while keeping the
+        # remainder of the payload byte-identical.
+        if parsed_names_end is not None:
+            try:
+                given = (self.given_name or "").strip()
+                surname = (self.surname or "").strip()
+                if given and surname:
+                    rebuilt = bytearray()
+                    rebuilt += data[:name_start]
+                    rebuilt += write_string(given)
+                    rebuilt += write_string(surname)
+                    rebuilt += data[parsed_names_end:]
+                    self.raw_data = bytes(rebuilt)
+                    self.name_dirty = False
+                    return
+            except Exception:
+                # Fall through to the fixed-width compatibility path below.
+                pass
 
         if marker_pos is not None and marker_pos < attr_start:
             old_names_end = marker_pos

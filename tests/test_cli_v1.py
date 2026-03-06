@@ -1,11 +1,20 @@
 from argparse import Namespace
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
 import app.cli as cli
-from app.editor_actions import DatabaseFileValidation, DatabaseValidationResult
+from app.editor_actions import (
+    BitmapReferenceFileResult,
+    BitmapReferenceHit,
+    BitmapReferenceProbeResult,
+    DatabaseFileValidation,
+    DatabaseValidationResult,
+    TeamRosterBatchEditResult,
+    TeamRosterBatchPlanRowPreview,
+)
 from app.main_dat import PM99MainDatFile, PM99MainDatPrefix, PM99PackedDate, load_main_dat
 
 
@@ -609,6 +618,359 @@ def test_cmd_team_roster_edit_same_entry_stages_slot_change(monkeypatch, capsys)
     assert "preserved_tail=58595a" in out
 
 
+def test_cmd_team_roster_promote_player_stages_changes(monkeypatch, capsys):
+    captured = {}
+
+    def fake_promote_team_roster_player(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(
+            eq_record_id=341,
+            team_name="Stoke C.",
+            full_club_name="Stoke City",
+            slot_number=13,
+            player_record_id=15578,
+            old_player_name="Graham KAVANAGH",
+            new_player_name="Joe SKERRATT",
+            skill_updates_requested={"speed": 99, "stamina": 99},
+            visible_skills_before={"speed": 72, "stamina": 65},
+            visible_skills_after={"speed": 99, "stamina": 99},
+            alias_replacements={"display_name": 1, "surname_title": 2},
+            backup_path=None,
+            warnings=[],
+        )
+
+    monkeypatch.setattr(cli, "promote_team_roster_player", fake_promote_team_roster_player)
+
+    cli.cmd_team_roster_promote_player(
+        Namespace(
+            file="DBDAT/EQ98030.FDI",
+            player_file="DBDAT/JUG98030.FDI",
+            team="Stoke C.",
+            eq_record_id=None,
+            slot=13,
+            new_name="Joe SKERRATT",
+            elite_skills=True,
+            set_args=[],
+            dry_run=True,
+            json=False,
+        )
+    )
+
+    out = capsys.readouterr().out
+    assert captured == {
+        "team_file": "DBDAT/EQ98030.FDI",
+        "player_file": "DBDAT/JUG98030.FDI",
+        "team_query": "Stoke C.",
+        "eq_record_id": None,
+        "slot_number": 13,
+        "new_name": "Joe SKERRATT",
+        "apply_elite_skills": True,
+        "skill_updates": {},
+        "fixed_name_bytes": False,
+        "write_changes": False,
+    }
+    assert "Staged roster player promotion" in out
+    assert "slot=13" in out
+    assert "Name: Graham KAVANAGH -> Joe SKERRATT" in out
+    assert "Visible stats: speed: 72 -> 99, stamina: 65 -> 99" in out
+
+
+
+def test_cmd_team_roster_promote_bulk_name_stages_changes(monkeypatch, capsys):
+    captured = {}
+
+    def fake_promote_linked_roster_player_name_bulk(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(
+            eq_record_id=341,
+            team_name="Stoke C.",
+            full_club_name="Stoke City",
+            new_player_name="Joe Skerratt",
+            slot_count=25,
+            matched_slot_count=25,
+            promotions=[
+                SimpleNamespace(slot_number=1, old_player_name="Old A", new_player_name="Joe Skerratt"),
+                SimpleNamespace(slot_number=2, old_player_name="Old B", new_player_name="Joe Skerratt"),
+            ],
+            backup_path=None,
+            warnings=[],
+        )
+
+    monkeypatch.setattr(cli, "promote_linked_roster_player_name_bulk", fake_promote_linked_roster_player_name_bulk)
+
+    cli.cmd_team_roster_promote_bulk_name(
+        Namespace(
+            file="DBDAT/EQ98030.FDI",
+            player_file="DBDAT/JUG98030.FDI",
+            team="Stoke C.",
+            eq_record_id=None,
+            new_name="Joe Skerratt",
+            slot_limit=25,
+            elite_skills=False,
+            set_args=[],
+            dry_run=True,
+            json=False,
+        )
+    )
+
+    out = capsys.readouterr().out
+    assert captured == {
+        "team_file": "DBDAT/EQ98030.FDI",
+        "player_file": "DBDAT/JUG98030.FDI",
+        "team_query": "Stoke C.",
+        "eq_record_id": None,
+        "new_name": "Joe Skerratt",
+        "slot_limit": 25,
+        "apply_elite_skills": False,
+        "skill_updates": {},
+        "fixed_name_bytes": False,
+        "write_changes": False,
+    }
+    assert "Staged bulk roster promotion" in out
+    assert "slots=25/25" in out
+
+
+
+def test_cmd_team_roster_promote_player_passes_fixed_name_bytes(monkeypatch, capsys):
+    captured = {}
+
+    def fake_promote_team_roster_player(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(
+            eq_record_id=341,
+            team_name="Stoke C.",
+            full_club_name="Stoke City",
+            slot_number=13,
+            player_record_id=15578,
+            old_player_name="Graham KAVANAGH",
+            new_player_name="Joe SKERRATT",
+            skill_updates_requested={},
+            visible_skills_before={},
+            visible_skills_after={},
+            alias_replacements={"display_name": 1},
+            backup_path=None,
+            warnings=[],
+        )
+
+    monkeypatch.setattr(cli, "promote_team_roster_player", fake_promote_team_roster_player)
+
+    cli.cmd_team_roster_promote_player(
+        Namespace(
+            file="DBDAT/EQ98030.FDI",
+            player_file="DBDAT/JUG98030.FDI",
+            team="Stoke C.",
+            eq_record_id=None,
+            slot=13,
+            new_name="Joe SKERRATT",
+            elite_skills=False,
+            set_args=[],
+            fixed_name_bytes=True,
+            dry_run=True,
+            json=False,
+        )
+    )
+
+    _ = capsys.readouterr().out
+    assert captured["fixed_name_bytes"] is True
+
+
+def test_cmd_team_roster_promote_bulk_name_passes_fixed_name_bytes(monkeypatch, capsys):
+    captured = {}
+
+    def fake_promote_linked_roster_player_name_bulk(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(
+            eq_record_id=341,
+            team_name="Stoke C.",
+            full_club_name="Stoke City",
+            new_player_name="Joe Skerratt",
+            slot_count=25,
+            matched_slot_count=25,
+            promotions=[],
+            backup_path=None,
+            warnings=[],
+        )
+
+    monkeypatch.setattr(cli, "promote_linked_roster_player_name_bulk", fake_promote_linked_roster_player_name_bulk)
+
+    cli.cmd_team_roster_promote_bulk_name(
+        Namespace(
+            file="DBDAT/EQ98030.FDI",
+            player_file="DBDAT/JUG98030.FDI",
+            team="Stoke C.",
+            eq_record_id=None,
+            new_name="Joe Skerratt",
+            slot_limit=25,
+            elite_skills=False,
+            set_args=[],
+            fixed_name_bytes=True,
+            dry_run=True,
+            json=False,
+        )
+    )
+
+    _ = capsys.readouterr().out
+    assert captured["fixed_name_bytes"] is True
+
+def test_cmd_team_roster_promote_bulk_name_prints_skip_diagnostics(monkeypatch, capsys):
+    def fake_promote_linked_roster_player_name_bulk(**kwargs):
+        return SimpleNamespace(
+            eq_record_id=341,
+            team_name="Stoke C.",
+            full_club_name="Stoke City",
+            new_player_name="Joe Skerratt",
+            slot_count=4,
+            matched_slot_count=2,
+            promotions=[
+                SimpleNamespace(slot_number=1, old_player_name="Old A", new_player_name="Joe Skerratt"),
+                SimpleNamespace(slot_number=3, old_player_name="Old C", new_player_name="Joe Skerratt"),
+            ],
+            skipped_slots=[
+                SimpleNamespace(
+                    slot_number=2,
+                    player_record_id=9773,
+                    player_name="Ray WALLACE",
+                    reason_code="fixed_name_unsafe",
+                    reason_message="Fixed-length rename could not produce a safe name mutation candidate for this payload",
+                )
+            ],
+            backup_path=None,
+            warnings=[],
+        )
+
+    monkeypatch.setattr(cli, "promote_linked_roster_player_name_bulk", fake_promote_linked_roster_player_name_bulk)
+
+    cli.cmd_team_roster_promote_bulk_name(
+        Namespace(
+            file="DBDAT/EQ98030.FDI",
+            player_file="DBDAT/JUG98030.FDI",
+            team="Stoke C.",
+            eq_record_id=None,
+            new_name="Joe Skerratt",
+            slot_limit=4,
+            elite_skills=False,
+            set_args=[],
+            fixed_name_bytes=True,
+            dry_run=True,
+            json=False,
+        )
+    )
+
+    out = capsys.readouterr().out
+    assert "Staged bulk roster promotion" in out
+    assert "slots=2/4" in out
+    assert "Skipped slots: 1" in out
+    assert "reason=fixed_name_unsafe" in out
+
+
+def test_cmd_team_roster_promotion_safety_profiles_skip_reasons(monkeypatch, capsys):
+    def fake_promote_linked_roster_player_name_bulk(**kwargs):
+        return SimpleNamespace(
+            eq_record_id=341,
+            team_name="Stoke C.",
+            full_club_name="Stoke City",
+            new_player_name="Joe Skerratt",
+            slot_count=4,
+            matched_slot_count=1,
+            promotions=[
+                SimpleNamespace(slot_number=1, old_player_name="Old A", new_player_name="Joe Skerratt"),
+            ],
+            skipped_slots=[
+                SimpleNamespace(
+                    slot_number=2,
+                    player_record_id=9773,
+                    player_name="Ray WALLACE",
+                    reason_code="fixed_name_unsafe",
+                    reason_message="Fixed-length rename could not produce a safe name mutation candidate",
+                ),
+                SimpleNamespace(
+                    slot_number=3,
+                    player_record_id=9774,
+                    player_name="Chris SHORT",
+                    reason_code="already_target",
+                    reason_message="name already matches target",
+                ),
+                SimpleNamespace(
+                    slot_number=4,
+                    player_record_id=9775,
+                    player_name="Sam BLOCKED",
+                    reason_code="promotion_error",
+                    reason_message="unexpected parser mismatch",
+                ),
+            ],
+            backup_path=None,
+            warnings=[],
+        )
+
+    monkeypatch.setattr(cli, "promote_linked_roster_player_name_bulk", fake_promote_linked_roster_player_name_bulk)
+
+    cli.cmd_team_roster_promotion_safety(
+        Namespace(
+            file="DBDAT/EQ98030.FDI",
+            player_file="DBDAT/JUG98030.FDI",
+            team="Stoke C.",
+            eq_record_id=None,
+            new_name="Joe Skerratt",
+            slot_limit=4,
+            sample_limit=2,
+            json=False,
+        )
+    )
+
+    out = capsys.readouterr().out
+    assert "Bulk promotion safety profile" in out
+    assert "safe_slots=1/4 skipped=3" in out
+    assert "fixed_name_unsafe: 1" in out
+    assert "already_target: 1" in out
+    assert "promotion_error: 1" in out
+    assert "Sample skipped slots:" in out
+
+
+def test_cmd_team_roster_export_template_outputs_summary(monkeypatch, capsys, tmp_path):
+    captured = {}
+
+    def fake_export_team_roster_batch_template(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(
+            source="linked",
+            team_name="Stoke C.",
+            full_club_name="Stoke City",
+            row_count=25,
+            output_csv=Path(kwargs["output_csv"]),
+            eq_record_id=341,
+            team_offset=None,
+            warnings=[],
+        )
+
+    monkeypatch.setattr(cli, "export_team_roster_batch_template", fake_export_team_roster_batch_template)
+
+    csv_path = tmp_path / "stoke_template.csv"
+    cli.cmd_team_roster_export_template(
+        Namespace(
+            file="DBDAT/EQ98030.FDI",
+            player_file="DBDAT/JUG98030.FDI",
+            team="Stoke C.",
+            eq_record_id=341,
+            team_offset=None,
+            source="linked",
+            csv=str(csv_path),
+            json=False,
+        )
+    )
+
+    out = capsys.readouterr().out
+    assert captured == {
+        "team_file": "DBDAT/EQ98030.FDI",
+        "output_csv": str(csv_path),
+        "player_file": "DBDAT/JUG98030.FDI",
+        "team_query": "Stoke C.",
+        "eq_record_id": 341,
+        "team_offset": None,
+        "source": "linked",
+    }
+    assert "Exported roster template" in out
+    assert "rows=25" in out
+
 def test_cmd_team_roster_profile_same_entry_prints_tail_buckets(monkeypatch, capsys):
     captured = {}
 
@@ -775,6 +1137,171 @@ def test_cmd_team_roster_batch_edit_stages_mixed_changes(monkeypatch, capsys):
     assert "linked=1, same_entry=1" in out
     assert "Stoke C. (Stoke City) slot=01" in out
     assert "team_offset=0x00001111" in out
+
+
+def test_cmd_team_roster_batch_edit_json_includes_plan_preview(monkeypatch, capsys):
+    def fake_batch_edit_team_roster_records(**_kwargs):
+        return TeamRosterBatchEditResult(
+            file_path=Path("DBDAT/EQ98030.FDI"),
+            player_file=Path("DBDAT/JUG98030.FDI"),
+            csv_path=Path("plan.csv"),
+            linked_changes=[],
+            same_entry_changes=[],
+            row_count=1,
+            matched_row_count=1,
+            write_changes=False,
+            applied_to_disk=False,
+            backup_path=None,
+            warnings=[],
+            plan_preview=[
+                TeamRosterBatchPlanRowPreview(
+                    row_number=2,
+                    status="no_change",
+                    source="linked",
+                    team_query="Stoke C.",
+                    slot_number=1,
+                    diff_summary="Row resolves cleanly but already matches on-disk values",
+                )
+            ],
+        )
+
+    monkeypatch.setattr(cli, "batch_edit_team_roster_records", fake_batch_edit_team_roster_records)
+
+    cli.cmd_team_roster_batch_edit(
+        Namespace(
+            file="DBDAT/EQ98030.FDI",
+            player_file="DBDAT/JUG98030.FDI",
+            csv="plan.csv",
+            dry_run=True,
+            json=True,
+        )
+    )
+
+    payload = json.loads(capsys.readouterr().out)
+    assert "plan_preview" in payload
+    assert payload["plan_preview"][0]["status"] == "no_change"
+    assert payload["plan_preview"][0]["team_query"] == "Stoke C."
+
+
+def test_cmd_bitmap_reference_probe_emits_json(monkeypatch, capsys):
+    captured = {}
+
+    def fake_inspect_bitmap_references(**kwargs):
+        captured.update(kwargs)
+        return BitmapReferenceProbeResult(
+            markers=[".BMP", ".TGA"],
+            max_hits_per_file=6,
+            total_hits=1,
+            files=[
+                BitmapReferenceFileResult(
+                    label="Players",
+                    file_path=Path("DBDAT/JUG98030.FDI"),
+                    exists=True,
+                    read_error="",
+                    hit_count=1,
+                    hits=[
+                        BitmapReferenceHit(
+                            offset=0x1234,
+                            marker=".BMP",
+                            snippet_start=0x1220,
+                            snippet_end=0x1240,
+                            snippet="...FACE.BMP...",
+                        )
+                    ],
+                )
+            ],
+        )
+
+    monkeypatch.setattr(cli, "inspect_bitmap_references", fake_inspect_bitmap_references)
+
+    cli.cmd_bitmap_reference_probe(
+        Namespace(
+            player_file="DBDAT/JUG98030.FDI",
+            team_file="DBDAT/EQ98030.FDI",
+            coach_file="DBDAT/ENT98030.FDI",
+            marker=[".BMP", ".TGA"],
+            max_hits=6,
+            json=True,
+        )
+    )
+
+    payload = json.loads(capsys.readouterr().out)
+    assert captured == {
+        "player_file": "DBDAT/JUG98030.FDI",
+        "team_file": "DBDAT/EQ98030.FDI",
+        "coach_file": "DBDAT/ENT98030.FDI",
+        "markers": [".BMP", ".TGA"],
+        "max_hits_per_file": 6,
+    }
+    assert payload["total_hits"] == 1
+    assert payload["files"][0]["hits"][0]["marker"] == ".BMP"
+
+
+def test_cmd_player_name_capacity_emits_json(monkeypatch, capsys):
+    captured = {}
+
+    def fake_inspect_player_name_capacities(**kwargs):
+        captured.update(kwargs)
+        return {
+            "file_path": "DBDAT/JUG98030.FDI",
+            "record_count": 6688,
+            "matched_count": 1,
+            "storage_mode": "indexed",
+            "target_name": "Bryan SMALL",
+            "target_offset": 0x1234,
+            "proposed_name": "Joe Skerratt",
+            "proposed_name_bytes": 12,
+            "limit": 200,
+            "truncated": False,
+            "records": [
+                {
+                    "record_id": 3937,
+                    "offset": 0x1234,
+                    "team_id": 3425,
+                    "name": "Bryan SMALL",
+                    "source": "indexed-entry",
+                    "storage_mode": "indexed",
+                    "current_name_bytes": 11,
+                    "exact_full_name_max_bytes": 13,
+                    "plain_text_max_bytes": 12,
+                    "length_prefixed_max_bytes": 13,
+                    "structured_window_max_bytes": 11,
+                    "can_expand_without_growth": True,
+                    "notes": [],
+                    "proposed_name": "Joe Skerratt",
+                    "proposed_name_bytes": 12,
+                    "proposed_within_exact_limit": True,
+                    "proposed_may_truncate": True,
+                    "proposed_overflow_by": 0,
+                }
+            ],
+        }
+
+    monkeypatch.setattr(cli, "inspect_player_name_capacities", fake_inspect_player_name_capacities)
+
+    cli.cmd_player_name_capacity(
+        Namespace(
+            file="DBDAT/JUG98030.FDI",
+            name="Bryan SMALL",
+            offset="0x1234",
+            proposed_name="Joe Skerratt",
+            include_uncertain=False,
+            limit=200,
+            json=True,
+        )
+    )
+
+    payload = json.loads(capsys.readouterr().out)
+    assert captured == {
+        "file_path": "DBDAT/JUG98030.FDI",
+        "target_name": "Bryan SMALL",
+        "target_offset": 0x1234,
+        "proposed_name": "Joe Skerratt",
+        "include_uncertain": False,
+        "limit": 200,
+    }
+    assert payload["matched_count"] == 1
+    assert payload["records"][0]["proposed_within_exact_limit"] is True
 
 
 def test_cmd_player_legacy_weight_profile_prints_recommended_offset(monkeypatch, capsys):

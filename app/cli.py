@@ -7,6 +7,7 @@ import bisect
 import json
 import re
 import sys
+from collections import Counter, defaultdict
 from dataclasses import asdict, is_dataclass
 from pathlib import Path
 
@@ -14,16 +15,23 @@ from .bulk_rename import bulk_rename_players, revert_player_renames
 from .editor_actions import (
     batch_edit_player_metadata_records,
     batch_edit_team_roster_records,
+    clone_team_roster_eq_jug_linked,
+    export_team_roster_batch_template,
     edit_player_metadata_records,
     edit_team_roster_eq_jug_linked,
     edit_team_roster_same_entry_authoritative,
     extract_team_rosters_eq_jug_linked,
     extract_team_rosters_eq_same_entry_overlap,
     inspect_main_dat_prefix,
+    inspect_bitmap_references,
+    inspect_player_name_capacities,
     inspect_player_metadata_records,
     parse_player_skill_patch_assignments,
     patch_main_dat_prefix,
     patch_player_visible_skills_dd6361,
+    promote_team_roster_player,
+    promote_linked_roster_player_name_bulk,
+    summarize_team_roster_bulk_promotion,
     profile_indexed_player_attribute_prefixes,
     profile_player_legacy_weight_candidates,
     profile_same_entry_authoritative_tail_bytes,
@@ -50,6 +58,7 @@ from .editor_sources import (
 from .io import FDIFile
 from .models import PlayerRecord
 from .pkf_searcher import PKFSearcher
+from .team_competition_analysis import analyze_competition_codebook
 from .xor import decode_entry
 
 
@@ -279,6 +288,176 @@ def _print_team_roster_batch_edit_result(result, *, dry_run: bool) -> None:
         print(f"{prefix}: {warning.message}", file=sys.stderr)
 
 
+
+def _print_linked_team_roster_clone_result(result, *, dry_run: bool) -> None:
+    total_changes = len(getattr(result, "changes", []) or [])
+    source_display = str(getattr(result, "source_team_name", "") or "")
+    source_full = str(getattr(result, "source_full_club_name", "") or "")
+    if source_full and source_full != source_display:
+        source_display = f"{source_display} ({source_full})"
+    target_display = str(getattr(result, "target_team_name", "") or "")
+    target_full = str(getattr(result, "target_full_club_name", "") or "")
+    if target_full and target_full != target_display:
+        target_display = f"{target_display} ({target_full})"
+
+    action = "Staged" if dry_run else "Cloned"
+    print(
+        f"{action} linked roster swap: {source_display} -> {target_display} "
+        f"(slots compared={int(getattr(result, 'compared_slot_count', 0) or 0)}, "
+        f"rows changed={total_changes})"
+    )
+    if total_changes:
+        for change in list(getattr(result, "changes", []) or [])[:20]:
+            old_name = str(getattr(change, "old_player_name", "") or "") or "(name unresolved)"
+            new_name = str(getattr(change, "new_player_name", "") or "") or "(name unresolved)"
+            print(
+                f"  slot={int(getattr(change, 'slot_number', 0) or 0):02d}: "
+                f"pid {int(getattr(change, 'old_player_record_id', 0) or 0)} -> "
+                f"{int(getattr(change, 'new_player_record_id', 0) or 0)} "
+                f"[{old_name} -> {new_name}]"
+            )
+    if result.backup_path:
+        print(f"Backup: {result.backup_path}")
+    for warning in list(getattr(result, "warnings", []) or []):
+        prefix = f"Warning at {warning.offset}" if warning.offset is not None else "Warning"
+        print(f"{prefix}: {warning.message}", file=sys.stderr)
+
+
+def _print_team_roster_template_export_result(result) -> None:
+    display = str(getattr(result, "team_name", "") or "")
+    full = str(getattr(result, "full_club_name", "") or "")
+    if full and full != display:
+        display = f"{display} ({full})"
+    print(
+        f"Exported roster template: {display} "
+        f"source={getattr(result, 'source', '')} rows={int(getattr(result, 'row_count', 0) or 0)}"
+    )
+    print(f"CSV: {getattr(result, 'output_csv', '')}")
+    if getattr(result, "eq_record_id", None) is not None:
+        print(f"eq_record_id: {int(getattr(result, 'eq_record_id', 0) or 0)}")
+    if getattr(result, "team_offset", None) is not None:
+        print(f"team_offset: 0x{int(getattr(result, 'team_offset', 0) or 0):X}")
+    for warning in list(getattr(result, "warnings", []) or []):
+        prefix = f"Warning at {warning.offset}" if warning.offset is not None else "Warning"
+        print(f"{prefix}: {warning.message}", file=sys.stderr)
+
+
+def _print_team_roster_bulk_promotion_result(result, *, dry_run: bool) -> None:
+    display = str(getattr(result, "team_name", "") or "")
+    full = str(getattr(result, "full_club_name", "") or "")
+    if full and full != display:
+        display = f"{display} ({full})"
+
+    action = "Staged" if dry_run else "Applied"
+    print(
+        f"{action} bulk roster promotion: eq_record_id={int(getattr(result, 'eq_record_id', 0) or 0)} "
+        f"{display} target_name={getattr(result, 'new_player_name', '')} "
+        f"slots={int(getattr(result, 'matched_slot_count', 0) or 0)}/{int(getattr(result, 'slot_count', 0) or 0)}"
+    )
+
+    promotions = list(getattr(result, "promotions", []) or [])
+    for item in promotions[:25]:
+        print(
+            f"  slot={int(getattr(item, 'slot_number', 0) or 0):02d}: "
+            f"{getattr(item, 'old_player_name', '')} -> {getattr(item, 'new_player_name', '')}"
+        )
+
+    skipped_slots = list(getattr(result, "skipped_slots", []) or [])
+    if skipped_slots:
+        print(f"  Skipped slots: {len(skipped_slots)}")
+        for item in skipped_slots[:20]:
+            print(
+                f"    slot={int(getattr(item, 'slot_number', 0) or 0):02d} "
+                f"pid={int(getattr(item, 'player_record_id', 0) or 0)} "
+                f"reason={getattr(item, 'reason_code', 'unknown')} "
+                f"name={getattr(item, 'player_name', '')!r}"
+            )
+            detail = str(getattr(item, "reason_message", "") or "").strip()
+            if detail:
+                print(f"      {detail}")
+
+    if result.backup_path:
+        print(f"Backup: {result.backup_path}")
+    for warning in list(getattr(result, "warnings", []) or []):
+        prefix = f"Warning at {warning.offset}" if warning.offset is not None else "Warning"
+        print(f"{prefix}: {warning.message}", file=sys.stderr)
+
+
+def _print_team_roster_promotion_safety_summary(summary) -> None:
+    display = str(getattr(summary, "team_name", "") or "")
+    full = str(getattr(summary, "full_club_name", "") or "")
+    if full and full != display:
+        display = f"{display} ({full})"
+
+    slot_count = int(getattr(summary, "slot_count", 0) or 0)
+    matched_slot_count = int(getattr(summary, "matched_slot_count", 0) or 0)
+    skipped_slot_count = int(getattr(summary, "skipped_slot_count", 0) or 0)
+    print(
+        f"Bulk promotion safety profile: eq_record_id={int(getattr(summary, 'eq_record_id', 0) or 0)} "
+        f"{display} target_name={getattr(summary, 'new_player_name', '')} "
+        f"safe_slots={matched_slot_count}/{slot_count} skipped={skipped_slot_count}"
+    )
+
+    reason_counts = dict(getattr(summary, "reason_counts", {}) or {})
+    if reason_counts:
+        print("  Skip reasons:")
+        for reason, count in sorted(reason_counts.items(), key=lambda item: (-int(item[1]), str(item[0]))):
+            print(f"    {reason}: {int(count)}")
+
+    sample_skips = list(getattr(summary, "sample_skips", []) or [])
+    if sample_skips:
+        print("  Sample skipped slots:")
+        for item in sample_skips:
+            print(
+                f"    slot={int(getattr(item, 'slot_number', 0) or 0):02d} "
+                f"pid={int(getattr(item, 'player_record_id', 0) or 0)} "
+                f"reason={getattr(item, 'reason_code', 'unknown')} "
+                f"name={getattr(item, 'player_name', '')!r}"
+            )
+            detail = str(getattr(item, "reason_message", "") or "").strip()
+            if detail:
+                print(f"      {detail}")
+
+
+
+def _print_team_roster_player_promotion_result(result, *, dry_run: bool) -> None:
+    display = result.team_name
+    if result.full_club_name and result.full_club_name != result.team_name:
+        display = f"{result.team_name} ({result.full_club_name})"
+
+    action = "Staged" if dry_run else "Applied"
+    print(
+        f"{action} roster player promotion: eq_record_id={result.eq_record_id} "
+        f"{display} slot={int(result.slot_number):02d} pid={int(result.player_record_id)}"
+    )
+    print(f"  Name: {result.old_player_name} -> {result.new_player_name}")
+
+    if dict(getattr(result, "skill_updates_requested", {}) or {}):
+        updates_text = ", ".join(
+            f"{field}={value}" for field, value in sorted(dict(result.skill_updates_requested).items())
+        )
+        print(f"  Skill updates: {updates_text}")
+
+    before = dict(getattr(result, "visible_skills_before", {}) or {})
+    after = dict(getattr(result, "visible_skills_after", {}) or {})
+    if before and after:
+        changed_fields = [field for field in sorted(after.keys()) if before.get(field) != after.get(field)]
+        if changed_fields:
+            details = ", ".join(f"{field}: {before.get(field)} -> {after.get(field)}" for field in changed_fields)
+            print(f"  Visible stats: {details}")
+
+    replacements = dict(getattr(result, "alias_replacements", {}) or {})
+    if replacements:
+        replacement_text = ", ".join(f"{label}={count}" for label, count in sorted(replacements.items()))
+        print(f"  Name alias sync: {replacement_text}")
+
+    if result.backup_path:
+        print(f"Backup: {result.backup_path}")
+    for warning in list(getattr(result, "warnings", []) or []):
+        prefix = f"Warning at {warning.offset}" if warning.offset is not None else "Warning"
+        print(f"{prefix}: {warning.message}", file=sys.stderr)
+
+
 def _same_entry_row_tail_text(row) -> str:
     tail_hex = str((row or {}).get("tail_bytes_hex") or "").strip().lower()
     if len(tail_hex) == 6:
@@ -483,6 +662,58 @@ def _print_player_metadata_inspect_result(result) -> None:
             f"[nat={row.nationality}{leading_text} u9={row.indexed_unknown_9} u10={row.indexed_unknown_10} "
             f"pos={row.position} dob={dob_text} ht={row.height} wt={row.weight} anchor={anchor_text}{prefix_text}{post_weight_text}{post_weight_hint_text}{trailer_text}{sidecar_text}{face_text}{u1_hint_text}{guard_hint_text}{hint_text}]"
         )
+    if len(result.records) > 20:
+        print(f"  ... and {len(result.records) - 20} more")
+
+
+def _print_player_name_capacity_result(result) -> None:
+    if not getattr(result, "records", None):
+        print("No player name-capacity records matched.")
+        return
+    count_label = "indexed_entries" if getattr(result, "storage_mode", "indexed") == "indexed" else "scanned_records"
+    target_name = str(getattr(result, "target_name", "") or "").strip()
+    target_offset = getattr(result, "target_offset", None)
+    proposed_name = str(getattr(result, "proposed_name", "") or "").strip()
+    filter_bits = []
+    if target_name:
+        filter_bits.append(f"name={target_name!r}")
+    if target_offset is not None:
+        filter_bits.append(f"offset=0x{int(target_offset):X}")
+    if proposed_name:
+        filter_bits.append(f"proposed={proposed_name!r}")
+    filter_text = f" [{' '.join(filter_bits)}]" if filter_bits else ""
+    print(
+        f"Player name-capacity probe{filter_text}: "
+        f"matched={int(getattr(result, 'matched_count', 0) or 0)}, "
+        f"{count_label}={int(getattr(result, 'record_count', 0) or 0)}"
+    )
+    for row in list(getattr(result, "records", []) or [])[:20]:
+        strategy_bits = [
+            f"exact_max={int(getattr(row, 'exact_full_name_max_bytes', 0) or 0)}",
+            f"current={int(getattr(row, 'current_name_bytes', 0) or 0)}",
+            f"plain_max={getattr(row, 'plain_text_max_bytes', None)}",
+            f"lenpref_max={getattr(row, 'length_prefixed_max_bytes', None)}",
+            f"window_max={int(getattr(row, 'structured_window_max_bytes', 0) or 0)}",
+        ]
+        if getattr(row, "proposed_name_bytes", None) is not None:
+            strategy_bits.extend(
+                [
+                    f"proposed={int(getattr(row, 'proposed_name_bytes', 0) or 0)}",
+                    f"within_limit={bool(getattr(row, 'proposed_within_exact_limit', False))}",
+                    f"may_truncate={bool(getattr(row, 'proposed_may_truncate', False))}",
+                    f"overflow_by={int(getattr(row, 'proposed_overflow_by', 0) or 0)}",
+                ]
+            )
+        note_text = ""
+        notes = list(getattr(row, "notes", []) or [])
+        if notes:
+            note_text = f" notes={' | '.join(str(note) for note in notes[:2])}"
+        print(
+            f"  0x{int(getattr(row, 'offset', 0) or 0):08X} rid={int(getattr(row, 'record_id', 0) or 0):5d} "
+            f"{getattr(row, 'name', '')}: {'; '.join(strategy_bits)}{note_text}"
+        )
+    if bool(getattr(result, "truncated", False)):
+        print(f"  ... output truncated at limit={int(getattr(result, 'limit', 0) or 0)}")
     if len(result.records) > 20:
         print(f"  ... and {len(result.records) - 20} more")
 
@@ -1934,6 +2165,26 @@ def cmd_player_inspect(args):
     _print_player_metadata_inspect_result(result)
 
 
+def cmd_player_name_capacity(args):
+    try:
+        result = inspect_player_name_capacities(
+            file_path=args.file,
+            target_name=getattr(args, "name", None),
+            target_offset=_parse_int_auto(getattr(args, "offset", None)),
+            proposed_name=getattr(args, "proposed_name", None),
+            include_uncertain=bool(getattr(args, "include_uncertain", False)),
+            limit=max(1, int(getattr(args, "limit", 200) or 200)),
+        )
+    except Exception as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+
+    if args.json:
+        _emit(result, as_json=True)
+        return
+    _print_player_name_capacity_result(result)
+
+
 def cmd_player_suffix_profile(args):
     try:
         result = profile_indexed_player_suffix_bytes(
@@ -2086,6 +2337,978 @@ def cmd_player_skill_patch(args):
     if getattr(args, "json_output", None):
         print(f"Report: {args.json_output}")
     _finish_post_write_validation(validation_result, emit_json=False)
+
+
+def _team_country_label(team) -> str:
+    try:
+        value = team.get_country()
+    except Exception:
+        value = getattr(team, "country", "") or ""
+    text = str(value or "").strip()
+    return text or "Unknown"
+
+
+def _team_league_label(team) -> str:
+    text = str(getattr(team, "league", "") or "").strip()
+    return text or "Unknown League"
+
+
+def _team_competition_label_for_profile(team) -> str:
+    return f"{_team_country_label(team)} / {_team_league_label(team)}"
+
+
+def _team_primary_code_candidate(team) -> int | None:
+    value = getattr(team, "competition_code_candidate", None)
+    if value is None and hasattr(team, "get_competition_code_candidate"):
+        try:
+            value = team.get_competition_code_candidate()
+        except Exception:
+            value = None
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except Exception:
+        return None
+
+
+def _team_probe_bytes_window(team, length: int) -> bytes:
+    size = max(1, int(length))
+    if hasattr(team, "get_competition_probe_bytes"):
+        try:
+            return bytes(team.get_competition_probe_bytes(size))
+        except Exception:
+            pass
+    raw = bytes(getattr(team, "raw_data", b"") or b"")
+    if not raw:
+        return b""
+    anchor = 0
+    if hasattr(team, "get_known_text_anchor"):
+        try:
+            anchor = int(team.get_known_text_anchor())
+        except Exception:
+            anchor = 0
+    return raw[anchor:anchor + size]
+
+
+def _load_team_entries_for_profile(team_file: str, include_uncertain: bool, *, quiet: bool = False):
+    if quiet:
+        import contextlib
+        import io
+
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            valid, uncertain = gather_team_records(team_file)
+    else:
+        valid, uncertain = gather_team_records(team_file)
+    return valid + (uncertain if include_uncertain else [])
+
+
+def _resolve_single_team_entry_for_profile(
+    entries,
+    *,
+    team_query: str | None,
+    team_offset: str | None,
+):
+    if team_offset:
+        requested_offset = _parse_int_auto(team_offset)
+        for entry in entries:
+            if int(entry.offset) == int(requested_offset):
+                return entry
+        raise ValueError(f"No team found at offset 0x{int(requested_offset):08X}")
+
+    query = str(team_query or "").strip()
+    if not query:
+        raise ValueError("Provide --team (or --offset) to select a team")
+
+    query_lower = query.lower()
+    matches = []
+    for entry in entries:
+        team_name = _team_display_name(entry.record)
+        full_club_name = str(getattr(entry.record, "full_club_name", "") or "")
+        team_id = getattr(entry.record, "team_id", None)
+        if team_query_matches(query, team_name=team_name, full_club_name=full_club_name):
+            matches.append(entry)
+            continue
+        if query_lower in str(team_id or "").lower():
+            matches.append(entry)
+
+    if not matches:
+        raise ValueError(f"No team matched query '{query}'")
+    if len(matches) == 1:
+        return matches[0]
+
+    exact_matches = []
+    for entry in matches:
+        team_name = _team_display_name(entry.record).strip().lower()
+        full_club_name = str(getattr(entry.record, "full_club_name", "") or "").strip().lower()
+        if query_lower == team_name or (full_club_name and query_lower == full_club_name):
+            exact_matches.append(entry)
+    if len(exact_matches) == 1:
+        return exact_matches[0]
+
+    preview = ", ".join(
+        f"0x{int(entry.offset):08X}:{_team_display_name(entry.record)}"
+        for entry in matches[:8]
+    )
+    suffix = "" if len(matches) <= 8 else f" (+{len(matches) - 8} more)"
+    raise ValueError(
+        f"Team query '{query}' matched {len(matches)} records. "
+        f"Refine --team or pass --offset. Matches: {preview}{suffix}"
+    )
+
+
+def _format_team_competition_profile_lines(teams: list[object]) -> list[str]:
+    codebook = analyze_competition_codebook(teams)
+    groups: dict[tuple[str, str], list[object]] = defaultdict(list)
+    for team in teams:
+        groups[(_team_country_label(team), _team_league_label(team))].append(team)
+
+    profiled_groups = {
+        key: members
+        for key, members in groups.items()
+        if members and key != ("Unknown", "Unknown League")
+    }
+    lines = [
+        "Competition Signature Profile",
+        f"Profiled competitions: {len(profiled_groups)}",
+        f"Profiled clubs: {sum(len(members) for members in profiled_groups.values())}",
+        f"Primary-code clusters: {len(codebook.clusters)}",
+        "",
+    ]
+    if not profiled_groups:
+        lines.append("No competition groups are available.")
+        return lines
+    if not codebook.clusters:
+        lines.append("No primary +0x00 code clusters were inferred.")
+        return lines
+
+    lines.extend(["Primary candidate byte (+0x00) by competition:"])
+    competition_summaries: list[tuple[float, int, tuple[str, str], int, int, int]] = []
+    for (country, league), members in sorted(profiled_groups.items()):
+        values = [
+            value
+            for value in (_team_primary_code_candidate(team) for team in members)
+            if value is not None
+        ]
+        if not values:
+            continue
+        code_counts = Counter(values)
+        dominant_value, dominant_count = code_counts.most_common(1)[0]
+        competition_summaries.append(
+            (dominant_count / len(values), len(values), (country, league), dominant_value, dominant_count, len(code_counts))
+        )
+    for purity, total, (country, league), value, count, distinct_codes in sorted(
+        competition_summaries,
+        key=lambda item: (-item[0], -item[1], item[2][0], item[2][1]),
+    )[:12]:
+        lines.append(
+            f"  {country} / {league}: 0x{value:02X} ({count}/{total}, distinct_codes={distinct_codes})"
+        )
+
+    lines.extend(["", "Primary candidate byte (+0x00) codebook clusters:"])
+    for cluster in codebook.clusters[:12]:
+        lines.append(
+            "  0x{code:02X}: {kind} | teams={teams} competitions={competitions} countries={countries}".format(
+                code=cluster.code,
+                kind=cluster.inferred_kind,
+                teams=cluster.team_count,
+                competitions=cluster.competition_count,
+                countries=cluster.country_count,
+            )
+        )
+        if cluster.sample_competitions:
+            lines.append("    " + ", ".join(cluster.sample_competitions))
+    lines.append("")
+
+    lines.extend(["Secondary family splits (+0x08/+0x0A within each +0x00 cluster):"])
+    secondary_kind_counts = Counter(cluster.secondary_inferred_kind for cluster in codebook.clusters)
+    if secondary_kind_counts:
+        lines.append(
+            "  Cluster summary: "
+            + ", ".join(
+                f"{kind}={count}"
+                for kind, count in sorted(
+                    secondary_kind_counts.items(),
+                    key=lambda item: (-item[1], item[0]),
+                )
+            )
+        )
+    ranked_secondary_clusters = sorted(
+        codebook.clusters,
+        key=lambda item: (
+            item.secondary_inferred_kind != "competition-splitting",
+            -item.secondary_strong_competition_count,
+            -item.secondary_average_competition_purity,
+            -item.secondary_signature_count,
+            item.code,
+        ),
+    )
+    for cluster in ranked_secondary_clusters[:12]:
+        lines.append(
+            "  0x{code:02X}: {kind} | signatures={signatures} "
+            "strong_competitions={strong}/{competitions} avg_purity={purity:.1%}".format(
+                code=cluster.code,
+                kind=cluster.secondary_inferred_kind,
+                signatures=cluster.secondary_signature_count,
+                strong=cluster.secondary_strong_competition_count,
+                competitions=cluster.competition_count,
+                purity=cluster.secondary_average_competition_purity,
+            )
+        )
+        if cluster.sample_secondary_signatures:
+            lines.append("    " + ", ".join(cluster.sample_secondary_signatures[:3]))
+    lines.append("")
+
+    lines.extend(["Tertiary family refinement (secondary + one extra byte):"])
+    ranked_tertiary_clusters = sorted(
+        codebook.clusters,
+        key=lambda item: (
+            item.tertiary_inferred_kind != "refining",
+            item.tertiary_inferred_kind != "improving",
+            -item.tertiary_strong_competition_count,
+            -item.tertiary_average_competition_purity,
+            -item.tertiary_signature_count,
+            item.code,
+        ),
+    )
+    for cluster in ranked_tertiary_clusters[:12]:
+        offset_text = (
+            f"+0x{int(cluster.tertiary_offset):02X}"
+            if cluster.tertiary_offset is not None
+            else "n/a"
+        )
+        lines.append(
+            "  0x{code:02X}: {kind} | offset={offset} signatures={signatures} "
+            "strong_competitions={strong}/{competitions} avg_purity={purity:.1%}".format(
+                code=cluster.code,
+                kind=cluster.tertiary_inferred_kind,
+                offset=offset_text,
+                signatures=cluster.tertiary_signature_count,
+                strong=cluster.tertiary_strong_competition_count,
+                competitions=cluster.competition_count,
+                purity=cluster.tertiary_average_competition_purity,
+            )
+        )
+        if cluster.sample_tertiary_signatures:
+            lines.append("    " + ", ".join(cluster.sample_tertiary_signatures[:3]))
+    largest_cluster = codebook.clusters[0] if codebook.clusters else None
+    if largest_cluster is not None:
+        lines.append(
+            "  Largest family 0x{code:02X}: {primary_kind} -> {secondary_kind} "
+            "({teams} clubs / {competitions} competitions, avg_purity={purity:.1%})".format(
+                code=largest_cluster.code,
+                primary_kind=largest_cluster.inferred_kind,
+                secondary_kind=largest_cluster.secondary_inferred_kind,
+                teams=largest_cluster.team_count,
+                competitions=largest_cluster.competition_count,
+                purity=largest_cluster.secondary_average_competition_purity,
+            )
+        )
+        lines.append(
+            "    Tertiary refinement: {kind} at {offset} "
+            "(avg_purity={purity:.1%}, strong_competitions={strong}/{competitions})".format(
+                kind=largest_cluster.tertiary_inferred_kind,
+                offset=(
+                    f"+0x{int(largest_cluster.tertiary_offset):02X}"
+                    if largest_cluster.tertiary_offset is not None
+                    else "n/a"
+                ),
+                purity=largest_cluster.tertiary_average_competition_purity,
+                strong=largest_cluster.tertiary_strong_competition_count,
+                competitions=largest_cluster.competition_count,
+            )
+        )
+    lines.append("")
+
+    lines.extend(["Best non-text family byte candidates (primary-code families):"])
+    ranked_family_clusters = sorted(
+        codebook.clusters,
+        key=lambda item: (
+            item.family_metadata_inferred_kind != "promising",
+            item.family_metadata_inferred_kind != "exploratory",
+            -item.family_metadata_average_competition_purity,
+            -item.family_metadata_strong_competition_count,
+            -item.family_metadata_non_text_ratio,
+            -item.family_metadata_distinct_dominants,
+            item.code,
+        ),
+    )
+    for cluster in ranked_family_clusters[:12]:
+        offset_text = (
+            f"+0x{int(cluster.family_metadata_offset):02X}"
+            if cluster.family_metadata_offset is not None
+            else "n/a"
+        )
+        lines.append(
+            "  0x{code:02X}: {kind} | offset={offset} avg_purity={purity:.1%} "
+            "strong_competitions={strong}/{competitions} dominant_values={dominants} non_text={non_text:.1%}".format(
+                code=cluster.code,
+                kind=cluster.family_metadata_inferred_kind,
+                offset=offset_text,
+                purity=cluster.family_metadata_average_competition_purity,
+                strong=cluster.family_metadata_strong_competition_count,
+                competitions=cluster.competition_count,
+                dominants=cluster.family_metadata_distinct_dominants,
+                non_text=cluster.family_metadata_non_text_ratio,
+            )
+        )
+        if cluster.sample_family_metadata_values:
+            lines.append("    " + ", ".join(cluster.sample_family_metadata_values[:3]))
+    if largest_cluster is not None:
+        lines.append(
+            "  Largest family non-text candidate: {kind} at {offset} "
+            "(avg_purity={purity:.1%}, strong_competitions={strong}/{competitions}, non_text={non_text:.1%})".format(
+                kind=largest_cluster.family_metadata_inferred_kind,
+                offset=(
+                    f"+0x{int(largest_cluster.family_metadata_offset):02X}"
+                    if largest_cluster.family_metadata_offset is not None
+                    else "n/a"
+                ),
+                purity=largest_cluster.family_metadata_average_competition_purity,
+                strong=largest_cluster.family_metadata_strong_competition_count,
+                competitions=largest_cluster.competition_count,
+                non_text=largest_cluster.family_metadata_non_text_ratio,
+            )
+        )
+    lines.append("")
+
+    lines.extend(["Dominant-country subgroup candidates (for country-like families):"])
+    ranked_subgroup_clusters = sorted(
+        codebook.clusters,
+        key=lambda item: (
+            item.dominant_country_subgroup_inferred_kind != "exploratory",
+            item.dominant_country_subgroup_inferred_kind != "tentative",
+            -item.dominant_country_subgroup_average_competition_purity,
+            -item.dominant_country_subgroup_distinct_dominants,
+            -item.dominant_country_subgroup_non_text_ratio,
+            item.code,
+        ),
+    )
+    for cluster in ranked_subgroup_clusters[:12]:
+        offset_text = (
+            f"+0x{int(cluster.dominant_country_subgroup_offset):02X}"
+            if cluster.dominant_country_subgroup_offset is not None
+            else "n/a"
+        )
+        lines.append(
+            "  0x{code:02X}: {kind} | country={country} offset={offset} avg_purity={purity:.1%} "
+            "dominant_values={dominants} strong_groups={strong} non_text={non_text:.1%}".format(
+                code=cluster.code,
+                kind=cluster.dominant_country_subgroup_inferred_kind,
+                country=cluster.dominant_country or "Unknown",
+                offset=offset_text,
+                purity=cluster.dominant_country_subgroup_average_competition_purity,
+                dominants=cluster.dominant_country_subgroup_distinct_dominants,
+                strong=cluster.dominant_country_subgroup_strong_competition_count,
+                non_text=cluster.dominant_country_subgroup_non_text_ratio,
+            )
+        )
+        if cluster.sample_dominant_country_subgroup_values:
+            lines.append("    " + ", ".join(cluster.sample_dominant_country_subgroup_values[:3]))
+    if largest_cluster is not None:
+        lines.append(
+            "  Largest family dominant-country candidate: {kind} at {offset} "
+            "(country={country}, avg_purity={purity:.1%}, dominant_values={dominants}, non_text={non_text:.1%})".format(
+                kind=largest_cluster.dominant_country_subgroup_inferred_kind,
+                offset=(
+                    f"+0x{int(largest_cluster.dominant_country_subgroup_offset):02X}"
+                    if largest_cluster.dominant_country_subgroup_offset is not None
+                    else "n/a"
+                ),
+                country=largest_cluster.dominant_country or "Unknown",
+                purity=largest_cluster.dominant_country_subgroup_average_competition_purity,
+                dominants=largest_cluster.dominant_country_subgroup_distinct_dominants,
+                non_text=largest_cluster.dominant_country_subgroup_non_text_ratio,
+            )
+        )
+    lines.append("")
+    return lines
+
+
+def _format_team_primary_family_lines(team, all_teams: list[object]) -> list[str]:
+    club_name = _team_display_name(team)
+    primary_code = _team_primary_code_candidate(team)
+    if primary_code is None:
+        return [
+            "Primary-Code Family Probe",
+            f"Club: {club_name}",
+            "No primary +0x00 competition-code candidate is available for this club.",
+        ]
+
+    family_members = [
+        member for member in all_teams
+        if _team_primary_code_candidate(member) == primary_code
+    ]
+    if not family_members:
+        return [
+            "Primary-Code Family Probe",
+            f"Club: {club_name}",
+            f"No clubs are currently assigned to primary code 0x{int(primary_code):02X}.",
+        ]
+
+    family_groups: dict[str, list[object]] = defaultdict(list)
+    for member in family_members:
+        family_groups[_team_competition_label_for_profile(member)].append(member)
+
+    family_offset = getattr(team, "competition_family_metadata_offset", None)
+    family_kind = str(getattr(team, "competition_family_metadata_kind", "") or "unresolved")
+    family_avg_purity = float(getattr(team, "competition_family_metadata_average_purity", 0.0) or 0.0)
+    family_non_text_ratio = float(getattr(team, "competition_family_metadata_non_text_ratio", 0.0) or 0.0)
+    family_strong_groups = int(getattr(team, "competition_family_metadata_strong_groups", 0) or 0)
+    subgroup_offset = getattr(team, "competition_dominant_country_subgroup_offset", None)
+    subgroup_value = getattr(team, "competition_dominant_country_subgroup_value", None)
+    subgroup_kind = str(getattr(team, "competition_dominant_country_subgroup_kind", "") or "unresolved")
+    subgroup_avg_purity = float(
+        getattr(team, "competition_dominant_country_subgroup_average_purity", 0.0) or 0.0
+    )
+    subgroup_non_text_ratio = float(
+        getattr(team, "competition_dominant_country_subgroup_non_text_ratio", 0.0) or 0.0
+    )
+    subgroup_strong_groups = int(
+        getattr(team, "competition_dominant_country_subgroup_strong_groups", 0) or 0
+    )
+    subgroup_distinct_dominants = int(
+        getattr(team, "competition_dominant_country_subgroup_distinct_dominants", 0) or 0
+    )
+    dominant_country = str(getattr(team, "competition_code_cluster_dominant_country", "") or "").strip()
+
+    lines = [
+        "Primary-Code Family Probe",
+        f"Club: {club_name}",
+        f"Primary +0x00 code: 0x{int(primary_code):02X} ({int(primary_code)})",
+        f"Family size: {len(family_members)} clubs across {len(family_groups)} assigned competitions",
+        f"Cluster kind: {getattr(team, 'competition_code_cluster_kind', 'unknown') or 'unknown'}",
+    ]
+
+    if family_offset is None:
+        lines.append("Best non-text family byte: unresolved")
+        return lines
+
+    lines.extend(
+        [
+            "Best non-text family byte: +0x{offset:02X} ({kind})".format(
+                offset=int(family_offset),
+                kind=family_kind,
+            ),
+            "Family-byte quality: avg purity {purity:.1%}, strong competitions {strong}/{total}, non-text {non_text:.1%}".format(
+                purity=family_avg_purity,
+                strong=family_strong_groups,
+                total=len(family_groups),
+                non_text=family_non_text_ratio,
+            ),
+            "",
+            "Dominant values by assigned competition:",
+        ]
+    )
+
+    competition_rows: list[tuple[float, str, int, int, int]] = []
+    for label, members in sorted(family_groups.items()):
+        values = [
+            value
+            for value in (
+                getattr(member, "competition_family_metadata_value", None)
+                for member in members
+            )
+            if value is not None
+        ]
+        if not values:
+            continue
+        counts = Counter(int(value) for value in values)
+        dominant_value, dominant_count = counts.most_common(1)[0]
+        competition_rows.append((dominant_count / len(values), label, dominant_value, dominant_count, len(values)))
+    for purity, label, dominant_value, dominant_count, total in sorted(
+        competition_rows,
+        key=lambda item: (-item[0], item[1]),
+    )[:16]:
+        lines.append(
+            f"  {label}: 0x{dominant_value:02X} ({dominant_count}/{total}, purity={purity:.0%})"
+        )
+
+    all_values = [
+        int(getattr(member, "competition_family_metadata_value"))
+        for member in family_members
+        if getattr(member, "competition_family_metadata_value", None) is not None
+    ]
+    if all_values:
+        lines.extend(["", "Family-byte histogram:"])
+        for value, count in Counter(all_values).most_common(8):
+            lines.append(f"  0x{value:02X}: {count}")
+
+    probe_len = max(
+        int(family_offset) + 4,
+        int(subgroup_offset) + 4 if subgroup_offset is not None else 0,
+        8,
+    )
+    probe = _team_probe_bytes_window(team, probe_len)
+    if probe:
+        start = max(0, int(family_offset) - 2)
+        end = min(len(probe), int(family_offset) + 4)
+        window = probe[start:end]
+        lines.extend(
+            [
+                "",
+                "Selected club probe window around the best family byte:",
+                f"  offsets +0x{start:02X}..+0x{max(start, end - 1):02X}: " + " ".join(f"{byte:02X}" for byte in window),
+            ]
+        )
+        if int(family_offset) + 1 < len(probe):
+            value = int(probe[int(family_offset)]) | (int(probe[int(family_offset) + 1]) << 8)
+            lines.append(f"  little-endian u16 @ +0x{int(family_offset):02X}: 0x{value:04X} ({value})")
+        if int(family_offset) > 0 and int(family_offset) < len(probe):
+            value = int(probe[int(family_offset) - 1]) | (int(probe[int(family_offset)]) << 8)
+            lines.append(f"  little-endian u16 @ +0x{int(family_offset) - 1:02X}: 0x{value:04X} ({value})")
+
+    if subgroup_offset is not None:
+        lines.extend(
+            [
+                "",
+                "Dominant-country subgroup candidate:",
+                "  {country} byte +0x{offset:02X}: {value} ({kind})".format(
+                    country=dominant_country or "cluster",
+                    offset=int(subgroup_offset),
+                    value=(f"0x{int(subgroup_value):02X}" if subgroup_value is not None else "unavailable"),
+                    kind=subgroup_kind,
+                ),
+                "  subgroup quality: avg purity {purity:.1%}, strong groups {strong}, dominant values {dominants}, non-text {non_text:.1%}".format(
+                    purity=subgroup_avg_purity,
+                    strong=subgroup_strong_groups,
+                    dominants=subgroup_distinct_dominants,
+                    non_text=subgroup_non_text_ratio,
+                ),
+            ]
+        )
+        if probe and int(subgroup_offset) != int(family_offset):
+            sub_start = max(0, int(subgroup_offset) - 2)
+            sub_end = min(len(probe), int(subgroup_offset) + 4)
+            sub_window = probe[sub_start:sub_end]
+            lines.append(
+                "  subgroup window +0x{start:02X}..+0x{end:02X}: ".format(
+                    start=sub_start,
+                    end=max(sub_start, sub_end - 1),
+                ) + " ".join(f"{byte:02X}" for byte in sub_window)
+            )
+            if int(subgroup_offset) + 1 < len(probe):
+                value = int(probe[int(subgroup_offset)]) | (int(probe[int(subgroup_offset) + 1]) << 8)
+                lines.append(
+                    f"  little-endian u16 @ +0x{int(subgroup_offset):02X}: 0x{value:04X} ({value})"
+                )
+
+    lines.extend(["", "Sample clubs in this primary-code family:"])
+    sample_members = sorted(
+        family_members,
+        key=lambda item: (_team_country_label(item), _team_league_label(item), _team_display_name(item)),
+    )[:14]
+    for member in sample_members:
+        member_value = getattr(member, "competition_family_metadata_value", None)
+        value_text = f"0x{int(member_value):02X}" if member_value is not None else "n/a"
+        lines.append(
+            f"  {_team_country_label(member)} / {_team_league_label(member)}: {_team_display_name(member)} [{value_text}]"
+        )
+
+    lines.extend(
+        [
+            "",
+            "Use this view to inspect one primary +0x00 family directly. The goal is to separate real metadata candidates from text spill inside the same broad family.",
+        ]
+    )
+    return lines
+
+
+def _format_team_country_subgroup_profile_lines(teams: list[object]) -> list[str]:
+    codebook = analyze_competition_codebook(teams)
+    country_like_clusters = [cluster for cluster in codebook.clusters if cluster.inferred_kind == "country-like"]
+
+    lines = [
+        "Dominant-Country Subgroup Profile",
+        f"Country-like primary-code families: {len(country_like_clusters)}",
+        "",
+    ]
+    if not country_like_clusters:
+        lines.append("No country-like clusters are available in the current dataset.")
+        return lines
+
+    ranked_clusters = sorted(
+        country_like_clusters,
+        key=lambda item: (
+            item.dominant_country_subgroup_inferred_kind != "exploratory",
+            item.dominant_country_subgroup_inferred_kind != "tentative",
+            -item.dominant_country_subgroup_average_competition_purity,
+            -item.dominant_country_subgroup_distinct_dominants,
+            -item.team_count,
+            item.code,
+        ),
+    )
+
+    lines.append("Cluster summaries:")
+    for cluster in ranked_clusters[:12]:
+        offset_text = (
+            f"+0x{int(cluster.dominant_country_subgroup_offset):02X}"
+            if cluster.dominant_country_subgroup_offset is not None
+            else "n/a"
+        )
+        lines.append(
+            "  0x{code:02X} ({country}): {kind} | offset={offset} "
+            "avg_purity={purity:.1%} dominant_values={dominants} strong_groups={strong} non_text={non_text:.1%}".format(
+                code=cluster.code,
+                country=cluster.dominant_country or "Unknown",
+                kind=cluster.dominant_country_subgroup_inferred_kind,
+                offset=offset_text,
+                purity=cluster.dominant_country_subgroup_average_competition_purity,
+                dominants=cluster.dominant_country_subgroup_distinct_dominants,
+                strong=cluster.dominant_country_subgroup_strong_competition_count,
+                non_text=cluster.dominant_country_subgroup_non_text_ratio,
+            )
+        )
+        if cluster.sample_dominant_country_subgroup_values:
+            lines.append("    " + ", ".join(cluster.sample_dominant_country_subgroup_values[:3]))
+
+    target_cluster = ranked_clusters[0]
+    target_code = target_cluster.code
+    target_country = target_cluster.dominant_country
+    target_offset = target_cluster.dominant_country_subgroup_offset
+
+    lines.extend(
+        [
+            "",
+            "Focused breakdown:",
+            "  primary code 0x{code:02X}, dominant country {country}, subgroup offset {offset}".format(
+                code=target_code,
+                country=target_country or "Unknown",
+                offset=(
+                    f"+0x{int(target_offset):02X}"
+                    if target_offset is not None
+                    else "n/a"
+                ),
+            ),
+        ]
+    )
+    if target_offset is None:
+        lines.append("No subgroup offset is available for the selected focus cluster.")
+        return lines
+
+    focused_members = [
+        team
+        for team in teams
+        if _team_primary_code_candidate(team) == target_code
+        and _team_country_label(team) == (target_country or _team_country_label(team))
+    ]
+    by_league: dict[str, list[object]] = defaultdict(list)
+    for member in focused_members:
+        by_league[_team_league_label(member)].append(member)
+
+    lines.append("  by-league dominant subgroup-byte values:")
+    for league, members in sorted(by_league.items()):
+        values = [
+            value
+            for value in (
+                getattr(member, "competition_dominant_country_subgroup_value", None)
+                for member in members
+            )
+            if value is not None
+        ]
+        if not values:
+            lines.append(f"    {league}: n/a")
+            continue
+        counts = Counter(int(value) for value in values)
+        dominant_value, dominant_count = counts.most_common(1)[0]
+        purity = dominant_count / len(values)
+        lines.append(
+            f"    {league}: 0x{dominant_value:02X} ({dominant_count}/{len(values)}, purity={purity:.0%})"
+        )
+
+    lines.extend(
+        [
+            "",
+            "Use this profile after identifying a country-like primary family. It isolates one dominant-country subset so you can track whether a later byte separates leagues better than the broad family candidate.",
+        ]
+    )
+    return lines
+
+
+def cmd_team_competition_profile(args):
+    entries = _load_team_entries_for_profile(
+        args.file,
+        bool(getattr(args, "include_uncertain", False)),
+        quiet=bool(getattr(args, "json", False)),
+    )
+    teams = [entry.record for entry in entries]
+    codebook = analyze_competition_codebook(teams)
+    if args.json:
+        _emit(
+            {
+                "team_count": len(teams),
+                "cluster_count": len(codebook.clusters),
+                "assigned_team_count": codebook.assigned_team_count,
+                "clusters": codebook.clusters,
+            },
+            as_json=True,
+        )
+        return
+    print("\n".join(_format_team_competition_profile_lines(teams)))
+
+
+def cmd_team_primary_family(args):
+    entries = _load_team_entries_for_profile(
+        args.file,
+        bool(getattr(args, "include_uncertain", False)),
+        quiet=bool(getattr(args, "json", False)),
+    )
+    try:
+        selected_entry = _resolve_single_team_entry_for_profile(
+            entries,
+            team_query=getattr(args, "team", None),
+            team_offset=getattr(args, "offset", None),
+        )
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+
+    team = selected_entry.record
+    teams = [entry.record for entry in entries]
+    lines = _format_team_primary_family_lines(team, teams)
+    if args.json:
+        primary_code = _team_primary_code_candidate(team)
+        codebook = analyze_competition_codebook(teams)
+        cluster = codebook.cluster_by_code.get(primary_code) if primary_code is not None else None
+        _emit(
+            {
+                "selection": {
+                    "offset": int(selected_entry.offset),
+                    "team_id": getattr(team, "team_id", None),
+                    "name": _team_display_name(team),
+                    "full_club_name": getattr(team, "full_club_name", None),
+                    "country": _team_country_label(team),
+                    "league": _team_league_label(team),
+                    "primary_code": primary_code,
+                },
+                "cluster": cluster,
+                "profile_lines": lines,
+            },
+            as_json=True,
+        )
+        return
+    print("\n".join(lines))
+
+
+def cmd_team_country_subgroup_profile(args):
+    entries = _load_team_entries_for_profile(
+        args.file,
+        bool(getattr(args, "include_uncertain", False)),
+        quiet=bool(getattr(args, "json", False)),
+    )
+    teams = [entry.record for entry in entries]
+    codebook = analyze_competition_codebook(teams)
+    if args.json:
+        _emit(
+            {
+                "team_count": len(teams),
+                "cluster_count": len(codebook.clusters),
+                "country_like_clusters": [
+                    cluster for cluster in codebook.clusters
+                    if cluster.inferred_kind == "country-like"
+                ],
+            },
+            as_json=True,
+        )
+        return
+    print("\n".join(_format_team_country_subgroup_profile_lines(teams)))
+
+
+def cmd_team_league_audit(args):
+    entries = _load_team_entries_for_profile(
+        args.file,
+        bool(getattr(args, "include_uncertain", False)),
+        quiet=bool(getattr(args, "json", False)),
+    )
+    teams = [entry.record for entry in entries]
+    source_counts = Counter(str(getattr(team, "league_source", "") or "unknown") for team in teams)
+    source_initial_counts = Counter(
+        str(getattr(team, "league_source_initial", getattr(team, "league_source", "")) or "unknown")
+        for team in teams
+    )
+    confidence_counts = Counter(
+        str(getattr(team, "league_assignment_confidence", "") or "unresolved")
+        for team in teams
+    )
+    status_counts = Counter(
+        str(getattr(team, "league_assignment_status", "") or "unresolved")
+        for team in teams
+    )
+
+    mismatch_rows: list[dict[str, object]] = []
+    include_low = bool(getattr(args, "include_low", False))
+    for entry in entries:
+        team = entry.record
+        probe_confidence = str(getattr(team, "league_probe_confidence", "") or "unresolved")
+        probe_matches = getattr(
+            team,
+            "league_probe_matches_original_assigned",
+            getattr(team, "league_probe_matches_assigned", None),
+        )
+        if probe_matches is not False:
+            continue
+        if (not include_low) and probe_confidence not in {"high", "medium"}:
+            continue
+        current_country = _team_country_label(team)
+        current_league = _team_league_label(team)
+        initial_country = str(getattr(team, "league_country_initial", current_country) or current_country)
+        initial_league = str(getattr(team, "league_initial", current_league) or current_league)
+        mismatch_rows.append(
+            {
+                "offset": int(entry.offset),
+                "team_id": getattr(team, "team_id", None),
+                "name": _team_display_name(team),
+                "assigned_country": current_country,
+                "assigned_league": current_league,
+                "assigned_country_initial": initial_country,
+                "assigned_league_initial": initial_league,
+                "league_source": str(getattr(team, "league_source", "") or "unknown"),
+                "league_source_initial": str(
+                    getattr(team, "league_source_initial", getattr(team, "league_source", "")) or "unknown"
+                ),
+                "assignment_confidence": str(
+                    getattr(team, "league_assignment_confidence", "") or "unresolved"
+                ),
+                "assignment_status": str(
+                    getattr(team, "league_assignment_status", "") or "unresolved"
+                ),
+                "probe_confidence": probe_confidence,
+                "probe_method": str(getattr(team, "league_probe_method", "") or "unresolved"),
+                "probe_signal": str(getattr(team, "league_probe_signal", "") or "unresolved"),
+                "probe_signal_offset": getattr(team, "league_probe_signal_offset", None),
+                "probe_signal_value": str(getattr(team, "league_probe_signal_value", "") or "unavailable"),
+                "probe_candidate_country": str(
+                    getattr(team, "league_probe_candidate_country", "") or "Unknown"
+                ),
+                "probe_candidate_league": str(
+                    getattr(team, "league_probe_candidate_league", "") or "Unknown League"
+                ),
+                "probe_purity": float(getattr(team, "league_probe_purity", 0.0) or 0.0),
+                "probe_support": int(getattr(team, "league_probe_support", 0) or 0),
+                "probe_total": int(getattr(team, "league_probe_total", 0) or 0),
+            }
+        )
+
+    mismatch_rows.sort(
+        key=lambda item: (
+            item["probe_confidence"] != "high",
+            item["probe_confidence"] != "medium",
+            -float(item["probe_purity"]),
+            -int(item["probe_support"]),
+            str(item["name"]),
+        )
+    )
+    limit = max(1, int(getattr(args, "limit", 25) or 25))
+    mismatch_preview = mismatch_rows[:limit]
+    payload = {
+        "team_count": len(teams),
+        "source_counts": dict(source_counts),
+        "source_initial_counts": dict(source_initial_counts),
+        "assignment_confidence_counts": dict(confidence_counts),
+        "assignment_status_counts": dict(status_counts),
+        "high_medium_probe_mismatch_count": sum(
+            1 for item in mismatch_rows
+            if str(item.get("probe_confidence") or "") in {"high", "medium"}
+        ),
+        "mismatch_count": len(mismatch_rows),
+        "mismatch_preview": mismatch_preview,
+    }
+    if args.json:
+        _emit(payload, as_json=True)
+        return
+
+    print("League Assignment Audit")
+    print(f"Teams audited: {len(teams)}")
+    print(
+        "Source counts: "
+        + ", ".join(f"{key}={source_counts[key]}" for key in sorted(source_counts.keys()))
+    )
+    print(
+        "Initial source counts: "
+        + ", ".join(f"{key}={source_initial_counts[key]}" for key in sorted(source_initial_counts.keys()))
+    )
+    print(
+        "Assignment confidence: "
+        + ", ".join(f"{key}={confidence_counts[key]}" for key in sorted(confidence_counts.keys()))
+    )
+    print(
+        "Assignment status: "
+        + ", ".join(f"{key}={status_counts[key]}" for key in sorted(status_counts.keys()))
+    )
+    print(
+        f"Probe mismatches shown: {len(mismatch_preview)} / {len(mismatch_rows)}"
+        + (" (including low-confidence probe rows)" if include_low else " (high/medium confidence only)")
+    )
+    if not mismatch_preview:
+        print("No qualifying probe mismatches detected.")
+        return
+    print("")
+    for row in mismatch_preview:
+        offset = int(row["offset"])
+        signal_offset = row["probe_signal_offset"]
+        offset_text = f"+0x{int(signal_offset):02X}" if isinstance(signal_offset, int) else "n/a"
+        print(
+            f"0x{offset:08X} {row['name']}: "
+            f"assigned={row['assigned_country']} / {row['assigned_league']} "
+            f"vs probe={row['probe_candidate_country']} / {row['probe_candidate_league']} "
+            f"[{row['probe_method']} {row['probe_signal']} {offset_text}={row['probe_signal_value']}, "
+            f"purity={float(row['probe_purity']):.0%}, support={int(row['probe_support'])}/{int(row['probe_total'])}, "
+            f"conf={row['probe_confidence']}]"
+        )
+
+
+def cmd_bitmap_reference_probe(args):
+    markers = list(getattr(args, "marker", []) or [])
+    try:
+        result = inspect_bitmap_references(
+            player_file=str(getattr(args, "player_file", "DBDAT/JUG98030.FDI")),
+            team_file=str(getattr(args, "team_file", "DBDAT/EQ98030.FDI")),
+            coach_file=str(getattr(args, "coach_file", "DBDAT/ENT98030.FDI")),
+            markers=markers if markers else None,
+            max_hits_per_file=max(1, int(getattr(args, "max_hits", 8) or 8)),
+        )
+    except Exception as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+
+    if getattr(args, "json", False):
+        _emit(result, as_json=True)
+        return
+
+    print("Bitmap / Asset Reference Probe")
+    print("Shared read-only marker scan for likely image-reference contracts.")
+    print(f"Markers: {', '.join(list(getattr(result, 'markers', []) or []))}")
+    print(f"Max hits per file: {int(getattr(result, 'max_hits_per_file', 0) or 0)}")
+    print(f"Total hits: {int(getattr(result, 'total_hits', 0) or 0)}")
+    print("")
+    for file_result in list(getattr(result, "files", []) or []):
+        label = str(getattr(file_result, "label", "") or "Unknown")
+        file_path = str(getattr(file_result, "file_path", "") or "")
+        exists = bool(getattr(file_result, "exists", False))
+        read_error = str(getattr(file_result, "read_error", "") or "")
+        print(f"{label}: {file_path}")
+        if not exists:
+            print(f"  {read_error or 'file missing'}")
+            print("")
+            continue
+        if read_error:
+            print(f"  read failed ({read_error})")
+            print("")
+            continue
+        hits = list(getattr(file_result, "hits", []) or [])
+        if not hits:
+            print("  no markers found")
+            print("")
+            continue
+        for hit in hits:
+            print(
+                "  0x{offset:08X} {marker} {snippet}".format(
+                    offset=int(getattr(hit, "offset", 0) or 0),
+                    marker=str(getattr(hit, "marker", "") or ""),
+                    snippet=str(getattr(hit, "snippet", "") or ""),
+                )
+            )
+        print("")
 
 
 def cmd_team_list(args):
@@ -2538,6 +3761,149 @@ def cmd_team_roster_edit_same_entry(args):
         _finish_post_write_validation(validation_result, emit_json=True)
         return
     _print_same_entry_team_roster_edit_result(result, dry_run=args.dry_run)
+    _finish_post_write_validation(validation_result, emit_json=False)
+
+
+
+def cmd_team_roster_clone_linked(args):
+    try:
+        result = clone_team_roster_eq_jug_linked(
+            team_file=args.file,
+            player_file=args.player_file,
+            source_team_query=args.source_team,
+            source_eq_record_id=args.source_eq_record_id,
+            target_team_query=args.target_team,
+            target_eq_record_id=args.target_eq_record_id,
+            slot_limit=args.slot_limit,
+            write_changes=not args.dry_run,
+        )
+    except Exception as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+
+    validation_result = _run_post_write_validation(args, result, team_file=args.file)
+    if args.json:
+        _emit(result, as_json=True)
+        _finish_post_write_validation(validation_result, emit_json=True)
+        return
+    _print_linked_team_roster_clone_result(result, dry_run=args.dry_run)
+    _finish_post_write_validation(validation_result, emit_json=False)
+
+
+def cmd_team_roster_export_template(args):
+    try:
+        result = export_team_roster_batch_template(
+            team_file=args.file,
+            output_csv=args.csv,
+            player_file=args.player_file,
+            team_query=args.team,
+            eq_record_id=args.eq_record_id,
+            team_offset=_parse_int_auto(args.team_offset),
+            source=args.source,
+        )
+    except Exception as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+
+    if args.json:
+        _emit(result, as_json=True)
+        return
+    _print_team_roster_template_export_result(result)
+
+
+def cmd_team_roster_promote_bulk_name(args):
+    try:
+        manual_updates = {}
+        if list(getattr(args, "set_args", []) or []):
+            manual_updates = parse_player_skill_patch_assignments(list(getattr(args, "set_args", []) or []))
+        result = promote_linked_roster_player_name_bulk(
+            team_file=args.file,
+            player_file=args.player_file,
+            team_query=args.team,
+            eq_record_id=args.eq_record_id,
+            new_name=args.new_name,
+            slot_limit=args.slot_limit,
+            apply_elite_skills=bool(getattr(args, "elite_skills", False)),
+            skill_updates=manual_updates,
+            fixed_name_bytes=bool(getattr(args, "fixed_name_bytes", False)),
+            write_changes=not args.dry_run,
+        )
+    except Exception as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+
+    validation_result = _run_post_write_validation(args, result, player_file=args.player_file)
+    if args.json:
+        _emit(result, as_json=True)
+        _finish_post_write_validation(validation_result, emit_json=True)
+        return
+    _print_team_roster_bulk_promotion_result(result, dry_run=args.dry_run)
+    _finish_post_write_validation(validation_result, emit_json=False)
+
+def cmd_team_roster_promotion_safety(args):
+    try:
+        result = promote_linked_roster_player_name_bulk(
+            team_file=args.file,
+            player_file=args.player_file,
+            team_query=args.team,
+            eq_record_id=args.eq_record_id,
+            new_name=args.new_name,
+            slot_limit=args.slot_limit,
+            apply_elite_skills=False,
+            skill_updates={},
+            fixed_name_bytes=True,
+            write_changes=False,
+        )
+    except Exception as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+
+    summary = summarize_team_roster_bulk_promotion(
+        result,
+        sample_limit=max(0, int(getattr(args, "sample_limit", 12) or 0)),
+    )
+
+    if args.json:
+        _emit(
+            {
+                "promotion_result": result,
+                "safety_summary": summary,
+            },
+            as_json=True,
+        )
+        return
+
+    _print_team_roster_promotion_safety_summary(summary)
+
+
+
+def cmd_team_roster_promote_player(args):
+    try:
+        manual_updates = {}
+        if list(getattr(args, "set_args", []) or []):
+            manual_updates = parse_player_skill_patch_assignments(list(getattr(args, "set_args", []) or []))
+        result = promote_team_roster_player(
+            team_file=args.file,
+            player_file=args.player_file,
+            team_query=args.team,
+            eq_record_id=args.eq_record_id,
+            slot_number=args.slot,
+            new_name=args.new_name,
+            apply_elite_skills=bool(getattr(args, "elite_skills", False)),
+            skill_updates=manual_updates,
+            fixed_name_bytes=bool(getattr(args, "fixed_name_bytes", False)),
+            write_changes=not args.dry_run,
+        )
+    except Exception as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+
+    validation_result = _run_post_write_validation(args, result, player_file=args.player_file)
+    if args.json:
+        _emit(result, as_json=True)
+        _finish_post_write_validation(validation_result, emit_json=True)
+        return
+    _print_team_roster_player_promotion_result(result, dry_run=args.dry_run)
     _finish_post_write_validation(validation_result, emit_json=False)
 
 
@@ -3106,6 +4472,31 @@ def main():
     player_inspect_parser.add_argument("--json", action="store_true", help="Emit JSON result")
     player_inspect_parser.set_defaults(func=cmd_player_inspect)
 
+    player_name_capacity_parser = subparsers.add_parser(
+        "player-name-capacity",
+        help="Inspect safe name-length capacity for parser-backed player rename planning",
+    )
+    player_name_capacity_parser.add_argument("file", help="FDI file path")
+    player_name_capacity_parser.add_argument("--name", help="Optional player name filter")
+    player_name_capacity_parser.add_argument("--offset", help="Optional player payload offset (hex or decimal)")
+    player_name_capacity_parser.add_argument(
+        "--proposed-name",
+        help="Optional proposed full name to evaluate against the current capacity contract",
+    )
+    player_name_capacity_parser.add_argument(
+        "--include-uncertain",
+        action="store_true",
+        help="Include uncertain scanner-backed records in non-indexed mode",
+    )
+    player_name_capacity_parser.add_argument(
+        "--limit",
+        type=int,
+        default=200,
+        help="Max matched records to return (default: 200)",
+    )
+    player_name_capacity_parser.add_argument("--json", action="store_true", help="Emit JSON result")
+    player_name_capacity_parser.set_defaults(func=cmd_player_name_capacity)
+
     player_legacy_weight_profile_parser = subparsers.add_parser(
         "player-legacy-weight-profile",
         help="Use indexed suffix weights as a control set to test legacy marker-relative weight offsets",
@@ -3244,6 +4635,131 @@ def main():
     team_search_parser.add_argument("--include-uncertain", action="store_true", help="Include uncertain records")
     team_search_parser.add_argument("--json", action="store_true", help="Emit JSON output")
     team_search_parser.set_defaults(func=cmd_team_search)
+
+    team_competition_profile_parser = subparsers.add_parser(
+        "team-competition-profile",
+        help="Profile primary/secondary/tertiary competition-code families from team metadata",
+    )
+    team_competition_profile_parser.add_argument(
+        "file",
+        nargs="?",
+        default="DBDAT/EQ98030.FDI",
+        help="Path to EQ98030.FDI (default: DBDAT/EQ98030.FDI)",
+    )
+    team_competition_profile_parser.add_argument(
+        "--include-uncertain",
+        action="store_true",
+        help="Include uncertain team parser records",
+    )
+    team_competition_profile_parser.add_argument("--json", action="store_true", help="Emit JSON result")
+    team_competition_profile_parser.set_defaults(func=cmd_team_competition_profile)
+
+    team_primary_family_parser = subparsers.add_parser(
+        "team-primary-family",
+        help="Inspect one primary +0x00 code family around a selected club",
+    )
+    team_primary_family_parser.add_argument(
+        "file",
+        nargs="?",
+        default="DBDAT/EQ98030.FDI",
+        help="Path to EQ98030.FDI (default: DBDAT/EQ98030.FDI)",
+    )
+    team_primary_family_parser.add_argument(
+        "--team",
+        help="Team name/team-id query (required unless --offset is supplied)",
+    )
+    team_primary_family_parser.add_argument(
+        "--offset",
+        help="Exact team record offset (hex or decimal)",
+    )
+    team_primary_family_parser.add_argument(
+        "--include-uncertain",
+        action="store_true",
+        help="Include uncertain team parser records",
+    )
+    team_primary_family_parser.add_argument("--json", action="store_true", help="Emit JSON result")
+    team_primary_family_parser.set_defaults(func=cmd_team_primary_family)
+
+    team_country_subgroup_profile_parser = subparsers.add_parser(
+        "team-country-subgroup-profile",
+        help="Profile dominant-country subgroup bytes for country-like primary families",
+    )
+    team_country_subgroup_profile_parser.add_argument(
+        "file",
+        nargs="?",
+        default="DBDAT/EQ98030.FDI",
+        help="Path to EQ98030.FDI (default: DBDAT/EQ98030.FDI)",
+    )
+    team_country_subgroup_profile_parser.add_argument(
+        "--include-uncertain",
+        action="store_true",
+        help="Include uncertain team parser records",
+    )
+    team_country_subgroup_profile_parser.add_argument("--json", action="store_true", help="Emit JSON result")
+    team_country_subgroup_profile_parser.set_defaults(func=cmd_team_country_subgroup_profile)
+
+    team_league_audit_parser = subparsers.add_parser(
+        "team-league-audit",
+        help="Audit league assignments against probe-derived competition signals",
+    )
+    team_league_audit_parser.add_argument(
+        "file",
+        nargs="?",
+        default="DBDAT/EQ98030.FDI",
+        help="Path to EQ98030.FDI (default: DBDAT/EQ98030.FDI)",
+    )
+    team_league_audit_parser.add_argument(
+        "--include-uncertain",
+        action="store_true",
+        help="Include uncertain team parser records",
+    )
+    team_league_audit_parser.add_argument(
+        "--include-low",
+        action="store_true",
+        help="Include low-confidence probe mismatches in mismatch preview",
+    )
+    team_league_audit_parser.add_argument(
+        "--limit",
+        type=int,
+        default=25,
+        help="Max mismatch rows to print in text mode (default: 25)",
+    )
+    team_league_audit_parser.add_argument("--json", action="store_true", help="Emit JSON result")
+    team_league_audit_parser.set_defaults(func=cmd_team_league_audit)
+
+    bitmap_reference_probe_parser = subparsers.add_parser(
+        "bitmap-reference-probe",
+        help="Scan PM99 database files for bitmap/image reference markers",
+    )
+    bitmap_reference_probe_parser.add_argument(
+        "--player-file",
+        default="DBDAT/JUG98030.FDI",
+        help="Path to player database file (default: DBDAT/JUG98030.FDI)",
+    )
+    bitmap_reference_probe_parser.add_argument(
+        "--team-file",
+        default="DBDAT/EQ98030.FDI",
+        help="Path to team database file (default: DBDAT/EQ98030.FDI)",
+    )
+    bitmap_reference_probe_parser.add_argument(
+        "--coach-file",
+        default="DBDAT/ENT98030.FDI",
+        help="Path to coach database file (default: DBDAT/ENT98030.FDI)",
+    )
+    bitmap_reference_probe_parser.add_argument(
+        "--marker",
+        action="append",
+        default=[],
+        help="Marker to scan (repeatable, default: .BMP and .TGA)",
+    )
+    bitmap_reference_probe_parser.add_argument(
+        "--max-hits",
+        type=int,
+        default=8,
+        help="Max hits per file (default: 8)",
+    )
+    bitmap_reference_probe_parser.add_argument("--json", action="store_true", help="Emit JSON result")
+    bitmap_reference_probe_parser.set_defaults(func=cmd_bitmap_reference_probe)
 
     team_rename_parser = subparsers.add_parser("team-rename", help="Rename team and optional stadium")
     team_rename_parser.add_argument("file", help="FDI file path")
@@ -3423,6 +4939,256 @@ def main():
     _add_post_write_validation_argument(team_roster_edit_same_entry_parser)
     team_roster_edit_same_entry_parser.add_argument("--json", action="store_true", help="Emit JSON result")
     team_roster_edit_same_entry_parser.set_defaults(func=cmd_team_roster_edit_same_entry)
+
+    team_roster_clone_parser = subparsers.add_parser(
+        "team-roster-clone-linked",
+        help="Clone one parser-backed linked roster into another (slot-for-slot)",
+    )
+    team_roster_clone_parser.add_argument(
+        "file",
+        nargs="?",
+        default="DBDAT/EQ98030.FDI",
+        help="Path to EQ98030.FDI (default: DBDAT/EQ98030.FDI)",
+    )
+    team_roster_clone_parser.add_argument(
+        "--player-file",
+        default="DBDAT/JUG98030.FDI",
+        help="Path to JUG98030.FDI for roster-name context",
+    )
+    team_roster_clone_parser.add_argument("--source-team", help="Source team query")
+    team_roster_clone_parser.add_argument(
+        "--source-eq-record-id",
+        type=int,
+        help="Source linked EQ record ID",
+    )
+    team_roster_clone_parser.add_argument("--target-team", help="Target team query")
+    team_roster_clone_parser.add_argument(
+        "--target-eq-record-id",
+        type=int,
+        help="Target linked EQ record ID",
+    )
+    team_roster_clone_parser.add_argument(
+        "--slot-limit",
+        type=int,
+        default=25,
+        help="Max leading slots to copy (default: 25)",
+    )
+    team_roster_clone_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Validate and stage only (no file write)",
+    )
+    _add_post_write_validation_argument(team_roster_clone_parser)
+    team_roster_clone_parser.add_argument("--json", action="store_true", help="Emit JSON result")
+    team_roster_clone_parser.set_defaults(func=cmd_team_roster_clone_linked)
+
+    team_roster_export_template_parser = subparsers.add_parser(
+        "team-roster-export-template",
+        help="Export an import-ready CSV template for full-squad roster edits",
+    )
+    team_roster_export_template_parser.add_argument(
+        "file",
+        nargs="?",
+        default="DBDAT/EQ98030.FDI",
+        help="Path to EQ98030.FDI (default: DBDAT/EQ98030.FDI)",
+    )
+    team_roster_export_template_parser.add_argument(
+        "--player-file",
+        default="DBDAT/JUG98030.FDI",
+        help="Path to JUG98030.FDI for roster-name context",
+    )
+    team_roster_export_template_parser.add_argument(
+        "--team",
+        help="Team query filter (preferred when unique)",
+    )
+    team_roster_export_template_parser.add_argument(
+        "--eq-record-id",
+        type=int,
+        help="Exact linked EQ record ID for linked template export",
+    )
+    team_roster_export_template_parser.add_argument(
+        "--team-offset",
+        help="Exact team offset for same-entry template export (hex or decimal)",
+    )
+    team_roster_export_template_parser.add_argument(
+        "--source",
+        choices=["auto", "linked", "same_entry"],
+        default="auto",
+        help="Preferred roster source to export (default: auto)",
+    )
+    team_roster_export_template_parser.add_argument(
+        "--csv",
+        required=True,
+        help="Output CSV file path",
+    )
+    team_roster_export_template_parser.add_argument("--json", action="store_true", help="Emit JSON result")
+    team_roster_export_template_parser.set_defaults(func=cmd_team_roster_export_template)
+
+    team_roster_promote_bulk_parser = subparsers.add_parser(
+        "team-roster-promote-bulk-name",
+        help="Promote all (or leading N) linked roster slots to one target player name",
+    )
+    team_roster_promote_bulk_parser.add_argument(
+        "file",
+        nargs="?",
+        default="DBDAT/EQ98030.FDI",
+        help="Path to EQ98030.FDI (default: DBDAT/EQ98030.FDI)",
+    )
+    team_roster_promote_bulk_parser.add_argument(
+        "--player-file",
+        default="DBDAT/JUG98030.FDI",
+        help="Path to JUG98030.FDI for indexed player payload updates",
+    )
+    team_roster_promote_bulk_parser.add_argument(
+        "--team",
+        help="Team query filter (preferred when unique)",
+    )
+    team_roster_promote_bulk_parser.add_argument(
+        "--eq-record-id",
+        type=int,
+        help="Exact EQ linked roster record ID (use this to disambiguate)",
+    )
+    team_roster_promote_bulk_parser.add_argument(
+        "--new-name",
+        required=True,
+        help="Target full player name for every selected slot",
+    )
+    team_roster_promote_bulk_parser.add_argument(
+        "--slot-limit",
+        type=int,
+        default=25,
+        help="Max leading slots to process (default: 25)",
+    )
+    team_roster_promote_bulk_parser.add_argument(
+        "--elite-skills",
+        action="store_true",
+        help="Apply the default elite visible skill preset (all mapped10 fields to 99)",
+    )
+    team_roster_promote_bulk_parser.add_argument(
+        "--set",
+        dest="set_args",
+        action="append",
+        default=[],
+        help="Visible stat assignment (repeatable): FIELD=VALUE",
+    )
+    team_roster_promote_bulk_parser.add_argument(
+        "--fixed-name-bytes",
+        action="store_true",
+        help="Force fixed-size in-place name writes (truncate given/surname to existing slot bytes)",
+    )
+    team_roster_promote_bulk_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Validate and stage only (no file write)",
+    )
+    _add_post_write_validation_argument(team_roster_promote_bulk_parser)
+    team_roster_promote_bulk_parser.add_argument("--json", action="store_true", help="Emit JSON result")
+    team_roster_promote_bulk_parser.set_defaults(func=cmd_team_roster_promote_bulk_name)
+
+    team_roster_promotion_safety_parser = subparsers.add_parser(
+        "team-roster-promotion-safety",
+        help="Profile fixed-name bulk-promotion skip diagnostics for one linked roster",
+    )
+    team_roster_promotion_safety_parser.add_argument(
+        "file",
+        nargs="?",
+        default="DBDAT/EQ98030.FDI",
+        help="Path to EQ98030.FDI (default: DBDAT/EQ98030.FDI)",
+    )
+    team_roster_promotion_safety_parser.add_argument(
+        "--player-file",
+        default="DBDAT/JUG98030.FDI",
+        help="Path to JUG98030.FDI for indexed player payload inspection",
+    )
+    team_roster_promotion_safety_parser.add_argument(
+        "--team",
+        help="Team query filter (preferred when unique)",
+    )
+    team_roster_promotion_safety_parser.add_argument(
+        "--eq-record-id",
+        type=int,
+        help="Exact EQ linked roster record ID (use this to disambiguate)",
+    )
+    team_roster_promotion_safety_parser.add_argument(
+        "--new-name",
+        required=True,
+        help="Target full player name to profile against linked roster slots",
+    )
+    team_roster_promotion_safety_parser.add_argument(
+        "--slot-limit",
+        type=int,
+        default=25,
+        help="Max leading slots to profile (default: 25)",
+    )
+    team_roster_promotion_safety_parser.add_argument(
+        "--sample-limit",
+        type=int,
+        default=12,
+        help="Max skipped-slot samples to include in output (default: 12)",
+    )
+    team_roster_promotion_safety_parser.add_argument("--json", action="store_true", help="Emit JSON result")
+    team_roster_promotion_safety_parser.set_defaults(func=cmd_team_roster_promotion_safety)
+
+    team_roster_promote_parser = subparsers.add_parser(
+        "team-roster-promote-player",
+        help="Promote one linked roster slot to a custom named player with optional elite visible stats",
+    )
+    team_roster_promote_parser.add_argument(
+        "file",
+        nargs="?",
+        default="DBDAT/EQ98030.FDI",
+        help="Path to EQ98030.FDI (default: DBDAT/EQ98030.FDI)",
+    )
+    team_roster_promote_parser.add_argument(
+        "--player-file",
+        default="DBDAT/JUG98030.FDI",
+        help="Path to JUG98030.FDI for indexed player payload updates",
+    )
+    team_roster_promote_parser.add_argument(
+        "--team",
+        help="Team query filter (preferred when unique)",
+    )
+    team_roster_promote_parser.add_argument(
+        "--eq-record-id",
+        type=int,
+        help="Exact EQ linked roster record ID (use this to disambiguate)",
+    )
+    team_roster_promote_parser.add_argument(
+        "--slot",
+        type=int,
+        required=True,
+        help="1-based linked roster slot number to promote",
+    )
+    team_roster_promote_parser.add_argument(
+        "--new-name",
+        required=True,
+        help="New full player name (given + surname)",
+    )
+    team_roster_promote_parser.add_argument(
+        "--elite-skills",
+        action="store_true",
+        help="Apply the default elite visible skill preset (all mapped10 fields to 99)",
+    )
+    team_roster_promote_parser.add_argument(
+        "--set",
+        dest="set_args",
+        action="append",
+        default=[],
+        help="Visible stat assignment (repeatable): FIELD=VALUE",
+    )
+    team_roster_promote_parser.add_argument(
+        "--fixed-name-bytes",
+        action="store_true",
+        help="Force fixed-size in-place name writes (truncate given/surname to existing slot bytes)",
+    )
+    team_roster_promote_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Validate and stage only (no file write)",
+    )
+    _add_post_write_validation_argument(team_roster_promote_parser)
+    team_roster_promote_parser.add_argument("--json", action="store_true", help="Emit JSON result")
+    team_roster_promote_parser.set_defaults(func=cmd_team_roster_promote_player)
 
     team_roster_batch_edit_parser = subparsers.add_parser(
         "team-roster-batch-edit",

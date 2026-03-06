@@ -182,6 +182,7 @@ def test_indexed_player_edit_stages_name_change_without_writing():
     assert len(result.changes) == 1
     assert result.changes[0].changed_fields["name"] == ("Paul SCHOLES", "Alan SMITH")
     assert len(result.staged_records) == 1
+    assert result.warnings == []
 
 
 def test_indexed_player_batch_edit_stages_csv_changes_without_writing(tmp_path):
@@ -210,6 +211,7 @@ def test_indexed_player_batch_edit_stages_csv_changes_without_writing(tmp_path):
     assert result.changes[0].changed_fields["height"] == (170, 181)
     assert result.changes[0].changed_fields["weight"] == (68, 81)
     assert len(result.staged_records) == 1
+    assert result.warnings == []
 
 
 def test_indexed_player_inspect_surfaces_unknown_suffix_bytes():
