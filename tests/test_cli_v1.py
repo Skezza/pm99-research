@@ -873,7 +873,12 @@ def test_cmd_team_roster_promotion_safety_profiles_skip_reasons(monkeypatch, cap
             slot_count=4,
             matched_slot_count=1,
             promotions=[
-                SimpleNamespace(slot_number=1, old_player_name="Old A", new_player_name="Joe Skerratt"),
+                SimpleNamespace(
+                    slot_number=1,
+                    old_player_name="Old A",
+                    new_player_name="Joe Skerratt",
+                    name_mutation_family="parser_text_spill_salvage",
+                ),
             ],
             skipped_slots=[
                 SimpleNamespace(
@@ -923,6 +928,8 @@ def test_cmd_team_roster_promotion_safety_profiles_skip_reasons(monkeypatch, cap
     assert "fixed_name_unsafe: 1" in out
     assert "already_target: 1" in out
     assert "promotion_error: 1" in out
+    assert "Safe mutation families:" in out
+    assert "parser_text_spill_salvage: 1" in out
     assert "Sample skipped slots:" in out
 
 

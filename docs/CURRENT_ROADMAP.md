@@ -209,6 +209,19 @@ through `app.gui` and implemented in `app/gui_refresh.py`.
 - Keep the skip-diagnostics triage scriptable and in-app: use CLI `team-roster-promotion-safety`
   and Advanced `Profile Roster Promotion Safety` to rank `fixed_name_unsafe` families before promoting
   any broader linked-name write contracts.
+- The first promoted fixed-name unsafe families are now `parser_text_spill_salvage`
+  and `parser_text_spill_no_alias_sync`: when direct text-replace output is garbled
+  and length-prefixed parsing fails with given/surname slot-bound errors, parser
+  writes are allowed only if parser diff windows remain local (`first >= 5`,
+  `last <= 128`, `diff <= 128`).
+- `parser_text_spill_salvage` keeps alias-sync only when post-sync windows stay
+  local under the same bounds; `parser_text_spill_no_alias_sync` is allowed only
+  when parser windows pass but alias-sync is the sole widening failure.
+- Keep unresolved members of these families conservative: if parser windows fail,
+  or any additional guardrail fails, the slot stays `fixed_name_unsafe` and is
+  never written.
+- Use `scripts/profile_roster_promotion_unsafe_families.py` to rank exact
+  `fixed_name_unsafe` subfamilies and emit before/after JSON deltas between runs.
 - Use the now-broader `player-inspect` read path on non-indexed files to drive the remaining
   legacy player parity work, especially non-indexed `weight` and the trailing attribute contract.
 - The legacy `marker + 14` weight candidate is now promoted for records that expose a real

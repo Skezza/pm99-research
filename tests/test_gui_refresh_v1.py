@@ -268,6 +268,7 @@ def test_profile_bulk_promotion_safety_formats_reason_breakdown(monkeypatch):
             already_target_count=1,
             other_skip_count=0,
             reason_counts={"fixed_name_unsafe": 2, "already_target": 1},
+            safe_family_counts={"parser_text_spill_salvage": 1},
             sample_skips=[
                 SimpleNamespace(
                     slot_number=2,
@@ -305,6 +306,8 @@ def test_profile_bulk_promotion_safety_formats_reason_breakdown(monkeypatch):
     assert "fixed_name_unsafe=2" in summary
     assert "Reason counts:" in summary
     assert "fixed_name_unsafe: 2" in summary
+    assert "Safe mutation families:" in summary
+    assert "parser_text_spill_salvage: 1" in summary
     assert "Sample skipped slots:" in summary
 
 

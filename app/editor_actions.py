@@ -411,6 +411,7 @@ class TeamRosterPlayerPromotionResult:
     backup_path: Optional[str]
     write_changes: bool
     applied_to_disk: bool
+    name_mutation_family: str = ""
     warnings: List[RenameIssue] = field(default_factory=list)
     post_write_validation: Optional[DatabaseValidationResult] = None
 
@@ -453,6 +454,7 @@ class TeamRosterBulkPromotionSafetySummary:
     matched_slot_count: int
     skipped_slot_count: int
     reason_counts: Dict[str, int] = field(default_factory=dict)
+    safe_family_counts: Dict[str, int] = field(default_factory=dict)
     fixed_name_unsafe_count: int = 0
     already_target_count: int = 0
     other_skip_count: int = 0
@@ -1381,6 +1383,13 @@ _ELITE_VISIBLE_SKILL_UPDATES: Dict[str, int] = {
 }
 
 
+_FIXED_NAME_FAMILY_TEXT_REPLACE = "text_replace"
+_FIXED_NAME_FAMILY_LENGTH_PREFIXED = "length_prefixed"
+_FIXED_NAME_FAMILY_PARSER_CANDIDATE = "parser_candidate"
+_FIXED_NAME_FAMILY_PARSER_TEXT_SPILL_SALVAGE = "parser_text_spill_salvage"
+_FIXED_NAME_FAMILY_PARSER_TEXT_SPILL_NO_ALIAS_SYNC = "parser_text_spill_no_alias_sync"
+
+
 @dataclass
 class _IndexedRawStageRecord:
     raw_payload: bytes
@@ -1499,7 +1508,7 @@ def _mutate_indexed_player_name_fixed_safe(
     decoded_payload: bytes,
     payload_offset: int,
     new_name: str,
-) -> Tuple[bytes, str]:
+) -> Tuple[bytes, str, str]:
     """
     Build a fixed-size name mutation using conservative candidate selection.
 
@@ -1517,6 +1526,7 @@ def _mutate_indexed_player_name_fixed_safe(
 
     candidates: List[Tuple[str, bytes]] = []
     diagnostics: List[str] = []
+    length_prefixed_bounds_error = False
 
     replaced_payload, replaced = replace_text_in_decoded(decoded_payload, before_name, target_same_len)
     if replaced and len(replaced_payload) == len(decoded_payload):
@@ -1534,7 +1544,13 @@ def _mutate_indexed_player_name_fixed_safe(
         else:
             diagnostics.append("length_prefixed:payload_size_mismatch")
     except Exception as exc:
-        diagnostics.append(f"length_prefixed:error={exc}")
+        error_message = str(exc)
+        diagnostics.append(f"length_prefixed:error={error_message}")
+        if (
+            "Fixed-length rename could not parse given-name slot bounds" in error_message
+            or "Fixed-length rename could not parse surname slot bounds" in error_message
+        ):
+            length_prefixed_bounds_error = True
 
     try:
         parser_payload = _build_parser_fixed_name_candidate(
@@ -1570,23 +1586,52 @@ def _mutate_indexed_player_name_fixed_safe(
 
         diff_count, first_diff, last_diff = _candidate_change_profile(decoded_payload, candidate)
         if mode == "parser_candidate":
-            # If direct text replacement produced garbled output, treat parser candidate as unsafe.
-            if text_candidate_unreasonable:
-                diagnostics.append("parser_candidate:blocked_by_text_replace")
-                continue
-            if not (diff_count <= 128 and first_diff >= 5 and last_diff <= 128):
-                diagnostics.append(
-                    f"parser_candidate:diff_window_reject(diff={diff_count},first={first_diff},last={last_diff})"
-                )
-                continue
             synced = _sync_fixed_name_aliases(
                 payload=candidate,
                 parsed_before=parsed_before,
                 new_name=new_name,
             )
             sync_diff_count, sync_first_diff, sync_last_diff = _candidate_change_profile(decoded_payload, synced)
-            if sync_diff_count <= 128 and sync_first_diff >= 5 and sync_last_diff <= 128:
-                return synced, _player_display_name(PlayerRecord.from_bytes(synced, payload_offset))
+            parser_window_ok = diff_count <= 128 and first_diff >= 5 and last_diff <= 128
+            sync_window_ok = sync_diff_count <= 128 and sync_first_diff >= 5 and sync_last_diff <= 128
+
+            # Promote one proven unsafe family only: text replacement spills on payloads
+            # that do not match the length-prefixed shape, while parser rewrite remains local.
+            if text_candidate_unreasonable:
+                if not length_prefixed_bounds_error:
+                    diagnostics.append("parser_candidate:blocked_by_text_replace")
+                    continue
+                if not parser_window_ok:
+                    diagnostics.append(
+                        f"parser_candidate:text_spill_window_reject(diff={diff_count},first={first_diff},last={last_diff})"
+                    )
+                    continue
+                if sync_window_ok:
+                    return (
+                        synced,
+                        _player_display_name(PlayerRecord.from_bytes(synced, payload_offset)),
+                        _FIXED_NAME_FAMILY_PARSER_TEXT_SPILL_SALVAGE,
+                    )
+                # Promote a second conservative family: if parser candidate remains
+                # local/safe and only alias-sync widens the diff window, keep parser
+                # bytes and skip alias synchronization for this slot.
+                return (
+                    candidate,
+                    applied_name,
+                    _FIXED_NAME_FAMILY_PARSER_TEXT_SPILL_NO_ALIAS_SYNC,
+                )
+
+            if not parser_window_ok:
+                diagnostics.append(
+                    f"parser_candidate:diff_window_reject(diff={diff_count},first={first_diff},last={last_diff})"
+                )
+                continue
+            if sync_window_ok:
+                return (
+                    synced,
+                    _player_display_name(PlayerRecord.from_bytes(synced, payload_offset)),
+                    _FIXED_NAME_FAMILY_PARSER_CANDIDATE,
+                )
             diagnostics.append(
                 f"parser_candidate:sync_window_reject(diff={sync_diff_count},first={sync_first_diff},last={sync_last_diff})"
             )
@@ -1605,7 +1650,12 @@ def _mutate_indexed_player_name_fixed_safe(
         )
         sync_diff_count, sync_first_diff, sync_last_diff = _candidate_change_profile(decoded_payload, synced)
         if sync_diff_count <= 256 and sync_first_diff >= 5 and sync_last_diff <= 256:
-            return synced, _player_display_name(PlayerRecord.from_bytes(synced, payload_offset))
+            family = (
+                _FIXED_NAME_FAMILY_TEXT_REPLACE
+                if mode == "text_replace"
+                else _FIXED_NAME_FAMILY_LENGTH_PREFIXED
+            )
+            return synced, _player_display_name(PlayerRecord.from_bytes(synced, payload_offset)), family
         diagnostics.append(
             f"{mode}:sync_window_reject(diff={sync_diff_count},first={sync_first_diff},last={sync_last_diff})"
         )
@@ -1697,17 +1747,17 @@ def _build_indexed_player_name_stage_record(
     payload_length: int,
     new_name: str,
     fixed_name_bytes: bool = False,
-) -> Tuple[Any, bool, str, bool]:
+) -> Tuple[Any, bool, str, bool, str]:
     """
     Build one staged indexed player record with a parser-backed full-name mutation.
 
-    Returns (record, name_changed, applied_name, was_truncated).
+    Returns (record, name_changed, applied_name, was_truncated, mutation_family).
     """
     record_before = PlayerRecord.from_bytes(decoded_payload, payload_offset)
     before_name = _player_display_name(record_before)
 
     if fixed_name_bytes:
-        patched_payload, applied_name = _mutate_indexed_player_name_fixed_safe(
+        patched_payload, applied_name, mutation_family = _mutate_indexed_player_name_fixed_safe(
             decoded_payload=decoded_payload,
             payload_offset=payload_offset,
             new_name=new_name,
@@ -1722,6 +1772,7 @@ def _build_indexed_player_name_stage_record(
         parsed = PlayerRecord.from_bytes(decoded_payload, payload_offset)
         _apply_player_mutations(parsed, new_name=new_name)
         applied_name = _player_display_name(parsed)
+        mutation_family = "variable_length_parser"
         try:
             parsed.container_offset = payload_offset
             parsed.container_length = payload_length
@@ -1737,7 +1788,8 @@ def _build_indexed_player_name_stage_record(
         raise RuntimeError(
             "Post-mutation parse did not resolve the requested new name; promotion aborted to avoid partial writes."
         )
-    return record, name_changed, applied_name, was_truncated
+    return record, name_changed, applied_name, was_truncated, mutation_family
+
 
 
 def promote_team_roster_player(
@@ -1811,7 +1863,7 @@ def promote_team_roster_player(
     if not resolved_old_name:
         resolved_old_name = _player_display_name(record_before)
 
-    staged_record, name_changed, applied_new_name, was_truncated = _build_indexed_player_name_stage_record(
+    staged_record, name_changed, applied_new_name, was_truncated, mutation_family = _build_indexed_player_name_stage_record(
         decoded_payload=decoded,
         payload_offset=int(indexed_entry.payload_offset),
         payload_length=int(indexed_entry.payload_length),
@@ -1861,7 +1913,7 @@ def promote_team_roster_player(
                 if indexed_entry is None:
                     raise RuntimeError("Player entry disappeared after visible-skill patch; aborting promotion write")
                 decoded = indexed_entry.decode_payload(player_bytes)
-                staged_record, name_changed, applied_new_name, was_truncated = _build_indexed_player_name_stage_record(
+                staged_record, name_changed, applied_new_name, was_truncated, mutation_family = _build_indexed_player_name_stage_record(
                     decoded_payload=decoded,
                     payload_offset=int(indexed_entry.payload_offset),
                     payload_length=int(indexed_entry.payload_length),
@@ -1918,6 +1970,7 @@ def promote_team_roster_player(
         backup_path=backup_path,
         write_changes=write_changes,
         applied_to_disk=applied_to_disk,
+        name_mutation_family=str(mutation_family or ""),
         warnings=warnings,
     )
 
@@ -2082,6 +2135,13 @@ def summarize_team_roster_bulk_promotion(
     skipped_slots_raw = list(getattr(result, "skipped_slots", []) or [])
     normalized_skips: List[TeamRosterPromotionSkip] = []
     reason_counts: Counter[str] = Counter()
+    safe_family_counts: Counter[str] = Counter()
+
+    for item in list(getattr(result, "promotions", []) or []):
+        family = str(getattr(item, "name_mutation_family", "") or "").strip()
+        if family:
+            safe_family_counts[family] += 1
+
     for item in skipped_slots_raw:
         reason_code = str(getattr(item, "reason_code", "") or "unknown").strip() or "unknown"
         normalized = TeamRosterPromotionSkip(
@@ -2109,6 +2169,7 @@ def summarize_team_roster_bulk_promotion(
         matched_slot_count=int(getattr(result, "matched_slot_count", 0) or 0),
         skipped_slot_count=int(len(normalized_skips)),
         reason_counts=dict(reason_counts),
+        safe_family_counts=dict(safe_family_counts),
         fixed_name_unsafe_count=fixed_name_unsafe_count,
         already_target_count=already_target_count,
         other_skip_count=other_skip_count,

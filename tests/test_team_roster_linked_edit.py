@@ -1,5 +1,8 @@
 from pathlib import Path
 
+import pytest
+
+import app.editor_actions as editor_actions
 from app.editor_actions import (
     TeamRosterPlayerPromotionResult,
     clone_team_roster_eq_jug_linked,
@@ -285,6 +288,11 @@ def test_summarize_team_roster_bulk_promotion_counts_skip_families():
         "new_player_name": "Joe Skerratt",
         "slot_count": 4,
         "matched_slot_count": 1,
+        "promotions": [
+            type("Promotion", (), {
+                "name_mutation_family": "parser_text_spill_salvage",
+            })(),
+        ],
         "skipped_slots": [
             type("Skip", (), {
                 "slot_number": 2,
@@ -324,10 +332,173 @@ def test_summarize_team_roster_bulk_promotion_counts_skip_families():
         "already_target": 1,
         "promotion_error": 1,
     }
+    assert summary.safe_family_counts == {"parser_text_spill_salvage": 1}
     assert len(summary.sample_skips) == 2
     assert summary.sample_skips[0].slot_number == 2
 
 
+def test_mutate_indexed_player_name_fixed_safe_allows_parser_text_spill_family(monkeypatch):
+    decoded_payload = b"decoded_payload_"
+    text_candidate = b"text_candidate__"
+    parser_candidate = b"parser_candidate"
+
+    class _Record:
+        def __init__(self, name: str) -> None:
+            self.name = name
+
+    def fake_from_bytes(payload, _offset):
+        if payload == decoded_payload:
+            return _Record("Old Name")
+        if payload == text_candidate:
+            return _Record("Joe Skerratt suffix")
+        if payload == parser_candidate:
+            return _Record("Joe Skerratt")
+        raise AssertionError("unexpected payload")
+
+    monkeypatch.setattr(editor_actions.PlayerRecord, "from_bytes", staticmethod(fake_from_bytes))
+    monkeypatch.setattr(
+        editor_actions,
+        "replace_text_in_decoded",
+        lambda *_args, **_kwargs: (text_candidate, True),
+    )
+
+    def fake_length_prefixed(**_kwargs):
+        raise RuntimeError("Fixed-length rename could not parse given-name slot bounds")
+
+    monkeypatch.setattr(editor_actions, "_mutate_indexed_player_name_fixed_bytes", fake_length_prefixed)
+    monkeypatch.setattr(
+        editor_actions,
+        "_build_parser_fixed_name_candidate",
+        lambda **_kwargs: parser_candidate,
+    )
+    monkeypatch.setattr(
+        editor_actions,
+        "_candidate_change_profile",
+        lambda _original, candidate: (36, 5, 41) if candidate in {text_candidate, parser_candidate} else (0, -1, -1),
+    )
+    monkeypatch.setattr(editor_actions, "_sync_fixed_name_aliases", lambda **kwargs: kwargs["payload"])
+
+    mutated, applied_name, family = editor_actions._mutate_indexed_player_name_fixed_safe(
+        decoded_payload=decoded_payload,
+        payload_offset=0,
+        new_name="Joe Skerratt",
+    )
+
+    assert mutated == parser_candidate
+    assert applied_name == "Joe Skerratt"
+    assert family == "parser_text_spill_salvage"
+
+
+def test_mutate_indexed_player_name_fixed_safe_allows_parser_text_spill_no_alias_sync(monkeypatch):
+    decoded_payload = b"decoded_payload_"
+    text_candidate = b"text_candidate__"
+    parser_candidate = b"parser_candidate"
+    synced_candidate = b"sync_candidate__"
+
+    class _Record:
+        def __init__(self, name: str) -> None:
+            self.name = name
+
+    def fake_from_bytes(payload, _offset):
+        if payload == decoded_payload:
+            return _Record("Old Name")
+        if payload == text_candidate:
+            return _Record("Joe Skerratt suffix")
+        if payload == parser_candidate:
+            return _Record("Joe Skerratt")
+        if payload == synced_candidate:
+            return _Record("Joe Skerratt")
+        raise AssertionError("unexpected payload")
+
+    monkeypatch.setattr(editor_actions.PlayerRecord, "from_bytes", staticmethod(fake_from_bytes))
+    monkeypatch.setattr(
+        editor_actions,
+        "replace_text_in_decoded",
+        lambda *_args, **_kwargs: (text_candidate, True),
+    )
+
+    def fake_length_prefixed(**_kwargs):
+        raise RuntimeError("Fixed-length rename could not parse given-name slot bounds")
+
+    monkeypatch.setattr(editor_actions, "_mutate_indexed_player_name_fixed_bytes", fake_length_prefixed)
+    monkeypatch.setattr(
+        editor_actions,
+        "_build_parser_fixed_name_candidate",
+        lambda **_kwargs: parser_candidate,
+    )
+
+    def fake_change_profile(_original, candidate):
+        if candidate == parser_candidate:
+            return (40, 5, 60)
+        if candidate == synced_candidate:
+            return (190, 5, 220)
+        if candidate == text_candidate:
+            return (36, 5, 41)
+        return (0, -1, -1)
+
+    monkeypatch.setattr(editor_actions, "_candidate_change_profile", fake_change_profile)
+    monkeypatch.setattr(editor_actions, "_sync_fixed_name_aliases", lambda **_kwargs: synced_candidate)
+
+    mutated, applied_name, family = editor_actions._mutate_indexed_player_name_fixed_safe(
+        decoded_payload=decoded_payload,
+        payload_offset=0,
+        new_name="Joe Skerratt",
+    )
+
+    assert mutated == parser_candidate
+    assert applied_name == "Joe Skerratt"
+    assert family == "parser_text_spill_no_alias_sync"
+
+
+def test_mutate_indexed_player_name_fixed_safe_keeps_text_spill_guard_for_other_families(monkeypatch):
+    decoded_payload = b"decoded_payload_"
+    text_candidate = b"text_candidate__"
+    parser_candidate = b"parser_candidate"
+
+    class _Record:
+        def __init__(self, name: str) -> None:
+            self.name = name
+
+    def fake_from_bytes(payload, _offset):
+        if payload == decoded_payload:
+            return _Record("Old Name")
+        if payload == text_candidate:
+            return _Record("Joe Skerratt suffix")
+        if payload == parser_candidate:
+            return _Record("Joe Skerratt")
+        raise AssertionError("unexpected payload")
+
+    monkeypatch.setattr(editor_actions.PlayerRecord, "from_bytes", staticmethod(fake_from_bytes))
+    monkeypatch.setattr(
+        editor_actions,
+        "replace_text_in_decoded",
+        lambda *_args, **_kwargs: (text_candidate, True),
+    )
+
+    def fake_length_prefixed(**_kwargs):
+        raise RuntimeError("Fixed-length rename requires valid length-prefixed name slots")
+
+    monkeypatch.setattr(editor_actions, "_mutate_indexed_player_name_fixed_bytes", fake_length_prefixed)
+    monkeypatch.setattr(
+        editor_actions,
+        "_build_parser_fixed_name_candidate",
+        lambda **_kwargs: parser_candidate,
+    )
+    monkeypatch.setattr(
+        editor_actions,
+        "_candidate_change_profile",
+        lambda _original, candidate: (36, 5, 41) if candidate in {text_candidate, parser_candidate} else (0, -1, -1),
+    )
+    monkeypatch.setattr(editor_actions, "_sync_fixed_name_aliases", lambda **kwargs: kwargs["payload"])
+
+    with pytest.raises(RuntimeError) as exc_info:
+        editor_actions._mutate_indexed_player_name_fixed_safe(
+            decoded_payload=decoded_payload,
+            payload_offset=0,
+            new_name="Joe Skerratt",
+        )
+
+    assert "parser_candidate:blocked_by_text_replace" in str(exc_info.value)
 
 
 def test_promote_linked_roster_player_name_bulk_collects_skip_diagnostics(monkeypatch):

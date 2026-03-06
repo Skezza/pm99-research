@@ -4448,6 +4448,12 @@ class PM99DatabaseEditor:
             for reason, count in sorted(reason_counts.items(), key=lambda item: (-int(item[1]), str(item[0]))):
                 lines.append(f"  {reason}: {int(count)}")
 
+        safe_family_counts = dict(getattr(summary, "safe_family_counts", {}) or {})
+        if safe_family_counts:
+            lines.extend(["", "Safe mutation families:"])
+            for family, count in sorted(safe_family_counts.items(), key=lambda item: (-int(item[1]), str(item[0]))):
+                lines.append(f"  {family}: {int(count)}")
+
         sample_skips = list(getattr(summary, "sample_skips", []) or [])
         if sample_skips:
             lines.extend(["", "Sample skipped slots:"])

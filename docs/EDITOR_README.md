@@ -73,9 +73,12 @@ This is the default editor surface and the primary workflow.
 - Linked roster rows now expose a first-class `Promote Slot Player` flow in the
   team editor card. This applies a safe indexed-name alias sync for the selected
   JUG record and can optionally apply an elite visible-skill preset in one step.
-  The current safe writer is fixed-width only: if the requested name token is
-  longer than the source token at that slot, the promotion is rejected instead
-  of risking an unsafe payload expansion.
+  Fixed-byte promotions stay size-stable and guard-railed: unresolved slot families
+  are skipped, but the confirmed `parser_text_spill_salvage` and
+  `parser_text_spill_no_alias_sync` families are now writable when parser windows
+  stay local (`first >= 5`, `last <= 128`, `diff <= 128`). The first keeps alias
+  sync when sync windows also pass; the second intentionally skips alias sync when
+  that is the only failing guard.
 - `Batch Import CSV` is now migrated into the refreshed team editor card and
   runs the same shared roster-batch parser-backed validation path as CLI.
 - `Batch Import CSV` now includes a row-level plan preview pane before staging.
@@ -162,6 +165,8 @@ python -m app.cli player-name-capacity DBDAT/JUG98030.FDI --name "Bryan SMALL" -
 python -m app.cli team-roster-promote-player DBDAT/EQ98030.FDI --team "Stoke C." --slot 13 --new-name "Joe SKERRATT" --elite-skills --fixed-name-bytes
 python -m app.cli team-roster-promote-bulk-name DBDAT/EQ98030.FDI --team "Stoke C." --new-name "Joe Skerratt" --slot-limit 25 --fixed-name-bytes --dry-run
 python -m app.cli team-roster-promotion-safety DBDAT/EQ98030.FDI --team "Stoke C." --new-name "Joe Skerratt" --slot-limit 25 --json
+python scripts/profile_roster_promotion_unsafe_families.py DBDAT/EQ98030.FDI --player-file DBDAT/JUG98030.FDI --name "Joe Skerratt" --output-json /tmp/promo_after.json --print-top 12
+python scripts/profile_roster_promotion_unsafe_families.py DBDAT/EQ98030.FDI --player-file DBDAT/JUG98030.FDI --name "Joe Skerratt" --before-json /tmp/promo_before.json --output-json /tmp/promo_before_after.json --print-top 12
 python -m app.cli team-roster-export-template DBDAT/EQ98030.FDI --team "Stoke C." --csv stoke_template.csv
 python -m app.cli team-roster-clone-linked DBDAT/EQ98030.FDI --source-team "Manchester Utd" --target-team "Stoke C." --slot-limit 25 --dry-run
 python -m app.cli team-roster-batch-edit DBDAT/EQ98030.FDI --player-file DBDAT/JUG98030.FDI --csv roster_plan.csv
@@ -186,7 +191,7 @@ All record edits are staged first.
 - Team roster tools also stage changes now (slot edits, promotions, batch CSV).
 - Club export now writes an import-ready roster batch template CSV so full-squad edits can round-trip directly through `Batch Import CSV`.
 - Roster promotions now support `--fixed-name-bytes` (and GUI staged promotions default to this mode) to keep writes in-place by truncating/padding to existing name slot capacity.
-- Fixed-byte promotions now use conservative safety gates; slots that cannot be patched safely are skipped with explicit diagnostics (slot, pid, reason code, and candidate summary) instead of forcing risky writes.
+- Fixed-byte promotions now use conservative safety gates; slots that cannot be patched safely are skipped with explicit diagnostics (slot, pid, reason code, candidate summary), and safety profiles now also report safe mutation family counts.
 - The Team editor now exposes **Bulk Promote Linked Slots**, which stages all safe linked-slot promotions and shows skip diagnostics before Save All.
 - Save All confirmation now includes staged promotion skip diagnostics so blocked slots are visible in the write plan review.
 - `Save All` now shows a structured write plan (players/clubs/coaches/skills/

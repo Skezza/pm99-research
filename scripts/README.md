@@ -15,6 +15,7 @@ This directory is intentionally trimmed to a small set of maintained wrappers:
 - `probe_screenshot_rol_boxes.py`
 - `probe_seed_pdfs.py`
 - `probe_team_extraction_readiness.py`
+- `profile_roster_promotion_unsafe_families.py`
 - `reconcile_division_roster_pdf.py`
 - `smoke_pkf_tests.py`
 
