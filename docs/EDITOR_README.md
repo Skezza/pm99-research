@@ -74,11 +74,13 @@ This is the default editor surface and the primary workflow.
   team editor card. This applies a safe indexed-name alias sync for the selected
   JUG record and can optionally apply an elite visible-skill preset in one step.
   Fixed-byte promotions stay size-stable and guard-railed: unresolved slot families
-  are skipped, but the confirmed `parser_text_spill_salvage` and
-  `parser_text_spill_no_alias_sync` families are now writable when parser windows
-  stay local (`first >= 5`, `last <= 128`, `diff <= 128`). The first keeps alias
-  sync when sync windows also pass; the second intentionally skips alias sync when
-  that is the only failing guard.
+  are skipped, but the confirmed `parser_text_spill_salvage`,
+  `parser_text_spill_no_alias_sync`, and `parser_text_spill_prefix_clip` families
+  are now writable under strict parser-window rules. The first keeps alias sync
+  when sync windows also pass; the second intentionally skips alias sync when that
+  is the only failing guard; the third clips parser bytes to offsets `5..128` when
+  full parser output spills outside the local window but the clipped payload still
+  parses to a reasonable target name.
 - `Batch Import CSV` is now migrated into the refreshed team editor card and
   runs the same shared roster-batch parser-backed validation path as CLI.
 - `Batch Import CSV` now includes a row-level plan preview pane before staging.
@@ -165,8 +167,8 @@ python -m app.cli player-name-capacity DBDAT/JUG98030.FDI --name "Bryan SMALL" -
 python -m app.cli team-roster-promote-player DBDAT/EQ98030.FDI --team "Stoke C." --slot 13 --new-name "Joe SKERRATT" --elite-skills --fixed-name-bytes
 python -m app.cli team-roster-promote-bulk-name DBDAT/EQ98030.FDI --team "Stoke C." --new-name "Joe Skerratt" --slot-limit 25 --fixed-name-bytes --dry-run
 python -m app.cli team-roster-promotion-safety DBDAT/EQ98030.FDI --team "Stoke C." --new-name "Joe Skerratt" --slot-limit 25 --json
-python scripts/profile_roster_promotion_unsafe_families.py DBDAT/EQ98030.FDI --player-file DBDAT/JUG98030.FDI --name "Joe Skerratt" --output-json /tmp/promo_after.json --print-top 12
-python scripts/profile_roster_promotion_unsafe_families.py DBDAT/EQ98030.FDI --player-file DBDAT/JUG98030.FDI --name "Joe Skerratt" --before-json /tmp/promo_before.json --output-json /tmp/promo_before_after.json --print-top 12
+python scripts/profile_roster_promotion_unsafe_families.py DBDAT/EQ98030.FDI --player-file DBDAT/JUG98030.FDI --name "Joe Skerratt" --output-json /tmp/promo_after.json --print-top 12 --print-shape-top 8
+python scripts/profile_roster_promotion_unsafe_families.py DBDAT/EQ98030.FDI --player-file DBDAT/JUG98030.FDI --name "Joe Skerratt" --before-json /tmp/promo_before.json --output-json /tmp/promo_before_after.json --print-top 12 --print-shape-top 8
 python -m app.cli team-roster-export-template DBDAT/EQ98030.FDI --team "Stoke C." --csv stoke_template.csv
 python -m app.cli team-roster-clone-linked DBDAT/EQ98030.FDI --source-team "Manchester Utd" --target-team "Stoke C." --slot-limit 25 --dry-run
 python -m app.cli team-roster-batch-edit DBDAT/EQ98030.FDI --player-file DBDAT/JUG98030.FDI --csv roster_plan.csv

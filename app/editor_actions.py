@@ -1388,6 +1388,7 @@ _FIXED_NAME_FAMILY_LENGTH_PREFIXED = "length_prefixed"
 _FIXED_NAME_FAMILY_PARSER_CANDIDATE = "parser_candidate"
 _FIXED_NAME_FAMILY_PARSER_TEXT_SPILL_SALVAGE = "parser_text_spill_salvage"
 _FIXED_NAME_FAMILY_PARSER_TEXT_SPILL_NO_ALIAS_SYNC = "parser_text_spill_no_alias_sync"
+_FIXED_NAME_FAMILY_PARSER_TEXT_SPILL_PREFIX_CLIP = "parser_text_spill_prefix_clip"
 
 
 @dataclass
@@ -1428,6 +1429,24 @@ def _candidate_change_profile(original: bytes, candidate: bytes) -> Tuple[int, i
     if not diffs:
         return 0, -1, -1
     return len(diffs), diffs[0], diffs[-1]
+
+
+def _clip_parser_candidate_prefix_window(
+    *,
+    original_payload: bytes,
+    parser_candidate: bytes,
+    clip_start: int = 5,
+    clip_last_inclusive: int = 128,
+) -> bytes:
+    if len(original_payload) != len(parser_candidate):
+        raise RuntimeError("Fixed-length parser clip requires payload sizes to match")
+    start = max(0, int(clip_start))
+    end = min(len(original_payload), int(clip_last_inclusive) + 1)
+    if end <= start:
+        return bytes(original_payload)
+    clipped = bytearray(original_payload)
+    clipped[start:end] = parser_candidate[start:end]
+    return bytes(clipped)
 
 
 def _replace_fixed_width_text_all(decoded_payload: bytes, old_text: str, new_text: str) -> Tuple[bytes, int]:
@@ -1602,6 +1621,32 @@ def _mutate_indexed_player_name_fixed_safe(
                     diagnostics.append("parser_candidate:blocked_by_text_replace")
                     continue
                 if not parser_window_ok:
+                    clipped = _clip_parser_candidate_prefix_window(
+                        original_payload=decoded_payload,
+                        parser_candidate=candidate,
+                        clip_start=5,
+                        clip_last_inclusive=128,
+                    )
+                    clip_diff_count, clip_first_diff, clip_last_diff = _candidate_change_profile(decoded_payload, clipped)
+                    clip_window_ok = clip_diff_count <= 128 and clip_first_diff >= 5 and clip_last_diff <= 128
+                    if clip_window_ok:
+                        try:
+                            clipped_applied_name = _player_display_name(PlayerRecord.from_bytes(clipped, payload_offset))
+                        except Exception as exc:
+                            diagnostics.append(f"parser_candidate:text_spill_clip_parse_error={exc}")
+                        else:
+                            if _is_reasonable_fixed_name_result(
+                                requested_name=new_name,
+                                applied_name=clipped_applied_name,
+                            ):
+                                return (
+                                    clipped,
+                                    clipped_applied_name,
+                                    _FIXED_NAME_FAMILY_PARSER_TEXT_SPILL_PREFIX_CLIP,
+                                )
+                            diagnostics.append(
+                                f"parser_candidate:text_spill_clip_unreasonable_name={clipped_applied_name!r}"
+                            )
                     diagnostics.append(
                         f"parser_candidate:text_spill_window_reject(diff={diff_count},first={first_diff},last={last_diff})"
                     )

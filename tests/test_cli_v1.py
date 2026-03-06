@@ -877,7 +877,7 @@ def test_cmd_team_roster_promotion_safety_profiles_skip_reasons(monkeypatch, cap
                     slot_number=1,
                     old_player_name="Old A",
                     new_player_name="Joe Skerratt",
-                    name_mutation_family="parser_text_spill_salvage",
+                    name_mutation_family="parser_text_spill_prefix_clip",
                 ),
             ],
             skipped_slots=[
@@ -929,7 +929,7 @@ def test_cmd_team_roster_promotion_safety_profiles_skip_reasons(monkeypatch, cap
     assert "already_target: 1" in out
     assert "promotion_error: 1" in out
     assert "Safe mutation families:" in out
-    assert "parser_text_spill_salvage: 1" in out
+    assert "parser_text_spill_prefix_clip: 1" in out
     assert "Sample skipped slots:" in out
 
 

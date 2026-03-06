@@ -10,12 +10,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from collections import Counter, defaultdict
 from dataclasses import asdict, is_dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(_REPO_ROOT) not in sys.path:
@@ -77,6 +78,76 @@ def _extract_unsafe_subfamily(reason_message: str) -> tuple[str, str, str, str]:
     return primary, primary, parser_token, detail
 
 
+_PARSER_WINDOW_PATTERN = re.compile(
+    r"parser_candidate:(?P<kind>[a-z_]+)\(diff=(?P<diff>\d+),first=(?P<first>-?\d+),last=(?P<last>-?\d+)\)"
+)
+
+
+def _extract_parser_window_shapes(detail: str) -> list[tuple[str, int, int, int]]:
+    rows: list[tuple[str, int, int, int]] = []
+    for match in _PARSER_WINDOW_PATTERN.finditer(str(detail or "")):
+        rows.append(
+            (
+                str(match.group("kind")),
+                int(match.group("diff")),
+                int(match.group("first")),
+                int(match.group("last")),
+            )
+        )
+    return rows
+
+
+def _band_numeric(value: int) -> str:
+    thresholds = [128, 256, 512, 1024, 2048, 4096]
+    for limit in thresholds:
+        if value <= limit:
+            return f"<= {limit}"
+    return "> 4096"
+
+
+def _counter_delta_from_maps(
+    before_counts: dict[str, int],
+    after_counts: dict[str, int],
+    *,
+    label: str,
+) -> list[dict[str, Any]]:
+    all_keys = sorted(set(before_counts.keys()) | set(after_counts.keys()))
+    rows: list[dict[str, Any]] = []
+    for item_key in all_keys:
+        before_value = int(before_counts.get(item_key, 0) or 0)
+        after_value = int(after_counts.get(item_key, 0) or 0)
+        rows.append(
+            {
+                label: str(item_key),
+                "before": before_value,
+                "after": after_value,
+                "delta": after_value - before_value,
+            }
+        )
+    rows.sort(key=lambda item: (-abs(int(item["delta"])), -int(item["after"]), str(item[label])))
+    return rows
+
+
+def _ranked_counter_delta(before: dict[str, Any], after: dict[str, Any], key: str, label: str) -> list[dict[str, Any]]:
+    before_counts = {str(k): int(v or 0) for k, v in dict(before.get(key, {}) or {}).items()}
+    after_counts = {str(k): int(v or 0) for k, v in dict(after.get(key, {}) or {}).items()}
+    return _counter_delta_from_maps(before_counts, after_counts, label=label)
+
+
+def _ranking_to_count_map(
+    rows: list[dict[str, Any]],
+    *,
+    key_builder: Callable[[dict[str, Any]], str],
+) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for row in list(rows or []):
+        key = str(key_builder(dict(row)))
+        if not key:
+            continue
+        counts[key] = int(row.get("count", 0) or 0)
+    return counts
+
+
 def _run_snapshot(
     *,
     team_file: str,
@@ -100,6 +171,8 @@ def _run_snapshot(
     primary_counts: Counter[str] = Counter()
     parser_counts: Counter[str] = Counter()
     detail_counts: Counter[str] = Counter()
+    parser_window_exact_counts: Counter[tuple[str, int, int, int]] = Counter()
+    parser_window_bucket_counts: Counter[tuple[str, int, str, str, str]] = Counter()
 
     samples_by_subfamily: dict[str, list[dict[str, Any]]] = defaultdict(list)
 
@@ -179,6 +252,19 @@ def _run_snapshot(
                         parser_counts[parser_token] += 1
                     detail_counts[detail or "no_detail"] += 1
 
+                    for kind, diff_value, first_value, last_value in _extract_parser_window_shapes(detail):
+                        parser_window_exact_counts[(kind, diff_value, first_value, last_value)] += 1
+                        span_value = max(0, int(last_value) - int(first_value) + 1)
+                        parser_window_bucket_counts[
+                            (
+                                str(kind),
+                                int(first_value),
+                                _band_numeric(int(last_value)),
+                                _band_numeric(int(diff_value)),
+                                _band_numeric(int(span_value)),
+                            )
+                        ] += 1
+
                     sample_rows = samples_by_subfamily[subfamily]
                     if len(sample_rows) < sample_limit:
                         sample_rows.append(
@@ -220,6 +306,40 @@ def _run_snapshot(
         {"detail": key, "count": int(count)}
         for key, count in sorted(detail_counts.items(), key=lambda item: (-int(item[1]), str(item[0])))
     ]
+    ranked_window_exact = [
+        {
+            "kind": str(kind),
+            "diff": int(diff_value),
+            "first": int(first_value),
+            "last": int(last_value),
+            "count": int(count),
+        }
+        for (kind, diff_value, first_value, last_value), count in sorted(
+            parser_window_exact_counts.items(),
+            key=lambda item: (-int(item[1]), str(item[0][0]), int(item[0][2]), int(item[0][3]), int(item[0][1])),
+        )
+    ]
+    ranked_window_buckets = [
+        {
+            "kind": str(kind),
+            "first": int(first_value),
+            "last_band": str(last_band),
+            "diff_band": str(diff_band),
+            "span_band": str(span_band),
+            "count": int(count),
+        }
+        for (kind, first_value, last_band, diff_band, span_band), count in sorted(
+            parser_window_bucket_counts.items(),
+            key=lambda item: (
+                -int(item[1]),
+                str(item[0][0]),
+                int(item[0][1]),
+                str(item[0][2]),
+                str(item[0][3]),
+                str(item[0][4]),
+            ),
+        )
+    ]
 
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -245,6 +365,8 @@ def _run_snapshot(
             "primary_ranking": ranked_primary,
             "parser_token_ranking": ranked_parser,
             "detail_ranking": ranked_details,
+            "parser_window_exact_ranking": ranked_window_exact,
+            "parser_window_bucket_ranking": ranked_window_buckets,
         },
     }
 
@@ -255,26 +377,6 @@ def _extract_snapshot_payload(data: Any) -> dict[str, Any]:
     if "after" in data and isinstance(data.get("after"), dict):
         return dict(data["after"])
     return dict(data)
-
-
-def _ranked_counter_delta(before: dict[str, Any], after: dict[str, Any], key: str, label: str) -> list[dict[str, Any]]:
-    before_counts = dict(before.get(key, {}) or {})
-    after_counts = dict(after.get(key, {}) or {})
-    all_keys = sorted(set(before_counts.keys()) | set(after_counts.keys()))
-    rows: list[dict[str, Any]] = []
-    for item_key in all_keys:
-        before_value = int(before_counts.get(item_key, 0) or 0)
-        after_value = int(after_counts.get(item_key, 0) or 0)
-        rows.append(
-            {
-                label: str(item_key),
-                "before": before_value,
-                "after": after_value,
-                "delta": after_value - before_value,
-            }
-        )
-    rows.sort(key=lambda item: (-abs(int(item["delta"])), -int(item["after"]), str(item[label])))
-    return rows
 
 
 def _build_before_after(before_snapshot: dict[str, Any], after_snapshot: dict[str, Any]) -> dict[str, Any]:
@@ -291,6 +393,21 @@ def _build_before_after(before_snapshot: dict[str, Any], after_snapshot: dict[st
         for item in list(after_fixed.get("subfamily_ranking", []) or [])
         if str(item.get("subfamily", ""))
     }
+
+    before_parser_window_bucket_counts = _ranking_to_count_map(
+        list(before_fixed.get("parser_window_bucket_ranking", []) or []),
+        key_builder=lambda item: (
+            f"{item.get('kind', '')}|first={int(item.get('first', 0) or 0)}|"
+            f"last={item.get('last_band', '')}|diff={item.get('diff_band', '')}|span={item.get('span_band', '')}"
+        ),
+    )
+    after_parser_window_bucket_counts = _ranking_to_count_map(
+        list(after_fixed.get("parser_window_bucket_ranking", []) or []),
+        key_builder=lambda item: (
+            f"{item.get('kind', '')}|first={int(item.get('first', 0) or 0)}|"
+            f"last={item.get('last_band', '')}|diff={item.get('diff_band', '')}|span={item.get('span_band', '')}"
+        ),
+    )
 
     before_totals = dict(before_snapshot.get("totals", {}) or {})
     after_totals = dict(after_snapshot.get("totals", {}) or {})
@@ -322,6 +439,11 @@ def _build_before_after(before_snapshot: dict[str, Any], after_snapshot: dict[st
         "safe_family_deltas": _ranked_counter_delta(before_snapshot, after_snapshot, "safe_family_counts", "family"),
         "reason_deltas": _ranked_counter_delta(before_snapshot, after_snapshot, "reason_counts", "reason_code"),
         "fixed_name_unsafe_subfamily_deltas": subfamily_delta,
+        "fixed_name_unsafe_parser_window_bucket_deltas": _counter_delta_from_maps(
+            before_parser_window_bucket_counts,
+            after_parser_window_bucket_counts,
+            label="parser_window_bucket",
+        ),
     }
 
 
@@ -344,6 +466,12 @@ def main() -> None:
     parser.add_argument("--before-json", help="Optional baseline snapshot JSON path for before/after comparison")
     parser.add_argument("--output-json", help="Optional report output path")
     parser.add_argument("--print-top", type=int, default=10, help="Number of top subfamilies to print")
+    parser.add_argument(
+        "--print-shape-top",
+        type=int,
+        default=6,
+        help="Number of top parser-window shape buckets to print",
+    )
     args = parser.parse_args()
 
     target_names = [str(item).strip() for item in list(args.target_names or []) if str(item).strip()]
@@ -376,6 +504,7 @@ def main() -> None:
         Path(str(args.output_json)).write_text(json.dumps(_jsonable(payload), indent=2) + "\n", encoding="utf-8")
 
     top_n = max(0, int(args.print_top or 0))
+    top_shape_n = max(0, int(args.print_shape_top or 0))
     totals = after_snapshot.get("totals", {})
     print(
         "Roster promotion unsafe profile: "
@@ -385,11 +514,22 @@ def main() -> None:
         f"fixed_name_unsafe={int(totals.get('fixed_name_unsafe_total', 0) or 0)}"
     )
 
-    subfamilies = list((after_snapshot.get("fixed_name_unsafe", {}) or {}).get("subfamily_ranking", []) or [])
+    fixed_name_unsafe = dict(after_snapshot.get("fixed_name_unsafe", {}) or {})
+    subfamilies = list(fixed_name_unsafe.get("subfamily_ranking", []) or [])
     if top_n and subfamilies:
         print("Top unsafe subfamilies:")
         for item in subfamilies[:top_n]:
             print(f"  {int(item.get('count', 0) or 0):6d}  {item.get('subfamily', '')}")
+
+    parser_window_buckets = list(fixed_name_unsafe.get("parser_window_bucket_ranking", []) or [])
+    if top_shape_n and parser_window_buckets:
+        print("Top parser-window buckets:")
+        for item in parser_window_buckets[:top_shape_n]:
+            print(
+                f"  {int(item.get('count', 0) or 0):6d}  {item.get('kind', '')} "
+                f"first={int(item.get('first', 0) or 0)} "
+                f"last={item.get('last_band', '')} diff={item.get('diff_band', '')} span={item.get('span_band', '')}"
+            )
 
     if args.before_json:
         delta = payload.get("delta", {})

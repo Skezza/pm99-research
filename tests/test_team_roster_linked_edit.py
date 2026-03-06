@@ -450,6 +450,56 @@ def test_mutate_indexed_player_name_fixed_safe_allows_parser_text_spill_no_alias
     assert family == "parser_text_spill_no_alias_sync"
 
 
+def test_mutate_indexed_player_name_fixed_safe_allows_parser_text_spill_prefix_clip(monkeypatch):
+    decoded_payload = b"A" * 700
+    text_candidate = b"C" * 700
+    parser_candidate = decoded_payload[:5] + (b"B" * 590) + decoded_payload[595:]
+    clipped_candidate = decoded_payload[:5] + parser_candidate[5:129] + decoded_payload[129:]
+
+    class _Record:
+        def __init__(self, name: str) -> None:
+            self.name = name
+
+    def fake_from_bytes(payload, _offset):
+        if payload == decoded_payload:
+            return _Record("Old Name")
+        if payload == text_candidate:
+            return _Record("Joe Skerratt suffix")
+        if payload == parser_candidate:
+            return _Record("Joe Skerratt")
+        if payload == clipped_candidate:
+            return _Record("Joe Skerratt")
+        raise AssertionError("unexpected payload")
+
+    monkeypatch.setattr(editor_actions.PlayerRecord, "from_bytes", staticmethod(fake_from_bytes))
+    monkeypatch.setattr(
+        editor_actions,
+        "replace_text_in_decoded",
+        lambda *_args, **_kwargs: (text_candidate, True),
+    )
+
+    def fake_length_prefixed(**_kwargs):
+        raise RuntimeError("Fixed-length rename could not parse given-name slot bounds")
+
+    monkeypatch.setattr(editor_actions, "_mutate_indexed_player_name_fixed_bytes", fake_length_prefixed)
+    monkeypatch.setattr(
+        editor_actions,
+        "_build_parser_fixed_name_candidate",
+        lambda **_kwargs: parser_candidate,
+    )
+    monkeypatch.setattr(editor_actions, "_sync_fixed_name_aliases", lambda **kwargs: kwargs["payload"])
+
+    mutated, applied_name, family = editor_actions._mutate_indexed_player_name_fixed_safe(
+        decoded_payload=decoded_payload,
+        payload_offset=0,
+        new_name="Joe Skerratt",
+    )
+
+    assert mutated == clipped_candidate
+    assert applied_name == "Joe Skerratt"
+    assert family == "parser_text_spill_prefix_clip"
+
+
 def test_mutate_indexed_player_name_fixed_safe_keeps_text_spill_guard_for_other_families(monkeypatch):
     decoded_payload = b"decoded_payload_"
     text_candidate = b"text_candidate__"
