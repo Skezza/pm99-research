@@ -1,36 +1,13 @@
-# Premier Manager 99 Database Editor
+PM99 Research
 
-This repository contains the active PM99 editor code in [app/](app/), the CLI in [app/cli.py](app/cli.py), the GUI in [app/gui.py](app/gui.py), tests in [tests/](tests/), and local working data in [DBDAT/](DBDAT/).
+Research workspace for Premier Manager 99 database formats and tooling.
 
-The project contract is defined by the root governance docs:
-- [codex.md](codex.md)
-- [project_plan.md](project_plan.md)
-- [technical_considerations.md](technical_considerations.md)
+This repository contains reverse-engineering work, experimental code, reference data, and development history used while building PM99 tooling. Code here may be incomplete, unstable, or superseded.
 
-Everything else should be reached through the documentation map in [docs/README.md](docs/README.md).
+Key Documents
 
-The canonical docs are:
-- [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)
-- [docs/EDITOR_README.md](docs/EDITOR_README.md)
-- [docs/OPERATIONS.md](docs/OPERATIONS.md)
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-- [docs/DATA_FORMATS.md](docs/DATA_FORMATS.md)
-- [docs/REFERENCE/PLAYER_FIELDS.md](docs/REFERENCE/PLAYER_FIELDS.md)
-- [docs/REFERENCE/TEAM_FIELDS.md](docs/REFERENCE/TEAM_FIELDS.md)
-
-Historical context is intentionally separated:
-- [docs/HISTORY/README.md](docs/HISTORY/README.md)
-- [docs/archive/README.md](docs/archive/README.md)
-
-Quick commands:
-```bash
-python -m app.cli info DBDAT/JUG98030.FDI
-python -m app.cli list DBDAT/JUG98030.FDI --limit 20
-python -m app.cli search DBDAT/JUG98030.FDI "Ronaldo"
-python -m app.gui
-pytest -q
-```
-
-Reference data retained for investigation and comparison:
-- [app/DBDAT/](app/DBDAT/)
-- [FDI-PKF/](FDI-PKF/)
+- "docs/GETTING_STARTED.md" — Entry point and overview for navigating the project.
+- "docs/ARCHITECTURE.md" — High-level structure of the editor and supporting tooling.
+- "docs/DATA_FORMATS.md" — Overview of known PM99 database file structures.
+- "docs/REFERENCE/PLAYER_FIELDS.md" — Reference for decoded player record fields.
+- "docs/REFERENCE/TEAM_FIELDS.md" — Reference for decoded team record fields.
