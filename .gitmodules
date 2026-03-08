@@ -1,0 +1,6 @@
+[submodule "upstream/pm99-skezmod-db-editor"]
+	path = upstream/pm99-skezmod-db-editor
+	url = git@github.com:Skezza/pm99-db-editor
+[submodule "upstream/pm99-skezmod-patcher"]
+	path = upstream/pm99-skezmod-patcher
+	url = git@github.com:Skezza/pm99-skezmod
