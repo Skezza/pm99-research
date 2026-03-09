@@ -16,6 +16,8 @@ venv/
 
 # Local workspace
 .local/
+DBDAT/*
+!DBDAT/.gitkeep
 
 # Prevent accidental commit of proprietary PM99 binaries.
 *.EXE
