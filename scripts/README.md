@@ -1,22 +1,12 @@
-# Active Scripts
+# Scripts
 
-This directory is intentionally trimmed to a small set of maintained wrappers:
+This directory is now PM99RE research/orchestration only.
 
-- `bulk_rename_players.py`
-- `bulk_rename_revert.py`
-- `probe_bio_trailer_stats.py`
-- `probe_dd6361_skill_patch.py`
-- `probe_eq_roster_playerid_linkage.py`
-- `probe_eq_team_roster_overlap_extract.py`
-- `probe_lineup_screenshot.py`
-- `probe_lineup_playerpage_crosscheck.py`
-- `probe_marker_neighborhoods.py`
-- `probe_pm99_install_binaries.py`
-- `probe_screenshot_rol_boxes.py`
-- `probe_seed_pdfs.py`
-- `probe_team_extraction_readiness.py`
-- `profile_roster_promotion_unsafe_families.py`
-- `reconcile_division_roster_pdf.py`
-- `smoke_pkf_tests.py`
+Product development wrappers:
+- `dev_editor.sh` runs commands in `upstream/pm99-skezmod-db-editor`
+- `dev_patcher.sh` runs commands in `upstream/pm99-skezmod-patcher`
+- `check_repo_boundary.py` enforces that PM99RE does not track editor product paths
 
-Legacy exploratory and one-off debug scripts were removed from the active tree. If a script here is not pulling its weight, it should be deleted rather than parked in a second archive.
+Research/probe scripts:
+- `probe_*`, `profile_*`, `reconcile_*`, and targeted patch/probe helpers remain here
+- These can use local `.local/` and `DBDAT/` data, but that data must stay untracked

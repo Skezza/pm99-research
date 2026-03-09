@@ -1,18 +1,42 @@
-PM99 Research
+# PM99RE (Research Workspace)
 
-Research workspace for Premier Manager 99 database formats and tooling.
+PM99RE is the research/integration repository for Premier Manager 99 reverse engineering.
 
-This repository contains reverse-engineering work, experimental code, reference data, and development history used while building PM99 tooling. Code here may be incomplete, unstable, or superseded.
+## Repository Roles
 
-Editor Source of Truth
+- `upstream/pm99-skezmod-db-editor` is the source of truth for editor product code.
+- `upstream/pm99-skezmod-patcher` is the source of truth for shipped patch tooling.
+- PM99RE keeps research notes, probes, validation scripts, and local workspace data.
 
-- Active editor implementation now lives in submodule `upstream/pm99-skezmod-db-editor`.
-- PM99RE remains the research workspace; merge editor code in the editor repo first, then bump submodule commit here.
+PM99RE must not carry parallel editor implementation code.
 
-Key Documents
+## Local Data Policy
 
-- "docs/GETTING_STARTED.md" — Entry point and overview for navigating the project.
-- "docs/ARCHITECTURE.md" — High-level structure of the editor and supporting tooling.
-- "docs/DATA_FORMATS.md" — Overview of known PM99 database file structures.
-- "docs/REFERENCE/PLAYER_FIELDS.md" — Reference for decoded player record fields.
-- "docs/REFERENCE/TEAM_FIELDS.md" — Reference for decoded team record fields.
+- `DBDAT/` exists as a local drop folder.
+- `.FDI`, `.PKF`, and `.EXE` files are ignored and must remain local-only.
+- `.local/` remains the primary local game/workspace area.
+
+## Daily Workflow
+
+1. Do reverse-engineering and experiments in PM99RE.
+2. Implement reusable editor changes in `upstream/pm99-skezmod-db-editor`.
+3. Implement reusable patch changes in `upstream/pm99-skezmod-patcher`.
+4. Merge upstream repos first.
+5. Bump PM99RE submodule pointers to merged commits.
+
+Helper wrappers:
+- `scripts/dev_editor.sh`
+- `scripts/dev_patcher.sh`
+
+## Guardrails
+
+- `scripts/check_repo_boundary.py` enforces PM99RE repository boundaries.
+- CI runs this check on pushes and pull requests.
+
+## Key Documents
+
+- `docs/GETTING_STARTED.md`
+- `docs/ARCHITECTURE.md`
+- `docs/DATA_FORMATS.md`
+- `docs/REFERENCE/PLAYER_FIELDS.md`
+- `docs/REFERENCE/TEAM_FIELDS.md`

@@ -9,7 +9,7 @@ These root-level docs define the project’s goals, constraints, and engineering
 - [../project_plan.md](../project_plan.md)
 - [../technical_considerations.md](../technical_considerations.md)
 
-## Canonical Docs
+## Canonical Docs (Research)
 
 Use these for current truth:
 - [CURRENT_ROADMAP.md](CURRENT_ROADMAP.md)
@@ -37,4 +37,6 @@ These are retained as archive artifacts and raw evidence, not maintained explana
 - [archive/verify.txt](archive/verify.txt)
 - [archive/breadcrumbs.csv](archive/breadcrumbs.csv)
 
-If any documentation conflicts with the code, prefer the implementation under [../app/](../app/).
+If documentation conflicts with implementation, prefer:
+- editor code in [../upstream/pm99-skezmod-db-editor/](../upstream/pm99-skezmod-db-editor/)
+- patcher code in [../upstream/pm99-skezmod-patcher/](../upstream/pm99-skezmod-patcher/)
