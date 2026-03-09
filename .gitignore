@@ -13,6 +13,7 @@ venv/
 *.swp
 *.swo
 *.orig
+PROMPT.md
 
 # Local workspace
 .local/

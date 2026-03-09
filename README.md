@@ -32,6 +32,7 @@ Helper wrappers:
 
 - `scripts/check_repo_boundary.py` enforces PM99RE repository boundaries.
 - CI runs this check on pushes and pull requests.
+- Local pre-commit hook runs the same check via `.githooks/pre-commit` (hooks path: `.githooks`).
 
 ## Key Documents
 
