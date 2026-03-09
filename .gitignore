@@ -17,6 +17,14 @@ venv/
 # Local workspace
 .local/
 
+# Prevent accidental commit of proprietary PM99 binaries.
+*.EXE
+*.exe
+*.FDI
+*.fdi
+*.PKF
+*.pkf
+
 # Data
 *.FDI.backup
 *.FDI.bak
