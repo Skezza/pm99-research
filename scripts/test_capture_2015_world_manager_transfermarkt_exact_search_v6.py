@@ -34,3 +34,9 @@ def test_exact_search_identity_accepts_a_documented_historical_alias() -> None:
         "Rosenborg BK", "/rosenborg-bk/startseite/verein/195",
         "documented-historical-transfermarkt-search-alias",
     )
+
+
+def test_documented_latin_spelling_keeps_the_published_name_traceable() -> None:
+    assert subject._pm99_manager_name(1704, "Balázs Bekő") == (
+        "Balazs Beko", "documented-pm99-latin-spelling-for-published-transfermarkt-name",
+    )

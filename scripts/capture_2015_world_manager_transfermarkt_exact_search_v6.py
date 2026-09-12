@@ -71,6 +71,15 @@ EXTRA_DOCUMENTED_ALIASES: dict[str, tuple[str, ...]] = {
     "Quilmes": ("Quilmes AC",),
 }
 
+# PM99 names are CP1252.  These two manager-history display names are Latin
+# but contain Central-European letters outside that code page.  The retained
+# form is an explicit source-linked Latin spelling, never automatic character
+# loss; the original published display name remains in the receipt.
+DOCUMENTED_PM99_LATIN_MANAGER_SPELLINGS = {
+    (1704, "Balázs Bekő"): "Balazs Beko",
+    (1709, "Tamás Pető"): "Tamas Peto",
+}
+
 
 class ExactSearchManagerError(ValueError):
     """The strict search source could not establish one historical manager."""
@@ -113,6 +122,15 @@ def _club_from_search_href(href: str) -> tuple[str, int]:
     if lane != "startseite" or not slug or club_id <= 0:
         raise ExactSearchManagerError("malformed-transfermarkt-club-search-result")
     return slug, club_id
+
+
+def _pm99_manager_name(carrier_id: int, published_name: str) -> tuple[str, str]:
+    if v5._safe_manager_name(published_name):
+        return published_name, "published-transfermarkt-display-name"
+    spelling = DOCUMENTED_PM99_LATIN_MANAGER_SPELLINGS.get((carrier_id, published_name))
+    if spelling and v5._safe_manager_name(spelling):
+        return spelling, "documented-pm99-latin-spelling-for-published-transfermarkt-name"
+    raise ExactSearchManagerError("published manager display name requires a reviewed PM99 Latin spelling")
 
 
 def _prior_attempted_carriers(prior: Mapping[str, Any], *, candidate_sha: str, wikipedia_sha: str) -> set[int]:
@@ -179,9 +197,8 @@ def capture(
             manager_url = f"{opening.BASE_URL}/{pinned_slug}/mitarbeiterhistorie/verein/{pinned_club_id}"
             manager_key = f"manager-history/2015-exact-search/{pinned_club_id}.html"
             manager_payload = manager_history_cache.get(manager_url, manager_key)
-            manager_name, manager_id = history.manager_at_date(manager_payload, v5.AS_OF)
-            if not v5._safe_manager_name(manager_name):
-                raise ExactSearchManagerError("published manager display name requires a reviewed PM99 Latin spelling")
+            published_manager_name, manager_id = history.manager_at_date(manager_payload, v5.AS_OF)
+            manager_name, spelling_method = _pm99_manager_name(carrier_id, published_manager_name)
             rows.append({
                 "carrier_id": carrier_id,
                 "source_club_name": club_name,
@@ -190,6 +207,8 @@ def capture(
                 },
                 "snapshot_as_of": v5.AS_OF.isoformat(),
                 "manager_name": manager_name,
+                "published_manager_name": published_manager_name,
+                "pm99_spelling_method": spelling_method,
                 "source_name": "Transfermarkt published club manager history",
                 "source_url": manager_url,
                 "source_snapshot_sha256": manager_history_cache.used[manager_key]["sha256"],
