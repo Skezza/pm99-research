@@ -219,7 +219,7 @@ def _source_player(
         }
     position = _broad_position(fact.get("published_profile_position")) or _broad_position(row.get("source_position_group"))
     nationality_label = str(fact.get("published_nationality_label") or "").strip()
-    nationality = squads.NATIONALITY_CODES.get(nationality_label, "UNK")
+    nationality = tail_squads.NATIONALITY_CODES.get(nationality_label, "UNK")
     unresolved = ["shirt_number", "weight_kg"]
     if fact.get("published_birth_date") is None:
         unresolved.append("birth_date")

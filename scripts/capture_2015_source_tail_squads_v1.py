@@ -141,6 +141,29 @@ FOOTBALLSQUADS_CAPACITY_FALLBACKS: dict[int, dict[str, str]] = {
     },
 }
 
+# The shared early source parser predates this all-country capture and only
+# knows a small nationality table.  These are exact Transfermarkt image-title
+# labels observed in this cached 2015 source set, translated to the PM99
+# recipe codes already recognised by the compiler.  They repair a parser-map
+# omission; they do not infer nationality from a name, club, or league.
+NATIONALITY_CODES = {
+    **squads.NATIONALITY_CODES,
+    "Algeria": "ALG", "Angola": "ANG", "Australia": "AUS", "Austria": "AUT",
+    "Belgium": "BEL", "Bosnia-Herzegovina": "BIH", "Cameroon": "CMR",
+    "Cape Verde": "CPV", "Chad": "CHA", "Chile": "CHI", "China": "CHN", "Congo": "CGO",
+    "Costa Rica": "CRC", "Cote d'Ivoire": "CIV", "Curacao": "CUR", "Czech Republic": "CZE",
+    "Djibouti": "DJI", "DR Congo": "COD",
+    "Egypt": "EGY", "Gabon": "GAB", "Greece": "GRE", "Grenada": "GRN",
+    "Guinea": "GUI", "Hungary": "HUN", "Iran": "IRN", "Iraq": "IRQ",
+    "Ireland": "IRL", "Jamaica": "JAM", "Japan": "JPN", "Korea, South": "KOR",
+    "Kosovo": "KSV", "Kyrgyzstan": "KGZ", "Lithuania": "LTU", "Luxembourg": "LUX",
+    "Mali": "MLI", "Northern Ireland": "NIR", "Panama": "PAN", "Poland": "POL",
+    "Scotland": "SCO", "Senegal": "SEN", "Sierra Leone": "SLE", "South Africa": "RSA",
+    "Suriname": "SUR", "Sweden": "SWE", "Switzerland": "SUI", "Syria": "SYR",
+    "The Gambia": "GAM", "Tunisia": "TUN", "Türkiye": "TUR", "United States": "USA",
+    "Uzbekistan": "UZB", "Yemen": "YEM", "Zambia": "ZAM",
+}
+
 
 class SourceTailSquadError(ValueError):
     """An exact dated squad cannot be established for a planned carrier."""
@@ -243,6 +266,54 @@ def _footballsquads_fallback(
     return record
 
 
+def _restore_transfermarkt_nationalities(payload: bytes, players: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Restore published country labels dropped by the legacy squad parser.
+
+    ``supplement_2015_ntf_with_transfermarkt.parse_squad`` safely parses the
+    player table but maps an unknown nationality label straight to ``UNK``.
+    Its parser still retains the exact label in the same cached table row, so
+    recover it only by the parser's exact person key.  Conflicting duplicate
+    source rows fail closed instead of selecting a nationality arbitrarily.
+    """
+
+    parser = squads.SquadParser()
+    parser.feed(payload.decode("utf-8", errors="replace"))
+    nationality_by_player: dict[str, str] = {}
+    for row in parser.rows:
+        name = str(row.get("player_name") or "").strip()
+        images = row.get("images") or []
+        label = str(images[3] if len(images) > 3 and images[3] is not None else "").strip()
+        if not name or not label:
+            continue
+        key = squads._person_key(name)
+        previous = nationality_by_player.setdefault(key, label)
+        if previous != label:
+            raise SourceTailSquadError(f"conflicting published nationalities for {name!r}")
+    repaired: list[dict[str, Any]] = []
+    for player in players:
+        row = dict(player)
+        if row.get("nationality") != "UNK":
+            repaired.append(row)
+            continue
+        label = nationality_by_player.get(squads._person_key(str(row.get("name") or "")))
+        code = NATIONALITY_CODES.get(label or "")
+        if code is None:
+            repaired.append(row)
+            continue
+        row["nationality"] = code
+        row["unresolved_fields"] = [
+            field for field in row.get("unresolved_fields") or [] if field != "nationality_code"
+        ]
+        repaired.append(row)
+    return repaired
+
+
+def _parse_transfermarkt_squad(payload: bytes) -> list[dict[str, Any]]:
+    """Parse a dated squad and retain every published map-supported country."""
+
+    return _restore_transfermarkt_nationalities(payload, squads.parse_squad(payload))
+
+
 def _capture_one(
     *,
     assignment: Mapping[str, Any],
@@ -275,7 +346,7 @@ def _capture_one(
     pinned_slug, pinned_id, pinned_url = snapshot_v5._pinned_identity(squad_payload)
     if pinned_id != club_id:
         raise SourceTailSquadError("historical-squad-club-id-does-not-match-accepted-search-result")
-    players = squads.parse_squad(squad_payload)
+    players = _parse_transfermarkt_squad(squad_payload)
     capacity = int(assignment["fixed_roster_slot_count"])
     fallback = None
     if len(players) < capacity:
@@ -323,7 +394,7 @@ def _capture_one(
                 "source_sha256": fallback["source_sha256"],
                 "source_season_label": "2015/16",
                 "pinned_transfermarkt_attempt_url": pinned_url,
-                "pinned_transfermarkt_player_count": len(squads.parse_squad(squad_payload)),
+                "pinned_transfermarkt_player_count": len(_parse_transfermarkt_squad(squad_payload)),
                 "reason": "Transfermarkt exact historical squad was short; reviewed exact dated FootballSquads source fills immutable capacity",
             }
         } if fallback is not None else {}),

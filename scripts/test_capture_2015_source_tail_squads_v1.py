@@ -1,8 +1,10 @@
 """Tests for exact search identity in the 2015 source-tail squad capture."""
 
 from scripts.capture_2015_source_tail_squads_v1 import (
+    NATIONALITY_CODES,
     SourceTailSquadError,
     _accepted_search_identity,
+    _restore_transfermarkt_nationalities,
     _search_request,
     _pinned_transfermarkt_identity,
 )
@@ -56,4 +58,23 @@ def test_pinned_historic_identity_is_a_specific_club_not_a_name_search() -> None
         "display_name": "NK Inker",
         "evidence_url": "https://www.transfermarkt.com/nk-inker/spielplan/verein/918/saison_id/2015/plus/1",
         "slug": "nk-inker",
+    }
+
+
+def test_published_transfermarkt_country_label_repairs_a_parser_map_gap() -> None:
+    payload = b'''<table class="items"><tr><td>-</td><td><a href="/uros/profil/spieler/1">Uros Djeric</a>
+    Centre-Forward</td><td></td><td><img title="Bosnia-Herzegovina"/></td></tr></table>'''
+    players = [{
+        "name": "Uros Djeric", "nationality": "UNK", "position": "F",
+        "unresolved_fields": ["birth_date", "nationality_code"],
+    }]
+    assert _restore_transfermarkt_nationalities(payload, players) == [{
+        "name": "Uros Djeric", "nationality": "BIH", "position": "F",
+        "unresolved_fields": ["birth_date"],
+    }]
+
+
+def test_opening_profile_country_labels_use_the_same_declared_source_map() -> None:
+    assert {label: NATIONALITY_CODES[label] for label in ("Cape Verde", "Chad", "Curacao", "Djibouti")} == {
+        "Cape Verde": "CPV", "Chad": "CHA", "Curacao": "CUR", "Djibouti": "DJI",
     }
