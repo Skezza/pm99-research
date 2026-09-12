@@ -28,3 +28,23 @@ def test_fails_when_the_clean_base_has_insufficient_unlinked_manager_records() -
         assert "lacks enough unlinked" in str(error)
     else:
         raise AssertionError("expected allocation to fail")
+
+
+def test_pinned_transfermarkt_snapshot_is_a_dated_manager_source() -> None:
+    package = {
+        "managers": [],
+        "clubs": [{"carrier_id": 7, "manager_id": "manager-7"}],
+    }
+    source = {
+        "schema_version": allocation.TRANSFERMARKT_SNAPSHOT_HISTORY_SCHEMA,
+        "rows": [{"carrier_id": 7, "manager_name": "Historical Manager"}],
+    }
+
+    result = allocation._foreign_manager_sources(package, [source])
+
+    assert result == {
+        7: {
+            "status": "dated-transfermarkt-pinned-2015-squad-manager-history-source",
+            "name": "Historical Manager",
+        }
+    }

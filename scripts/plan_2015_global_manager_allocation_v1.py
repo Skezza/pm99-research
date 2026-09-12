@@ -40,6 +40,9 @@ SCHEMA = "pm99-world-2015-global-manager-allocation-v1"
 PACKAGE_SCHEMA = "pm99-season-package-v2"
 HISTORY_SCHEMA = "pm99-world-2015-wikipedia-manager-history-v2"
 MULTILINGUAL_HISTORY_SCHEMA = "pm99-world-2015-multilingual-wikipedia-manager-history-v3"
+TRANSFERMARKT_SNAPSHOT_HISTORY_SCHEMA = (
+    "pm99-world-2015-transfermarkt-squad-snapshot-manager-history-v5"
+)
 
 
 class AllocationError(ValueError):
@@ -157,11 +160,34 @@ def _foreign_manager_sources(
                 "status": "existing-dated-source",
                 "name": " ".join(str(manager.get("name") or "").split()),
             }
+    def add_source(carrier_id: int, status: str, name: str) -> None:
+        existing = result.get(carrier_id)
+        candidate = {"status": status, "name": name}
+        if existing is not None and existing != candidate:
+            raise AllocationError(
+                f"conflicting dated manager sources for foreign carrier {carrier_id}"
+            )
+        result[carrier_id] = candidate
+
     accepted = {
         "dated-historical-club-page-manager-match": "dated-english-wikipedia-history-source",
         "dated-national-wikipedia-manager-match": "dated-national-wikipedia-history-source",
     }
     for history in histories:
+        if history.get("schema_version") == TRANSFERMARKT_SNAPSHOT_HISTORY_SCHEMA:
+            for row in history.get("rows", []):
+                if not isinstance(row, Mapping):
+                    continue
+                carrier_id = row.get("carrier_id")
+                name = " ".join(str(row.get("manager_name") or "").split())
+                if not isinstance(carrier_id, int) or not name:
+                    raise AllocationError("Transfermarkt snapshot history has a malformed manager row")
+                add_source(
+                    carrier_id,
+                    "dated-transfermarkt-pinned-2015-squad-manager-history-source",
+                    name,
+                )
+            continue
         for row in history.get("rows", []):
             if not isinstance(row, Mapping):
                 continue
@@ -170,7 +196,7 @@ def _foreign_manager_sources(
                 continue
             name = " ".join(str((row.get("facts") or {}).get("manager") or "").split())
             if name:
-                result[int(row["carrier_id"])] = {"status": status, "name": name}
+                add_source(int(row["carrier_id"]), status, name)
         for row in history.get("rows", []):
             if not isinstance(row, Mapping):
                 continue
@@ -178,15 +204,17 @@ def _foreign_manager_sources(
                 continue
             name = " ".join(str((row.get("facts") or {}).get("manager") or "").split())
             if name:
-                result[int(row["carrier_id"])] = {
-                    "status": "target-manager-pm99-transliteration-required", "name": name,
-                }
+                add_source(
+                    int(row["carrier_id"]),
+                    "target-manager-pm99-transliteration-required", name,
+                )
     return result
 
 
 def build(
     *, package: Mapping[str, Any], history: Mapping[str, Any],
     multilingual_history: Mapping[str, Any] | None = None,
+    transfermarkt_snapshot_history: Mapping[str, Any] | None = None,
     eq_data: bytes, ent_data: bytes,
 ) -> dict[str, Any]:
     if package.get("schema_version") != PACKAGE_SCHEMA:
@@ -195,6 +223,14 @@ def build(
         raise AllocationError(f"history receipt must use {HISTORY_SCHEMA}")
     if multilingual_history is not None and multilingual_history.get("schema_version") != MULTILINGUAL_HISTORY_SCHEMA:
         raise AllocationError(f"multilingual history receipt must use {MULTILINGUAL_HISTORY_SCHEMA}")
+    if (
+        transfermarkt_snapshot_history is not None
+        and transfermarkt_snapshot_history.get("schema_version") != TRANSFERMARKT_SNAPSHOT_HISTORY_SCHEMA
+    ):
+        raise AllocationError(
+            "Transfermarkt snapshot history receipt must use "
+            f"{TRANSFERMARKT_SNAPSHOT_HISTORY_SCHEMA}"
+        )
     teams = _live_teams(eq_data)
     foreign_carriers = {
         int(club["carrier_id"])
@@ -206,7 +242,12 @@ def build(
         raise AllocationError(f"world package has absent live team carrier {missing[0]}")
     allocation, displaced = _allocate(teams, _manager_candidates(ent_data))
     manager_sources = _foreign_manager_sources(
-        package, [history, *([multilingual_history] if multilingual_history is not None else [])]
+        package,
+        [
+            history,
+            *([multilingual_history] if multilingual_history is not None else []),
+            *([transfermarkt_snapshot_history] if transfermarkt_snapshot_history is not None else []),
+        ],
     )
     non_club_foreign_carriers = {
         int(row["carrier_id"])
@@ -286,6 +327,7 @@ def main() -> int:
     parser.add_argument("--world-package", required=True, type=Path)
     parser.add_argument("--history-receipt", required=True, type=Path)
     parser.add_argument("--multilingual-history", type=Path)
+    parser.add_argument("--transfermarkt-snapshot-history", type=Path)
     parser.add_argument("--base-tree", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
@@ -294,20 +336,34 @@ def main() -> int:
     package_raw = args.world_package.read_bytes()
     history_raw = args.history_receipt.read_bytes()
     multilingual_raw = args.multilingual_history.read_bytes() if args.multilingual_history else None
+    transfermarkt_snapshot_raw = (
+        args.transfermarkt_snapshot_history.read_bytes()
+        if args.transfermarkt_snapshot_history else None
+    )
     package = json.loads(package_raw.decode("utf-8"))
     history = json.loads(history_raw.decode("utf-8"))
     multilingual_history = json.loads(multilingual_raw.decode("utf-8")) if multilingual_raw else None
+    transfermarkt_snapshot_history = (
+        json.loads(transfermarkt_snapshot_raw.decode("utf-8"))
+        if transfermarkt_snapshot_raw else None
+    )
     if package_raw != canonical_json_bytes(package):
         parser.error("world package must use canonical JSON bytes")
     if history_raw != canonical_json_bytes(history):
         parser.error("history receipt must use canonical JSON bytes")
     if multilingual_raw is not None and multilingual_raw != canonical_json_bytes(multilingual_history):
         parser.error("multilingual history receipt must use canonical JSON bytes")
+    if (
+        transfermarkt_snapshot_raw is not None
+        and transfermarkt_snapshot_raw != canonical_json_bytes(transfermarkt_snapshot_history)
+    ):
+        parser.error("Transfermarkt snapshot history receipt must use canonical JSON bytes")
     eq_path = args.base_tree / "DBDAT" / "EQ98030.FDI"
     ent_path = args.base_tree / "DBDAT" / "ENT98030.FDI"
     try:
         receipt = build(
             package=package, history=history, multilingual_history=multilingual_history,
+            transfermarkt_snapshot_history=transfermarkt_snapshot_history,
             eq_data=eq_path.read_bytes(), ent_data=ent_path.read_bytes(),
         )
     except (AllocationError, OSError) as exc:
@@ -316,6 +372,10 @@ def main() -> int:
         "world_package_sha256": hashlib.sha256(package_raw).hexdigest(),
         "history_receipt_sha256": hashlib.sha256(history_raw).hexdigest(),
         "multilingual_history_sha256": hashlib.sha256(multilingual_raw).hexdigest() if multilingual_raw else None,
+        "transfermarkt_snapshot_history_sha256": (
+            hashlib.sha256(transfermarkt_snapshot_raw).hexdigest()
+            if transfermarkt_snapshot_raw else None
+        ),
         "EQ98030.FDI_sha256": _sha256(eq_path),
         "ENT98030.FDI_sha256": _sha256(ent_path),
     }
