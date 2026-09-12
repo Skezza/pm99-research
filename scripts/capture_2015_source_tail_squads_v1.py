@@ -4,7 +4,8 @@
 The input plan has already proved target-season league membership and unique
 carrier reservations.  This step adds the missing roster evidence by accepting
 only an exact (or documented-name-alias) Transfermarkt search result, pinning
-its ``saison_id/2015`` squad page, and checking immutable PM99 capacity.
+the Transfermarkt selector that actually represents each target season, and
+checking immutable PM99 capacity.
 It creates source facts only and cannot write a database.
 """
 
@@ -13,6 +14,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import sys
 from collections import Counter
 from datetime import date
@@ -20,13 +22,13 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 from urllib.parse import urlencode
 
+from bs4 import BeautifulSoup
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts import capture_2015_world_manager_transfermarkt_exact_search_v6 as search_v6  # noqa: E402
-from scripts import capture_2015_world_manager_transfermarkt_snapshot_v5 as snapshot_v5  # noqa: E402
 from scripts import capture_transfermarkt_opening_lineups_v1 as opening  # noqa: E402
 from scripts import capture_footballsquads_season as footballsquads  # noqa: E402
 from scripts import supplement_2015_ntf_with_transfermarkt as squads  # noqa: E402
@@ -148,21 +150,35 @@ FOOTBALLSQUADS_CAPACITY_FALLBACKS: dict[int, dict[str, str]] = {
 # omission; they do not infer nationality from a name, club, or league.
 NATIONALITY_CODES = {
     **squads.NATIONALITY_CODES,
-    "Algeria": "ALG", "Angola": "ANG", "Australia": "AUS", "Austria": "AUT",
-    "Belgium": "BEL", "Bosnia-Herzegovina": "BIH", "Cameroon": "CMR",
+    "Algeria": "ALG", "Angola": "ANG", "Antigua and Barbuda": "ATG", "Australia": "AUS", "Austria": "AUT",
+    "Barbados": "BRB", "Belgium": "BEL", "Bosnia-Herzegovina": "BIH", "Cameroon": "CMR", "Canada": "CAN",
     "Cape Verde": "CPV", "Chad": "CHA", "Chile": "CHI", "China": "CHN", "Congo": "CGO",
     "Costa Rica": "CRC", "Cote d'Ivoire": "CIV", "Curacao": "CUR", "Czech Republic": "CZE",
     "Djibouti": "DJI", "DR Congo": "COD",
-    "Egypt": "EGY", "Gabon": "GAB", "Greece": "GRE", "Grenada": "GRN",
+    "Egypt": "EGY", "Equatorial Guinea": "EQG", "Estonia": "EST", "Gabon": "GAB", "Gibraltar": "GIB", "Greece": "GRE", "Grenada": "GRN",
     "Guinea": "GUI", "Hungary": "HUN", "Iran": "IRN", "Iraq": "IRQ",
-    "Ireland": "IRL", "Jamaica": "JAM", "Japan": "JPN", "Korea, South": "KOR",
+    "Honduras": "HON", "Ireland": "IRL", "Jamaica": "JAM", "Japan": "JPN", "Korea, South": "KOR",
     "Kosovo": "KSV", "Kyrgyzstan": "KGZ", "Lithuania": "LTU", "Luxembourg": "LUX",
-    "Mali": "MLI", "Northern Ireland": "NIR", "Panama": "PAN", "Poland": "POL",
-    "Scotland": "SCO", "Senegal": "SEN", "Sierra Leone": "SLE", "South Africa": "RSA",
-    "Suriname": "SUR", "Sweden": "SWE", "Switzerland": "SUI", "Syria": "SYR",
+    "Mali": "MLI", "Montserrat": "MSR", "Morocco": "MAR", "New Zealand": "NZL", "Northern Ireland": "NIR", "Panama": "PAN", "Poland": "POL",
+    "Scotland": "SCO", "Senegal": "SEN", "Sierra Leone": "SLE", "South Africa": "RSA", "St. Kitts & Nevis": "SKN", "St. Lucia": "LCA",
+    "Suriname": "SUR", "Sweden": "SWE", "Switzerland": "SUI", "Syria": "SYR", "Trinidad and Tobago": "TRI",
     "The Gambia": "GAM", "Tunisia": "TUN", "Türkiye": "TUR", "United States": "USA",
-    "Uzbekistan": "UZB", "Yemen": "YEM", "Zambia": "ZAM",
+    "Uzbekistan": "UZB", "Vietnam": "VIE", "Yemen": "YEM", "Zambia": "ZAM",
 }
+
+# Transfermarkt's ``saison_id`` is a start-year selector for European seasons,
+# but a *following calendar year* selector in these leagues.  The old blanket
+# ``saison_id/2015`` rule therefore returned title-labelled 2016 squads here.
+# Use the prior selector, which the source page itself labels 2015.  This is a
+# source-calendar convention, not an editorial roster choice.
+CALENDAR_YEAR_2015_SOURCE_SELECTOR_COUNTRIES = {
+    "bolivia", "ecuador", "finland", "kazakhstan", "lithuania", "uruguay", "venezuela",
+}
+
+PINNED_SQUAD_URL_RE = re.compile(
+    r"(?:https?:)?//(?:www\.)?transfermarkt\.[^/]+/([^/]+)/kader/verein/([1-9]\d*)/saison_id/(\d+)(?:[/?#\"']|$)",
+    re.I,
+)
 
 
 class SourceTailSquadError(ValueError):
@@ -309,9 +325,96 @@ def _restore_transfermarkt_nationalities(payload: bytes, players: list[dict[str,
 
 
 def _parse_transfermarkt_squad(payload: bytes) -> list[dict[str, Any]]:
-    """Parse a dated squad and retain every published map-supported country."""
+    """Parse a dated squad without collapsing distinct same-named people.
 
+    The inherited parser keys its result by normalised display name.  That is
+    fine for its original supplementation job, but a historical roster can
+    legitimately contain two Gustavo Fernándezes.  The published profile ID
+    is the identity key here, so both source rows survive.
+    """
+
+    page = BeautifulSoup(payload, "html.parser")
+    result: dict[str, dict[str, Any]] = {}
+    for row in page.select("table.items > tbody > tr"):
+        link = row.select_one('a[href*="/profil/spieler/"]')
+        match = re.search(r"/profil/spieler/(\d+)", str(link.get("href") or "")) if link else None
+        cells = row.find_all("td", recursive=False)
+        name = link.get_text(" ", strip=True) if link is not None else ""
+        if match is None or not name or len(cells) < 4:
+            continue
+        position = next(
+            (parsed for cell in cells[1:] if (parsed := squads._position(cell.get_text(" ", strip=True))) is not None),
+            None,
+        )
+        if position is None:
+            continue
+        number = cells[0].get_text(" ", strip=True)
+        shirt_number = int(number) if number.isdigit() and 0 <= int(number) <= 99 else None
+        nation_image = row.select_one("img.flaggenrahmen")
+        nationality_label = str(
+            nation_image.get("title") or nation_image.get("alt") or ""
+        ).strip() if nation_image is not None else ""
+        nationality = NATIONALITY_CODES.get(nationality_label, "UNK")
+        unresolved = ["birth_date", "height_cm", "weight_kg"]
+        if shirt_number is None:
+            unresolved.append("shirt_number")
+        if nationality == "UNK":
+            unresolved.append("nationality_code")
+        player = {
+            "shirt_number": shirt_number,
+            "name": name,
+            "nationality": nationality,
+            "position": position,
+            "height_cm": None,
+            "weight_kg": None,
+            "birth_date": None,
+            "unresolved_fields": unresolved,
+            "source_player_id": match.group(1),
+        }
+        prior = result.get(match.group(1))
+        if prior is not None and prior != player:
+            raise SourceTailSquadError(f"conflicting source rows for Transfermarkt player {match.group(1)}")
+        result[match.group(1)] = player
+    if result:
+        return [
+            player
+            for _source_id, player in sorted(
+                result.items(), key=lambda item: (item[1]["position"], item[1]["name"], int(item[0]))
+            )
+        ]
+    # Retain the tested legacy parser only for archived structural variants
+    # that do not expose contemporary ``table.items > tbody > tr`` markup.
     return _restore_transfermarkt_nationalities(payload, squads.parse_squad(payload))
+
+
+def _source_saison_id(assignment: Mapping[str, Any]) -> int:
+    country = str(assignment.get("family") or "")
+    return 2014 if country in CALENDAR_YEAR_2015_SOURCE_SELECTOR_COUNTRIES else 2015
+
+
+def _squad_cache_key(*, carrier_id: int, club_id: int, source_saison_id: int) -> str:
+    """Keep the legacy verified 2015 cache immutable; segregate corrections."""
+
+    suffix = "" if source_saison_id == 2015 else f"-selector-{source_saison_id}"
+    return f"squad/2015/{carrier_id}-{club_id}{suffix}.html"
+
+
+def _pinned_squad_identity(payload: bytes, *, source_saison_id: int) -> tuple[str, int, str]:
+    """Read one exact team identity from either reviewed historical selector."""
+
+    matches = {
+        (match.group(1), int(match.group(2)))
+        for match in PINNED_SQUAD_URL_RE.finditer(payload.decode("utf-8", errors="replace"))
+        if int(match.group(3)) == source_saison_id
+    }
+    if len(matches) != 1:
+        raise SourceTailSquadError(
+            f"pinned squad cache has {len(matches)} unique Transfermarkt club identities for selector {source_saison_id}"
+        )
+    slug, club_id = next(iter(matches))
+    return slug, club_id, (
+        f"https://www.transfermarkt.com/{slug}/kader/verein/{club_id}/saison_id/{source_saison_id}"
+    )
 
 
 def _capture_one(
@@ -322,6 +425,7 @@ def _capture_one(
     footballsquads_source_root: Path | None,
 ) -> dict[str, Any]:
     carrier_id = int(assignment["carrier_id"])
+    source_saison_id = _source_saison_id(assignment)
     target = _target(assignment)
     title = str(target["article_title"])
     pinned_identity = _pinned_transfermarkt_identity(title)
@@ -341,9 +445,16 @@ def _capture_one(
         slug, club_id = str(pinned_identity["slug"]), int(pinned_identity["club_id"])
         identity_method = "documented-pinned-transfermarkt-historic-club-id"
         identity_evidence_url = search_url
-    squad_url = f"{squads.BASE_URL}/{slug}/kader/verein/{club_id}/saison_id/2015"
-    squad_payload = squad_cache.get(squad_url, f"squad/2015/{carrier_id}-{club_id}.html")
-    pinned_slug, pinned_id, pinned_url = snapshot_v5._pinned_identity(squad_payload)
+    squad_url = f"{squads.BASE_URL}/{slug}/kader/verein/{club_id}/saison_id/{source_saison_id}"
+    squad_payload = squad_cache.get(
+        squad_url,
+        _squad_cache_key(
+            carrier_id=carrier_id, club_id=club_id, source_saison_id=source_saison_id,
+        ),
+    )
+    pinned_slug, pinned_id, pinned_url = _pinned_squad_identity(
+        squad_payload, source_saison_id=source_saison_id,
+    )
     if pinned_id != club_id:
         raise SourceTailSquadError("historical-squad-club-id-does-not-match-accepted-search-result")
     players = _parse_transfermarkt_squad(squad_payload)
@@ -372,7 +483,10 @@ def _capture_one(
             pinned_url if fallback is None
             else f"https://github.com/footballcsv/cache.footballsquads/blob/HEAD/{fallback['source_path']}"
         ),
-        "source_season_label": "2015" if fallback is None else "2015/16",
+        "source_season_label": (
+            "2015-calendar" if fallback is None and source_saison_id == 2014
+            else "2015/16"
+        ),
         "source_sha256": (
             hashlib.sha256(squad_payload).hexdigest()
             if fallback is None else str(fallback["source_sha256"])
@@ -385,6 +499,7 @@ def _capture_one(
             "search_identity_method": identity_method,
             "transfermarkt_club_id": pinned_id,
             "transfermarkt_slug": pinned_slug,
+            "transfermarkt_saison_id": source_saison_id,
             **({"identity_evidence_url": identity_evidence_url} if identity_evidence_url else {}),
         },
         **({
@@ -446,7 +561,8 @@ def capture(
         },
         "policy": (
             "source-only; only a target-season membership reservation from the input plan is attempted; "
-            "exact Transfermarkt search display name or documented alias; pinned saison_id/2015 page; "
+            "exact Transfermarkt search display name or documented alias; pinned reviewed historical "
+            "Transfermarkt selector (2014 for declared calendar-year leagues, otherwise 2015); "
             "capacity must satisfy the immutable carrier; no current fallback and no PM99 write"
         ),
         "coverage": {

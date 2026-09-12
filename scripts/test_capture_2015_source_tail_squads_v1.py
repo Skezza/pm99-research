@@ -7,6 +7,8 @@ from scripts.capture_2015_source_tail_squads_v1 import (
     _restore_transfermarkt_nationalities,
     _search_request,
     _pinned_transfermarkt_identity,
+    _source_saison_id,
+    _squad_cache_key,
 )
 
 
@@ -77,4 +79,24 @@ def test_published_transfermarkt_country_label_repairs_a_parser_map_gap() -> Non
 def test_opening_profile_country_labels_use_the_same_declared_source_map() -> None:
     assert {label: NATIONALITY_CODES[label] for label in ("Cape Verde", "Chad", "Curacao", "Djibouti")} == {
         "Cape Verde": "CPV", "Chad": "CHA", "Curacao": "CUR", "Djibouti": "DJI",
+    }
+
+
+def test_calendar_league_uses_the_source_selector_that_is_labelled_2015() -> None:
+    assert _source_saison_id({"family": "bolivia"}) == 2014
+    assert _source_saison_id({"family": "finland"}) == 2014
+    assert _source_saison_id({"family": "croatia"}) == 2015
+    assert _squad_cache_key(carrier_id=2601, club_id=6878, source_saison_id=2014) == (
+        "squad/2015/2601-6878-selector-2014.html"
+    )
+
+
+def test_new_dom_parser_uses_published_long_tail_nationality_labels() -> None:
+    assert {label: NATIONALITY_CODES[label] for label in (
+        "Antigua and Barbuda", "Barbados", "Equatorial Guinea", "Gibraltar",
+        "Montserrat", "St. Kitts & Nevis", "Trinidad and Tobago", "Vietnam",
+    )} == {
+        "Antigua and Barbuda": "ATG", "Barbados": "BRB", "Equatorial Guinea": "EQG",
+        "Gibraltar": "GIB", "Montserrat": "MSR", "St. Kitts & Nevis": "SKN",
+        "Trinidad and Tobago": "TRI", "Vietnam": "VIE",
     }
