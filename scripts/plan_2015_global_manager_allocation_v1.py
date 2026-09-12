@@ -208,6 +208,11 @@ def build(
     manager_sources = _foreign_manager_sources(
         package, [history, *([multilingual_history] if multilingual_history is not None else [])]
     )
+    non_club_foreign_carriers = {
+        int(row["carrier_id"])
+        for row in history.get("rows", [])
+        if isinstance(row, Mapping) and row.get("status") == "out-of-scope-non-club-carrier"
+    }
     assignments = []
     for team in sorted(teams.values(), key=lambda row: int(row["team_carrier_id"])):
         carrier = int(team["team_carrier_id"])
@@ -216,6 +221,9 @@ def build(
         source = manager_sources.get(carrier)
         if carrier not in foreign_carriers:
             source_status = "english-source-layer-required"
+            source_name = None
+        elif carrier in non_club_foreign_carriers:
+            source_status = "out-of-scope-non-club-carrier"
             source_name = None
         elif source is None:
             source_status = "target-season-manager-source-required"
