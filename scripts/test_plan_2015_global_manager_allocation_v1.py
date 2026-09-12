@@ -60,3 +60,18 @@ def test_exact_search_transfermarkt_snapshot_is_a_dated_manager_source() -> None
     result = allocation._foreign_manager_sources(package, [source])
 
     assert result[7]["status"] == "dated-transfermarkt-exact-search-manager-history-source"
+
+
+def test_source_tail_manager_history_is_a_dated_manager_source() -> None:
+    package = {"managers": [], "clubs": [{"carrier_id": 706, "manager_id": "manager-706"}]}
+    source = {
+        "schema_version": allocation.SOURCE_TAIL_MANAGER_HISTORY_SCHEMA,
+        "rows": [{"carrier_id": 706, "manager_name": "Historical Manager"}],
+    }
+
+    result = allocation._foreign_manager_sources(package, [source])
+
+    assert result[706] == {
+        "status": "dated-transfermarkt-source-tail-manager-history-source",
+        "name": "Historical Manager",
+    }
