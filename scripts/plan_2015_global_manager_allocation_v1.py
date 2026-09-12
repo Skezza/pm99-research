@@ -43,6 +43,9 @@ MULTILINGUAL_HISTORY_SCHEMA = "pm99-world-2015-multilingual-wikipedia-manager-hi
 TRANSFERMARKT_SNAPSHOT_HISTORY_SCHEMA = (
     "pm99-world-2015-transfermarkt-squad-snapshot-manager-history-v5"
 )
+TRANSFERMARKT_EXACT_SEARCH_HISTORY_SCHEMA = (
+    "pm99-world-2015-transfermarkt-exact-search-manager-history-v6"
+)
 
 
 class AllocationError(ValueError):
@@ -174,7 +177,10 @@ def _foreign_manager_sources(
         "dated-national-wikipedia-manager-match": "dated-national-wikipedia-history-source",
     }
     for history in histories:
-        if history.get("schema_version") == TRANSFERMARKT_SNAPSHOT_HISTORY_SCHEMA:
+        if history.get("schema_version") in {
+            TRANSFERMARKT_SNAPSHOT_HISTORY_SCHEMA,
+            TRANSFERMARKT_EXACT_SEARCH_HISTORY_SCHEMA,
+        }:
             for row in history.get("rows", []):
                 if not isinstance(row, Mapping):
                     continue
@@ -184,7 +190,11 @@ def _foreign_manager_sources(
                     raise AllocationError("Transfermarkt snapshot history has a malformed manager row")
                 add_source(
                     carrier_id,
-                    "dated-transfermarkt-pinned-2015-squad-manager-history-source",
+                    (
+                        "dated-transfermarkt-pinned-2015-squad-manager-history-source"
+                        if history.get("schema_version") == TRANSFERMARKT_SNAPSHOT_HISTORY_SCHEMA
+                        else "dated-transfermarkt-exact-search-manager-history-source"
+                    ),
                     name,
                 )
             continue
@@ -215,6 +225,7 @@ def build(
     *, package: Mapping[str, Any], history: Mapping[str, Any],
     multilingual_history: Mapping[str, Any] | None = None,
     transfermarkt_snapshot_history: Mapping[str, Any] | None = None,
+    transfermarkt_exact_search_history: Mapping[str, Any] | None = None,
     eq_data: bytes, ent_data: bytes,
 ) -> dict[str, Any]:
     if package.get("schema_version") != PACKAGE_SCHEMA:
@@ -230,6 +241,14 @@ def build(
         raise AllocationError(
             "Transfermarkt snapshot history receipt must use "
             f"{TRANSFERMARKT_SNAPSHOT_HISTORY_SCHEMA}"
+        )
+    if (
+        transfermarkt_exact_search_history is not None
+        and transfermarkt_exact_search_history.get("schema_version") != TRANSFERMARKT_EXACT_SEARCH_HISTORY_SCHEMA
+    ):
+        raise AllocationError(
+            "Transfermarkt exact-search history receipt must use "
+            f"{TRANSFERMARKT_EXACT_SEARCH_HISTORY_SCHEMA}"
         )
     teams = _live_teams(eq_data)
     foreign_carriers = {
@@ -247,6 +266,7 @@ def build(
             history,
             *([multilingual_history] if multilingual_history is not None else []),
             *([transfermarkt_snapshot_history] if transfermarkt_snapshot_history is not None else []),
+            *([transfermarkt_exact_search_history] if transfermarkt_exact_search_history is not None else []),
         ],
     )
     non_club_foreign_carriers = {
@@ -328,6 +348,7 @@ def main() -> int:
     parser.add_argument("--history-receipt", required=True, type=Path)
     parser.add_argument("--multilingual-history", type=Path)
     parser.add_argument("--transfermarkt-snapshot-history", type=Path)
+    parser.add_argument("--transfermarkt-exact-search-history", type=Path)
     parser.add_argument("--base-tree", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
@@ -340,12 +361,20 @@ def main() -> int:
         args.transfermarkt_snapshot_history.read_bytes()
         if args.transfermarkt_snapshot_history else None
     )
+    transfermarkt_exact_search_raw = (
+        args.transfermarkt_exact_search_history.read_bytes()
+        if args.transfermarkt_exact_search_history else None
+    )
     package = json.loads(package_raw.decode("utf-8"))
     history = json.loads(history_raw.decode("utf-8"))
     multilingual_history = json.loads(multilingual_raw.decode("utf-8")) if multilingual_raw else None
     transfermarkt_snapshot_history = (
         json.loads(transfermarkt_snapshot_raw.decode("utf-8"))
         if transfermarkt_snapshot_raw else None
+    )
+    transfermarkt_exact_search_history = (
+        json.loads(transfermarkt_exact_search_raw.decode("utf-8"))
+        if transfermarkt_exact_search_raw else None
     )
     if package_raw != canonical_json_bytes(package):
         parser.error("world package must use canonical JSON bytes")
@@ -358,12 +387,18 @@ def main() -> int:
         and transfermarkt_snapshot_raw != canonical_json_bytes(transfermarkt_snapshot_history)
     ):
         parser.error("Transfermarkt snapshot history receipt must use canonical JSON bytes")
+    if (
+        transfermarkt_exact_search_raw is not None
+        and transfermarkt_exact_search_raw != canonical_json_bytes(transfermarkt_exact_search_history)
+    ):
+        parser.error("Transfermarkt exact-search history receipt must use canonical JSON bytes")
     eq_path = args.base_tree / "DBDAT" / "EQ98030.FDI"
     ent_path = args.base_tree / "DBDAT" / "ENT98030.FDI"
     try:
         receipt = build(
             package=package, history=history, multilingual_history=multilingual_history,
             transfermarkt_snapshot_history=transfermarkt_snapshot_history,
+            transfermarkt_exact_search_history=transfermarkt_exact_search_history,
             eq_data=eq_path.read_bytes(), ent_data=ent_path.read_bytes(),
         )
     except (AllocationError, OSError) as exc:
@@ -375,6 +410,10 @@ def main() -> int:
         "transfermarkt_snapshot_history_sha256": (
             hashlib.sha256(transfermarkt_snapshot_raw).hexdigest()
             if transfermarkt_snapshot_raw else None
+        ),
+        "transfermarkt_exact_search_history_sha256": (
+            hashlib.sha256(transfermarkt_exact_search_raw).hexdigest()
+            if transfermarkt_exact_search_raw else None
         ),
         "EQ98030.FDI_sha256": _sha256(eq_path),
         "ENT98030.FDI_sha256": _sha256(ent_path),

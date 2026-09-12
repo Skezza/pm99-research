@@ -48,3 +48,15 @@ def test_pinned_transfermarkt_snapshot_is_a_dated_manager_source() -> None:
             "name": "Historical Manager",
         }
     }
+
+
+def test_exact_search_transfermarkt_snapshot_is_a_dated_manager_source() -> None:
+    package = {"managers": [], "clubs": [{"carrier_id": 7, "manager_id": "manager-7"}]}
+    source = {
+        "schema_version": allocation.TRANSFERMARKT_EXACT_SEARCH_HISTORY_SCHEMA,
+        "rows": [{"carrier_id": 7, "manager_name": "Historical Manager"}],
+    }
+
+    result = allocation._foreign_manager_sources(package, [source])
+
+    assert result[7]["status"] == "dated-transfermarkt-exact-search-manager-history-source"
