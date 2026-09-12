@@ -88,7 +88,9 @@ def apply(row: dict[str, Any], archive_root: Path) -> dict[str, Any]:
     for name, expected in row["database_before"].items():
         original = target / name
         backup = archive / Path(name).name
-        shutil.copy2(original, backup)
+        # GVFS/SMB does not support POSIX metadata preservation.  The rollback
+        # contract is byte identity, so copy content only and verify its hash.
+        shutil.copyfile(original, backup)
         if sha256(backup) != expected:
             raise ValueError(f"rollback copy mismatch: {backup}")
     for name, expected in row["database_after"].items():
