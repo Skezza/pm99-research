@@ -1,5 +1,47 @@
 # PM99: current work
 
+## v123 complete; next two games private — 2026-10-18 21:23 UTC
+
+Same Vostro/session below. v123 checkpoint exists and two defaults are now
+installed: 2000-01 `sourced-inter-august-contract-reserve-20261018-r160a`;
+2010-11 `sourced-dated-mascherano-midfield-20261018-r161a`.
+Both actual games passed source/native/full-SOURCE, original startup/profile,
+kit-pixel/hash and independent ten-skill/age glyph checks before promotion.
+Original2015 preserved. Controller99796 terminal0: final all26 regression PASS,
+26 actual preferred bindings/playable, zero regenerations. Proof under
+`Gresko2000-Inter-opening-review-v1/all26-postdelivery-regression.json`.
+Frozen duplicate counts now 59/2809 disposed,2750 unclosed candidates, not bugs.
+Three broad-role disputes (Balanta/Ehmer/Moses) independently resolved as dated
+dual-role variations, zero game edits and zero duplicate closures. Proof:
+`annual-role-dispositions-20261018-v1/reviewed-broad-variations-v1.json`.
+Evidence roots for actual corrections are listed in the 21:00 entry below.
+
+Important runner rejection retained: first Colombo surname result was Roberto
+at Milan. It was NOT accepted. The separate `colombo_inter` capture selected
+the second result and proved Inter forward Colombo age21. Original wrong-target
+capture and rejected visual-stat transcription remain preserved. Exact actual
+native and independent bitmap-glyph verification passed the corrected review.
+
+Private Tokic2004 r162a/b actual build and full SOURCE replay passed. Only two
+native fine-role bytes changed, goalkeeper/SW -> compatible centre-back; every
+other fact, skill, order, asset and player exact. Root `Tokic2004-compatible-role-v1/`.
+Controller98825 owns serial startup/profile runner capture. Controller21054
+terminal0: Plassnegger2005 r163a/b private actual build/replay PASS; input selects
+explicit published alternative Right Midfield, not incompatible main Right-Back.
+Next: finish these actual proofs/captures then next narrowly scoped checkpoint.
+
+Luna source requests Hoheneder2007/Margreitter2009 passed read-only admission;
+no actual builds yet. Gansterer profile raw missing, not admitted. Hearts
+McKenna and Celtic Canero/Douglas are native starters, NOT reserves: preserve
+positive new source candidates but do not bypass reserve-only guards. Celtic
+full first-XI mapping in progress; Werder Garcia needs coupled starter/order
+correction too. Three workers continue research/adversarial tests only.
+Full-name diacritic equivalence now uses existing full-name policy with all
+numeric/source/date guards retained. Optional secondary biography role requires
+one exact literal in the hash-bound original Other position section. Luna's
+68 focused tests passed; lead combined111-test rerun61880 terminal0 PASS.
+No unrelated recipe/game regeneration. Dirty upstream/viewer untouched.
+
 ## v122 delivered; two further private corrections — 2026-10-18 21:00 UTC
 
 Machine `joe-Vostro-3350`, source session

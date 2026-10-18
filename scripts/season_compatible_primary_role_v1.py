@@ -7,6 +7,7 @@ The fine-role source is a published biography, not an exact-season FIFA claim.
 """
 import copy
 import re
+from bs4 import BeautifulSoup
 
 from app.fdi_indexed import IndexedFDIFile
 from app.indexed_jug_roles import read_indexed_native_roles
@@ -20,6 +21,29 @@ from scripts.season_exact_fifa_role_delta_v1 import compatible
 
 KIND = 'compatible-biography-conflicting-role-set-repair'
 SCOPE = 'Only the selected contradictory legacy six-byte fine-role set and corresponding recipe fine-role fact/fallback. Broad position, name, DOB, country, skills, orders, owners, tactics, managers, photos and kit assets unchanged. Compatible published biography role, not exact-period fine-role proof; inherited contradictory secondary roles cleared, not retained as historical claims.'
+
+
+def published_role(selection, published):
+    """Optional explicit secondary role, never a sidebar or an inferred role.
+
+    The caller already verifies the hash-bound canonical profile identity.
+    Keep the default path identical for existing immutable plans.
+    """
+    if 'published_compatible_role' not in selection:
+        return published['published_profile_position']
+    requested = selection['published_compatible_role']
+    if not isinstance(requested, str) or not requested.strip() or requested != requested.strip():
+        raise ValueError('explicit literal published alternative role required')
+    page = BeautifulSoup(exchange.original(selection['profile']).read_bytes(), 'lxml')
+    sections = [dl for dl in page.select('.detail-position dl')
+                if dl.find('dt', recursive=False) is not None
+                and dl.find('dt', recursive=False).get_text(' ', strip=True) == 'Other position:']
+    if len(sections) != 1:
+        raise ValueError('one original alternative-role section required')
+    alternatives = [dd.get_text(' ', strip=True) for dd in sections[0].find_all('dd', recursive=False)]
+    if alternatives.count(requested) != 1:
+        raise ValueError('requested role is not an exact published alternative')
+    return requested
 
 
 def historical_provider_id(base, package, actor, historical_witness=None):
@@ -102,7 +126,8 @@ def prepare(base, path, request):
                 or broad not in ('D', 'M', 'F') or roles[0] == 98 or compatible(broad, roles[0])
                 or owners.get(carrier) != {clubs[actor['club_id']]['carrier_id']}):
             raise ValueError('exact biography/native identity and a demonstrated conflicting first role required')
-        key = ''.join(c for c in (published['published_profile_position'] or '').casefold() if c.isalpha())
+        chosen_role = published_role(selection, published)
+        key = ''.join(c for c in (chosen_role or '').casefold() if c.isalpha())
         fine = HTML_ROLES.get(key)
         if fine is None or not compatible(broad, fine):
             raise ValueError('source fine role must be compatible with retained broad role')
@@ -125,6 +150,8 @@ def prepare(base, path, request):
             field_mask=['fine_roles'], native_masks=masks,
             evidence=dict(profile=selection['profile'], parsed_profile=published, before_native_roles=roles,
                 after_native_roles=after_roles), expected_owner=clubs[actor['club_id']]['carrier_id']))
+        if 'published_compatible_role' in selection:
+            updates[-1]['evidence']['published_compatible_role'] = chosen_role
     result = dict(schema=changes.SCHEMA, kind=KIND, season=base.season, release_id=base.release_id,
         source_input=changes.binding(path), package_sha256=registry.sha256_file(base.package_path),
         jug_sha256=changes.digest(jug), eq_sha256=changes.digest(eq), updates=updates, scope=SCOPE,

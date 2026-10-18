@@ -284,6 +284,56 @@ def test_retained_holt_role_request_reproduces_original_kilmarnock_identity_and_
     assert witness['historical_identity']['source_row_sha256'] == 'c4ff69f118c66b896702667450fbdae12b3fbcab60289e6fb35b0f05895a2191'
 
 
+def _published_role_page(tmp_path, monkeypatch, html):
+    source = tmp_path / 'profile.html'
+    source.write_text(html)
+    monkeypatch.setattr(subject.exchange, 'original', lambda profile: source)
+    return {'profile': {'path': 'synthetic/profile.html', 'sha256': 'synthetic'}}
+
+
+def test_published_role_without_explicit_option_preserves_profile_main_role(tmp_path, monkeypatch):
+    selection = _published_role_page(tmp_path, monkeypatch, '<aside>Other position: Right Midfield</aside>')
+    assert subject.published_role(selection, {'published_profile_position': 'Right Back'}) == 'Right Back'
+
+
+def test_published_role_accepts_literal_alternative_independent_of_main_role(tmp_path, monkeypatch):
+    # Mirrors the relevant Plassnegger profile distinction: main Right Back,
+    # but a separately published Right Midfield alternative.
+    selection = _published_role_page(tmp_path, monkeypatch, '''
+        <header><span>Position:</span><span>Right Back</span></header>
+        <div class="detail-position"><dl>
+          <dt class="detail-position__title">Other position:</dt>
+          <dd>Right Midfield</dd>
+        </dl></div>''')
+    selection['published_compatible_role'] = 'Right Midfield'
+    assert subject.published_role(selection, {'published_profile_position': 'Right Back'}) == 'Right Midfield'
+
+
+@pytest.mark.parametrize('html', [
+    '<aside>Other position: Right Midfield</aside>',
+    '<div class="detail-position"><dl><dt>Other position:</dt><dd>Right Mid</dd></dl></div>',
+    '<div class="detail-position"><dl><dt>Other position:</dt></dl></div>',
+    '<div class="detail-position"><dl><dt>Other position:</dt><dd>Right Midfield</dd></dl>'
+    '<div class="detail-position"><dl><dt>Other position:</dt><dd>Right Midfield</dd></dl></div>',
+    '<div class="detail-position"><dl><dt>Other position:</dt><dd>Right Midfield</dd>'
+    '<dd>Right Midfield</dd></dl></div>',
+])
+def test_published_role_rejects_sidebar_substring_missing_ambiguous_or_duplicate_claims(tmp_path, monkeypatch, html):
+    selection = _published_role_page(tmp_path, monkeypatch, html)
+    selection['published_compatible_role'] = 'Right Midfield'
+    with pytest.raises(ValueError):
+        subject.published_role(selection, {'published_profile_position': 'Right Back'})
+
+
+@pytest.mark.parametrize('requested', [None, '', ' Right Midfield', 'Right Mid'])
+def test_published_role_requires_nonempty_trimmed_exact_literal_option(tmp_path, monkeypatch, requested):
+    selection = _published_role_page(tmp_path, monkeypatch, '''
+        <div class="detail-position"><dl><dt>Other position:</dt><dd>Right Midfield</dd></dl></div>''')
+    selection['published_compatible_role'] = requested
+    with pytest.raises(ValueError):
+        subject.published_role(selection, {'published_profile_position': 'Right Back'})
+
+
 def _historical_preallocation_fixture(tmp_path, monkeypatch):
     """Build a synthetic row -> dated report chain; not a historical witness."""
     from scripts import season_opening_identity_exchange_v1 as exchange

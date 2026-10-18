@@ -55,7 +55,11 @@ def verify_historical_identity(witness):
     page = BeautifulSoup(checked(match).read_bytes(), 'lxml')
     full_names = {a.get('title') for a in page.select('a[href]')
                   if re.search(r'/spieler/' + re.escape(str(historical['provider_player_id'])) + r'(?:/|$)', a['href'])}
-    if witness['full_name'] not in full_names:
+    # Original providers may omit diacritics (Tokić/Tokic). Keep the complete
+    # published name, numeric person, exact source row and dated club fixture
+    # requirements; this is not permission to match initials or surnames alone.
+    if exchange.published_name_key(witness['full_name']) not in {
+            exchange.published_name_key(name) for name in full_names if name}:
         raise ValueError('historical fixture does not independently publish the full identity')
     return int(historical['provider_player_id'])
 

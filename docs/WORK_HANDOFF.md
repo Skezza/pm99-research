@@ -1,5 +1,21 @@
 # PM99 worker handoff
 
+## v123 delivered and verified — 2026-10-18 21:23 UTC
+
+Same Vostro/session below. Read CURRENT_WORK top entry before selecting tasks.
+v123 authoritative: Inter2000 r160a and Liverpool2010 r161a now preferred,
+source/native/fullSOURCE/original runner/kit/hash/ten-skill and age glyph proofs
+passed before promotion. Final all26 regression PASS26/26, zero regenerations,
+original2015 preserved. Frozen duplicate counts59/2809disposed,2750candidates.
+Three dated broad-role differences classified as legitimate variants, not repairs.
+Evidence `.local/consolidated-audit-20261009/Gresko2000-Inter-opening-review-v1/`
+and `Mascherano2010-dated-role-v1/`; checklist v123 at audit root.
+Private r162Tokic2004 and r163Plassnegger2005 actual games/fullSOURCE passed;
+runner98825 owns r162 capture. Do not start competing captures; r163 next.
+Lead111 focused tests PASS; source/test changes and catalogue pending commit.
+Luna workers continue bounded source acquisition and adversarial coupled-starter
+review. Do not bypass starter guards or claim unrelated games historically approved.
+
 ## v122 continuation — 2026-10-18 21:00 UTC
 
 Vostro `joe-Vostro-3350`, session
