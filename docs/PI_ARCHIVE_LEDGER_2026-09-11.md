@@ -1,5 +1,16 @@
 # Pi archive ledger
 
+## Regenerable Go cache cleared again — 2026-10-18 evening UTC
+
+The compiler cache had rebuilt since the previous cleanup. Verified the exact
+Go cache path and checked that no process was using it before `go clean -cache`.
+Recovered 2,350,804,992 bytes; available space afterwards was 9,998,376,960 bytes.
+No unique data, downloaded modules, PM99 releases or source evidence removed;
+no archive needed. Receipt:
+`.local/cleanup-20261018/go-compiler-cache-evening/completed.json`.
+The proposed paired-whole-club replay retirement was refused: a registered
+2014/15 SOURCE release still uses that tree. It remains local and intact.
+
 ## Three unreferenced old experiments — 2026-10-18 15:15 UTC
 
 Vostro `joe-Vostro-3350`; session `01a0592d-fcd5-7262-a637-743a8253d9b4`.

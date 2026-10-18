@@ -111,18 +111,7 @@ def main():
     finally:
         if process.poll() is None:
             process.terminate();process.wait()
-    code='''import hashlib,json,pathlib,sys,tarfile
-p=pathlib.Path(sys.argv[1]);expected=json.load(sys.stdin)
-with tarfile.open(str(p)+'.partial','r:gz') as archive:
- members=archive.getmembers()
- if len(members)!=len(expected) or {m.name for m in members}!=set(expected):raise ValueError('archive member set differs')
- for m in members:
-  if not m.isfile() or m.size!=expected[m.name]['size']:raise ValueError('archive member type/size differs')
-  if hashlib.file_digest(archive.extractfile(m),'sha256').hexdigest()!=expected[m.name]['sha256']:raise ValueError('archive member SHA differs')
-if p.exists():raise ValueError('archive destination already exists')
-pathlib.Path(str(p)+'.partial').rename(p)
-print(json.dumps(dict(archive_sha256=hashlib.file_digest(p.open('rb'),'sha256').hexdigest(),members_verified=len(expected),member_hashes_verified=True)))
-'''
+    code=remote_verifier()
     checked=json.loads(ssh('python3 -c '+shlex.quote(code)+' '+shlex.quote(REMOTE),input=json.dumps(expected)))
     retained(ROOT/'pi-member-verification.json',dict(checked,host=HOST,volume_uuid=UUID,archive_path=REMOTE))
     for path,name in members:
@@ -147,6 +136,29 @@ print(json.dumps(dict(archive_sha256=hashlib.file_digest(p.open('rb'),'sha256').
         machine='joe-Vostro-3350',source_session='01a0592d-fcd5-7262-a637-743a8253d9b4'))
     print(dict(probe_directories_moved=len(targets),all_files_recoverable_on_pi=True,
         allocated_bytes_recovered=sum(allocated.values())),flush=True)
+
+
+def remote_verifier():
+    """Verify streams without extraction; accept only direct internal hardlinks."""
+    return '''import hashlib,json,pathlib,sys,tarfile
+p=pathlib.Path(sys.argv[1]);expected=json.load(sys.stdin)
+with tarfile.open(str(p)+'.partial','r:gz') as archive:
+ members=archive.getmembers()
+ by_name={m.name:m for m in members}
+ if len(members)!=len(expected) or set(by_name)!=set(expected):raise ValueError('archive member set differs')
+ for m in members:
+  if m.isfile():target=m
+  elif m.islnk():
+   if m.linkname not in by_name or not by_name[m.linkname].isfile():raise ValueError('only direct internal regular-file hardlinks allowed')
+   if expected[m.name]!=expected[m.linkname]:raise ValueError('linked expected bytes differ')
+   target=by_name[m.linkname]
+  else:raise ValueError('symlink/directory/special archive member forbidden')
+  if target.size!=expected[m.name]['size']:raise ValueError('archive member size differs')
+  if hashlib.file_digest(archive.extractfile(m),'sha256').hexdigest()!=expected[m.name]['sha256']:raise ValueError('archive member SHA differs')
+if p.exists():raise ValueError('archive destination already exists')
+pathlib.Path(str(p)+'.partial').rename(p)
+print(json.dumps(dict(archive_sha256=hashlib.file_digest(p.open('rb'),'sha256').hexdigest(),members_verified=len(expected),member_hashes_verified=True)))
+'''
 
 
 if __name__=='__main__':
