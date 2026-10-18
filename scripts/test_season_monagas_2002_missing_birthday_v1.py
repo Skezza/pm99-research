@@ -73,3 +73,4 @@ def test_changed_original_alias_response_refused(tmp_path, monkeypatch):
     raw.write_bytes(b'{"data":[]}')
     with pytest.raises(ValueError, match='source changed'):
         missing.display_candidates(person)
+

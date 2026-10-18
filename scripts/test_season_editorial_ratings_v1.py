@@ -131,3 +131,4 @@ def test_rejects_missing_stable_person_identity_and_unpinned_hierarchy() -> None
     payload["hierarchy"]["snapshot_date"] = "2000-08-13"
     with pytest.raises(ratings.EditorialRatingError, match="must equal snapshot_date"):
         ratings.build_rating_output(payload)
+

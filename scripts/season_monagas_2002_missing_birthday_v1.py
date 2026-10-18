@@ -53,3 +53,4 @@ def display_candidates(person):
             if isinstance(name, str) and name.strip():
                 candidates.append(dict(name=name.strip(), method='original-explicit-unknown-DOB-' + field))
     return candidates
+

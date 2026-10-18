@@ -113,3 +113,4 @@ if __name__ == '__main__':
     result = prepare(ROOT / 'monagas-2002-fixed16-source-feasibility-v1.json')
     print(dict(people=len(result['desired_people']), outside_owners=len(result['outside_identity_owners']),
         allocation=len(result['allocation']), native_writes=0), flush=True)
+

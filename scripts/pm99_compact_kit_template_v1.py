@@ -111,3 +111,4 @@ def render(record: Any, palette: list[tuple[int, int, int]], style: Mapping[str,
 def transparency_mask(width: int, height: int) -> list[bool]:
     shirt, shorts = masks(width, height)
     return [not (shirt[y][x] or shorts[y][x]) for y in range(height) for x in range(width)]
+

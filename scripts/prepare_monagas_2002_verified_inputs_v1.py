@@ -71,3 +71,4 @@ def native_dated(proposal):
         manager_native_names=dict(surname='Borrero', display_name='Borrero'),
         manager_person_id='manager-original-august2002-eduardo-borrero',
         artifact_id='monagas-original-manager-ground-2002', relative_path='monagas-original-opening-2002.html')
+

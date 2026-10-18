@@ -50,3 +50,4 @@ def test_exact_native_surname_casing_comes_from_real_writer(tmp_path,desired,exp
     result=subject.native_display_names(SimpleNamespace(game_path=tmp_path),{1:dict(name=desired)},[1])
     assert result=={1:expected}
     assert (dbdat/'JUG98030.FDI').read_bytes()==before
+
