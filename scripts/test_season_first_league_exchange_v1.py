@@ -197,3 +197,55 @@ def test_published_family_display_refuses_heading_without_explicit_strong_compon
     evidence = {"profile": {**BURCHILL_PROFILE, "path": "synthetic-profile.html", "sha256": "synthetic"}}
     with pytest.raises(ValueError, match="exact published complete"):
         subject.published_profile_family_display(selection, evidence)
+
+
+MONACO_REQUEST = ROOT / ".local/consolidated-audit-20261009/Monaco2000-opening-review-v1/panucci-bonnal-request-v1.json"
+
+
+@pytest.fixture
+def monaco_request():
+    if not MONACO_REQUEST.is_file():
+        pytest.skip("retained Monaco exchange request unavailable")
+    return subject.pipeline.read_json_file(MONACO_REQUEST)
+
+
+def test_monaco_classic_used_substitute_is_exact_first_league_fixture(monaco_request):
+    opener = monaco_request["evidence"]["opener"]
+    assert opener["membership_mode"] == "classic-played-substitutes"
+    assert opener["fixture_basis"] == "recorded-first-league-fixture"
+    subject.verify_first_league_fixture(opener)
+    _, used_substitutes = subject.match_people(opener)
+    assert "5642" in [person["source_player_id"] for person in used_substitutes]
+
+
+def test_monaco_classic_played_substitutes_without_explicit_first_fixture_basis_is_rejected(monaco_request):
+    opener = deepcopy(monaco_request["evidence"]["opener"])
+    opener.pop("fixture_basis")
+    with pytest.raises(ValueError, match="explicit first league fixture"):
+        subject.verify_first_league_fixture(opener)
+
+
+def test_dfb_monaco_panucci_registration_row_is_exact_person_dob_and_period(monaco_request):
+    # This records DFB's 1 January 2001 registration start; it is not an exact
+    # transfer-announcement day claim.
+    subject.dated_source(monaco_request["evidence"]["retirement"])
+
+
+@pytest.mark.parametrize(
+    "path,value",
+    [
+        (("dfb_registration_row", "full_name"), "Christian Panuccy"),
+        (("dfb_registration_row", "birthday_literal"), "12.04.1974"),
+        (("dfb_registration_row", "club_heading"), "Chelsea FC"),
+        (("dfb_registration_row", "season_start_year"), 2001),
+        (("event_date",), "2001-01-02"),
+    ],
+)
+def test_dfb_monaco_registration_rejects_wrong_identity_club_season_or_date(monaco_request, path, value):
+    evidence = deepcopy(monaco_request["evidence"]["retirement"])
+    target = evidence
+    for key in path[:-1]:
+        target = target[key]
+    target[path[-1]] = value
+    with pytest.raises(ValueError):
+        subject.dated_source(evidence)

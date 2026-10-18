@@ -76,6 +76,26 @@ def dated_source(value):
             pass
     if parsed != value.get('event_date'):
         raise ValueError('dated exchange source date does not reproduce')
+    if value.get('dfb_registration_row'):
+        claim = value['dfb_registration_row']
+        origin = urlsplit(value['url'])
+        page = BeautifulSoup(original(value).read_bytes(), 'lxml')
+        if (origin.scheme != 'https' or origin.hostname != 'datencenter.dfb.de'
+                or f'/seasons/{claim["season_start_year"]}-{claim["season_start_year"]+1}/teams/' not in origin.path
+                or claim['roster_heading'] not in [h.get_text(' ', strip=True) for h in page.select('h3')]
+                or claim['club_heading'] not in [h.get_text(' ', strip=True) for h in page.select('h2')]):
+            raise ValueError('dated registration source club/season context differs')
+        rows = []
+        for row in page.select('tr.c-Table-body-row'):
+            cells = row.find_all('td', recursive=False)
+            if len(cells) != 3:
+                continue
+            name = ' '.join(' '.join(cells[1].find_all(string=True, recursive=False)).split())
+            if (name == claim['full_name'] and cells[2].get_text(' ', strip=True) == claim['birthday_literal']):
+                rows.append(cells[1])
+        if (len(rows) != 1 or '(ab ' + anchor + ')' not in
+                [s.get_text(' ', strip=True) for s in rows[0].select('small')]):
+            raise ValueError('dated registration exact person/DOB/entry row differs')
     if value.get('person_row'):
         claim = value['person_row']
         page = BeautifulSoup(original(value).read_bytes(), 'html.parser')
@@ -100,7 +120,9 @@ def verify_first_league_fixture(value):
     """Permit a non-August opener only by replaying its retained league schedule."""
     from types import SimpleNamespace
     from scripts.capture_transfermarkt_opening_lineups_v1 import _first_fixture, TeamRef, SCHEMA as CAPTURE_SCHEMA
-    if value.get('membership_mode') != 'original-published-first-league-fixture-bench':
+    if (value.get('membership_mode') != 'original-published-first-league-fixture-bench'
+            and not (value.get('membership_mode') == 'classic-played-substitutes'
+                     and value.get('fixture_basis') == 'recorded-first-league-fixture')):
         raise ValueError('non-August membership needs an explicit first league fixture')
     original(value)
     capture = pipeline.read_json_file(original(value['first_league_capture']))
