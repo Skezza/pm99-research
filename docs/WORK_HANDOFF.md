@@ -1,5 +1,68 @@
 # PM99 worker handoff
 
+## v122 continuation — 2026-10-18 21:00 UTC
+
+Vostro `joe-Vostro-3350`, session
+`01a0592d-fcd5-7262-a637-743a8253d9b4`. Read the new CURRENT_WORK top entry.
+v122 is authoritative: 58/2809 cross-club candidates disposed, 2751 unclosed;
+26 playable, not 26 historically approved RCs. Current 2000 preferred r159a.
+Evidence: `.local/consolidated-audit-20261009/Monaco2000-opening-review-v1/`.
+Native/full-SOURCE, genuine runtime and final all26 regression passed.
+Private r160 Inter Colombo contract-reserve and r161 Liverpool Mascherano
+midfield games/replays complete. Serial runner83191 currently owns r160;
+finish original-image/native/glyph verification then r161 capture and guarded
+combined checkpoint. No promotion or case closure before runtime verification.
+Three Luna bounded research/test assignments active, lead owns integration.
+Invalid current-position v1 zero-count conclusion must not be used; v2 is
+triage only. Preserve original 2015, all unaffected releases and dirty upstream
+changes. Exact next steps and evidence roots are in CURRENT_WORK.
+
+## Continuing source-backed RC corrections — 2026-10-18 20:25 UTC
+
+Vostro `joe-Vostro-3350`, session
+`01a0592d-fcd5-7262-a637-743a8253d9b4`. Read CURRENT_WORK20:25 continuation
+before selecting work. v119 still authoritative55disposed/2754candidates;
+26playable NOT26 historicalRCs. Do not use stale frozen inventory21/2788.
+Two Luna workers do bounded research/adversarialtests only, no shared edits,
+publishing or runner. Preserve dirty upstream and parked viewer changes.
+
+Private actual r153a six Larsson facts games, r154a Norwich Holt/deWaard,
+r155a Kroosmidfield, r156a Larsson2004forward all built with exact full SOURCE
+replays. All six factual initial profiles and final r154three/r155one profiles
+reviewed/nativehash/kit/10skill+ageglyph verified. Two lead visual transcription
+errors were caught by independent glyph decoder; rejected v1 reviews retained,
+corrected facts match original frame, games NOT rebuilt for review mistakes.
+r156 final startup completed, original profile controller70323 underway. Next
+guarded seven-default checkpointscript120 requires its own final review/proofs,
+then sealed2015/19unaffected preservation and one all26 regression. No promotion
+claimed before it passes.
+
+Next Celtic r157a actual Lennon->Burchill reserve and SOURCEr157b completed
+controller45555terminal0. Canonical MarkBurchill preserved; native Burchill is
+explicit original profile h1 family component, not last-token guess. First
+fullname attempt safely refused stable string window; no failed game registered.
+Proofs/evidence in `Celtic2000-opening-review-v1/`. Exact firstleague July30
+opener admitted by replaying source seasonal schedule/capture/report, not a
+general July waiver. Current original correct LeicesterLennon native unchanged.
+Runtime/default promotion pending.
+
+Holt only12209 Kilmarnock has inherited M/SW conflict; othereight original Holt
+actors compatible, don't blanket-edit. Original preallocationSHA3cdd64... club
+opening_source_match_id3838375/dateJuly29, original source rowc4ff69... provider
+11689 and original fixture full-name links confirm identity. One worker wrongly
+reported null matchID; original was independently reread and positive. Old
+conservative audit did not flag M/SW; new explicit role-repair route uses
+existing compatible taxonomy, refuses missing/alreadycompatible roles.
+`Holt2000-compatible-role-v1/compatible-role-input-v2.json` plan c1ec87dcb1dd96c2941ba7f2;
+actual r158a/r158b build90074 underway over private r157. Only two rolebytes
+should change; final startup+Burchill/Holt profiles after70323 and SOURCE.
+Do not start competing builds/runner lanes. Headroom8.8GiB,8GiBreserve.
+
+Exact next: finish r156 final original review and native/kit/glyphs; guardedv120
+promotion/regression/cataloguehandoff. Then prove actual composedr158 game and
+publish next checkpoint closing Lennon frozen case and Holtrolefollowup only.
+Gresko/MonacoPanucci/HeartsMcKenna/WerderGarcia remain open, not sourced closures.
+
 ## Scottish labels/coaches also delivered — 2026-10-18 15:00 UTC
 
 15:20UTC: Larssonprovidererrorresolved, notparserbug. LeadreadFootballSquads

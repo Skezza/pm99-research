@@ -81,7 +81,8 @@ def dated_source(value):
         origin = urlsplit(value['url'])
         page = BeautifulSoup(original(value).read_bytes(), 'lxml')
         if (origin.scheme != 'https' or origin.hostname != 'datencenter.dfb.de'
-                or f'/seasons/{claim["season_start_year"]}-{claim["season_start_year"]+1}/teams/' not in origin.path
+                or not re.search(r'/(?:seasons/)?' + str(claim['season_start_year']) + '-' +
+                    str(claim['season_start_year'] + 1) + r'/(?:teams|mannschaft)/', origin.path)
                 or claim['roster_heading'] not in [h.get_text(' ', strip=True) for h in page.select('h3')]
                 or claim['club_heading'] not in [h.get_text(' ', strip=True) for h in page.select('h2')]):
             raise ValueError('dated registration source club/season context differs')
@@ -93,7 +94,8 @@ def dated_source(value):
             name = ' '.join(' '.join(cells[1].find_all(string=True, recursive=False)).split())
             if (name == claim['full_name'] and cells[2].get_text(' ', strip=True) == claim['birthday_literal']):
                 rows.append(cells[1])
-        if (len(rows) != 1 or '(ab ' + anchor + ')' not in
+        kind = claim.get('date_kind', 'ab')
+        if (kind not in ('ab', 'bis') or len(rows) != 1 or '(' + kind + ' ' + anchor + ')' not in
                 [s.get_text(' ', strip=True) for s in rows[0].select('small')]):
             raise ValueError('dated registration exact person/DOB/entry row differs')
     if value.get('person_row'):
@@ -285,22 +287,27 @@ def new_person(selection, evidence):
         raise ValueError('new person source nationality differs')
     if SOURCE_COUNTRIES.get(selection['nationality_label']) != selection['nationality']:
         raise ValueError('new person source nationality label/code disagree')
-    fixture = evidence[selection['match']]
-    if date.fromisoformat(fixture['date']).month != 8:
-        verify_first_league_fixture(fixture)
-    _, bench = match_people(fixture)
-    people = [row for row in bench if row['source_player_id'] == str(pid)]
-    if len(people) != 1:
-        raise ValueError('new person is not in the exact club published bench')
+    if selection.get('opening_contract'):
+        from scripts import season_dated_reserve_membership_v1 as contracts
+        contracts.verify(selection, evidence)
+        membership = 'dated-opening-contract-bracket-not-matchday-claim'
+    else:
+        fixture = evidence[selection['match']]
+        if date.fromisoformat(fixture['date']).month != 8:
+            verify_first_league_fixture(fixture)
+        _, bench = match_people(fixture)
+        people = [row for row in bench if row['source_player_id'] == str(pid)]
+        if len(people) != 1:
+            raise ValueError('new person is not in the exact club published bench')
+        membership = ('original-published-opening-used-substitute' if
+            fixture.get('membership_mode') == 'classic-played-substitutes' else 'original-published-opening-bench')
     return dict(source_person=dict(name=selection['name'], birth_date=birthday,
                     source_player_id=pid, source_provider='transfermarkt', source_profile_url=profile['url']),
                 source_player=dict(name=selection['name'], birth_date=birthday,
                     position=selection['position'], nationality=selection['nationality'],
                     height_cm=None, weight_kg=None, shirt_number=None),
                 raw_evidence=dict(status='raw-source-reparsed', local_path=profile['path'], source_sha256=profile['sha256']),
-                membership=('original-published-opening-used-substitute' if
-                    fixture.get('membership_mode') == 'classic-played-substitutes' else
-                    'original-published-opening-bench'))
+                membership=membership)
 
 
 def identity(player):
@@ -435,13 +442,18 @@ def prepare(base, input_path):
         actor = players[row['carrier_id']]
         if actor['club_id'] != row['club_id']:
             raise ValueError('new person destination club differs')
-        verify_match_club(evidence[row['match']], clubs[actor['club_id']]['name'])
+        if row.get('opening_contract'):
+            from scripts import season_dated_reserve_membership_v1 as contracts
+            opening_date = contracts.verify(row, evidence, season=base.season, club=clubs[actor['club_id']])
+        else:
+            verify_match_club(evidence[row['match']], clubs[actor['club_id']]['name'])
+            opening_date = evidence[row['match']]['date']
         replacement = new_person(row, evidence)
         key = roster.normalise(row['name']), row['birth_date']
         if any(identity(p) == key for p in players.values()):
             raise ValueError('new person already represented; use a retained move')
         updates.append(dict(layer='main', player_id=actor['id'], carrier_id=row['carrier_id'],
-            before=actor, replacement=replacement, replacement_opening_evidence=dict(date=evidence[row['match']]['date'])))
+            before=actor, replacement=replacement, replacement_opening_evidence=dict(date=opening_date)))
         decision = dict(carrier_id=row['carrier_id'], preserved_source_carrier=None, before=actor,
                         fine_roles=row['fine_roles'])
         if 'native_display_name' in row:
@@ -454,6 +466,9 @@ def prepare(base, input_path):
         bindings=dict(snapshot=dict(project_url='https://www.transfermarkt.com/')),
         source_title='Dated opening bench identities and August ownership exchanges',
         proof_covers=['bounded-reserve-ownership-and-original-bench-only'], scope=SCOPE)
+    if any(row.get('opening_contract') for row in request['new_people']):
+        plan.update(source_title='Dated opening reserve identities and positive ownership brackets',
+                    proof_covers=['bounded-reserve-ownership-and-positive-dated-contract-bracket-not-matchday-claims'])
     for row in request.get('orders', []):
         if evidence[row['match']].get('membership_mode') in ('classic-played-substitutes', 'classic-published-starting-XI'):
             raise ValueError('used substitutes are not a complete published bench; cannot authorise bench order')

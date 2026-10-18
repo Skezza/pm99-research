@@ -1,5 +1,186 @@
 # PM99: current work
 
+## v122 delivered; two further private corrections — 2026-10-18 21:00 UTC
+
+Machine `joe-Vostro-3350`, source session
+`01a0592d-fcd5-7262-a637-743a8253d9b4`. Authoritative checklist:
+`.local/consolidated-audit-20261009/release-delivery-checklist-v122.json`.
+26 playable games, not yet 26 historically approved RCs. Frozen cross-club
+baseline: 58/2809 disposed, 2751 unclosed candidates (not confirmed bugs).
+v121 Celtic Lennon->Burchill and retained Holt midfield-role correction, then
+v122 Monaco Panucci->Bonnal, are delivered, preferred and genuinely runner
+verified. Current 2000 default is r159a, not the r154/r158 defaults below.
+Final v122 all-season native/catalogue regression passed 26/26, no regeneration:
+`.local/consolidated-audit-20261009/Monaco2000-opening-review-v1/all26-postdelivery-regression.json`.
+Original 2015 backup and unaffected releases preserved.
+
+Private actual games and complete SOURCE replays passed: Inter Gresko->Corrado
+Colombo r160a/b (`Gresko2000-Inter-opening-review-v1/`) and Liverpool2010
+Mascherano midfielder r161a/b (`Mascherano2010-dated-role-v1/`), under the audit
+root above. Colombo is a positively dated August contract reserve, NOT a
+claimed opening match participant. Correct Leverkusen Gresko remains exact.
+Neither is promoted yet. Runner controller83191 captured r160 startup and is
+continuing Colombo/Gresko profiles; do not start a competing runner capture.
+Next: inspect original profiles, native/hash/kit and independent glyph proofs;
+then serial r161 startup/Mascherano capture, guarded combined publication and
+one all26 regression. Only then increment the Gresko case (59/2750).
+
+Three Luna workers: Aldershot tests contract/build receipt guards (10 builder
+tests pass); Stoke reconciles current position candidates and investigates
+12 keeper/outfield candidates; inventory worker researches Parker/O'Hara
+target-season roles. Workers do not edit production recipes, publish or run.
+Current-position reconciliation v1 zero-conflict claim was invalid (tautological
+filter); use evidence-v2.json, not v1. Its 9521 incompatible-primary candidates
+are NOT automatically confirmed bugs; require current identity and dated role
+evidence. Do not reset existing frozen denominators. Three annual role disputes
+(Balanta, Ehmer, Moses) have dated dual-role evidence, not automatic corrections.
+
+Latest focused new-helper tests 43 passed (before four additional builder
+regressions, independently 10 passed). Pending source/catalogue/docs commit;
+preserve dirty upstream repos and parked viewer. Approximately 8.6 GiB free.
+Do not restart completed investigations or regenerate unaffected games.
+
+## Seven defaults delivered; v120 authoritative — 2026-10-18 20:36 UTC
+
+Vostro/session as below. Controller30276 terminal0: v120 delivers six Larsson
+country/DOB games, NorwichwrongHolt->deWaard, Larsson2004striker and Kroos2013M.
+All source/native/fullSOURCE/originalframe/hash/kit/10skill+ageglyph proofs PASS.
+Actual preferred catalogue now points to r154a2000; r153a2001/02/03/05;
+r156a2004; r155a2013. Seven defaults changed, other19 and sealed original2015
+preserved. Final all26 sweep PASS26/26 actualbindings/playable,0regenerations:
+`.local/consolidated-audit-20261009/larsson-holt-kroos-release-v120/all26-postdelivery-regression.json`.
+v120 fixed progress56/2809 disposed,2753unclosed candidates; not2753confirmedbugs.
+Original247date mismatch denominator unchanged246repaired/1FortuneOnohconflict.
+
+Celtic Lennon->Burchill r157a/r157b and Holtsoleincompatiblefine r158a/r158b
+completed actualbuild/fullSOURCE. Finalr158 startup+Burchill/Holt originals
+reviewed, allnative/hash/kit/10skill+ageglyph proofPASS (35723/41857terminal0).
+GaryHolt now actually Kilmarnock MIDFIELDER/CENTRALMID., unchanged ten skills;
+native Burchill atCeltic, full source MarkBurchill retained. Controller90444
+guarded v121 publication/regression running; wait for terminal result before
+claiming newdefault or57/2752. Do not rerun capturedgames or rebuild.
+
+Monaco Panucci->NicolasBonnal r159a/r159b completed actualnative/fullSOURCE
+controller15698terminal0. Root `Monaco2000-opening-review-v1/` under audit.
+Requestv1 plan4d2fe431b1a725ea7a71eeff uses originalJuly29 firstleagueplayedsub
+5642 plus canonicalprofile; DFB exactsameperson/DOB row startsJanuary2001,
+explicit registration-date-not-exacttransferdayclaim. Correct Chelsea9189 and
+all othernativeplayers/order/tactics/managers/kits preserved. r159 private,
+runnercontroller85900 startup+Bonnal underway; no preference/closure claimyet.
+After90444, finish85900 originals/proofs then guardednextcheckpoint for only
+Panucci case b329d7b2729cd69d91cb46485b772d09d5c3179cfce022719af10f17bfe319bf.
+
+Two Luna workers continue: Aldershot boundedGresko/Colombo positiveAugust
+membership or originalentry+exitcontractbracket (both acceptable, don'tforce
+every reserve tohaveplayed); Stoke bounded6current cachedprofile position
+pilots. Read-only oldrostertriage found13,152name+DOB structuralcandidates,
+NOT13,152 confirmedbugs or reason forbulkblindrewrites. Conservative overlap
+roles must remain untouched; sourcebroad can itself be wrong (Kroos literalF).
+No new denominator/closure from triage; currentnative+datedidentityrequired.
+
+Sourceguard commits b29757b/b0ce0f9/ba03af5 pushed;6d33a0b33testsDFB/classic
+registrationguard pushrunning44264. Combined173 focusedtestsPASS beforelatest
+minor additions; current role41PASS and firstfixture33PASS. Rootboundary/diff
+PASS. Four scoped build/checkpoint scripts, catalogue and handoffs pending
+commit afterv121. Dirty upstream/viewer userchanges untouched.8.7GiBfree.
+Exactnext: inspect90444; v121catalog/doccommit; completeMonacoactualrunner,
+native/glyphs, nextcheckpoint; continue supportedownership and smallposition
+batches. No global historical26RCclaim;1990test remains afterRCclosure.
+
+## RC continuation — 2026-10-18 20:25 UTC
+
+Vostro `joe-Vostro-3350`; source session
+`01a0592d-fcd5-7262-a637-743a8253d9b4`. v119 remains authoritative: 26 playable,
+55/2809 cross-club candidates disposed,2754 unclosed candidates, NOT2754 bugs.
+No new preferred changes yet. Both Luna workers reused for bounded research
+and adversarial tests; one worker repeated stale frozen-inventory counters,
+explicitly rejected. Only latest checklist controls progress counts.
+
+Built/private, native exact and complete SOURCE replay verified: six Larsson
+fact games r153a/r153b (2000-01..2005-06, six DOBs and six countries; exactly
+two native bytes per game); Norwich Holt->Raymond deWaard reserve r154a/r154b;
+Kroos2013 midfielder r155a/r155b; Larsson2004 conflicting legacy defender-role
+set->compatible forward12 r156a/r156b. No unaffected game regenerated.
+All six initial Larsson factual profiles/startups independently reviewed and
+native/kit/hash/10skill+age glyph verified. Final r154 startup+deWaard/Holt/
+Larsson captures complete; deWaard and Larsson proofs PASS, Holt corrected
+visual transcription queued proof recheck. Kroos final capture complete;
+visual handling transcription rejected by independent glyph reader, corrected
+with rejected v1 retained; verifier98679 running. Controller70323 captures
+final2004 r156 startup+Larsson; serialize runner until it completes.
+
+Evidence roots under `.local/consolidated-audit-20261009/`:
+`Scotland2000-label-manager-v1/larsson-facts/`, `Holt2000-opening-exchange-v1/`,
+`Werder2013-opening-review-v1/`. New checkpoint script
+`scripts/checkpoint_larsson_holt_kroos_20261018.py` deliberately refuses missing
+release-bound proofs; do not run promotion before r156 final original review.
+It will compose seven defaults, preserve other19 and sealed original2015,
+close only one frozen Holt case (56disposed/2753remain), then all26 regression.
+
+Celtic Lennon->Burchill next actual fix: root `Celtic2000-opening-review-v1/`.
+Source plan f6793a43c03f2886418e6242 from requestv3. July30 actual firstleague
+bench independently bound to retained seasonal schedule, not arbitraryJuly
+friendly. Lennon Joined08/12/2000/fromLeicester bound same source row/columns.
+First full-name build safely refused stable name window, no release created;
+published h1 explicitly marks entire family Burchill, so native display uses
+Burchill while full canonical MarkBurchill remains. Controller45555 building
+r157a/SOURCEr157b with this accepted display; no preference/runtime claim.
+Do not repeat failed old requestv1/v2; preserve them as failed attempts.
+
+New runner-confirmed retained Holt12209 M/SWEEPER: only this one canonical Holt
+record conflicts; other eight original actors compatible. Wrong Norwich copy
+removed in r154. Root `Holt2000-compatible-role-v1/`, source preparation34732
+running over private r157, exact original row->July29match->provider11689.
+Do not approve the old r152 wrong-Norwich capture as Kilmarnock. Final r154
+correct Kilmarnock frame exists. Role fix still pending actual build/SOURCE/
+runner. Generic historical identity guard now also admits independently
+parent-hash-bound original preallocation witnesses, not new biography IDs.
+
+Source code b29757b pushed (historically ID-bound role-set guard,33tests).
+Firstfixture/family-display additions have25 focused Luna tests; earlier
+combined81 tests passed before last additions. Rerun focused suite and boundary
+before committing pending source/checkpoint scripts. Upstream dirty changes
+and untracked recipe viewer are user-owned and untouched. Free8.8GiB;8GiB
+reserve respected. No further local deletion; referenced replay tree retained.
+
+Exact next: finish70323+inspect r156 original frames/hash/kit/glyph; recheck
+Holt/Kroos proofs; run guarded v120 publication+one all26 regression, update
+catalogue/handoff. Then finish r157 ownership and narrowly scoped Holt fine
+role correction into actual game, serial final runner, next checkpoint.
+Gresko/Panucci/McKenna/WerderGarcia/remainingCeltic ownership not closed.
+No global historical RC approval. User's1990 test stays after26RC closure.
+
+## Continued RC execution — 2026-10-18 19:24 UTC
+
+Vostro `joe-Vostro-3350`; source session
+`01a0592d-fcd5-7262-a637-743a8253d9b4`. v119 remains authoritative; no new
+preferred promotion this evening yet. Two Luna workers active: Aldershot worker
+QA/tests for reusable known-wrong facts route; Stoke worker now classifies a
+bounded frozen cross-club batch after finding Holt's old-markup parser gap and
+no safe unrepresented August Inter replacement. Do not close Gresko speculatively.
+
+Storage: verified idle regenerable Go cache cleared, 2,350,804,992 bytes freed;
+9,998,376,960 bytes available afterwards. Receipt
+`.local/cleanup-20261018/go-compiler-cache-evening/completed.json`.
+Full reference scan REFUSED paired-whole-club replay archive: registered
+2014/15 `replayed-eastleigh-original-opening-20261017-r121b` locator uses it.
+No referenced replay/source/game removed. Generic remote direct-hardlink
+archive verifier now has ten passing rejection/positive tests; no new NAS move.
+
+Larsson: reusable typed adjudicated-facts route added, old missing-country and
+height identity guards unchanged. Original source row/provider3514/dated opener
+binds identity before official facts; Celtic explicitly supplies nationality,
+ScottishFA independently confirms DOB, NOT nationality. All six plans prepared,
+in-memory native readback/idempotence confirms exactly day+country bytes change
+per game (12 total), all other bytes unchanged. Outer and inner XOR cancel:
+physical day20 is correct; independent native reader confirms1971-09-20.
+Witness/plans under `Scotland2000-label-manager-v1/larsson-facts/` in the audit.
+First private actual2000 game build controller68634 is running, NOT yet promoted
+or runtime-verified. Exact next: finish bounded adversarial tests; native build,
+full SOURCE replay and serial actual runner startup/profile for six seasons;
+then publish/checkpoint only after all proofs. Preserve all other20 defaults
+and original2015. Continue source-positive ownership fixes and fixed queue.
+
 ## Two actual releases delivered; v119 authoritative — 2026-10-18 15:00 UTC
 
 15:20UTC root-cause resolved: lead read originalFootballSquads2000Celticpage

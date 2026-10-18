@@ -19,6 +19,7 @@ from scripts.season_within_club_reserve_repair_v1 import native_facts
 from scripts.season_historical_roster_audit_v1 import native_player
 from scripts.season_historical_role_plan_v1 import HTML_ROLES
 from scripts.season_exact_fifa_role_delta_v1 import compatible
+from scripts.capture_transfermarkt_opening_lineups_v1 import _club_key
 
 KIND = 'dated-roster-compatible-profile-roles'
 FIELDS = ['primary_position', 'fine_roles']
@@ -27,6 +28,8 @@ SCOPE = 'Only selected exact-identity broad position and six fine-role bytes plu
 
 
 def period_row(value, season, name, birthday, club):
+    if value.get('format') not in (None, 'original-DFB-plain-full-name-DOB-row'):
+        raise ValueError('unsupported dated roster source format')
     url = urlsplit(value['url'])
     year = int(season[:4])
     if (url.scheme != 'https' or url.hostname != 'datencenter.dfb.de'
@@ -36,6 +39,31 @@ def period_row(value, season, name, birthday, club):
     headings = {' '.join(h.get_text(' ', strip=True).split()) for h in page.select('h3')}
     if not any(h.startswith('Kader ') and h.endswith(f'{year}/{year+1}') for h in headings):
         raise ValueError('original dated roster heading differs')
+    if value.get('format') == 'original-DFB-plain-full-name-DOB-row':
+        # Older DFB rosters publish literal names/DOBs without profile links.
+        # Never fabricate a numeric identity for that source format.
+        if _club_key(club) not in {_club_key(h.get_text(' ', strip=True)) for h in page.select('h2')}:
+            raise ValueError('dated plain roster identifies another club')
+        rows = []
+        for row in page.select('tr.c-Table-body-row'):
+            cells = row.find_all('td', recursive=False)
+            if len(cells) != 3:
+                continue
+            full_name = ' '.join(' '.join(cells[1].find_all(string=True, recursive=False)).split())
+            if exchange.published_name_key(full_name) != exchange.published_name_key(name):
+                continue
+            born = datetime.strptime(cells[2].get_text(' ', strip=True), '%d.%m.%Y').date().isoformat()
+            table = row.find_parent('table')
+            heading = table.select_one('thead th') if table else None
+            broad = SECTIONS.get(heading.get_text(' ', strip=True)) if heading else None
+            if born != birthday or broad not in ('D', 'M', 'F'):
+                raise ValueError('dated plain roster birthday/role differs')
+            rows.append(dict(name=full_name, birth_date=born, primary_position=broad,
+                section=heading.get_text(' ', strip=True), provider_player_id=None,
+                identity_basis='exact-dated-club-full-name-and-literal-DOB-not-numeric-ID'))
+        if len(rows) != 1:
+            raise ValueError('one exact dated plain roster person required')
+        return rows[0]
     links = [a for a in page.select('a[href]')
              if urlsplit(a['href']).path == '/profil/' + str(value['provider_player_id'])]
     if len(links) != 1:
