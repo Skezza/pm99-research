@@ -1,5 +1,31 @@
 # PM99 worker handoff
 
+## Stoke2013 private game/source complete; captures underway — 2026-10-18 14:13 UTC
+
+Vostro/session as CURRENT_WORK14:05/14:13. Generic data-driven reserve exchange
+source implemented (no per-season Python decisions). Private r150a built98151;
+7identities/readback59352PASS;4moved native skill profiles preserved. Freshr150b
+SOURCE66779terminal0 whole game+recipeexact. Source/request/plan/proofs under
+`.local/consolidated-audit-20261009/Stoke2013-opening-exchange-v1/`. Preferred
+2013r145a remains; do NOTclaim installed/RC. Names: Jones->Stoke, Odemwingie->WBA,
+Arnautovic->Werder reserve18848 (NOTGarcia starter9), Guidetti->City; newPennant/
+JeromeStoke andGestedeCardiff. Stade/order/tactics otherdata unchanged except
+completeStoke sourcebench-priority order; nativegame supports5active subs, other
+2published bench players inreserves. CompactArnautovic nativeentiresurname bound
+toexistingpublisherID/DOBfamilyclaim and approvedsamecarrier+1bytewindow; full
+canonicalsourceidentity retained. No guessed/truncatedsurname.
+Capture49327failedBEFORElaunchonstaleoldphotorequirement; genericpublisher now
+updatesvisualrequirementsfromactualportraitoperations. Only2unpreferredlocators
+repairedwithbeforecopies/proof; gamenativerecipeinventorymanifestunchanged.
+Current runner27003 startup succeeded, originalframe viewed;7profilesserially
+running. Inspect/review/glyph/hashbind, then guarded promotion/v118checkpoint.
+99focused/package/import testsPASS; LunafinaladversarialQA no blocker.8.2GiBfree.
+AdditionalknownGarciaSept1Werder arrival remainsunfixed; neverclaimclosed. Luna
+researchonmissingWerderopeningbenchYildirim/Fullkrug andKroosF->Msource returned.
+OtherLuna first5pending2000caseIDs researched; GaryHolt currentHamilton1258cohort
+is actuallysourceKilmarnock, nativeKilmarnock1252cohortactuallyCeltic; priorlabel
+audit corroborationonly, revalidatecurrentbase. No5caseclosures or newdenominator.
+
 ## 2018 actual preferred delivery complete — 2026-10-18 13:28 UTC
 
 Vostro/session as CURRENT_WORK13:28. Preferred2018r149a promoted48931 terminal0;

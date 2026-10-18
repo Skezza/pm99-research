@@ -498,6 +498,9 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         from scripts import season_city_2024_opening_exchange_v1 as city_exchange
         if assignment_plan.get('schema') == city_exchange.SCHEMA:
             assignments = city_exchange
+        from scripts import season_opening_identity_exchange_v1 as opening_exchange
+        if assignment_plan.get('schema') == opening_exchange.SCHEMA:
+            assignments = opening_exchange
         from scripts import season_woking_2003_owned_opening_v1 as woking_owned
         if assignment_plan.get('schema') == woking_owned.SCHEMA:
             assignments = woking_owned
@@ -572,6 +575,11 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
             portrait_archive, portrait_offsets = portrait_delta.no_photo_archive(original_archive,
                 {r['carrier_id'] for r in assignment_plan['replacements']})
+        elif assignment_plan.get('schema') == opening_exchange.SCHEMA:
+            from scripts import season_duplicate_ownership_delta_v1 as portrait_delta
+            original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
+            portrait_archive, portrait_offsets = portrait_delta.no_photo_archive(original_archive,
+                opening_exchange.selected_carriers(assignment_plan))
         elif assignment_plan.get('schema') == city_exchange.SCHEMA:
             from scripts import season_duplicate_ownership_delta_v1 as portrait_delta
             original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
@@ -905,6 +913,11 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
             removed_target_roster_links=[],fixed_duplicate_case_ids=[],
             players_written=len(assignment_plan['updates']),allowed_write=assignment_plan['scope'])
+    elif assignment_plan is not None and assignment_plan.get('schema') == opening_exchange.SCHEMA:
+        receipt.update(compilation_mode=opening_exchange.MODE,
+            original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
+            removed_target_roster_links=[], fixed_duplicate_case_ids=[],
+            players_written=len(assignment_plan['decisions']), allowed_write=assignment_plan['scope'])
     elif assignment_plan is not None and assignment_plan.get('schema') == woking_owned.SCHEMA:
         receipt.update(compilation_mode=woking_owned.MODE,
             original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
@@ -1067,7 +1080,9 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         locator['sourced_player_name_only_plan_path'] = registry.relative_workspace_path(workspace / names.FILENAME)
     if assignment_plan is not None:
         locator['sourced_profile_assignment_plan_path'] = registry.relative_workspace_path(workspace / assignments.filename(assignment_plan))
-    if ownership_plan is not None or opening_plan is not None or (assignment_plan is not None and assignment_plan.get('schema') in (stevenage.SCHEMA, boreham.SCHEMA, barrow.SCHEMA, city_exchange.SCHEMA, woking_owned.SCHEMA, arsenal_owned.SCHEMA, morecambe_owned.SCHEMA, haladas_keeper.SCHEMA)):
+    # Refresh visual requirements from actual portrait operations, not a list
+    # of season-specific schema names which can omit the next identity writer.
+    if ownership_plan is not None or opening_plan is not None or portrait_archive is not None:
         if ownership_plan is not None:
             locator['ownership_plan_path'] = registry.relative_workspace_path(saved_ownership_plan)
             locator['ownership_delta_path'] = registry.relative_workspace_path(receipt_path)

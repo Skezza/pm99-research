@@ -2149,6 +2149,8 @@ def compile_package_to_tree(
         owned_roster.reject_factory_recipe(package)
         from scripts import season_owned_club_composition_v1 as retained_composition
         retained_composition.reject_factory_recipe(package)
+        from scripts import season_opening_identity_exchange_v1 as opening_exchange
+        opening_exchange.reject_factory_recipe(package)
         from scripts import season_resolved_period_country_v3 as resolved_country
         resolved_country.reject_factory_recipe(package)
         from scripts import season_biographic_birth_years_v1 as biography

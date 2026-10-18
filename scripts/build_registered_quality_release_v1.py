@@ -354,6 +354,10 @@ def build(season: str, *, release_id: str, resume: bool = False) -> dict[str, An
     # A newer coach-only layer retains the older player-layer locator. Select
     # the latest typed receipt before asking inherited player reconstructors
     # to compare their older whole recipe (which correctly rejects later edits).
+    from scripts import season_opening_identity_exchange_v1 as opening_exchange
+    reconstructed = opening_exchange.reconstruction(previous, release_id)
+    if reconstructed is not None:
+        return reconstructed
     reconstructed = _build_manager_reconstruction(previous, release_id=release_id)
     if reconstructed is not None:
         return reconstructed

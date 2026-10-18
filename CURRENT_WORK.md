@@ -1,5 +1,69 @@
 # PM99: current work
 
+## Stoke2013 actual candidate built; runtime checks running — 2026-10-18 14:05 UTC
+
+14:13UTC update:66779terminal0, actual fresh SOURCEr150b entire game+recipe
+identical. First capture49327 refused BEFORE launch because generic publisher
+inherited a required old9267loose portrait after correctly clearing it. Fixed
+publisher to derive visual requirements from actual portrait operations, not
+a schema-name enumeration. Repaired ONLY2unpreferred candidate locators, with
+before-documents and `unpreferred-portrait-metadata-repair.json`; game/recipe/
+inventory/manifests unchanged. Both registered playable gates PASS. No native
+build repeated. Current capture controller27003: Stoke startup capturedterminal0,
+lead viewed original022_line_up_inspect.png on1August2013; all7profiles serially
+underway. Original startup UI displays5active sub slots; remaining2published
+source-bench members are retained in reserves (factory-game limit, not a claim
+that all7are active substitutions). Earlier49327had no launch/evidence receipt.
+99focused+package/import tests PASS; Luna final adversarial source/code QA finds
+no blocker. New SOURCE function also now checks registered playable gate.
+Current preferred2013stillr145a; v117globalcounts unchanged.8.2GiBfree.
+
+Vostro `joe-Vostro-3350`; session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+User explicitly asked continue Stoke ownership then remaining26RC checklist,
+using Luna and real games/runner. Two Luna read-only workers reused; lead
+independently inspected cached original pages and actual currentr145a actors.
+New generic data-driven fixed-carrier exchange (no season-specific Python)
+`scripts/season_opening_identity_exchange_v1.py` integrated into existing
+publisher/compiler/SOURCE path. Exact input and plan:
+`.local/consolidated-audit-20261009/Stoke2013-opening-exchange-v1/request-v2.json`,
+`plan-v2.json`. Earlier request/plan are unapproved small preflights; keep them.
+
+BUILT private registered candidate `sourced-opening-ownership-exchange-20261018-r150a`
+(98151terminal0), NOT preferred/installed/RC. Native moves: Jones1865->9266Stoke;
+Odemwingie9266->9466WBA; Arnautovic9267->18848Werder; Guidetti9273->8486City.
+New sourced identities: Pennant9267, Jerome9273, Gestede1865Cardiff. All4moved
+people preserve10native skills. New3use existing deterministicv3editorial rating
+policy, explicit sourced roles/countries, no invented present-day body facts.
+Stoke25capacity/startingXI/tactics preserved; full source bench order delivered.
+3retired slot occupants Anichebe/Obraniak/Demichelis are dated post-August arrivals;
+not claimed globally rehomed or absent all year. Garcia16454 starter9 deliberately
+NOT used forArnautovic; reserveObraniak18848 arrived30Jan2014 instead. Garcia's
+proved September1Werder entry remains a separate required followup, NOT closed.
+
+Exact source/identity guards include canonical profile ID+name+DOB, original
+match date/club/bench, explicit nationality label/code and role compatibility,
+dated literal source anchors, all moved copies consumed, no outside copies,
+unselected ordered records only one startup byte. Existing published ID/DOB
+family claim + previously runtime-proved same-carrier factory window reused
+for compact18848: native `Arnautovic` entire published surname, canonical full
+source name retained. No truncation/guessed surname or new capacity research.
+94focused tests PASS after a dispatch-order regression exposed early inherited
+locator access; fixed compiler-mode guard and latest-artwork/whole-club precedence.
+Actual native readback59352terminal0:7identities/facts/roles/countries/all10skills,
+Stoke25/order, stale portraits cleared, unrelated files/recipe actors preserved.
+Evidence `actual-native-readback.json`. No preferred catalogue mutation.
+
+RUNNING:66779 fresh SOURCEr150b,49327 serial registered startup+7profile captures.
+Inspect jobs/results, do not regenerate completed outputs. Root evidence
+`Stoke2013-opening-exchange-v1/`, runner tags `stoke_opening_2013_14_r150a_20261018*`.
+Next exact: finish SOURCE equality, inspect original startup/profile frames,
+glyph skills/age and launched native hash binding; then guarded promotion and
+v118 checklist updating3Stoke findings (outside2809denominator). v11755disposed/
+2754candidates authoritative until that checkpoint; other25/original2015 preserved.
+Luna sourceworker now reviews first5remaining2000cases sortedstablecaseID;
+QAworker reviewing final generic guard fixes, no publication/runner authority.
+8.3GiB free; existing8GiB reserve enforced, no destructive cleanup this batch.
+
 ## 2018 correction promoted and verified — 2026-10-18 13:28 UTC
 
 13:33UTC handoff: source b0d11e1 and single-season catalogue4dfd712 pushed to
