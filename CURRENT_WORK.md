@@ -1,5 +1,61 @@
 # PM99: current work
 
+## Two actual releases delivered; v119 authoritative — 2026-10-18 15:00 UTC
+
+15:10UTC source-scope update: lead independently counted all6linkedLarsson
+records2000-01..2005-06 (worker prose said5DOBs but tablehad6). All6actualnative
+birthdays1971-09-10; actualcountriesSCOTLANDx3/ENGLAND/HOLLAND/NIGERIA.
+Thus6wrongDOBs+6wrongcountries, NOTjust missingfacts; no correctiondeliveredyet.
+`larsson-facts/six-season-cascade-native-scope-v2.json` pins actualrelease/carrier
+preimages. Two2008/2009records alreadycorrectSWE/20Sep stayunchanged; twoother
+full-name-onlyrecords2005/2006 notapprovedforidentitymerge. Newfacts remain
+outside frozen2809duplicate and247recipe/native-date-mismatch denominators.
+NASthree-probe upload has214members including legitimateinternalhardlinks.
+Genericverifier rejectedlinkmembers beforedeletion; explicit strict direct-
+internal-link/member-byte verification continuation17716 running. No reupload
+or deletionwithout PiSHA, localrehash and fullSOURCE-reference recheck.
+
+Vostro `joe-Vostro-3350`; session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Stoke2013r151a remains preferred and verified as below. Continued to2000r152a:
+controller89749terminal0 delivers Celtic1252/O'Neill1333 and Kilmarnock1258/
+Williamson1335 into actual preferred game/recipe. Native2label/2coach exactdiff,
+all player/ground/kit bytes unchanged, full SOURCEr152b exact. Genuine startup,
+CelticLarsson and uniqueKilmarnockMcCoist original profiles reviewed; native
+hashes/kitpixels/10skill/ageglyphs PASS. Holt initial search actually selected
+Norwichduplicate; nativeproof rejected intendedclub assertion. Originalbadclub
+transcription preservedv1/correctedv2, NOT approvedasKilmarnock. UniqueMcCoist
+capture20100terminal0 provided properKilmarnocklabelproof; no game regenerated.
+Runtime-attested preferred2000 `sourced-scottish-cohort-coaches-20261018-r152a`.
+v11955disposed/2754candidates unchanged; labels/managers not whole-rosterapproval.
+Final26sweep16608terminal0:26/26playable/exactv119bindings,0regenerations.
+Evidence `.local/consolidated-audit-20261009/Scotland2000-label-manager-v1/`.
+
+New known facts NOT silently closed: Larsson7879 displaysScotland and current
+sourceDOB1971-09-10. Lead independentlyread/cached officialCeltic+ScottishFA
+biographies: Swedish/1971-09-20, exacthistoricalopenerprovider3514. Approved
+source-admission.json under larsson-facts/; NOTgame-delivered. Existingonly-XXX
+country/default-DOB paths intentionally refuse; next generic source-linked
+non-default fact correction must bind exacthistoricalID+preimage+officialsource,
+not loosen DOB-match globally or add a player-specific hardcoded handler.
+McCoist30433 profile visiblyFORWARD/LEFTMID.; labelproof does NOTapprove this
+inherited fine role (existing positions queue example). CelticCanero/Lennon/
+Douglas ownership candidates remain; no August2000McGovern admission (2001).
+GaryHoltNorwich latearrival and GreskoInter duplicate proposals now source-positive;
+lead admission/nativeallocation still required. Werder2013 complete18+4
+proposal retained by Luna:Garcia16454->Yildirim, Lorenzen28184->Fullkrug capacity
+choice, preserve4otherAugreserves inclDiSanto; Kroos11344F->M plus fullorder.
+Don't declare omittedeligibleLorenzen ineligible or blindly retainstarter9.
+
+Source5856775 and Stoke/catalog6407652 pushed. Current2000catalogue/docs need
+commit. Luna finalStoke adversarialQA no defect; September local
+preferred-catalog-proposal.json is a non-authoritative old proposal, NOTcurrent
+registry.CATALOG_PATH=data/preferred-season-releases-v1.json; don't overwriteit.
+Disk8520392704bytesfree (~7.94GiB), justbelow8GiBbuildreserve. PiSSH133online,
+correct /srv/hdd UUID verified. No deletionperformed. r3oldrosteraudit archive
+was REFUSED because existing source-birth-year-plan referencesit; keepitlocal.
+Read-only dependency scan87028 for4exactoldprobes is pending; inspectbeforeany
+archive/delete. `.local/sessions` contains gameplays, NOTdisposablechatlogs.
+
 ## Stoke2013 delivered and runtime-attested — 2026-10-18 14:45 UTC
 
 14:46UTC: all26postdelivery regression27056terminal0,26/26playable and exact

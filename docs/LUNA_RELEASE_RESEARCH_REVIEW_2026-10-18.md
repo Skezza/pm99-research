@@ -168,3 +168,61 @@ Worker proposes actual August12 Norwich substitute Raimond de Waard as the
 capacity-fitting replacement, citing 11v11 match833/profile4029. No admission,
 game change or case closure for this proposal yet. Next independent source/cache
 and native reserve/ownership verification precedes any correction.
+
+## Final delivered Stoke QA and next admissions — 2026-10-18 15:00 UTC
+
+Luna independently checked r151a's seven final owners, four preserved moved
+records, three exact height bytes, truthful old-profile reuse, original2015
+retention proof and26-row regression. No defect/count/provenance blocker found.
+55disposed+2754unclosed=original2809; Stoke closes3additional findings,0frozen
+cases. Worker raised old September preferred-catalog-proposal.json; lead rejects
+that as an authority mix-up: registry.CATALOG_PATH is tracked
+data/preferred-season-releases-v1.json, checked by actual all26 regression.
+Historical proposals remain historical, not silently overwritten.
+
+Scottish r152a actual label/coach correction is now preferred/attested; this
+does NOT approve unchanged roster/facts. Larsson7879 original frame shows Celtic
+but SCOTLAND. Exact opener3838377 links provider3514/fullHenrikLarsson, not the
+earlier guessed3576. Lead cached and independently checked official
+Celtic and ScottishFA biographies: Swedish,1971-09-20 versus current1971-09-10.
+Source admission under Scotland2000-label-manager-v1/larsson-facts/; correction
+NOTdelivered. Existing XXX-only/default-birthday gates rightly refuse this
+different case; use a reusable exact-historical-ID fact correction, not a
+global weaker identity match or player-specific code. McCoist30433 final
+profile proves Kilmarnock label, not its inherited FORWARD/LEFTMID. correctness.
+Holt capture selected Norwich duplicate; native guard rejected wrong intended
+club, original bad transcription preserved/corrected. No duplicate closed.
+
+Gresko frozen case0df0bf39ba56e883fe0b683623a1db23bddce5ee79a8bb5153474bc36b231163:
+retain11445Leverkusen, remove duplicate21373Inter. Positive Leverkusen opener
+18459,2000-08-12, sourceperson71, cached reportSHA
+4ebd1ea10da085d2328f74569b69e32c146c9531d5c8f20f5b3e1271c12d816a.
+Current profile71 cacheSHA d1ea89ace0fb232a834608d7af914311d57669e6cb72c2a5dce4bd4dacbd5b91.
+Inter transferOctober/November accounting-date disagreement must remain explicit,
+not invented exactday. Worker proposes newCorradoColombo21231, born1979-08-03,
+Italianstriker, officialInterG0704; positive actualInter leagueopener2000-10-01
+officialmatch2589/TM1153402 bench. This is OCTOBER league evidence, not August
+membership proof; an August cup/friendly/contract source is still preferable.
+Existing Macellari4094 already covers publishedbenchdefender; don't invent a
+second actor. A reserve D->F identity replacement is not forbidden if fully
+sourced/re-rated and not accidentally retained as a starting defender.
+
+Werder2013 published2321033 targetXI carrier order:
+1904,3457,3884,3889,3895,3897,11344,11345,11346,11352,11379.
+Bench:28183,18846,28181,16454(newYildirim83256),28179,18848,
+28184(newFullkrug75489). Four retained capacity extras in oldrelativeorder:
+28180Schmitz,28178DiSanto,28185Zander,28182Rehfeldt. Garcia16454Septarrival removed;
+eligibleLorenzen28184 omitted by capacity priority, NOT claimed ineligible.
+All22 ordervalues1..22; Kroos11344 broadF->M required; complete formation/order
+must be bound, not a blind Dstarter->F replacement. Exact profile/tenure sources
+and actual before-records remain to admit before any native edit.
+
+Larsson cascade lead readback corrected worker's prose-count error: six linked
+records2000/01..2005/06, ALL six recipe/nativeDOBs10Sep, notfive. Allsixactual
+nativecountries wrong: Scotlandx3,England,Holland,Nigeria. Approvedofficialfacts
+are20Sep1971/SWE; twelve field corrections remain undelivered. Scope evidence
+`larsson-facts/six-season-cascade-native-scope-v2.json` pins exact releases and
+carriers. The2008/2009different-source records are alreadycorrect and mustnot
+change; twoother2005/2006full-name-only records remain separate identityreviews.
+These are additional source-fact defects, not additions to the original2809
+duplicate or247recipe/native date-mismatch denominators.

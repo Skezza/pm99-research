@@ -1,5 +1,25 @@
 # PM99 worker handoff
 
+## Scottish labels/coaches also delivered — 2026-10-18 15:00 UTC
+
+Vostro/session as CURRENT_WORK15:00. Actual2000r152a now preferred/attested,
+checkpoint89749terminal0/v119:2labels+2exclusivecoachnames corrected. Whole
+SOURCEr152b exact; nativeplayer/ground/kitbytes preserved. GenuineCelticLarsson
+and KilmarnockMcCoist profiles+startup originalframes/hash/kit/glyphproofsPASS.
+InitialHoltsearch selectedNorwichduplicate; badclubvisualtranscriptionpreserved
+andcorrected, nativeproofneveracceptedwrongclub. UniqueMcCoistcapture20100PASS.
+Finalall26regression16608terminal0,26/26playable/exactbindings,0regeneration.
+Frozen55disposed/2754unclosed unchanged. Sourcecode/Stoke6407652 pushed; current
+2000catalogue/docupdates pendingcommit. No globalhistoricalRCapproval.
+Exactnext: Larssonofficialsource-admission.json (factsnotdelivered) needsgeneric
+source-linked non-defaultDOB/country corrections, preserving otherfields;
+then GaryHolt/Gresko/Werderopeningownership fixes from Luna retainedreports.
+McCoistF/LEFTMID. visible inheritedrole remains unapprovedpositionsqueueexample.
+Before nextbuild:8GiBreserve justundershot; Pi133correctUUIDonline. r3rosteraudit
+cleanupguardcorrectlyrefusedbecausepinnedSOURCEreferencesit. Readonly4probe
+dependency scan87028 running; don'tdeleteuntilverifiedPiarchive/memberledger.
+Currentgames/sources/original2015 preserved; no deletionthisturnsofar.
+
 ## Stoke2013 milestone delivered — 2026-10-18 14:45 UTC
 
 14:46UTC: regression27056terminal0,26/26playable/exactbindings PASS;0regenerations.
