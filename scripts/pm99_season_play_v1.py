@@ -9,6 +9,8 @@ import os
 import re
 import shlex
 import sys
+from collections.abc import Mapping
+from functools import cached_property
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -60,12 +62,37 @@ def original_session_game(release):
 # Transitional compatibility for older orchestration helpers.  The mapping is
 # derived from the authoritative release catalogue instead of maintaining a
 # second hard-coded season/revision table.
-REVISIONS = {
-    season: release.revision
-    for season in registry.supported_seasons()
-    if season != "2015-16"
-    and (release := registry.load_preferred_release(season)).revision is not None
-}
+class _PreferredRevisions(Mapping[str, str]):
+    """Read legacy revision bindings only when an old helper requests them.
+
+    Importing pure QA/capture code must not require 26 installed games. Actual
+    lookup still fails closed when local registration is absent or invalid.
+    The first requested snapshot remains stable for the process, like the old
+    eager dictionary, without its import-time local-data dependency.
+    """
+
+    @cached_property
+    def _snapshot(self) -> dict[str, str]:
+        result = {}
+        for season in registry.supported_seasons():
+            if season == "2015-16":
+                continue
+            revision = registry.load_preferred_release(season).revision
+            if revision is not None:
+                result[season] = revision
+        return result
+
+    def __getitem__(self, key: str) -> str:
+        return self._snapshot[key]
+
+    def __iter__(self):
+        return iter(self._snapshot)
+
+    def __len__(self) -> int:
+        return len(self._snapshot)
+
+
+REVISIONS = _PreferredRevisions()
 
 
 def game_path(season: str) -> Path:
