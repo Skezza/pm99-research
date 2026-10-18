@@ -68,7 +68,7 @@ def dated_source(value):
     if not isinstance(anchor, str) or anchor not in text:
         raise ValueError('dated exchange evidence needs its literal original date')
     parsed = None
-    for fmt in ('%d.%m.%Y', '%d %B %Y', '%d %b %Y', '%B %d, %Y', '%a %d %b %Y'):
+    for fmt in ('%d.%m.%Y', '%d/%m/%Y', '%d %B %Y', '%d %b %Y', '%B %d, %Y', '%a %d %b %Y'):
         try:
             parsed = datetime.strptime(anchor, fmt).date().isoformat()
             break
@@ -76,6 +76,69 @@ def dated_source(value):
             pass
     if parsed != value.get('event_date'):
         raise ValueError('dated exchange source date does not reproduce')
+    if value.get('person_row'):
+        claim = value['person_row']
+        page = BeautifulSoup(original(value).read_bytes(), 'html.parser')
+        rows = [row for row in page.select('table.items > tbody > tr') if row.select_one(
+            'a[href*="/profil/spieler/' + str(claim['provider_player_id']) + '"]')]
+        if len(rows) != 1:
+            raise ValueError('dated transfer needs one exact player roster row')
+        row = rows[0]
+        table = row.find_parent('table', class_='items')
+        headers = [' '.join(cell.get_text(' ', strip=True).split()) for cell in table.select('thead th')]
+        cells = row.find_all('td', recursive=False)
+        if (claim['date_column'] != 'Joined' or headers.count('Joined') != 1
+                or headers.count('Signed from') != 1
+                or claim['date_literal'] != anchor
+                or cells[headers.index(claim['date_column'])].get_text(' ', strip=True) != anchor
+                or not cells[headers.index('Signed from')].select_one(
+                    'a[href*="/verein/' + str(claim['from_club_id']) + '/"]')):
+            raise ValueError('dated player Joined/from-club row does not reproduce')
+
+
+def verify_first_league_fixture(value):
+    """Permit a non-August opener only by replaying its retained league schedule."""
+    from types import SimpleNamespace
+    from scripts.capture_transfermarkt_opening_lineups_v1 import _first_fixture, TeamRef, SCHEMA as CAPTURE_SCHEMA
+    if value.get('membership_mode') != 'original-published-first-league-fixture-bench':
+        raise ValueError('non-August membership needs an explicit first league fixture')
+    original(value)
+    capture = pipeline.read_json_file(original(value['first_league_capture']))
+    year = value['season_start_year']
+    if (type(year) is not int or capture.get('schema_version') != CAPTURE_SCHEMA
+            or capture.get('season_start_year') != year or value['date'][:4] != str(year)):
+        raise ValueError('first league fixture capture season differs')
+    rows = [row for row in capture['clubs'] if
+        row['source_selector'].get('transfermarkt_club_id') == value['provider_club_id']
+        and row.get('source_competition_code') == value['competition']]
+    if len(rows) != 1:
+        raise ValueError('first league fixture needs one exact captured competition club')
+    row = rows[0]
+    schedule = value['schedule_source']
+    raw = original(schedule).read_bytes()
+    canonical = BeautifulSoup(raw, 'html.parser').select_one('link[rel="canonical"]')
+    canonical_url = urlsplit(canonical.get('href', '') if canonical else '')
+    requested_url = urlsplit(schedule['url'])
+    # Transfermarkt canonical schedules omit the season suffix. Bind the
+    # exact captured seasonal URL separately and the canonical club identity.
+    if (schedule['url'] != row['schedule_url'] or canonical is None
+            or (canonical_url.scheme, canonical_url.netloc) != ('https', requested_url.netloc)
+            or canonical_url.path.rstrip('/') != requested_url.path.split('/saison_id/')[0]):
+        raise ValueError('first league fixture original club schedule differs')
+    def get(url, key):
+        if url != schedule['url'] or key != f'schedule/{year}/{value["provider_club_id"]}.html':
+            raise ValueError('first league fixture schedule route differs')
+        return raw
+    ref = TeamRef(source_club_name=row['source_selector']['club_name'],
+        transfermarkt_name=row['source_selector']['transfermarkt_club_name'],
+        club_id=value['provider_club_id'], club_path=urlsplit(schedule['url']).path,
+        identity_match_method='exact-retained-first-league-capture')
+    first = _first_fixture(ref, season_start_year=year, competition_code=value['competition'],
+                           cache=SimpleNamespace(get=get))
+    if (first['date'] != value['date'] or row['first_league_fixture_date'] != value['date']
+            or first['report_url'] != value['url'] or row['lineup_source_url'] != value['url']
+            or first['match_id'] != row['source_match_id']):
+        raise ValueError('non-August report is not the exact first league fixture')
 
 
 def match_people(value):
@@ -94,6 +157,9 @@ def match_people(value):
         boxes = [b for b in page.select('.large-6') if matches(b)]
     if len(boxes) != 1:
         raise ValueError('opening exchange match needs one exact club box')
+    if value.get('membership_mode') == 'classic-published-starting-XI':
+        xi, _ = _classic_lineup(boxes[0])
+        return xi, []
     if value.get('membership_mode') == 'classic-played-substitutes':
         xi, _ = _classic_lineup(boxes[0])
         owned = {p['source_player_id'] for p in xi}
@@ -136,11 +202,17 @@ def match_people(value):
 
 
 def verify_match_club(value, native_name):
+    from scripts.capture_transfermarkt_opening_lineups_v1 import _club_key
     page = BeautifulSoup(original(value).read_bytes(), 'html.parser')
     links = page.select('a[href*="/startseite/verein/' + str(value['provider_club_id']) + '"]')
     labels = {published_name_key(text) for a in links
               for text in (a.get('title', ''), a.get_text(' ', strip=True)) if text}
-    if published_name_key(native_name) not in labels:
+    # Structural designators such as FC may be absent from the native label;
+    # require exact structural equality, never substring/initial matching.
+    structural = {_club_key(text) for a in links
+                  for text in (a.get('title', ''), a.get_text(' ', strip=True)) if text}
+    if (published_name_key(native_name) not in labels
+            and (not _club_key(native_name) or _club_key(native_name) not in structural)):
         raise ValueError('published match club does not identify the destination native club')
 
 
@@ -193,7 +265,7 @@ def new_person(selection, evidence):
         raise ValueError('new person source nationality label/code disagree')
     fixture = evidence[selection['match']]
     if date.fromisoformat(fixture['date']).month != 8:
-        raise ValueError('opening exchange new bench source must be in August')
+        verify_first_league_fixture(fixture)
     _, bench = match_people(fixture)
     people = [row for row in bench if row['source_player_id'] == str(pid)]
     if len(people) != 1:
@@ -211,6 +283,22 @@ def new_person(selection, evidence):
 
 def identity(player):
     return roster.normalise(player.get('source_name') or player['name']), player['facts']['birth_date']
+
+
+def published_profile_family_display(selection, evidence):
+    """Use an explicitly marked entire family component, never the last token."""
+    target = selection['native_display_name']
+    profile = evidence[selection['profile']]
+    parsed = read_transfermarkt_profile(profile, selection['provider_player_id'])
+    page = BeautifulSoup(original(profile).read_bytes(), 'html.parser')
+    header = page.select_one('h1.data-header__headline-wrapper')
+    family = header.select('strong') if header else []
+    if ((parsed['published_full_name'], parsed['published_birth_date']) != (selection['name'], selection['birth_date'])
+            or len(family) != 1 or header.get_text(' ', strip=True) != parsed['published_full_name']
+            or family[0].get_text(' ', strip=True) != target
+            or not isinstance(target, str) or len(target.split()) != 1):
+        raise ValueError('native short display needs the exact published complete single-component family heading')
+    return target
 
 
 def published_name_key(name):
@@ -332,8 +420,12 @@ def prepare(base, input_path):
             raise ValueError('new person already represented; use a retained move')
         updates.append(dict(layer='main', player_id=actor['id'], carrier_id=row['carrier_id'],
             before=actor, replacement=replacement, replacement_opening_evidence=dict(date=evidence[row['match']]['date'])))
-        decisions.append(dict(carrier_id=row['carrier_id'], preserved_source_carrier=None, before=actor,
-                              fine_roles=row['fine_roles']))
+        decision = dict(carrier_id=row['carrier_id'], preserved_source_carrier=None, before=actor,
+                        fine_roles=row['fine_roles'])
+        if 'native_display_name' in row:
+            decision.update(display_name=published_profile_family_display(row, evidence),
+                            display_policy='original-profile-explicit-entire-family-heading-v1')
+        decisions.append(decision)
     plan = dict(schema=SCHEMA, season=base.season, release_id=base.release_id,
         source_input=binding(input_path), package_sha256=registry.sha256_file(base.package_path),
         jug_sha256=digest(jug), eq_sha256=digest(eq), request=request, updates=updates, decisions=decisions,
@@ -341,7 +433,7 @@ def prepare(base, input_path):
         source_title='Dated opening bench identities and August ownership exchanges',
         proof_covers=['bounded-reserve-ownership-and-original-bench-only'], scope=SCOPE)
     for row in request.get('orders', []):
-        if evidence[row['match']].get('membership_mode') == 'classic-played-substitutes':
+        if evidence[row['match']].get('membership_mode') in ('classic-played-substitutes', 'classic-published-starting-XI'):
             raise ValueError('used substitutes are not a complete published bench; cannot authorise bench order')
         club = next(c for c in package['clubs'] if c['carrier_id'] == row['club_carrier_id'])
         verify_match_club(evidence[row['match']], club['name'])
@@ -398,6 +490,8 @@ def bind(package, plan):
                 proof=dict(artifact_id=aid, grade='source-receipt'), value={'policy': 'preserve-existing-mode1'},
                 reason='Destination native shirt byte retained; not a sourced number claim.'))
         else:
+            if row.get('display_name'):
+                target['name'] = row['display_name']
             target['facts']['fine_roles'] = row['fine_roles']
             strength = round(median(p['ratings']['values']['quality'] for p in package['players'] if p['club_id'] == target['club_id']))
             values = ratings.editorial(target, strength, 'opening_squad', date(int(plan['season'][:4]), 8, 1))
