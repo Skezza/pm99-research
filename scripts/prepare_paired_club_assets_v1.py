@@ -34,18 +34,43 @@ GROUNDS = {
 
 
 def ground_source(cache, carrier, ground_specs=None):
-    club, ground, name, url, anchors = (GROUNDS if ground_specs is None else ground_specs)[carrier]
+    spec = (GROUNDS if ground_specs is None else ground_specs)[carrier]
+    club, ground, name, url, anchors = spec[:5]
     path = cache / name
     receipt = json.loads(path.with_name(name + '.source.json').read_text())
-    if receipt != {'url': url, 'sha256': registry.sha256_file(path)}:
+    if receipt.get('url') != url or receipt.get('sha256') != registry.sha256_file(path):
         raise ValueError('ground original URL/SHA mismatch')
     document = BeautifulSoup(path.read_bytes(), 'html.parser')
     # Do not match a navigation link or a current stadium renaming.
     text = document.get_text(' ', strip=True)
     if ground not in text or any(anchor not in text for anchor in anchors):
         raise ValueError('ground original lacks the dated target-club match anchors')
-    return path, {'club': club, 'ground': ground, 'url': url, 'sha256': receipt['sha256'],
-                  'dated_match_anchors': list(anchors)}
+    if len(spec) > 5:
+        expected = [' '.join(cell.split()) for cell in spec[5]]
+        rows = [[' '.join(cell.get_text(' ', strip=True).split()) for cell in row.select('th,td')]
+                for row in document.select('table tr')]
+        if (not expected or expected[0] != club or ground not in expected
+                or rows.count(expected) != 1):
+            raise ValueError('ground season table lacks one exact target-club row')
+    proof = {'club': club, 'ground': ground, 'url': url, 'sha256': receipt['sha256'],
+             'dated_match_anchors': list(anchors)}
+    if len(spec) > 5:
+        proof['exact_season_table_row'] = expected
+    return path, proof
+
+
+def candidate_club_scope(candidate, receipt):
+    """Use the existing asset stage for either private composition shape."""
+    from scripts import season_owned_club_composition_v1 as retained
+    if receipt.get('schema_version') != retained.PRIVATE_SCHEMA:
+        return {m['carrier_id'] for m in receipt['managers']}
+    base = registry.load_registered_release(receipt['season'], receipt['source_release_id'])
+    retained.verify_materialised(base, candidate)
+    path = candidate / receipt['transaction_artifact']
+    if registry.sha256_file(path) != receipt['transaction_sha256']:
+        raise ValueError('retained asset transaction changed')
+    transaction = pipeline.read_json_file(path)
+    return {transaction['whole_club_proposal']['before_club']['carrier_id']}
 
 
 def pixel_payload(record, payload):
@@ -73,13 +98,15 @@ def comparison_sheet_size(club_count):
 def prepare(candidate, assets, output, *, ground_specs=None):
     if output.exists():
         raise ValueError('asset candidate is immutable')
+    if output.resolve().is_relative_to(candidate.resolve()) or candidate.resolve().is_relative_to(output.resolve()):
+        raise ValueError('asset output overlaps protected source candidate')
     receipt = json.loads((candidate / 'candidate-receipt.json').read_text())
     if receipt['registered'] or receipt['publication_authorised']:
         raise ValueError('assets require the exact unpublished target-season pair')
     specs=GROUNDS if ground_specs is None else ground_specs
     package = json.loads((candidate / 'season-package.json').read_text())
     clubs = {c['carrier_id']: c for c in package['clubs']}
-    if {m['carrier_id'] for m in receipt['managers']} != set(specs):
+    if candidate_club_scope(candidate, receipt) != set(specs):
         raise ValueError('ground/kit scope differs from the complete source transaction')
     for carrier, (name, *_rest) in specs.items():
         if clubs[carrier]['name'] != name:
@@ -195,6 +222,7 @@ def prepare(candidate, assets, output, *, ground_specs=None):
                        'sha256': registry.sha256_file(candidate / 'candidate-receipt.json')},
                    native_hashes={name: registry.sha256_file(output / 'game/DBDAT' / name)
                        for name in (*receipt['native_hashes'], *render.ARCHIVES)},
+                   package_sha256=registry.sha256_file(output / 'season-package.json'),
                    paired_asset_stage={'grounds': ground_changes, 'kit_pixel_changes': changes,
                        'runtime_palette': palette_source, 'exact_sponsor_pattern_artwork': False},
                    remaining=['actual runner rosters and kits', 'mode1 deployment not historically proven',

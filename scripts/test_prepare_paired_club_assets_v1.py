@@ -72,6 +72,34 @@ def test_explicit_ground_specs_bind_another_season_without_default_clubs(tmp_pat
         assets.ground_source(tmp_path,3313,specs)
 
 
+@pytest.mark.parametrize('wrong_row', [False, True])
+def test_season_table_ground_requires_one_exact_row_not_global_mentions(tmp_path, wrong_row):
+    expected = ['Leyton Orient', 'London ( Leyton )', 'Brisbane Road', '9,271']
+    cells = list(expected)
+    if wrong_row:
+        cells[0] = 'A different club'
+    path = tmp_path / 'season.html'
+    path.write_text('<h1>2018–19 National League</h1><p>Leyton Orient</p><table><tr>'
+                    + ''.join('<td>' + c + '</td>' for c in cells) + '</tr></table>')
+    url = 'https://example.test/2018-19'
+    path.with_name(path.name + '.source.json').write_text(json.dumps(dict(
+        url=url, sha256=assets.registry.sha256_file(path), capture_scope='historical season table')))
+    specs = {3330: ('Leyton Orient', 'Brisbane Road', path.name, url,
+                    ['2018–19 National League', 'Leyton Orient', 'Brisbane Road', '9,271'], expected)}
+    if wrong_row:
+        with pytest.raises(ValueError, match='exact target-club row'):
+            assets.ground_source(tmp_path, 3330, specs)
+    else:
+        assert assets.ground_source(tmp_path, 3330, specs)[1]['exact_season_table_row'] == expected
+
+
+def test_asset_output_cannot_recurse_into_its_input(tmp_path):
+    candidate = tmp_path / 'candidate'
+    candidate.mkdir()
+    with pytest.raises(ValueError, match='protected source'):
+        assets.prepare(candidate, tmp_path / 'assets', candidate / 'recursive')
+
+
 def test_explicit_asset_scope_cannot_replace_an_unselected_club(tmp_path):
     candidate=tmp_path/'candidate';candidate.mkdir()
     (candidate/'candidate-receipt.json').write_text(json.dumps({'registered':False,

@@ -56,6 +56,8 @@ def replay_assets(candidate, receipt, original_folder, output):
             dict(url=ground['url'], sha256=ground['sha256']))
         specs[carrier] = (ground['club'], ground['ground'], filename,
             ground['url'], ground['dated_match_anchors'])
+        if ground.get('exact_season_table_row'):
+            specs[carrier] += (ground['exact_season_table_row'],)
         document = pipeline.read_json_file(original_folder / f'kit-source-{carrier}.json')
         row = document['catalogue_row']
         if row['carrier_id'] != carrier or row['club_name'] != ground['club']:

@@ -1,5 +1,58 @@
 # PM99 worker handoff
 
+## 2018 actual preferred delivery complete — 2026-10-18 13:28 UTC
+
+Vostro/session as CURRENT_WORK13:28. Preferred2018r149a promoted48931 terminal0;
+26identity slots/two18rosters/Orientmanager/BrisbaneRoad/3periodkit sizes delivered.
+Fresh registeredSOURCEr149b whole game+recipeidentical85934 terminal0; genuine
+Stoke startup56519 terminal0, originalframe reviewed, exactmanifest/inventory
+attested. ExistingStokecontract unchanged; Luna's assumedOrientstartup objection
+was rejected against actualStokescreenshot. MannionOCRfailure remains separate,
+not rewritten tosuccess. SevenexactcaseIDs closed; v117authoritative55disposed/
+2754unclosedcandidates, no globalRCclaim. Other25bindings+actual2015backupverified.
+133focused testsPASS. All26playable/attestation sweep68896terminal0,26/26PASS; evidence
+`.local/consolidated-audit-20261009/Orient2018-coupled-v1/all26-postdelivery-regression.json`.
+Next Stoke2013source-positive fixedslot corrections; Cardiff opening
+bench Gestede/Maynard foundraw2331956. Leadmustreadoriginal; newidentity allocation
+is permitted when sourced, absenceexistingnativeactor not impossibility. Preserve
+Augustreservelesson (DiSantoAug14 notstrictopener-only rejection).8.5GiBfree.
+
+## Final 2018 candidate recorded, acceptance running — 2026-10-18 13:20 UTC
+
+Vostro `joe-Vostro-3350`; session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+See CURRENT_WORK13:20. Final native-candidate-v2-with-assets contains26identity
+corrections,3Orient kit sizes and BrisbaneRoad. Brill original runner87406
+terminal0, exact153pixel kit match and10skill/age glyph proof.7frozen source
+cases reviewed;101->94 identity candidates,0new. Metadata/locatorr149a created,
+NOT promoted. SOURCE rebuild85934 and registered startup56519 running; preserve
+and inspect sessions/results rather than repeat. New SOURCE hook in existing
+quality builder; explicit recovered original-source replay guarded by schema,
+season, exactproposal/currentimplementationSHA and narrow documentedcontroller1
+receipt failure. Luna final QA passes;96focused tests PASS. Both failed first
+entry invocations were import-only, no game/capture written; composition import
+bootstrap fixed, runner helper invoked with upstreamPYTHONPATH.
+Preferred2018r143a/other25/original2015 preserved. v116 remains48disposed/2761
+unclosed; no premature7closures. Next exact: SOURCE equality, original startup
+visual review, guarded promotion/attestation, v117checkpoint. Local8.6GiB,
+8GiB reserve. Luna sourceworker continues balanced2013Werder/Stoke slots read-only.
+
+## 2018 actual candidate, not yet preferred — 2026-10-18 12:42 UTC
+
+Vostro/session as CURRENT_WORK12:42. User asked keep working26RC. Saved actual
+26-identity Aldershot/Orient candidate-v2 under Orient2018-coupled-v1, verified
+two18rosters/order/manager/native facts+skills and parent/unrelated preservation.
+Fixed recipe-order omission and source-proved keeper Mannion's copied role6;
+six-byte correction+recipe role0, skills unchanged. Incremental saved-transaction
+recipe/four native outputs replay exactly, no second game. Full SOURCE not done.
+Genuine profile39910 terminal1 ONLYnameOCR; original frame visibly correct,
+independent lead/Luna and glyphs agree; nine actual launch hashes exact. Preserve
+summary.failure; not automated successful attestation.52focused+61compiler tests
+PASS. Details docs/RETAINED_CLUB_COMPOSITION_DELIVERY_2026-10-18.md.
+No preferred/retained change or new frozen dispositions; v116 still48/2761.
+Next existing Orient period kit/BrisbaneRoad asset stage + source/no-newidentity
+checks/fullSOURCE integration/finalruntime/promotion. Do not promote v1, repeat
+completed mechanics research, or regenerate unaffected25/original2015.
+
 ## Two Luna workers active, RC-first priority — 2026-10-18 12:10 UTC
 
 Update12:18UTC: first batches reviewed before expanded assignments. Lead

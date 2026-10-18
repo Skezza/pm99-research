@@ -70,16 +70,65 @@ def attach_pair_kit_receipts(source,candidate,destination,receipt,native_proof,i
     return application_path,complete_path
 
 
-def publish(candidate,native_proof,identity_proof,release_id, *, source_release_id=None):
+def validate_original_source_replay(proof, proposal, season):
+    """Bind replay evidence to the actual implementation, including failed receipt recovery."""
+    from scripts import prepare_paired_whole_club_native_v1 as replay
+    implementation = Path(replay.__file__).resolve()
+    expected = dict(path=registry.relative_workspace_path(implementation),
+                    sha256=registry.sha256_file(implementation))
+    if (proof.get('schema') != 'pm99-original-source-proposal-replay-evidence-v1'
+            or proof.get('season') != season
+            or proof.get('original_source_proposal_replayed_exactly') is not True
+            or proof.get('source_proposal') != proposal
+            or proof.get('implementation') != expected):
+        raise ValueError('retained original source replay does not bind this exact proposal and implementation')
+    code = proof.get('controller_exit_code')
+    if type(code) is int and code == 0:
+        return
+    # Explicit, narrow recovery: replay returned before receipt argument evaluation failed.
+    if (type(code) is not int or code != 1
+            or type(proof.get('controller_session')) is not int or proof['controller_session'] <= 0
+            or proof.get('failed_controller_claimed_success') is not False
+            or proof.get('call_order') != [
+                'replay.independently_replay_sources([proposal])',
+                'p.write_canonical_json(... implementation.path=registry.relative_workspace_path(replay.__file__) ...)']
+            or proof.get('post_replay_receipt_failure') !=
+                'AttributeError: str object has no attribute resolve in registry.relative_workspace_path(replay.__file__). Corrected receipt-generation argument to Path(replay.__file__).'
+            or proof.get('recovery_method') !=
+                'Source replay call returned before the following receipt-argument evaluation failed. Python sequential execution and the terminal traceback establish completion; no source replay repeated.'):
+        raise ValueError('retained original source replay has no supported controller completion evidence')
+
+
+def publish(candidate,native_proof,identity_proof,release_id, *, source_release_id=None, retained_source_replay_path=None):
+    from scripts import season_owned_club_composition_v1 as retained
     receipt_path=candidate/'candidate-receipt.json';receipt=json.loads(receipt_path.read_text())
     digest=registry.sha256_file(receipt_path)
     readback=json.loads(native_proof.read_text());identities=json.loads(identity_proof.read_text())
-    if (readback['candidate_receipt_sha256']!=digest or identities['candidate_receipt_sha256']!=digest
-            or not readback['all_unselected_native_records_identical']
+    is_retained = receipt.get('schema_version') == retained.PRIVATE_SCHEMA
+    if is_retained:
+        native_bound = (readback.get('schema_version') == retained.PRIVATE_SCHEMA + '-native-and-artwork-replay'
+            and readback.get('candidate_receipt', {}).get('sha256') == digest
+            and readback.get('complete_candidate_game_inventory_identical') is True
+            and readback.get('complete_candidate_recipe_identical') is True
+            and readback.get('offline_kit_rerender') is True and readback.get('exact_ground_row_replayed') is True)
+    else:
+        native_bound = (readback.get('candidate_receipt_sha256') == digest
+                        and readback.get('all_unselected_native_records_identical') is True)
+    if (not native_bound or identities['candidate_receipt_sha256']!=digest
             or identities['introduced_candidate_groups'] or identities['replacement_cross_club_candidates']
             or not identities['stale_portraits_cleared'] or not identities['keeper_recipe_replay_idempotent']):
         raise ValueError('paired publication needs independent exact native and no-new-copy proof')
-    pair=json.loads(native.original(receipt['source_pair']).read_text())
+    if is_retained:
+        if retained_source_replay_path is None:
+            raise ValueError('retained publication requires independent original source replay')
+        source_replay = pipeline.read_json_file(retained_source_replay_path)
+        transaction = pipeline.read_json_file(native.original(dict(path=registry.relative_workspace_path(candidate / receipt['transaction_artifact']),
+                                                                  sha256=receipt['transaction_sha256'])))
+        validate_original_source_replay(source_replay, transaction['whole_club_source'], receipt['season'])
+        pair = dict(season=receipt['season'], release_id=receipt['source_release_id'])
+        proposals = [transaction['whole_club_proposal']]
+    else:
+        pair=json.loads(native.original(receipt['source_pair']).read_text())
     source=(registry.load_registered_release(pair['season'],source_release_id)
             if source_release_id is not None else registry.load_preferred_release(pair['season']))
     if source.release_id!=pair['release_id']:raise ValueError('paired publication baseline no longer preferred')
@@ -90,14 +139,27 @@ def publish(candidate,native_proof,identity_proof,release_id, *, source_release_
     packages.validate_package(package)
     for artifact in package['artifacts']:
         if artifact.get('relative_path'):verify_recipe_artifact(candidate/artifact['relative_path'],artifact['sha256'])
-    proposals=[json.loads(native.original(b).read_text()) for b in pair['proposals']]
+    if not is_retained:
+        proposals=[json.loads(native.original(b).read_text()) for b in pair['proposals']]
     # Publication rechecks the current source guard even when an earlier
     # private native/identity proof predates a newly discovered QA defect.
     from scripts.prepare_paired_whole_club_dispositions_v1 import source_guard
-    if source_guard(pair,proposals)!=pair['source_guard']:
+    if not is_retained and source_guard(pair,proposals)!=pair['source_guard']:
         raise ValueError('complete-club source guard changed before publication')
-    allowed_clubs={p['before_club']['id'] for p in proposals};allowed_managers={original_club['manager_id']
-        for original_club in original['clubs'] if original_club['id'] in allowed_clubs}
+    if is_retained:
+        native_candidate = native.original(dict(path=receipt['source_native_candidate']['path'] + '/candidate-receipt.json',
+                                                sha256=receipt['source_native_candidate']['sha256'])).parent
+        retained.verify_materialised(source, native_candidate)
+        repeated_identity = retained.verify_identity_difference(source, candidate)
+        if pipeline.canonical_json_bytes(repeated_identity) != pipeline.canonical_json_bytes(identities):
+            raise ValueError('retained identity guard does not independently reproduce')
+    replacement_clubs={p['before_club']['id'] for p in proposals}
+    allowed_clubs=set(replacement_clubs)
+    if is_retained:
+        allowed_clubs.add(next(c['id'] for c in original['clubs']
+                              if c['carrier_id'] == transaction['request']['retained_club_carrier_id']))
+    allowed_managers={original_club['manager_id']
+        for original_club in original['clubs'] if original_club['id'] in replacement_clubs}
     for collection,allowed in (('clubs',allowed_clubs),('managers',allowed_managers)):
         new={r['id']:r for r in package[collection]}
         if {r['id'] for r in original[collection]}!=set(new) or any(new[r['id']]!=r for r in original[collection] if r['id'] not in allowed):
@@ -115,13 +177,13 @@ def publish(candidate,native_proof,identity_proof,release_id, *, source_release_
     if destination.exists():raise ValueError('paired registered metadata is immutable')
     outputs=[{'path':'DBDAT/'+name,'sha256':sha,'size':(game/'DBDAT'/name).stat().st_size}
         for name,sha in sorted(receipt['native_hashes'].items())]
-    compiler={'schema':'pm99-native-coupled-whole-club-delta-v1','season':pair['season'],
+    compiler={'schema':retained.REGISTERED_SCHEMA if is_retained else 'pm99-native-coupled-whole-club-delta-v1','season':pair['season'],
         'season_package_sha256':registry.canonical_document_sha256(package_path),
         'source_season_package_sha256':registry.canonical_document_sha256(source.package_path),
         'source_compiler_receipt_sha256':registry.sha256_file(source.compiler_receipt_path),
         'source_build_chain_sha256':registry.sha256_file(source.build_chain_path),
         'source_game_inventory_fingerprint':before['files_fingerprint'],
-        'compilation_mode':'known-good-baseline-complete-coupled-roster-manager-ground-and-kit-delta',
+        'compilation_mode':retained.MODE if is_retained else 'known-good-baseline-complete-coupled-roster-manager-ground-and-kit-delta',
         'players_written':len(corrected),'clubs_written':len(allowed_clubs),'managers_written':len(allowed_managers),
         'outputs':outputs,'difference':difference,'existing_runtime_config_difference':drift,
         'independent_native_proof_sha256':registry.sha256_file(native_proof),
@@ -130,6 +192,9 @@ def publish(candidate,native_proof,identity_proof,release_id, *, source_release_
         'native_XI_scope':'full sourced XI membership and broad positions; opaque mode1 deployment not proved',
         'portrait_policy':'stale inherited faces cleared; no new portrait claim',
         'kit_policy':'source-backed reviewed colours, factory tone; sponsor/fine-pattern simplification declared'}
+    if is_retained:
+        compiler['original_source_replay'] = dict(path=registry.relative_workspace_path(retained_source_replay_path),
+                                                sha256=registry.sha256_file(retained_source_replay_path))
     destination.mkdir(parents=True);compiler_path=destination/'paired-delta-compiler.json'
     application_path,complete_path=attach_pair_kit_receipts(source,candidate,destination,receipt,native_proof,identity_proof,difference)
     pipeline.write_canonical_json(compiler_path,compiler)
@@ -169,8 +234,9 @@ def publish(candidate,native_proof,identity_proof,release_id, *, source_release_
         inventory_path=registry.relative_workspace_path(inventory_path),release_manifest_path=registry.relative_workspace_path(manifest_path),
         game_inventory_fingerprint=after['files_fingerprint'],attestation_path=None,runtime_evidence_path=None,
         technical_status='playable-unverified',qa_status='not-recorded')
-    locator['paired_whole_club_candidate_receipt_path']=registry.relative_workspace_path(receipt_path)
-    locator['paired_whole_club_candidate_receipt_sha256']=digest
+    receipt_key = 'retained_club_composition_candidate_receipt' if is_retained else 'paired_whole_club_candidate_receipt'
+    locator[receipt_key + '_path']=registry.relative_workspace_path(receipt_path)
+    locator[receipt_key + '_sha256']=digest
     locator['kit_patch_application_path']=registry.relative_workspace_path(application_path)
     locator['required_file_hashes']={name:registry.sha256_file(game/name) for name in registry.REQUIRED_GAME_FILES}
     visual={name:sha for name,sha in locator.get('required_visual_file_hashes',{}).items() if name not in removed}

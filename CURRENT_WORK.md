@@ -1,5 +1,117 @@
 # PM99: current work
 
+## 2018 correction promoted and verified — 2026-10-18 13:28 UTC
+
+Vostro `joe-Vostro-3350`; source session
+`01a0592d-fcd5-7262-a637-743a8253d9b4`. Actual preferred2018/19 is now
+`sourced-aldershot-orient-owned-20261018-r149a`; normal command
+`./pm99-season play 2018-19`.26identity slots, both18-person rosters/order,
+Orient manager Justin Edinburgh, BrisbaneRoad and all3source-backed red kit
+sizes delivered. Separate fresh registered SOURCEr149b reproduces complete
+game inventory and recipe exactly (85934 terminal0), not just selected records.
+This is incremental exact-parent reconstruction, NOT clean-machine factory proof.
+Registered startup56519 terminal0, exact manifest/inventory, no crash/debugger;
+lead viewed original Stoke lineup on1August2018. Existing attestation contract
+unchanged; final-attestation.json and preferred-playable-validation.json PASS.
+Brill profile/kit and Mannion reviewed OCR exception remain honestly separate.
+
+Seven source-reviewed exact frozen IDs closed ONLYafter promotion. Authoritative
+checklist now `.local/consolidated-audit-20261009/release-delivery-checklist-v117.json`:
+55/2809 disposed,2754 unclosed candidates, not2754 confirmed bugs. All25other
+preferred bindings and actual sealed original2015 inventory preserved. Evidence
+root `Orient2018-coupled-v1/`: complete-SOURCE-replay.json, prepromotion-proof.json,
+preferred-promotion.json, final-attestation.json, final-delivery-summary.json,
+startup original frame/review and final candidate proof files. Preflight68788
+completed both game inventories/recipe/backup checks before optional source_name
+lookup failed; corrected optional lookup76755 passed remaining gates, no game
+rebuild or concealed controller success. Promotion48931 terminal0.133focused
+publisher/composition/assets/compiler/reconstruction/package/import tests PASS.
+All26postdelivery playable+attestation regression68896 terminal0,26/26PASS;
+`all26-postdelivery-regression.json`. No all26historicalRC approval.
+
+Next work: Stoke2013 late arrivals, source-positive fixed-slot replacements.
+Luna found Cardiff opener bench Gestede/Maynard absent current recipe, usable
+new-identity candidates; absent native actor is not an impossible allocation.
+Review existing raw2331956 before approval. Do NOTrequire every displaced actor
+stay globally represented or chase unbounded transfers; honour sourced opening
+XI plus August capacity-fitting reserves. DiSantoAug14 is NOTautomatically
+ineligible under the same August rule that admitted MannionAug9. September/
+January arrivals remain different. Two Luna workers remain read-only; lead owns
+approval/integration/publication/runner.8.5GiB free,8GiB reserve preserved.
+
+## 2018 final assets recorded; SOURCE/startup checks running — 2026-10-18 13:20 UTC
+
+Vostro `joe-Vostro-3350`; source session
+`01a0592d-fcd5-7262-a637-743a8253d9b4`. Continuing user's26RC request.
+Actual final candidate: `.local/consolidated-audit-20261009/Orient2018-coupled-v1/native-candidate-v2-with-assets/`.
+All3 Orient kit sizes and Brisbane Road delivered; original Brill profile run
+87406 terminal0/sync0/cleanup0. Original frame proves Orient/keeper/age33;
+all10 glyph skills match; displayed red kit153 sampled pixels match with zero
+channel error. Saved native+offline artwork replay reproduces whole game and
+recipe; independent frozen-source review identifies7 repaired cases,101->94
+2018 duplicate candidates,0 introduced. Cases NOT yet closed in global ledger.
+
+Metadata/locator now created for `sourced-aldershot-orient-owned-20261018-r149a`;
+NOT preferred/installed/RC. Current2018 preferredr143a and other25 unchanged.
+New typed SOURCE path integrated into existing registered quality builder.
+Fresh reconstruction85934 into `replayed-aldershot-orient-owned-20261018-r149b`
+and registered startup runner56519 are RUNNING; inspect results, do not rerun.
+Original source proposal replay29366 returned exactly, then receipt argument
+evaluation failed on str/Path; explicit recovered proof preserves controller1.
+Publication now validates schema/season/proposal/current implementation hash,
+and exact supported recovery shape; Luna adversarial review passes. No source
+replay repeated.96 focused publisher/composition/assets/compiler tests PASS.
+Boundary/diff checks PASS. Standalone composition import order corrected after
+fresh process exposed missing upstream app bootstrap; no game had been written
+by the failed first SOURCE invocation. Runner first invocation likewise failed
+before launch on helper import; rerun56519 uses upstream PYTHONPATH explicitly.
+
+Two Luna workers: source worker continuing balanced2013 Werder/Stoke ownership
+slots; QA worker completed final sourceproof review, no publication authority.
+Next: finish new SOURCE equality and genuine registered startup, inspect frame,
+then guarded promotion/attestation and v1177-case checkpoint. Preserve original
+2015 backup and25 other preferred bindings. v11648disposed/2761unclosed still
+authoritative.8.6GiB free,8GiB reserve; no unrelated cleanup/deletion this batch.
+
+## Actual 2018 private game delivered and read back — 2026-10-18 12:42 UTC
+
+Vostro `joe-Vostro-3350`; source session
+`01a0592d-fcd5-7262-a637-743a8253d9b4`. User asked to continue26RC delivery.
+Two Luna workers reused read-only; lead alone edited source/built/captured.
+Existing composition now persisted into actual game and recipe:
+`.local/consolidated-audit-20261009/Orient2018-coupled-v1/native-candidate-v2/`.
+26 changed identities, both18-person native rosters, retained opening order,
+Justin Edinburgh manager/sole ownership independently read back. Existing2018
+preferredr143a and other25 untouched; candidate NOT registered/promoted/RC.
+Retained recipe order gap fixed. Actual readback caught a donor's inherited
+outfield fine-role6 on keeper Mannion; explicit source-bound six-byte correction
+and recipe role0 delivered in v2 with all ten skills preserved. v1 is unapproved
+intermediate and must not promote. Parent full registered inventory PASS.
+Saved transaction recipe+four native files replay identically in memory;
+`saved-transaction-replay.json`. This is incremental, NOT clean-machine/full
+SOURCE reconstruction. Factory compiler now rejects this transaction type until
+proper source reconstruction; no silent loss of retained edits.
+
+One genuine runner capture39910 terminal1/sync0/cleanup0 reached Mannion profile,
+no crash/debugger. Original frame visibly WillMANNION/Aldershot/GOALKEEPER/KEEPER/
+age20; lead+Luna independently reviewed. Exact glyph reader matches all ten
+recipe skill values; nine launched hashes+provenance exact. Failure is OCR
+`willmanniqn`; original summary.success=false preserved, no false automated PASS.
+Receipts/frame in candidate-v2.52 focused tests PASS;61 compiler/package/import
+tests PASS; boundary/diff checks PASS. Full details and source limitations:
+`docs/RETAINED_CLUB_COMPOSITION_DELIVERY_2026-10-18.md`.
+
+v116 remains authoritative48/2809 disposed/2761 candidates, no new case closure
+or global RC claim. Preferred/retained catalogue SHA unchanged from07:58.
+Local~11GiB free;8GiB reserve respected. Runner retention pruned23 old remote
+disposable run copies, not current releases/local source evidence.
+Next exact action: integrate already-rendered Orient kit/BrisbaneRoad ground
+through existing asset stage, no-new-identity/source review, full SOURCE/build
+entry support then targeted final runner and controlled promotion. Luna source
+worker checking exact dated ground anchors/assets inputs; QA worker finished.
+Do not rebuild other25 or original2015. Staffing-only goal remains completed;
+this user task is ongoing release work, not a claimed completed26RC goal.
+
 ## RC-first execution and two Luna research workers — 2026-10-18 12:18 UTC
 
 Vostro `joe-Vostro-3350`; source session
