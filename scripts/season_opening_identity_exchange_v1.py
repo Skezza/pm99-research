@@ -21,7 +21,7 @@ from scripts import season_historical_roster_audit_v1 as roster
 from scripts import season_rating_calibration_v3 as ratings
 from scripts.season_exact_fifa_role_delta_v1 import compatible
 from scripts.season_historical_role_plan_v1 import HTML_ROLES
-from scripts.capture_transfermarkt_opening_lineups_v1 import _modern_lineup
+from scripts.capture_transfermarkt_opening_lineups_v1 import _modern_lineup, _classic_lineup
 from scripts.capture_transfermarkt_lineup_person_evidence_v1 import _profile_facts
 from scripts.capture_2015_source_tail_squads_v1 import NATIONALITY_CODES
 from scripts.prepare_duplicate_whole_club_native_v1 import preserve_other_records
@@ -68,7 +68,7 @@ def dated_source(value):
     if not isinstance(anchor, str) or anchor not in text:
         raise ValueError('dated exchange evidence needs its literal original date')
     parsed = None
-    for fmt in ('%d.%m.%Y', '%d %B %Y', '%B %d, %Y', '%a %d %b %Y'):
+    for fmt in ('%d.%m.%Y', '%d %B %Y', '%d %b %Y', '%B %d, %Y', '%a %d %b %Y'):
         try:
             parsed = datetime.strptime(anchor, fmt).date().isoformat()
             break
@@ -94,6 +94,43 @@ def match_people(value):
         boxes = [b for b in page.select('.large-6') if matches(b)]
     if len(boxes) != 1:
         raise ValueError('opening exchange match needs one exact club box')
+    if value.get('membership_mode') == 'classic-played-substitutes':
+        xi, _ = _classic_lineup(boxes[0])
+        owned = {p['source_player_id'] for p in xi}
+        seen = set(owned)
+        used = []
+        for event in page.select('li.sb-aktion-heim, li.sb-aktion-gast'):
+            badge = event.select_one('.sb-aktion-wappen')
+            if badge is None:
+                continue
+            ids = {int(m.group(1)) for a in badge.select('a[href]')
+                   if (m := re.search(r'/startseite/verein/(\d+)(?:/|$)', a['href']))}
+            if ids != {value['provider_club_id']}:
+                continue
+            entering = event.select('.sb-aktion-wechsel-ein a[href]')
+            leaving = event.select('.sb-aktion-wechsel-aus a[href]')
+            if not entering and not leaving:
+                continue
+            if len(entering) != 1 or len(leaving) != 1:
+                raise ValueError('classic substitution needs one exact entering and leaving person')
+            def person_id(link):
+                match = re.search(r'^/([^/]+)/leistungsdatendetails/spieler/(\d+)(?:/|$)', link['href'])
+                if match is None:
+                    raise ValueError('classic substitution numeric identity absent')
+                return match.group(1), match.group(2)
+            slug, pid = person_id(entering[0])
+            _, out = person_id(leaving[0])
+            if out not in owned or pid in seen:
+                raise ValueError('classic substitution does not belong to exact club participants')
+            owned.remove(out)
+            owned.add(pid)
+            seen.add(pid)
+            used.append(dict(display_name=entering[0].get_text(' ', strip=True), source_player_id=pid,
+                source_slug=slug, source_url='https://www.transfermarkt.co.uk/'+slug+'/profil/spieler/'+pid,
+                membership_basis='published-used-substitute-not-complete-bench'))
+        if not used:
+            raise ValueError('classic match has no exact club used-substitute evidence')
+        return xi, used
     xi, bench, formation, manager = _modern_lineup(boxes[0])
     return xi, bench
 
@@ -167,7 +204,9 @@ def new_person(selection, evidence):
                     position=selection['position'], nationality=selection['nationality'],
                     height_cm=None, weight_kg=None, shirt_number=None),
                 raw_evidence=dict(status='raw-source-reparsed', local_path=profile['path'], source_sha256=profile['sha256']),
-                membership='original-published-opening-bench')
+                membership=('original-published-opening-used-substitute' if
+                    fixture.get('membership_mode') == 'classic-played-substitutes' else
+                    'original-published-opening-bench'))
 
 
 def identity(player):
@@ -228,7 +267,7 @@ def prepare(base, input_path):
         raise ValueError('opening exchange fixture is not in the target starting year')
     moves = request['moves']
     targets = [row['destination'] for row in moves] + [row['carrier_id'] for row in request['new_people']]
-    if not moves or len(set(targets)) != len(targets):
+    if not targets or len(set(targets)) != len(targets):
         raise ValueError('opening exchange needs unique complete destinations')
     sources = [row['source'] for row in moves]
     if len(set(sources)) != len(sources) or not set(sources) <= set(targets):
@@ -302,6 +341,8 @@ def prepare(base, input_path):
         source_title='Dated opening bench identities and August ownership exchanges',
         proof_covers=['bounded-reserve-ownership-and-original-bench-only'], scope=SCOPE)
     for row in request.get('orders', []):
+        if evidence[row['match']].get('membership_mode') == 'classic-played-substitutes':
+            raise ValueError('used substitutes are not a complete published bench; cannot authorise bench order')
         club = next(c for c in package['clubs'] if c['carrier_id'] == row['club_carrier_id'])
         verify_match_club(evidence[row['match']], club['name'])
         owned = {p['carrier_id'] for p in players.values() if p['club_id'] == club['id']}

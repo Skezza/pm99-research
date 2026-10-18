@@ -1,9 +1,29 @@
 from copy import deepcopy
 from types import SimpleNamespace
+from pathlib import Path
 
 import pytest
 
 from scripts import season_opening_identity_exchange_v1 as subject
+
+
+ROOT = Path(__file__).resolve().parents[1]
+NORWICH_REPORT = ROOT / ".local/transfermarkt-opening-plans-current-v1/2000-01/cache/report/3138386.html"
+NORWICH_FIXTURE = {
+    "path": str(NORWICH_REPORT.relative_to(ROOT)),
+    "sha256": "0c230e9810a6bcfb148fbd912feef5405462842edc259fcef176894a23d14980",
+    "url": "https://www.transfermarkt.co.uk/spielbericht/index/spielbericht/3138386",
+    "provider_club_id": 1123,
+    "date": "2000-08-12",
+    "membership_mode": "classic-played-substitutes",
+}
+
+
+@pytest.fixture
+def norwich_report():
+    if not NORWICH_REPORT.is_file():
+        pytest.skip('retained original Norwich match unavailable')
+    return NORWICH_REPORT
 
 
 @pytest.fixture
@@ -135,3 +155,136 @@ def test_reconstruction_does_not_follow_an_inherited_other_type_locator(tmp_path
     previous = SimpleNamespace(compiler_receipt_path=compiler,
         locator=dict(sourced_profile_assignment_plan_path='must-not-be-opened'))
     assert subject.reconstruction(previous, 'unused') is None
+
+
+def test_classic_played_substitutes_are_exact_club_used_people_not_a_complete_bench(norwich_report):
+    xi, used = subject.match_people(NORWICH_FIXTURE)
+    assert len(xi) == 11
+    assert [(row['display_name'], row['source_player_id']) for row in used] == [
+        ('Gaetano Giallanza', '11521'),
+        ('Adrian Forbes', '44590'),
+        ('Raymond de Waard', '186208'),
+    ]
+    assert all(row['membership_basis'] == 'published-used-substitute-not-complete-bench' for row in used)
+    # A goals-section participant from the opponent is not a Norwich member.
+    assert '222092' not in {row['source_player_id'] for row in xi + used}
+
+
+@pytest.mark.parametrize('field,value,match', [
+    ('provider_club_id', 9999, 'exact club box'),
+    ('date', '2000-08-13', 'match date'),
+])
+def test_classic_substitutes_reject_wrong_club_or_date(field, value, match, norwich_report):
+    forged = dict(NORWICH_FIXTURE, **{field: value})
+    with pytest.raises(ValueError, match=match):
+        subject.match_people(forged)
+
+
+def test_classic_substitutes_reject_wrong_original_sha(norwich_report):
+    forged = dict(NORWICH_FIXTURE, sha256='0' * 64)
+    with pytest.raises(ValueError, match='source changed'):
+        subject.match_people(forged)
+
+
+def test_classic_substitution_outgoing_person_must_be_current_club_participant(tmp_path, monkeypatch, norwich_report):
+    from bs4 import BeautifulSoup
+
+    page = BeautifulSoup(NORWICH_REPORT.read_bytes(), 'html.parser')
+    target = None
+    for event in page.select('li.sb-aktion-heim, li.sb-aktion-gast'):
+        badge = event.select_one('.sb-aktion-wappen')
+        if badge and badge.select_one('a[href*="/verein/1123/"]') and event.select_one('.sb-aktion-wechsel-aus a[href]'):
+            target = event.select_one('.sb-aktion-wechsel-aus a[href]')
+            break
+    assert target is not None
+    import re
+    target['href'] = re.sub(r'(/spieler/)\d+', r'\g<1>999999', target['href'])
+    altered = tmp_path / 'altered-match.html'
+    altered.write_text(str(page), encoding='utf-8')
+    monkeypatch.setattr(subject, 'original', lambda _value: altered)
+
+    with pytest.raises(ValueError, match='exact club participants'):
+        subject.match_people(NORWICH_FIXTURE)
+
+
+def test_classic_mode_ignores_same_club_goal_or_card_without_substitution(tmp_path, monkeypatch, norwich_report):
+    from bs4 import BeautifulSoup
+
+    page = BeautifulSoup(NORWICH_REPORT.read_bytes(), 'html.parser')
+    events = page.select_one('#sb-wechsel ul')
+    events.append(BeautifulSoup('''<li class="sb-aktion-heim"><div class="sb-aktion-wappen">
+        <a href="/club/startseite/verein/1123/saison_id/2000">Norwich City</a></div>
+        <div class="sb-aktion-aktion">Yellow card</div></li>''', 'html.parser').li)
+    altered = tmp_path / 'report-with-card.html'
+    altered.write_text(str(page), encoding='utf-8')
+    monkeypatch.setattr(subject, 'original', lambda _value: altered)
+
+    xi, used = subject.match_people(NORWICH_FIXTURE)
+    assert len(xi) == 11
+    assert [row['source_player_id'] for row in used] == ['11521', '44590', '186208']
+
+
+def test_new_person_membership_labels_played_substitute_without_claiming_complete_bench(source_profile, monkeypatch):
+    _path, selection, evidence = source_profile
+    evidence['fixture'].update(date='2000-08-12', membership_mode='classic-played-substitutes')
+    monkeypatch.setattr(subject, 'match_people', lambda _value: ([], [dict(source_player_id='12', display_name='Sample Player',
+        membership_basis='published-used-substitute-not-complete-bench')]))
+    result = subject.new_person(selection, evidence)
+    assert result['membership'] == 'original-published-opening-used-substitute'
+
+
+def test_classic_played_substitutes_cannot_authorise_complete_bench_order(tmp_path, monkeypatch):
+    from scripts import season_opening_order_repair_v1 as ownership
+
+    input_path = tmp_path / 'request.json'
+    input_path.write_text('{}', encoding='utf-8')
+    game = tmp_path / 'game'
+    (game / 'DBDAT').mkdir(parents=True)
+    (game / 'DBDAT/JUG98030.FDI').write_bytes(b'jug')
+    (game / 'DBDAT/EQ98030.FDI').write_bytes(b'eq')
+    evidence_path = tmp_path / 'match.html'
+    evidence_path.write_text('fixture')
+    evidence = {'fixture': dict(path='match.html', sha256='bound', date='2000-08-12',
+        membership_mode='classic-played-substitutes', anchors=['exact reviewed report'])}
+
+    clubs = [dict(id=1, carrier_id=10, name='Club One'), dict(id=2, carrier_id=20, name='Club Two')]
+    players = []
+    by_carrier = {}
+    for club_id, start, name_prefix in ((1, 100, 'One'), (2, 200, 'Two')):
+        for slot in range(1, 13):
+            carrier = start + slot
+            actor = dict(id=f'player-{carrier}', carrier_id=carrier, club_id=club_id,
+                name=f'{name_prefix} Player {slot}', source_name=f'{name_prefix} Player {slot}',
+                person_id=f'person-{carrier}',
+                facts=dict(birth_date=f'1970-01-{slot:02d}'), ratings=dict(values={'quality': 10}))
+            players.append(actor)
+            by_carrier[carrier] = actor
+    package = dict(players=players, clubs=clubs)
+    request = dict(schema=subject.INPUT_SCHEMA, season='2000-01', release_id='fixture-release', evidence=evidence,
+        moves=[dict(source=112, destination=212, from_club=1, to_club=2, evidence=['fixture']),
+               dict(source=212, destination=112, from_club=2, to_club=1, evidence=['fixture'])],
+        retirements=[], new_people=[],
+        orders=[dict(match='fixture', club_carrier_id=10, full_order=list(range(101, 113)), bench_mapping=[])])
+    base = SimpleNamespace(season='2000-01', release_id='fixture-release',
+        package_path=tmp_path / 'package.json', game_path=game)
+    monkeypatch.setattr(subject.pipeline, 'read_json_file',
+        lambda path: request if Path(path) == input_path else package)
+    monkeypatch.setattr(subject.registry, 'sha256_file', lambda _path: 'a' * 64)
+    monkeypatch.setattr(subject, 'binding', lambda _path: dict(path='request.json', sha256='a' * 64))
+    monkeypatch.setattr(subject, 'original', lambda _value: evidence_path)
+    monkeypatch.setattr(subject, 'source_text', lambda _value: 'exact reviewed report')
+    monkeypatch.setattr(subject, 'dated_source', lambda _value: None)
+    monkeypatch.setattr(subject, 'verify_match_club', lambda *_args: None)
+    monkeypatch.setattr(subject, 'skills', lambda _jug, carrier: by_carrier[carrier]['ratings']['values'])
+    monkeypatch.setattr(ownership, 'native_owners', lambda _eq: {112: {10}, 212: {20}})
+
+    def native(_jug, carrier):
+        row = by_carrier[carrier]
+        return dict(startup_order=carrier % 100, birth_date=row['facts']['birth_date'], name=row['name'])
+
+    monkeypatch.setattr(subject.facts, 'native_facts', native)
+    monkeypatch.setattr(subject, 'match_people', lambda _fixture: pytest.fail(
+        'played substitutes must be rejected before treating them as an ordered complete bench'))
+
+    with pytest.raises(ValueError, match='not a complete published bench'):
+        subject.prepare(base, input_path)
