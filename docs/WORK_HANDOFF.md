@@ -1,5 +1,33 @@
 # PM99 worker handoff
 
+## Two Luna workers active, RC-first priority — 2026-10-18 12:10 UTC
+
+Update12:18UTC: first batches reviewed before expanded assignments. Lead
+native2013 EQ readback confirms mode0x25 for301/307/314/320, mode1x22 for403;
+rejected worker assumption that missing JSON max permits roster growth. Birthday
+primary followup remains inconclusive, no fact guesses. Reports/review now in
+`docs/LUNA_RELEASE_RESEARCH_REVIEW_2026-10-18.md`. Lead reproduced/fixed stale
+runner OCR fixture only, production unchanged;4focused and205full-file tests
+PASS/1skip, independent Luna final-diff QA passes. Upstream commit3a072b6;
+snapshot push29162 terminal0 to origin. Actual games still unchanged. Both Luna
+workers finished bounded reports; saved goal contains only staffing instructions,
+not the full26RC release acceptance objective. Staffing completion must not be
+reported as26RC completion. Next release work: approve fixed-slot identity moves
+and replacements after primary-source/native-scope review, not roster resizing.
+
+Vostro/session as CURRENT_WORK12:10. User delegation goal now executing with
+two actual gpt-6-luna workers: `/root/luna_stoke_opening_review` (three2013
+Stoke late arrivals/coupled owners) and `/root/luna_aldershot_reserve_review`
+(McCoy/Mannion August reserves and Fowler DOB uncertainty). Read-only, no
+shared recipe edits/builds/runner/publication. First reports pending independent
+lead review against original evidence before delegation expands.
+Lead independently checked original McCoy/Mannion official bodies and hashes:
+positive dated July2/August9 eligibility, not proof Mannion played August4.
+26RC closure now takes priority over fresh1990 experiment. Editor scalar edits
+exist; complete roster/tactics/asset maintenance and amendment-to-release path
+are not yet delivered. v116 counts unchanged; no new actual game delivery.
+Next collect worker reports, verify evidence, integrate approved corrections.
+
 ## GitHub source protection and cleanup complete — 2026-10-18 07:58 UTC
 
 Vostro/session as CURRENT_WORK07:58. User-authorized source snapshots published

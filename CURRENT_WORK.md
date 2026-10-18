@@ -1,5 +1,80 @@
 # PM99: current work
 
+## RC-first execution and two Luna research workers — 2026-10-18 12:18 UTC
+
+Vostro `joe-Vostro-3350`; source session
+`01a0592d-fcd5-7262-a637-743a8253d9b4`. User activated delegation goal:
+lead owns integration/publication/serial runner; two Luna workers initially,
+first batches independently reviewed before expanding. Previous conversational
+planning was not execution. Both workers now actually spawned using
+`gpt-6-luna`, independent bounded read-only batches:
+
+- `/root/luna_stoke_opening_review`: three Stoke2013 late-arrival findings,
+  source dates and coupled replacement/ownership options; existing review-v2
+  and six-player ownership graph in `luna-closeout-20261017/` are inputs.
+- `/root/luna_aldershot_reserve_review`: McCoy/Mannion August eligibility and
+  Fowler DOB conflict, original source bodies and v3 adjudication as inputs.
+
+Neither worker may edit shared recipes, build, publish or operate the runner.
+Reports must retain existing case identifiers, dated evidence, proposed
+dispositions/corrections and uncertainty. Do not count rechecks as new closures.
+Lead has independently inspected official McCoy/Mannion HTML and matched both
+SHA256 values against v3: July2 signing and August9 loan support August reserve
+eligibility; Mannion is NOT a proved August4 matchday member. Fowler unresolved.
+
+Priority clarification following the user discussion: finish existing26 RCs
+first, including practical recipe/edit/build reproducibility needed to maintain
+them; defer the fresh1990 whole-season acceptance experiment. Earlier07:58
+1990-first proposal is superseded in priority, not discarded implementation.
+Editor code inspection confirms scalar facts/ratings/basic clubs/manager
+assignment editable, but roster membership/fine roles/tactics not fully exposed;
+kit/portrait links are read-only. Generic JSON amendment materialisation does
+not automatically promote copies into a playable release. These are known
+maintenance gaps, not a completed end-to-end editing claim.
+
+No games BUILT/INSTALLED/runner-VERIFIED this batch; v116 counts unchanged.
+Disk currently reports about11GiB available; retain8GiB reserve and serial work.
+First reports returned and lead checked original cached official bodies plus
+Soccerbase91175/100491 DOB text and BBC Arnautovic date/body. No new case closed.
+Stoke worker correctly refused to reuse the unrelated2015 Odemwingie ID and
+flagged missing balanced recipient allocations. Aldershot worker distinguished
+August9 reserve eligibility from August4 selection and identified Mannion
+profile1998-05-05 versus reported native1998-04-01 conflict; Fowler12/20 versus
+native11/20 remains disputed. Do not silently bless either native DOB.
+Second bounded batches assigned after this review: Stoke worker inspects four
+recipient-club current rosters/capacities for an actionable balanced transaction;
+Aldershot worker seeks independent primary DOB corroboration for two people.
+Both remain read-only; source agreement alone does not authorize publication.
+Second Aldershot batch found primary sources age-only, no precise DOB resolution;
+do not invent birthdays or require optional fact certainty to block proved
+ownership. Stoke second batch returned recipient counts, but lead rejected its
+inference that absent JSON capacity permits Werder22->23 or underfilled rosters.
+Lead independently parsed actual preferred2013 EQ:301/307/314/320 mode0x25,
+403 mode1x22. Worker redirected to source-positive Werder actor swaps, not
+append/delete assumptions. Review record:
+`docs/LUNA_RELEASE_RESEARCH_REVIEW_2026-10-18.md`. No release writes.
+Lead also reproduced the known runner scroll fixture failure: mocked profile
+classification had no OCR, so production correctly stopped. Updated only
+upstream test fixture with valid OCR plus first/later blank and wrong-screen
+rejection cases; production guard unchanged. Four focused cases PASS; expanded
+full-file rerun205PASS/1skip in23.16s. Independent Luna final-diff QA passes:
+later invalid capture cannot Return/scroll/select slot3. Not actual runner or
+player-identity evidence. Upstream source commit3a072b6 on snapshot branch;
+push29162 completed exit0 to origin; no default/release branch changed.
+Stoke followup confirms Garcia afterAugust, DiSanto eligibleAugust14; source
+URLs are research leads pending lead original-page review. Final mapping batch
+returned: no Rangers deTalca in package club catalog (QPR is not that club);
+Jerome a sourced opening bench forward is a slot-reuse candidate, not approved
+native allocation. No roster append/delete or new carrier assumption.
+Both workers now finished bounded batches; staffing/review procedure exercised.
+Important goal-state limitation: saved active objective contains only delegation
+instructions, not the full26RC completion text. Satisfying that staffing objective
+does NOT close release v116 or imply26RC readiness.
+Exact next release action: review primary Garcia source and full native club
+scope, then approve a fixed-slot retained-identity/replacement transaction before
+recipe/native/readback/runner delivery. Preserve
+current26 and original2015; no unaffected release regeneration.
+
 ## Source protected, safe cleanup complete, workflow proposed — 2026-10-18 07:58 UTC
 
 Vostro `joe-Vostro-3350`; source session
