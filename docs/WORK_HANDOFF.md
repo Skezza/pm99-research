@@ -2,6 +2,23 @@
 
 ## Scottish labels/coaches also delivered — 2026-10-18 15:00 UTC
 
+15:20UTC: Larssonprovidererrorresolved, notparserbug. LeadreadFootballSquads
+published10-09-71 and correctDD-MM-YYparser; officialCeltic/FAgive20Sep1971.
+Webexcerptwitness explicitlynotrawHTML; originalceltic.txt notfoundlocally.
+Nextknown-source-fact12fieldcascade across6linkedseasons; don'ttouch2already
+correctyears or2full-name-onlyunprovedactors. Beforebuilds gainmeaningfulsafe
+headroom:paired-whole-club-replays-v1 preliminarydata/consolidatedrefscan empty,
+but fullregistered/SOURCE/activechecks+verifiedPiarchive stillrequired. No broad
+cleanupapprovedbythatquickscan. See CURRENT_WORK15:20forevidence/exactnext.
+
+15:17UTC:17716terminal0,3exactoldprobes fullyverifiedonPi thenremoved locally;
+Pi ledger and localcleanup-20261018/three-cold-probes-to-pi/ record214files,
+120safeinternalhardlinks, SHA/recovery. No currentgames/sources removed.
+Free8593625088bytes, only~3.5MiBabove8GiBreserve; more meaningfulsafeheadroom
+needed before6seasonfixbatch. Scottishcatalog/docs f7c931a pushed. Worker
+tracingactualoriginalLarssonDOBrow (providererror vsparserbug);6nativeDOBs
+and6nativecountries confirmedwrong, distinctfromsame-name-onlyunprovedactors.
+
 Vostro/session as CURRENT_WORK15:00. Actual2000r152a now preferred/attested,
 checkpoint89749terminal0/v119:2labels+2exclusivecoachnames corrected. Whole
 SOURCEr152b exact; nativeplayer/ground/kitbytes preserved. GenuineCelticLarsson

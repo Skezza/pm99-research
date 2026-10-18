@@ -2,6 +2,31 @@
 
 ## Two actual releases delivered; v119 authoritative — 2026-10-18 15:00 UTC
 
+15:20UTC root-cause resolved: lead read originalFootballSquads2000Celticpage
+and dateparser: provider literallypublishes10-09-71; parsercorrectlyconvertsit.
+NOTgenericingestionbug. OfficialCeltic/FA20Sep1971winsforverified3514identity.
+`larsson-facts/provider-error-web-witness.json` explicitlyretainswebextraction,
+NOTrawHTML; oldtxtbodyunavailablelocally, historicalselectorSHA/intake retained.
+Do not reopenparser/formatresearch. Nextfactcorrection shouldretainoriginalbad
+source plusofficialadjudication andapplydeterministicnarrow12fieldcascade.
+Candidate forlargerheadroom: paired-whole-club-replays-v1 (~1.8GiB) had NOquick
+data/consolidatedJSON references (83748terminal0); NOTapprovedforremoval until
+fullregistered/SOURCE/active-pathchecks andverifiedlink-awarePiarchive. Current
+8GiBreserveheadroomonly~3.5MiB; don'tstartpartial6-seasonbuildbatchbeforecleanup.
+
+15:17UTC final storagehandoff: continuation17716terminal0; three exactoldprobes
+Pi-archived/all214streamSHAverified incl120internalhardlinks, locallyremoved.
+74.8MiBreclaimable;8593625088bytesfree, only~3.5MiBabove8GiBreserve: NOThealthy
+headroom for anotherfullbatch. Recoverymembers/SHA/verifiers in
+`.local/cleanup-20261018/three-cold-probes-to-pi/`, durablePi ledger updated.
+Currentcatalogueunchanged afterretirement; no source/currentgame/2015backup
+removed. Requiredr3report and symlink-containingupscaleprototype retained.
+f7c931a Scottishcatalog/docs pushed. All26v119 regressionPASS (16608terminal0).
+Sourceworker now checks ORIGINALcachedLarssonrow to distinguish providerDOB
+error versus ingestionparserbug before making6localexceptions. Exactnext:
+finishroot-cause trace, gain meaningfulsafeheadroom, reusableknown-source-fact
+correction then6season native/SOURCE/runtimecascade; no need user decisions.
+
 15:10UTC source-scope update: lead independently counted all6linkedLarsson
 records2000-01..2005-06 (worker prose said5DOBs but tablehad6). All6actualnative
 birthdays1971-09-10; actualcountriesSCOTLANDx3/ENGLAND/HOLLAND/NIGERIA.

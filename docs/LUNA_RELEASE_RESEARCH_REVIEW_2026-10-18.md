@@ -226,3 +226,11 @@ carriers. The2008/2009different-source records are alreadycorrect and mustnot
 change; twoother2005/2006full-name-only records remain separate identityreviews.
 These are additional source-fact defects, not additions to the original2809
 duplicate or247recipe/native date-mismatch denominators.
+
+Root cause resolved15:20UTC: worker and lead independently read the published
+FootballSquads Celtic2000/01 page, whose Larsson date is literally10-09-71.
+The DD-MM-YY parser correctly yields1971-09-10. This is provider data error,
+not evidence of a broader parser defect. Oldselectorceltic.txt body was notfound
+locally; keep its recordedSHA/intake, do not claim a currentHTML hash match.
+Minimal original-web excerpt/provenance is provider-error-web-witness.json;
+the two official club/federation biographies resolve the factual disagreement.

@@ -1,5 +1,34 @@
 # Pi archive ledger
 
+## Three unreferenced old experiments — 2026-10-18 15:15 UTC
+
+Vostro `joe-Vostro-3350`; session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Archived and locally removed ONLY `.local/rc-manager-probe.Fz3a3j`,
+`.local/pkg-audit-debug.9tMifm`, `.local/crash04-diagnostics-v1`.
+All214 original file streams SHA/size verified on Pi, including120 direct
+internal regular-file hardlinks; no symlinks/external targets followed.
+Pi `joe@192.168.1.133`, `/srv/hdd`, verified UUID
+`1f364414-880d-4f96-8619-3bd8c9954cc0`.
+Archive `/srv/hdd/pm99-archive/research/cold-probes/20261018/three-unreferenced-experiments.tar.gz`.
+SHA256 `f54a4a6809ab2d3fac68bca49ffa2a18f7ce7c2cbe3e8aaf63838ab7e2ddff81`.
+Reclaimable allocation78413824bytes (~74.8MiB); free space
+8514965504->8593625088bytes. Headroom remains very tight, not a broad disk fix.
+
+Ledger `.local/cleanup-20261018/three-cold-probes-to-pi/` contains members,
+strict link-aware remote verifier source/results, local/registered/consolidated
+SOURCE recheck, unchanged catalogue proof, completion and scope. Initial generic
+verifier correctly stopped before deletion on legitimate hardlinks; continuation
+verified every resolved stream and only direct internal regular-file links,
+without reuploading or weakening the byte/size checks. Restore the three named
+trees under `.local` and verify every member against members.json before reuse.
+
+NOT removed: current26 games, original2015 backup, sources or gameplay sessions.
+The r3 roster audit remains local because a registered source-birth-year plan
+references it. The upscale Wine prototype remains local because its symlinks
+require a different archival contract. No safety guards were bypassed or source
+evidence discarded. All26 v119 regression already PASS; catalogue unchanged
+after cleanup; no game rebuilt or edited during retirement.
+
 ## Seven unregistered private game copies archived — 2026-10-18 07:58 UTC
 
 Vostro `joe-Vostro-3350`; source session
