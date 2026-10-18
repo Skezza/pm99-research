@@ -2,6 +2,25 @@
 
 ## 2018 correction promoted and verified — 2026-10-18 13:28 UTC
 
+13:33UTC handoff: source b0d11e1 and single-season catalogue4dfd712 pushed to
+GitHub snapshot/season-toolchain-20261018. Root source clean; pre-existing dirty
+upstream runner/editor and parked tools/season-preset-viewer preserved.
+Both Luna batches finished. Lead verified current2013 carriers16454 Garcia,
+9466 Anichebe,8486 Demichelis against actual preferredr145a (not old strictrecipe).
+Lead rehashed raw Cardiff2331956 and Stoke2350359, confirmed exact linked source
+IDs; worker scoped bench rows give CF Gestede39908/Maynard39705 and CF Jerome35855,
+RW Pennant3195. Existing Pennant/Jerome profiles provide exact DOB/identity/role.
+Gestede/Maynard still need retained biography bodies before approval. Lead read
+official WBA24August report: Anichebe on Everton unused bench, Sinclair already
+WBA loan reserve; do not eject valid August Sinclair merely for arithmetic.
+DFB September1Garcia claim currently worker evidence/URL only, inaccessible to
+lead web tool; acquire and verify body before source approval. No2013game write.
+Exact next action: retain dated Garcia/Anichebe/Demichelis source bodies and one
+Cardiff bench biography, then source-bound fixed-slot exchange: restore3Stoke
+late arrivals to August owners, replaceStoke slots withJones/Pennant/Jerome and
+CardiffJones slot with sourced bench person. Verify no outside copies and preserve
+all10skills for moved people. Do not create another season-specific pipeline.
+
 Vostro `joe-Vostro-3350`; source session
 `01a0592d-fcd5-7262-a637-743a8253d9b4`. Actual preferred2018/19 is now
 `sourced-aldershot-orient-owned-20261018-r149a`; normal command
