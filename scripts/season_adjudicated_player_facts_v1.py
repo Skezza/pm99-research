@@ -28,8 +28,8 @@ def checked(value):
     return exchange.original(value)
 
 
-def adjudicate(witness):
-    """Reproduce the exact captured row -> dated provider ID -> official facts chain."""
+def verify_historical_identity(witness):
+    """Reproduce the exact original row -> dated fixture -> provider identity."""
     historical = witness['historical_identity']
     allocation = pipeline.read_json_file(checked(historical['preallocation']))
     candidates = [(club, row) for club in allocation['source_clubs'] for row in club['players']
@@ -57,6 +57,12 @@ def adjudicate(witness):
                   if re.search(r'/spieler/' + re.escape(str(historical['provider_player_id'])) + r'(?:/|$)', a['href'])}
     if witness['full_name'] not in full_names:
         raise ValueError('historical fixture does not independently publish the full identity')
+    return int(historical['provider_player_id'])
+
+
+def adjudicate(witness):
+    """Reproduce historical identity before admitting independent official facts."""
+    verify_historical_identity(witness)
     sources = witness['official_sources']
     if len(sources) < 2 or len({urlsplit(s['url']).hostname for s in sources}) != len(sources):
         raise ValueError('independent published source hosts required')

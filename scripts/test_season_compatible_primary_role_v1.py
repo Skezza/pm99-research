@@ -12,6 +12,7 @@ from scripts import season_source_verified_player_changes_v1 as dispatch
 
 ROOT = Path(__file__).resolve().parents[1]
 OPTIONAL_INPUT = ROOT / '.local/consolidated-audit-20261009/Scotland2000-label-manager-v1/larsson-facts/2004-05-compatible-role-input-v1.json'
+HOLT_ROLE_INPUT = ROOT / '.local/consolidated-audit-20261009/Holt2000-compatible-role-v1/compatible-role-input-v2.json'
 
 
 def role_plan():
@@ -98,7 +99,8 @@ def test_writer_changes_only_six_role_bytes_is_idempotent_and_rejects_mixed_imag
 
 
 def _mock_prepare(monkeypatch, tmp_path, *, old_roles=(3, 4, 2, 14, 98, 98),
-                  published_name='Henrik Larsson', published_dob='1971-09-20', profile_id=3514):
+                  published_name='Henrik Larsson', published_dob='1971-09-20', profile_id=3514,
+                  broad_position='F', published_profile_position='Centre-Forward'):
     carrier, end = 1790, 10
     package_path = tmp_path / 'package.json'
     game = tmp_path / 'game'
@@ -107,7 +109,7 @@ def _mock_prepare(monkeypatch, tmp_path, *, old_roles=(3, 4, 2, 14, 98, 98),
     actor = {'carrier_id': carrier, 'id': 'player-1790', 'name': 'Henrik Larsson',
              'person_id': 'person-transfermarkt-3514',
              'source_name': 'Henrik Larsson', 'club_id': 'club-123',
-             'facts': {'birth_date': '1971-09-20', 'primary_position': 'F',
+             'facts': {'birth_date': '1971-09-20', 'primary_position': broad_position,
                        'fine_roles': {'policy': 'preserve-existing-mode1'}}, 'ratings': {'values': {}}}
     package = {'players': [copy.deepcopy(actor)], 'clubs': [{'id': 'club-123', 'carrier_id': 123, 'name': 'Celtic'}]}
     package_path.write_text(json.dumps(package))
@@ -132,12 +134,12 @@ def _mock_prepare(monkeypatch, tmp_path, *, old_roles=(3, 4, 2, 14, 98, 98),
     monkeypatch.setattr(subject.pipeline, 'read_json_file', lambda path: package)
     monkeypatch.setattr(subject.ownership, 'native_owners', lambda raw: {carrier: {123}})
     monkeypatch.setattr(subject, 'native_facts', lambda raw, rec: {
-        'name': 'Henrik Larsson', 'birth_date': '1971-09-20', 'position': 'F'})
+        'name': 'Henrik Larsson', 'birth_date': '1971-09-20', 'position': broad_position})
     monkeypatch.setattr(subject, 'read_indexed_native_roles', lambda payload, rec: (
         end, [value - 1 if value else 98 for value in payload[end + 2:end + 8]]))
     monkeypatch.setattr(subject.exchange, 'read_transfermarkt_profile', lambda profile, pid: {
         'source_player_id': str(pid), 'published_full_name': published_name,
-        'published_birth_date': published_dob, 'published_profile_position': 'Centre-Forward'})
+        'published_birth_date': published_dob, 'published_profile_position': published_profile_position})
     request = {'schema': dispatch.INPUT_SCHEMA, 'kind': subject.KIND, 'season': base.season,
                'release_id': base.release_id, 'changes': [{'carrier_id': carrier, 'before': copy.deepcopy(actor),
                    'field_mask': ['fine_roles'], 'profile': {'provider_player_id': profile_id,
@@ -149,6 +151,20 @@ def _mock_prepare(monkeypatch, tmp_path, *, old_roles=(3, 4, 2, 14, 98, 98),
 
 def test_prepare_refuses_a_compatible_existing_primary_role(monkeypatch, tmp_path):
     base, path, request = _mock_prepare(monkeypatch, tmp_path, old_roles=(12, 98, 98, 98, 98, 98))
+    with pytest.raises(ValueError, match='conflicting first role'):
+        subject.prepare(base, path, request)
+
+
+def test_prepare_admits_incompatible_sweeper_on_midfielder_with_central_midfield_source(monkeypatch, tmp_path):
+    base, path, request = _mock_prepare(monkeypatch, tmp_path, old_roles=(3, 98, 98, 98, 98, 98),
+        broad_position='M', published_profile_position='Central Midfield')
+    plan = subject.prepare(base, path, request)
+    assert plan['updates'][0]['values']['fine_roles'] == [9]
+
+
+def test_prepare_rejects_unset_primary_role_instead_of_inventing_one(monkeypatch, tmp_path):
+    base, path, request = _mock_prepare(monkeypatch, tmp_path, old_roles=(98, 98, 98, 98, 98, 98),
+        broad_position='M', published_profile_position='Central Midfield')
     with pytest.raises(ValueError, match='conflicting first role'):
         subject.prepare(base, path, request)
 
@@ -254,6 +270,109 @@ def test_parent_artifact_rejects_ambiguous_historical_provider_ids(tmp_path, mon
     base, package, actor = _parent_artifact_fixture(tmp_path, monkeypatch, provider_ids=(3514, 9914))
     with pytest.raises(ValueError, match='one independent historical provider ID'):
         subject.historical_provider_id(base, package, actor)
+
+
+def test_retained_holt_role_request_reproduces_original_kilmarnock_identity_and_plan():
+    request = dispatch.pipeline.read_json_file(HOLT_ROLE_INPUT)
+    base = dispatch.registry.load_registered_release(request['season'], request['release_id'])
+    plan = subject.prepare(base, HOLT_ROLE_INPUT, request)
+    assert len(plan['updates']) == 1
+    assert plan['updates'][0]['carrier_id'] == 12209
+    assert plan['updates'][0]['values']['fine_roles'] == [9]
+    witness = request['changes'][0]['historical_witness']
+    assert witness['historical_identity']['provider_player_id'] == 11689
+    assert witness['historical_identity']['source_row_sha256'] == 'c4ff69f118c66b896702667450fbdae12b3fbcab60289e6fb35b0f05895a2191'
+
+
+def _historical_preallocation_fixture(tmp_path, monkeypatch):
+    """Build a synthetic row -> dated report chain; not a historical witness."""
+    from scripts import season_opening_identity_exchange_v1 as exchange
+
+    source_row_sha = 'c4ff69f118c66b896702667450fbdae12b3fbcab60289e6fb35b0f05895a2191'
+    person_id = 'person-source-' + source_row_sha
+    allocation = {
+        'source_clubs': [{
+            'opening_source_match_id': '777',
+            'opening_fixture_date': '2000-08-12',
+            'players': [{
+                'source_row_sha256': source_row_sha,
+                'opening_source_player_id': '11689',
+                'facts': {'name': 'Gary Holt'},
+            }],
+        }],
+    }
+    allocation_path = tmp_path / 'allocation.json'
+    allocation_raw = json.dumps(allocation, sort_keys=True).encode()
+    allocation_path.write_bytes(allocation_raw)
+    allocation_sha = hashlib.sha256(allocation_raw).hexdigest()
+    report_path = tmp_path / 'report.html'
+    report_raw = b'''<div class="sb-datum">12/08/00</div>
+        <a href="/gary-holt/profil/spieler/11689" title="Gary Holt">Gary Holt</a>'''
+    report_path.write_bytes(report_raw)
+    report_sha = hashlib.sha256(report_raw).hexdigest()
+    package_path = tmp_path / 'parent' / 'season-package.json'
+    package_path.parent.mkdir()
+    package_path.write_text('{}')
+    base = SimpleNamespace(season='2000-01', package_path=package_path)
+    package = {'artifacts': [{
+        'id': 'opening-squad-preallocation-2000-01',
+        'sha256': allocation_sha,
+    }]}
+    actor = {
+        'carrier_id': 12209,
+        'person_id': person_id,
+        'source_name': 'Gary Holt',
+        'facts': {'birth_date': '1973-03-09'},
+    }
+    witness = {
+        'person_id': person_id,
+        'full_name': 'Gary Holt',
+        'historical_identity': {
+            'preallocation': {'path': 'allocation.json', 'sha256': allocation_sha},
+            'source_row_sha256': source_row_sha,
+            'provider_player_id': 11689,
+            'match_id': '777',
+            'match': {
+                'path': 'report.html',
+                'sha256': report_sha,
+                'url': 'https://www.transfermarkt.co.uk/spielbericht/777',
+                'provider_club_id': 12209,
+                'date': '2000-08-12',
+            },
+        },
+    }
+
+    def retained(value):
+        path = tmp_path / value['path']
+        if hashlib.sha256(path.read_bytes()).hexdigest() != value['sha256']:
+            raise ValueError('synthetic retained source hash differs')
+        return path
+
+    monkeypatch.setattr(exchange, 'original', retained)
+    monkeypatch.setattr(exchange, 'match_people', lambda _value: ([], [
+        {'source_player_id': '11689', 'display_name': 'Gary Holt'}]))
+    return base, package, actor, witness
+
+
+def test_historical_preallocation_witness_reproduces_exact_row_and_provider_id(tmp_path, monkeypatch):
+    base, package, actor, witness = _historical_preallocation_fixture(tmp_path, monkeypatch)
+    assert subject.historical_provider_id(base, package, actor, witness) == 11689
+
+
+@pytest.mark.parametrize('fault', ['preallocation_sha', 'person_id', 'full_name', 'provider_id'])
+def test_historical_preallocation_witness_rejects_misbinding_or_mutated_provider_id(
+        tmp_path, monkeypatch, fault):
+    base, package, actor, witness = _historical_preallocation_fixture(tmp_path, monkeypatch)
+    if fault == 'preallocation_sha':
+        witness['historical_identity']['preallocation']['sha256'] = '0' * 64
+    elif fault == 'person_id':
+        witness['person_id'] = 'different-source-row'
+    elif fault == 'full_name':
+        witness['full_name'] = 'Gary Holte'
+    elif fault == 'provider_id':
+        witness['historical_identity']['provider_player_id'] = 11690
+    with pytest.raises(ValueError):
+        subject.historical_provider_id(base, package, actor, witness)
 
 
 @pytest.fixture

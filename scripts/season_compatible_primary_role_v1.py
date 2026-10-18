@@ -14,7 +14,6 @@ from scripts import season_opening_identity_exchange_v1 as exchange
 from scripts import season_opening_order_repair_v1 as ownership
 from scripts import season_package_v2 as packages
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
-from scripts.season_historical_roster_audit_v1 import role_conflict
 from scripts.season_within_club_reserve_repair_v1 import native_facts
 from scripts.season_historical_role_plan_v1 import HTML_ROLES
 from scripts.season_exact_fifa_role_delta_v1 import compatible
@@ -23,7 +22,7 @@ KIND = 'compatible-biography-conflicting-role-set-repair'
 SCOPE = 'Only the selected contradictory legacy six-byte fine-role set and corresponding recipe fine-role fact/fallback. Broad position, name, DOB, country, skills, orders, owners, tactics, managers, photos and kit assets unchanged. Compatible published biography role, not exact-period fine-role proof; inherited contradictory secondary roles cleared, not retained as historical claims.'
 
 
-def historical_provider_id(base, package, actor):
+def historical_provider_id(base, package, actor, historical_witness=None):
     """Bind the provider ID independently of the newly selected biography.
 
     A source-row actor may have acquired an adjudicated identity in its parent.
@@ -35,6 +34,15 @@ def historical_provider_id(base, package, actor):
         return int(direct.group(1))
     from scripts import season_adjudicated_player_facts_v1 as adjudicated
     ids = set()
+    if historical_witness is not None:
+        source = historical_witness['historical_identity']['preallocation']
+        originals = [a for a in package.get('artifacts', [])
+                     if a['id'] == 'opening-squad-preallocation-' + base.season]
+        if (len(originals) != 1 or originals[0]['sha256'] != source['sha256']
+                or historical_witness.get('person_id') != actor.get('person_id')
+                or historical_witness.get('full_name') != actor.get('source_name')):
+            raise ValueError('biography/native identity original preallocation binding differs')
+        ids.add(adjudicated.verify_historical_identity(historical_witness))
     for artifact in package.get('artifacts', []):
         if not artifact['id'].startswith('source-backed-player-changes-'):
             continue
@@ -79,7 +87,8 @@ def prepare(base, path, request):
             raise ValueError('unique literal primary-fine-role-only actors required')
         seen.add(carrier)
         actor = players[carrier]
-        if selection['profile']['provider_player_id'] != historical_provider_id(base, package, actor):
+        if selection['profile']['provider_player_id'] != historical_provider_id(
+                base, package, actor, selection.get('historical_witness')):
             raise ValueError('biography/native identity historical provider ID differs')
         published = exchange.read_transfermarkt_profile(selection['profile'], selection['profile']['provider_player_id'])
         observed = native_facts(jug, carrier)
@@ -90,7 +99,7 @@ def prepare(base, path, request):
                 or exchange.published_name_key(published['published_full_name']) != exchange.published_name_key(actor.get('source_name') or actor['name'])
                 or observed['birth_date'] != actor['facts']['birth_date']
                 or observed['name'].casefold() != actor['name'].casefold() or observed['position'] != broad
-                or broad not in ('D', 'M', 'F') or not role_conflict(broad, roles[0])
+                or broad not in ('D', 'M', 'F') or roles[0] == 98 or compatible(broad, roles[0])
                 or owners.get(carrier) != {clubs[actor['club_id']]['carrier_id']}):
             raise ValueError('exact biography/native identity and a demonstrated conflicting first role required')
         key = ''.join(c for c in (published['published_profile_position'] or '').casefold() if c.isalpha())
