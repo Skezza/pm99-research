@@ -22,6 +22,7 @@ PREFIX='source-backed-player-changes-'
 MODE='known-good-baseline-explicit-source-backed-player-changes-v1'
 KIND='missing-profile-nationality'
 HEIGHT_KIND='published-adult-profile-height'
+ADJUDICATED_KIND='adjudicated-source-player-facts'
 HEIGHT_SCOPE='Only selected adult published-height recipe fields and one height byte per changed native player; names, DOBs, countries, roles, ratings, orders, clubs, managers, photos, kits, EXE and opaque bytes unchanged. Published adult biography height is not a dated target-season measurement claim.'
 SCOPE='Only selected explicit missing nationality recipe fields and one country byte per selected native player; all names, DOBs, roles, ratings, orders, ownership, tactics, managers, photos, kits, EXE and opaque data unchanged.'
 digest=native.digest
@@ -40,6 +41,9 @@ def prepare(base,input_path):
     path=Path(input_path)
     original_path(registry.relative_workspace_path(path))
     request=pipeline.read_json_file(path)
+    if request.get('kind') == ADJUDICATED_KIND:
+        from scripts import season_adjudicated_player_facts_v1 as adjudicated
+        return adjudicated.prepare(base, path, request)
     if request.get('kind') == HEIGHT_KIND:
         return prepare_height(base, path, request)
     if (request.get('schema')!=INPUT_SCHEMA or request.get('season')!=base.season
@@ -152,6 +156,9 @@ def verify(base,plan):
         raise ValueError('source-backed field plan does not independently reproduce')
 
 def validate_mask(plan):
+    if plan.get('kind') == ADJUDICATED_KIND:
+        from scripts import season_adjudicated_player_facts_v1 as adjudicated
+        return adjudicated.validate_mask(plan)
     rows=plan.get('updates',[])
     height = plan.get('kind') == HEIGHT_KIND
     field = 'height_cm' if height else 'nationality'
@@ -187,9 +194,11 @@ def bind(package,plan):
     for row in plan['updates']:
         actor=actors[row['carrier_id']]
         if actor!=row['before']:raise ValueError('selected actor preimage differs')
-        field = 'height_cm' if plan['kind'] == HEIGHT_KIND else 'nationality'
-        actor['facts'][field]=row[field]
-        if 'fact_fallbacks' in actor:actor['fact_fallbacks']=[f for f in actor['fact_fallbacks'] if f['field']!=field]
+        fields = row['values'] if plan['kind'] == ADJUDICATED_KIND else {
+            ('height_cm' if plan['kind'] == HEIGHT_KIND else 'nationality'):
+            row['height_cm' if plan['kind'] == HEIGHT_KIND else 'nationality']}
+        actor['facts'].update(fields)
+        if 'fact_fallbacks' in actor:actor['fact_fallbacks']=[f for f in actor['fact_fallbacks'] if f['field'] not in fields]
     result['artifacts'].append(dict(id=artifact_id(plan),kind='season-input',relative_path=filename(plan),
         sha256=digest(packages.canonical_json_bytes(plan)),media_type='application/json'))
     result['artifacts'].sort(key=lambda a:a['id']);packages.validate_package(result)
@@ -199,21 +208,22 @@ def apply(jug,eq,plan):
     validate_mask(plan);base=registry.load_registered_release(plan['season'],plan['release_id']);verify(base,plan)
     if digest(eq)!=plan['eq_sha256']:raise ValueError('source-backed exact EQ required')
     before=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    if plan['kind'] == HEIGHT_KIND:
+    masks = [m for row in plan['updates'] for m in (
+        row['native_masks'] if plan['kind'] == ADJUDICATED_KIND else [row['native_mask']])]
+    if plan['kind'] in (HEIGHT_KIND, ADJUDICATED_KIND):
         candidate = bytearray(before)
-        for row in plan['updates']:
-            candidate[row['native_mask']['file_offset']] = row['native_mask']['after']
+        for mask in masks:
+            candidate[mask['file_offset']] = mask['after']
         after, after_eq = bytes(candidate), eq
         if jug not in (before, after):
             raise ValueError('adult height patch accepts only exact complete pre/postimages')
     else:
         after,after_eq=native.apply(jug,eq,plan)
-    allowed={r['native_mask']['file_offset'] for r in plan['updates'] if r['native_mask']['before'] != r['native_mask']['after']}
+    allowed={m['file_offset'] for m in masks if m['before'] != m['after']}
     changed={i for i,(a,b) in enumerate(zip(before,after)) if a!=b}
-    if len(before)!=len(after) or changed!=allowed or (plan['kind'] != HEIGHT_KIND and len(allowed)!=len(plan['updates'])):
+    if len(before)!=len(after) or changed!=allowed or (plan['kind'] == KIND and len(allowed)!=len(plan['updates'])):
         raise ValueError('source-backed change altered bytes outside the exact native field mask')
-    for row in plan['updates']:
-        mask=row['native_mask']
+    for mask in masks:
         if before[mask['file_offset']]!=mask['before'] or after[mask['file_offset']]!=mask['after']:
             raise ValueError('source-backed native pre/post value differs')
     return after,after_eq
