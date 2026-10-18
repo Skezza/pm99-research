@@ -30,6 +30,8 @@ investigation, editor redesign or club-specific executable pipeline.
    English/foreign authoring, manager, opening-lineup, rating and kit stages;
    there must not be a separate hidden hand-run chain after preview. Make the
    recipe-only mode useful even when some required historical input is absent.
+   Derive the starting template from the verified factory base or a matching
+   factory descriptor, not an undeclared previous-season package in .local.
 3. **Resolve ownership before assigning native slots.** Annual squad lists
    are discovery, not evidence of August ownership. Keep provider IDs, original
    names, dated claims and evidence hashes. Use the agreed first league XI and
@@ -37,6 +39,10 @@ investigation, editor redesign or club-specific executable pipeline.
    Later arrivals are not August squad members. Distinguish player loans from
    parent-club registration. Ambiguous ownership stays an explicit candidate;
    never silently remove a namesake or invent a replacement.
+   Declare the game-opening snapshot date and country-to-source-season mapping.
+   A calendar-year league label is not itself proof of August ownership, and a
+   conflict between a sourced XI and a dated transfer must be reported rather
+   than silently assigned to both clubs.
 4. **Make every decision visible in the recipe.** Keep source facts, display
    aliases, deterministic editorial ratings and deliberate overrides separate.
    Attribute missing or conflicting facts. No wrong-person fine roles or
@@ -44,6 +50,7 @@ investigation, editor redesign or club-specific executable pipeline.
    the existing tested unknown/fallback representation until an alternative is
    proven safe in the engine. Preserve continuing club names under the agreed
    policy; missing portraits are allowed. Managers still require dated evidence.
+   A newly assigned identity must not inherit the previous slot occupant's face.
 5. **Pin inputs and make stages resumable.** Record source URLs/provider IDs,
    raw snapshot hashes, source scope, base hash and implementation/rating-model
    versions in a small lock manifest. Offline mode must refuse missing/changed

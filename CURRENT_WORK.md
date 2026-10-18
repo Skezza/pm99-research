@@ -1,5 +1,63 @@
 # PM99: current work
 
+## Source protected, safe cleanup complete, workflow proposed — 2026-10-18 07:58 UTC
+
+Vostro `joe-Vostro-3350`; source session
+`01a0592d-fcd5-7262-a637-743a8253d9b4`. User authorized cleanup, GitHub pushes
+and a proposed rerunnable workflow/readiness assessment. Source-only
+`snapshot/season-toolchain-20261018` branches pushed in research + all three
+upstream repos. Research commits f005fe0 / 0660472 / 80b3fe5 / 2d33967; final
+documentation commit follows this note. Upstream editor707322c, runnerb0f0174,
+patcher75bffb0 are published and pinned. No release/default branch overwritten.
+1738 script paths,419 season definition/data paths, schemas/launcher/handoffs
+now tracked; no new proprietary binaries, caches or downloaded portraits in Git.
+
+Clean source extraction exposed a hidden local dependency: importing QA loaded
+all26 installed release locators through REVISIONS. Fixed with a lazy stable
+Mapping and three regressions, preserving fail-closed actual lookup. Fresh
+committed source with NO .local:141 tests PASS,1 existing generated-backfill
+integration test skipped. Existing Python dependencies were reused; not a full
+fresh dependency install or complete clean-machine game reproduction.
+Broader local regression now367 PASS, including the formerly disk-blocked test.
+Editor deterministic excluding GUI:631 PASS/4 skip/47 deselected; GUI collection
+requires missing tkinter. Runner targeted:220 PASS/1 skip/1 profile-scroll
+failure. These snapshot limitations are NOT hidden or release approvals.
+
+Cleanup: removed two inactive regenerable node_modules trees (1.11GiB measured
+gain; npm ci restores). Seven unregistered/unreferenced private game copies
+archived on verified Pi UUID,9841 files all SHA/checksum-rsync/local-rehash
+verified before removal. All parent recipes/sources/screenshots remain local;
+15 registered/reconstruction-dependent candidates protected. Original2015 and
+current26 not targets. Ledger docs/PI_ARCHIVE_LEDGER_2026-09-11.md and local
+`.local/cleanup-20261018/`. Archive job95035 exited0. Logical2.34GiB moved is NOT
+physical savings because shared hardlinks remain. Free~8.96GiB: above8GiB guard,
+below desired15–20GiB; use serial capacity-checked work, not a bulk build wave.
+Pre-Sonnet source archive also copied/hash-verified on Pi, local6.3MiB retained.
+
+Playable-file validation of26 after source snapshot PASS; final post-cleanup
+readback `.local/consolidated-audit-20261009/post-cleanup-playable-check-20261018.json`.
+Preferred/retained catalogue hashes unchanged. No new game BUILT/INSTALLED or
+new runner captures in this task. v116 historical checklist still authoritative:
+48/2809 cross-club dispositions,2761 candidates (not proven bugs);82 within-club
+disposed;246/247 birthday mismatches repaired;ratings delivered.2018 composition
+still memory-only;2013Stoke three source-confirmed late arrivals still open.
+No defensible overall RC completion percentage/ETA; manager/role/visual evidence
+coverage is unresolved, not a short final-polish claim.
+
+Proposal and exact next milestone:
+`docs/RERUNNABLE_SEASON_WORKFLOW_AND_RC_PLAN_2026-10-18.md`.
+Wire existing stages into ONE parameterized recipe-generation path, factory
+baseline (no hidden previous-season package), pinned source snapshots, explicit
+dated ownership before allocation, deterministic ratings and gaps. Demonstrate
+1990/91 English+foreign recipe creation and identical offline replay, then native
+and targeted runner proof when inputs/capacity permit. Do not regenerate
+unaffected26; deliver prepared2018/2013 corrections and use the same identity/
+ownership rules to measure the genuinely confirmed remainder. Do not silently
+drop worldwide/non-playable scope or reset the frozen candidate ledger.
+Detailed source validation: docs/SOURCE_SNAPSHOT_AND_CLEAN_FIXTURE_PROOF_2026-10-18.md.
+Remaining dirty state is prior artifact deletions/parked nested site, not lost
+source. Goal remains incomplete. No other agent/build/runner active.
+
 ## Identity batch implemented and independently reviewed — 2026-10-17 19:41 UTC
 
 Vostro `joe-Vostro-3350`; source session

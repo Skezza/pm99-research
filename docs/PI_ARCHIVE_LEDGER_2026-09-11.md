@@ -1,5 +1,70 @@
 # Pi archive ledger
 
+## Seven unregistered private game copies archived — 2026-10-18 07:58 UTC
+
+Vostro `joe-Vostro-3350`; source session
+`01a0592d-fcd5-7262-a637-743a8253d9b4`. Archived only the `game/` children of
+seven reviewed old stock-club experiments. A scan of 10,547 unique metadata
+files identified them as neither registered games nor reconstruction inputs;
+15 other candidate copies were protected because registrations referenced them.
+No other agent/build was active. Before/after guards checked preferred bindings,
+inactive scope and that protected metadata was not newer than the reviewed plan.
+
+All 9,841 files passed remote SHA256 verification, empty checksum-rsync
+comparison and fresh local inventory checks before removal. The mounted Pi
+UUID was `1f364414-880d-4f96-8619-3bd8c9954cc0`. Logical archived bytes:
+2,513,595,279 (2.34 GiB), NOT a claim of equivalent freed physical space:
+most native assets shared hardlinks with retained games.
+
+Archive root:
+`/srv/hdd/pm99-archive/research/private-stock-club-games/20261018/`.
+Each named directory contains the complete recoverable `game/`:
+
+- `jedinstvo-2005-complete-source-replay-v1`
+- `mladost-2001-private-game-v1`
+- `ofk-2004-private-game-v1`
+- `ofk-2004-private-game-v2`
+- `ofk-2015-celta-complete-source-replay-v1`
+- `ofk-2015-celta-private-game-v1`
+- `sartid-2000-private-game-v1`
+
+Restore the selected `game/` beneath its original parent in
+`.local/consolidated-audit-20261009/stock-club-history-v1/`, then verify the
+receipt's per-file SHA values. Parent recipes, raw sources, receipts and
+screenshots remain local. Current 26 games and original 2015 backup were not
+targets; preferred and retention catalogue hashes are unchanged.
+
+Local plan, per-copy receipts and completion index:
+`.local/cleanup-20261018/stock-club-private-games/`.
+Remote receipts:
+`/srv/hdd/pm99-archive/receipts/private-stock-club-games-20261018/`.
+Two overly expensive preflight scans were interrupted before removal; one
+partial upload resumed using rsync. No interrupted attempt is counted as a
+completed archive. The final job (95035) exited 0 with all seven verified.
+
+## Regenerable frontend dependencies removed — 2026-10-18 07:29 UTC
+
+Same Vostro/session. Removed only these inactive installed dependency trees:
+`tools/season-preset-viewer/node_modules` and
+`upstream/pm99-skezmod-db-editor/web/node_modules`.
+Checked exact nonsymlink roots and same-user process cwd/executable/open-file
+references first. Lockfile hashes and preferred catalogue hash stayed unchanged.
+No source, recipe, current game, source image or evidence was removed.
+
+Measured free-space increase: 1,189,289,984 bytes (about 1.11 GiB).
+Recovery: run `npm ci` in either recorded parent directory. The Python recipe
+viewer does not require reinstalling these JavaScript packages.
+Receipt: `.local/cleanup-20261018/frontend-dependencies/completed.json`.
+
+## Historical source-byte recovery archive copied to Pi — 2026-10-18
+
+Pre-Sonnet scripts/schema recovery archive, local copy retained:
+`/srv/hdd/pm99-archive/research/source-snapshots/20261018/pre-sonnet-identity-source-20261017.tar.gz`.
+Remote SHA256 matches:
+`8b6396301e2dc97f6f7a226df8765aabd24d27c0c5efc5e00cf24c014cf431f2`.
+This preserves earlier hash-bound implementations. Latest source is separately
+pushed to GitHub snapshot branches; no proprietary game binaries were added to Git.
+
 ## Regenerable local Go compiler cache cleared (no archive) — 2026-10-17 10:47 UTC
 
 Vostro `joe-Vostro-3350`; session `01a0592d-fcd5-7262-a637-743a8253d9b4`.

@@ -1,5 +1,31 @@
 # PM99 worker handoff
 
+## GitHub source protection and cleanup complete — 2026-10-18 07:58 UTC
+
+Vostro/session as CURRENT_WORK07:58. User-authorized source snapshots published
+on snapshot/season-toolchain-20261018 in research/editor/runner/patcher; upstream
+commits pinned, no default/release branch overwritten. No binaries/images/caches
+newly committed. Initial clean-source test failed importing local locators;
+fixed lazy REVISIONS and proved141 PASS/1 local-data integration skip without
+.local. Broader367 PASS, former disk block cleared. Upstream GUI needs tkinter;
+runner220 PASS/1 skip/1 scroll-capture fixture failure, not a green release gate.
+
+Cleanup95035 terminal0:7 unregistered private game copies,9841 verified files
+on Pi then removed locally; recipes/raw sources/screenshots/registered inputs
+retained. Node dependencies1.11GiB recovered, npm ci restores. Free8.96GiB,
+not15–20 target; preserve8GiB guard and serialize work. Pre-Sonnet source archive
+also on Pi with exactSHA. Details/restore ledger in docs/PI_ARCHIVE_LEDGER_2026-09-11.md.
+Current26 playable checks pass; no new native builds or captures. v116 unchanged
+48disposed/2761candidates,82within-club closed,246/247birthday corrected,ratings
+delivered. Original2015 preserved.2018 still memory-only;2013Stoke3 remain open.
+
+Next follow docs/RERUNNABLE_SEASON_WORKFLOW_AND_RC_PLAN_2026-10-18.md: compose
+existing intake/English/foreign/ownership stages into one recipe-generation path
+and prove1990 offline replay, with factory-derived template and honest gaps.
+Keep prepared corrections on26 critical path; no new per-club executable stack,
+no unaffected release regeneration, no completion percentage invented from
+candidate/test counts. Source-protection proof docs/SOURCE_SNAPSHOT_AND_CLEAN_FIXTURE_PROOF_2026-10-18.md.
+
 ## Identity implementation accepted after lead fixes — 2026-10-17 19:41 UTC
 
 Vostro/session as CURRENT_WORK19:41. Sonnet5.5 source batch finished57566 exit0;

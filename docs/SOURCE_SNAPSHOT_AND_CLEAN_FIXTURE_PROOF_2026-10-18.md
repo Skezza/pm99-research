@@ -44,6 +44,10 @@ legacy Mapping operations and the fail-closed behavior.
 Validation actually executed:
 
 - Lead identity/registry/import targeted suite: 66 passed.
+- After dependency cleanup restored the disk reserve, the broader related
+  regression ran without the previous exclusion: **367 passed** (one marker
+  warning). The previously disk-blocked synthetic visibility test now passes;
+  no production guard was lowered or mocked away to achieve that.
 - Fresh extraction of committed research source, schemas and tracked catalogue,
   plus committed upstream editor app/test source: **141 passed, 1 skipped**.
   No .local directory existed in that extracted source tree. The skipped case
@@ -72,7 +76,17 @@ portable. Clean-machine acquisition, pinned-source replay, complete generation
 orchestration and a maintained fixture CI lane remain work, as set out in
 RERUNNABLE_SEASON_WORKFLOW_AND_RC_PLAN_2026-10-18.md.
 
-The working copies intentionally retain unstaged artifact deletions and generated
-frontend files. Do not call the whole workstation clean merely because the
-source snapshot is pushed. Upstream UI tests were not run; regenerable frontend
-dependencies were subsequently retired with lockfiles retained.
+The working copies intentionally retain unstaged artifact deletions and the
+parked nested `tools/season-preset-viewer` site checkout, which already has its
+own original remote. The active Python/HTML recipe-viewer source is tracked in
+the parent; the parked site's hosting configuration was not imported. Do not
+call the whole workstation clean merely because the source snapshot is pushed.
+Upstream UI tests were not run; regenerable frontend dependencies were
+subsequently retired with lockfiles retained.
+
+The pre-Sonnet scripts/schema recovery archive was also copied to the verified
+Pi volume at
+`/srv/hdd/pm99-archive/research/source-snapshots/20261018/pre-sonnet-identity-source-20261017.tar.gz`.
+Remote SHA256 matches the local archive:
+`8b6396301e2dc97f6f7a226df8765aabd24d27c0c5efc5e00cf24c014cf431f2`.
+The small local recovery archive remains; it was not deleted for negligible savings.
