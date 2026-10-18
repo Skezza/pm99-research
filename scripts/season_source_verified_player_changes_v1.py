@@ -23,6 +23,8 @@ MODE='known-good-baseline-explicit-source-backed-player-changes-v1'
 KIND='missing-profile-nationality'
 HEIGHT_KIND='published-adult-profile-height'
 ADJUDICATED_KIND='adjudicated-source-player-facts'
+DATED_ROLE_KIND='dated-roster-compatible-profile-roles'
+MULTI_FIELD_KINDS=(ADJUDICATED_KIND,DATED_ROLE_KIND)
 HEIGHT_SCOPE='Only selected adult published-height recipe fields and one height byte per changed native player; names, DOBs, countries, roles, ratings, orders, clubs, managers, photos, kits, EXE and opaque bytes unchanged. Published adult biography height is not a dated target-season measurement claim.'
 SCOPE='Only selected explicit missing nationality recipe fields and one country byte per selected native player; all names, DOBs, roles, ratings, orders, ownership, tactics, managers, photos, kits, EXE and opaque data unchanged.'
 digest=native.digest
@@ -41,6 +43,9 @@ def prepare(base,input_path):
     path=Path(input_path)
     original_path(registry.relative_workspace_path(path))
     request=pipeline.read_json_file(path)
+    if request.get('kind') == DATED_ROLE_KIND:
+        from scripts import season_dated_roster_roles_v1 as dated_roles
+        return dated_roles.prepare(base, path, request)
     if request.get('kind') == ADJUDICATED_KIND:
         from scripts import season_adjudicated_player_facts_v1 as adjudicated
         return adjudicated.prepare(base, path, request)
@@ -156,6 +161,9 @@ def verify(base,plan):
         raise ValueError('source-backed field plan does not independently reproduce')
 
 def validate_mask(plan):
+    if plan.get('kind') == DATED_ROLE_KIND:
+        from scripts import season_dated_roster_roles_v1 as dated_roles
+        return dated_roles.validate_mask(plan)
     if plan.get('kind') == ADJUDICATED_KIND:
         from scripts import season_adjudicated_player_facts_v1 as adjudicated
         return adjudicated.validate_mask(plan)
@@ -194,7 +202,7 @@ def bind(package,plan):
     for row in plan['updates']:
         actor=actors[row['carrier_id']]
         if actor!=row['before']:raise ValueError('selected actor preimage differs')
-        fields = row['values'] if plan['kind'] == ADJUDICATED_KIND else {
+        fields = row['values'] if plan['kind'] in MULTI_FIELD_KINDS else {
             ('height_cm' if plan['kind'] == HEIGHT_KIND else 'nationality'):
             row['height_cm' if plan['kind'] == HEIGHT_KIND else 'nationality']}
         actor['facts'].update(fields)
@@ -209,8 +217,8 @@ def apply(jug,eq,plan):
     if digest(eq)!=plan['eq_sha256']:raise ValueError('source-backed exact EQ required')
     before=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
     masks = [m for row in plan['updates'] for m in (
-        row['native_masks'] if plan['kind'] == ADJUDICATED_KIND else [row['native_mask']])]
-    if plan['kind'] in (HEIGHT_KIND, ADJUDICATED_KIND):
+        row['native_masks'] if plan['kind'] in MULTI_FIELD_KINDS else [row['native_mask']])]
+    if plan['kind'] in (HEIGHT_KIND, *MULTI_FIELD_KINDS):
         candidate = bytearray(before)
         for mask in masks:
             candidate[mask['file_offset']] = mask['after']
