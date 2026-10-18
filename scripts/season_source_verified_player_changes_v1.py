@@ -5,10 +5,11 @@ No identity, rating, role, roster, tactical or unknown byte may change. Other
 edit kinds must acquire their own source and native guards before admission.
 """
 import copy
+from datetime import date
 from pathlib import Path
-from app.fdi_indexed import IndexedFDIFile
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import season_package_v2 as packages,season_package_compiler_v2 as compiler
+from app.fdi_indexed import IndexedFDIFile
 from scripts import season_quality_only_delta_v1 as native
 from scripts import season_soccerbase_secondary_facts_v2 as source
 from scripts import season_opening_order_repair_v1 as ownership
@@ -20,6 +21,8 @@ INPUT_SCHEMA='pm99-explicit-source-backed-player-change-input-v1'
 PREFIX='source-backed-player-changes-'
 MODE='known-good-baseline-explicit-source-backed-player-changes-v1'
 KIND='missing-profile-nationality'
+HEIGHT_KIND='published-adult-profile-height'
+HEIGHT_SCOPE='Only selected adult published-height recipe fields and one height byte per changed native player; names, DOBs, countries, roles, ratings, orders, clubs, managers, photos, kits, EXE and opaque bytes unchanged. Published adult biography height is not a dated target-season measurement claim.'
 SCOPE='Only selected explicit missing nationality recipe fields and one country byte per selected native player; all names, DOBs, roles, ratings, orders, ownership, tactics, managers, photos, kits, EXE and opaque data unchanged.'
 digest=native.digest
 
@@ -37,6 +40,8 @@ def prepare(base,input_path):
     path=Path(input_path)
     original_path(registry.relative_workspace_path(path))
     request=pipeline.read_json_file(path)
+    if request.get('kind') == HEIGHT_KIND:
+        return prepare_height(base, path, request)
     if (request.get('schema')!=INPUT_SCHEMA or request.get('season')!=base.season
             or request.get('release_id')!=base.release_id or request.get('kind')!=KIND
             or not request.get('changes')):
@@ -85,6 +90,62 @@ def prepare(base,input_path):
     result['transaction_id']=digest(packages.canonical_json_bytes(result))[:24]
     return result
 
+
+def prepare_height(base, path, request):
+    from scripts.season_opening_identity_exchange_v1 import read_transfermarkt_profile, published_name_key
+    from scripts.season_within_club_reserve_repair_v1 import native_facts
+    if (request.get('schema') != INPUT_SCHEMA or request.get('season') != base.season
+            or request.get('release_id') != base.release_id or not request.get('changes')):
+        raise ValueError('adult-height input needs an exact registered parent and selections')
+    package = pipeline.read_json_file(base.package_path)
+    actors = {p['carrier_id']: p for p in package['players']}
+    clubs = {c['id']: c for c in package['clubs']}
+    jug = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(jug).entries}
+    owners = ownership.native_owners(eq)
+    updates, seen = [], set()
+    for selection in request['changes']:
+        carrier = selection['carrier_id']
+        if type(carrier) is not int or carrier in seen or selection.get('field_mask') != ['height_cm']:
+            raise ValueError('adult-height input requires unique height-only selections')
+        seen.add(carrier)
+        actor = actors[carrier]
+        original = selection['source']
+        original_path(original['path'])
+        profile = read_transfermarkt_profile(original, original['provider_player_id'])
+        birthday = profile['published_birth_date']
+        observed = native_facts(jug, carrier)
+        if (published_name_key(profile['published_full_name']) != published_name_key(actor.get('source_name') or actor['name'])
+                or birthday != actor['facts']['birth_date'] or birthday != observed['birth_date']
+                or observed['name'].casefold() != actor['name'].casefold()
+                or owners.get(carrier) != {clubs[actor['club_id']]['carrier_id']}):
+            raise ValueError('adult height source/native identity or exclusive club differs')
+        born = date.fromisoformat(birthday)
+        snapshot = date(int(base.season[:4]), 8, 1)
+        age = snapshot.year - born.year - ((snapshot.month, snapshot.day) < (born.month, born.day))
+        height = profile['published_height_cm']
+        if age < 18 or type(height) is not int or not 130 <= height <= 230:
+            raise ValueError('height transfer requires a published valid measurement and a target-season adult')
+        raw = entries[carrier].decode_payload(jug)
+        end = native_player(raw, carrier)['name_end']
+        offset = entries[carrier].payload_offset + end + 16
+        if jug[offset] != (raw[end + 16] ^ 0x61):
+            raise ValueError('height byte does not match the proven native field boundary')
+        updates.append(dict(carrier_id=carrier, before=copy.deepcopy(actor), height_cm=height,
+            field_mask=['height_cm'], native_mask=dict(file='DBDAT/JUG98030.FDI', record_offset=end + 16,
+                file_offset=offset, before=jug[offset], after=height), source=binding(original_path(original['path'])),
+            source_identity=dict(name=profile['published_full_name'], birth_date=birthday,
+                provider_player_id=original['provider_player_id'], profile_url=original['url'], height_cm=height,
+                policy='published-adult-biography-height; not a dated-period measurement'),
+            expected_owner=clubs[actor['club_id']]['carrier_id']))
+    result = dict(schema=SCHEMA, season=base.season, release_id=base.release_id, kind=HEIGHT_KIND,
+        source_input=binding(path), package_sha256=registry.sha256_file(base.package_path), jug_sha256=digest(jug),
+        eq_sha256=digest(eq), updates=updates, scope=HEIGHT_SCOPE,
+        source_policy='exact-original-profile-ID-full-name-DOB-target-adult-and-height-only-v1')
+    result['transaction_id'] = digest(packages.canonical_json_bytes(result))[:24]
+    return result
+
 def verify(base,plan):
     if (plan.get('schema')!=SCHEMA or registry.sha256_file(original_path(plan['source_input']['path']))!=plan['source_input']['sha256']
             or prepare(base,original_path(plan['source_input']['path']))!=plan):
@@ -92,20 +153,27 @@ def verify(base,plan):
 
 def validate_mask(plan):
     rows=plan.get('updates',[])
-    if plan.get('schema')!=SCHEMA or plan.get('kind')!=KIND or not rows or len({r['carrier_id'] for r in rows})!=len(rows):
+    height = plan.get('kind') == HEIGHT_KIND
+    field = 'height_cm' if height else 'nationality'
+    if plan.get('schema')!=SCHEMA or plan.get('kind') not in (KIND, HEIGHT_KIND) or not rows or len({r['carrier_id'] for r in rows})!=len(rows):
         raise ValueError('nonempty unique supported source-backed field changes required')
     allowed={'carrier_id','before','nationality','field_mask','native_mask','source_identity','source','source_receipt','expected_owner'}
-    if any(set(r)!=allowed or r['field_mask']!=['nationality'] or r['native_mask']['file']!='DBDAT/JUG98030.FDI' for r in rows):
+    if height:
+        allowed = (allowed - {'nationality', 'source_receipt'}) | {'height_cm'}
+    if any(set(r)!=allowed or r['field_mask']!=[field] or r['native_mask']['file']!='DBDAT/JUG98030.FDI' for r in rows):
         raise ValueError('source-backed field/native mask cannot authorise other profile edits')
     offsets=set()
     for row in rows:
         mask=row['native_mask']
+        if height and (type(row['height_cm']) is not int or not 130 <= row['height_cm'] <= 230
+                       or mask.get('after') != row['height_cm']):
+            raise ValueError('adult-height native mask must write the exact published measurement')
         if (set(mask)!={'file','record_offset','file_offset','before','after'}
                 or type(row['carrier_id']) is not int
                 or any(type(mask[k]) is not int for k in ('record_offset','file_offset','before','after'))
                 or mask['record_offset']<0 or mask['file_offset']<mask['record_offset']
                 or not 0<=mask['before']<=255 or not 0<=mask['after']<=255
-                or mask['before']==mask['after'] or mask['file_offset'] in offsets):
+                or (not height and mask['before']==mask['after']) or mask['file_offset'] in offsets):
             raise ValueError('exact distinct one-byte native pre/post masks required')
         offsets.add(mask['file_offset'])
 
@@ -119,8 +187,9 @@ def bind(package,plan):
     for row in plan['updates']:
         actor=actors[row['carrier_id']]
         if actor!=row['before']:raise ValueError('selected actor preimage differs')
-        actor['facts']['nationality']=row['nationality']
-        if 'fact_fallbacks' in actor:actor['fact_fallbacks']=[f for f in actor['fact_fallbacks'] if f['field']!='nationality']
+        field = 'height_cm' if plan['kind'] == HEIGHT_KIND else 'nationality'
+        actor['facts'][field]=row[field]
+        if 'fact_fallbacks' in actor:actor['fact_fallbacks']=[f for f in actor['fact_fallbacks'] if f['field']!=field]
     result['artifacts'].append(dict(id=artifact_id(plan),kind='season-input',relative_path=filename(plan),
         sha256=digest(packages.canonical_json_bytes(plan)),media_type='application/json'))
     result['artifacts'].sort(key=lambda a:a['id']);packages.validate_package(result)
@@ -129,11 +198,19 @@ def bind(package,plan):
 def apply(jug,eq,plan):
     validate_mask(plan);base=registry.load_registered_release(plan['season'],plan['release_id']);verify(base,plan)
     if digest(eq)!=plan['eq_sha256']:raise ValueError('source-backed exact EQ required')
-    after,after_eq=native.apply(jug,eq,plan)
     before=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    allowed={r['native_mask']['file_offset'] for r in plan['updates']}
+    if plan['kind'] == HEIGHT_KIND:
+        candidate = bytearray(before)
+        for row in plan['updates']:
+            candidate[row['native_mask']['file_offset']] = row['native_mask']['after']
+        after, after_eq = bytes(candidate), eq
+        if jug not in (before, after):
+            raise ValueError('adult height patch accepts only exact complete pre/postimages')
+    else:
+        after,after_eq=native.apply(jug,eq,plan)
+    allowed={r['native_mask']['file_offset'] for r in plan['updates'] if r['native_mask']['before'] != r['native_mask']['after']}
     changed={i for i,(a,b) in enumerate(zip(before,after)) if a!=b}
-    if len(before)!=len(after) or changed!=allowed or len(allowed)!=len(plan['updates']):
+    if len(before)!=len(after) or changed!=allowed or (plan['kind'] != HEIGHT_KIND and len(allowed)!=len(plan['updates'])):
         raise ValueError('source-backed change altered bytes outside the exact native field mask')
     for row in plan['updates']:
         mask=row['native_mask']

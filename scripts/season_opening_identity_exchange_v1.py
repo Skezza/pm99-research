@@ -10,6 +10,7 @@ from datetime import date, datetime
 import hashlib
 import re
 from statistics import median
+from urllib.parse import urlsplit
 
 from bs4 import BeautifulSoup
 from scripts import season_duplicate_ownership_delta_v1 as delta
@@ -106,10 +107,14 @@ def verify_match_club(value, native_name):
         raise ValueError('published match club does not identify the destination native club')
 
 
-def new_person(selection, evidence):
-    profile = evidence[selection['profile']]
+def read_transfermarkt_profile(profile, pid):
+    """Read stable identity and published scalar facts, without season claims."""
     raw = original(profile).read_bytes()
-    pid = selection['provider_player_id']
+    requested = urlsplit(profile['url'])
+    allowed_hosts = {'www.transfermarkt.co.uk', 'www.transfermarkt.us',
+                     'www.transfermarkt.com', 'www.transfermarkt.de'}
+    if requested.scheme != 'https' or requested.netloc not in allowed_hosts:
+        raise ValueError('profile source must use an approved Transfermarkt HTTPS origin')
     if not re.search(r'/spieler/' + str(pid) + r'(?:[/?]|$)', profile['url']):
         raise ValueError('new person profile URL has another provider ID')
     page = BeautifulSoup(raw, 'html.parser')
@@ -117,6 +122,9 @@ def new_person(selection, evidence):
     canonical = page.select_one('link[rel="canonical"]')
     if canonical is None or not re.search(r'/spieler/' + str(pid) + r'(?:[/?]|$)', canonical.get('href', '')):
         raise ValueError('new person original canonical profile differs')
+    declared = urlsplit(canonical['href'])
+    if (declared.scheme, declared.netloc) != (requested.scheme, requested.netloc):
+        raise ValueError('profile canonical origin differs from retained source')
     parsed = _profile_facts(raw, player=dict(source_player_id=str(pid)))
     birthday = parsed['published_birth_date']
     if birthday is None:
@@ -125,6 +133,15 @@ def new_person(selection, evidence):
         match = re.search(r'\b([A-Z][a-z]{2} \d{1,2}, \d{4})\b', text)
         if match:
             birthday = datetime.strptime(match.group(1), '%b %d, %Y').date().isoformat()
+    parsed['published_birth_date'] = birthday
+    return parsed
+
+
+def new_person(selection, evidence):
+    profile = evidence[selection['profile']]
+    pid = selection['provider_player_id']
+    parsed = read_transfermarkt_profile(profile, pid)
+    birthday = parsed['published_birth_date']
     if (parsed['published_full_name'], birthday) != (selection['name'], selection['birth_date']):
         raise ValueError('new person original name or literal birthday differs')
     if selection['profile_position'] not in (parsed['published_profile_position'] or ''):

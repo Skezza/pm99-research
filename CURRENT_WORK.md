@@ -1,5 +1,31 @@
 # PM99: current work
 
+## Stoke ownership runner proofs complete; height followup — 2026-10-18 14:30 UTC
+
+Vostro `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+r150a startup and all seven genuine profile captures completed controller27003,
+terminal0. Lead viewed all original frames; independent font-digit reader plus
+native input hashes/kit pixels verified all seven profiles (Jones, Pennant,
+Jerome, Odemwingie, Arnautovic, Guidetti, Gestede). Pennant manual transcription
+error preserved as v1, corrected v2 from original frame + independent glyphs;
+no capture or game result was relabelled. Existing height fallbacks visibly
+wrong for new identities, so separate height-only r151a built92156 terminal0:
+Pennant192->173cm, Jerome181->185cm, Gestede188->193cm. Published adult profile
+heights, NOT claimed dated2013 measurements. Native diff is exactly three bytes;
+all other files and recipe bindings checked. Fresh SOURCEr151b25590 terminal0:
+entire game and recipe identical. Final r151 startup+three changed profiles
+capture89000 now running serially; inspect receipts/original images, do not repeat.
+Evidence `Stoke2013-opening-exchange-v1/adult-height-completion/`.
+Current preferred2013 STILLr145a; neither privatecandidate promoted yet. v117
+counts unchanged55disposed/2754candidates. Next: final height runtime/readback,
+explicit unchanged-record reuse for other four r150 profiles, ancestry promotion
+r145a->r150a->r151a, attestation, all26 regression and v118 checkpoint.
+Height/source changes uncommitted;52focused tests PASS; Luna adversarial QA
+requested/canonical HTTPS Transfermarkt origin fix reviewed, no blocker. Separate
+Luna worker confirmed two current Scottish label/manager mismatches2000/01 and
+is obtaining dated manager evidence; no old label audit blindly replayed.
+Original2015/other25 preserved;8.2GiB free, no cleanup performed.
+
 ## Stoke2013 actual candidate built; runtime checks running — 2026-10-18 14:05 UTC
 
 14:13UTC update:66779terminal0, actual fresh SOURCEr150b entire game+recipe

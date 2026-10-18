@@ -1,5 +1,22 @@
 # PM99 worker handoff
 
+## Stoke ownership runtime complete; final height patch running — 2026-10-18 14:30 UTC
+
+Vostro/session as CURRENT_WORK14:30. r150a startup+all7profiles controller27003
+terminal0, originalframes inspected, all7hash/kit/glyph/ageproofs PASS. Final
+height-only r151a built92156, SOURCEr151b25590 identicalwholegame+recipe. Exactly
+3heightbytes/newrecipefacts: Pennant173,Jerome185,Gestede193cm from SHA-bound adult
+profiles; not claimeddated2013measurements. Allothernativefiles unchanged.
+Finalstartup+3profiles controller89000 running; don't repeat. Evidence same
+Stoke2013-opening-exchange-v1/adult-height-completion/. Sourcegenericheightkind
+andsharedprofileparser have52focusedtestsPASS, LunaQA no blocker after strict
+HTTPSrequest/canonicalorigin check. Current preferredstillr145a/v117; don'tclaim
+installed. Next finaloriginalframes/glyphs/readback, explicit unchanged4profile
+reuse, guardedr145a->r150a->r151a promotion, attestation, all26/checkpointv118.
+Luna sourceworker is obtainingdatedCeltic/Kilmarnock2000managerproof; confirmed
+only2currentScottishcohortlabelmismatches, not6oldalreadyfixedones. No newfrozen
+closures or denominatormutations.8.2GiBfree; original2015/other25 preserved.
+
 ## Stoke2013 private game/source complete; captures underway — 2026-10-18 14:13 UTC
 
 Vostro/session as CURRENT_WORK14:05/14:13. Generic data-driven reserve exchange

@@ -24,6 +24,17 @@ def source_profile(tmp_path, monkeypatch):
     return path, selection, evidence
 
 
+@pytest.mark.parametrize('part', ['request', 'canonical'])
+def test_profile_rejects_spoofed_source_origin(source_profile, part):
+    path, selection, evidence = source_profile
+    if part == 'request':
+        evidence['profile']['url'] = evidence['profile']['url'].replace('www.transfermarkt.us', 'example.org')
+    else:
+        path.write_text(path.read_text().replace('www.transfermarkt.us', 'example.org'))
+    with pytest.raises(ValueError, match='origin'):
+        subject.read_transfermarkt_profile(evidence['profile'], selection['provider_player_id'])
+
+
 def test_new_person_exact_us_date_and_identity_without_present_day_body_facts(source_profile):
     _, selection, evidence = source_profile
     result = subject.new_person(selection, evidence)
