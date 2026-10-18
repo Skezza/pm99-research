@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pm99-research.local/schemas/pm99-season-review-overrides-v1.schema.json",
+  "title": "PM99 Season Review Overrides V1",
+  "description": "A small, source-only overlay for post-playtest corrections. It never describes edits to a built PM99 directory.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "override_id", "base_package_canonical_sha256", "artifacts", "sources", "proofs", "data_patches", "portrait_patches"],
+  "properties": {
+    "schema_version": {"const": "pm99-season-review-overrides-v1"},
+    "override_id": {"$ref": "#/$defs/id"},
+    "base_package_canonical_sha256": {"$ref": "#/$defs/sha256"},
+    "artifacts": {"type": "array", "items": {"$ref": "#/$defs/artifact"}},
+    "sources": {"type": "array", "items": {"$ref": "#/$defs/source"}},
+    "proofs": {"type": "array", "items": {"$ref": "#/$defs/proof"}},
+    "data_patches": {"type": "array", "items": {"$ref": "#/$defs/dataPatch"}},
+    "portrait_patches": {"type": "array", "items": {"$ref": "#/$defs/portraitPatch"}}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[a-z][a-z0-9-]{1,79}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "proofGrade": {"type": "string", "enum": ["source-captured", "source-receipt", "reviewed-editorial", "static-contract", "runtime-wine", "runtime-native-windows", "legacy-migrated"]},
+    "artifact": {
+      "type": "object", "additionalProperties": false, "required": ["id", "kind", "sha256"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "kind": {"type": "string", "enum": ["base-file", "season-input", "database-output", "legacy-receipt", "portrait-original", "portrait-crop", "portrait-conversion", "kit-render", "calendar-patch", "runtime-proof", "release-inventory"]},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "media_type": {"type": "string"},
+        "relative_path": {"type": "string", "pattern": "^(?!/)(?![A-Za-z]:[\\\\/])(?!.*(?:^|/)\\.\\.(?:/|$)).+$"}
+      }
+    },
+    "source": {
+      "type": "object", "additionalProperties": false, "required": ["id", "title", "proof_grade", "evidence_artifact_id"],
+      "properties": {"id": {"$ref": "#/$defs/id"}, "title": {"type": "string", "minLength": 1}, "uri": {"type": "string", "format": "uri"}, "proof_grade": {"$ref": "#/$defs/proofGrade"}, "evidence_artifact_id": {"$ref": "#/$defs/id"}}
+    },
+    "proofRef": {
+      "type": "object", "additionalProperties": false, "required": ["grade", "artifact_id"],
+      "properties": {"grade": {"$ref": "#/$defs/proofGrade"}, "artifact_id": {"$ref": "#/$defs/id"}}
+    },
+    "proof": {
+      "type": "object", "additionalProperties": false, "required": ["id", "grade", "artifact_id", "covers"],
+      "properties": {"id": {"$ref": "#/$defs/id"}, "grade": {"$ref": "#/$defs/proofGrade"}, "artifact_id": {"$ref": "#/$defs/id"}, "covers": {"type": "array", "minItems": 1, "items": {"type": "string"}, "uniqueItems": true}}
+    },
+    "ratingProvenance": {
+      "type": "object", "additionalProperties": false, "required": ["method", "proof_grade", "source_ids"],
+      "properties": {"method": {"type": "string", "minLength": 1}, "proof_grade": {"$ref": "#/$defs/proofGrade"}, "source_ids": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/id"}, "uniqueItems": true}}
+    },
+    "dataPatch": {
+      "type": "object", "additionalProperties": false, "required": ["id", "target", "expected", "set", "reason", "proof"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "target": {"type": "object", "additionalProperties": false, "required": ["entity", "id"], "properties": {"entity": {"type": "string", "enum": ["player", "club", "manager"]}, "id": {"$ref": "#/$defs/id"}}},
+        "expected": {"type": "object", "minProperties": 1},
+        "set": {"type": "object", "minProperties": 1},
+        "reason": {"type": "string", "minLength": 1},
+        "proof": {"$ref": "#/$defs/proofRef"},
+        "rating_provenance": {"$ref": "#/$defs/ratingProvenance"}
+      }
+    },
+    "portraitDeclaration": {
+      "type": "object", "additionalProperties": false, "required": ["original_artifact_id", "crop_artifact_id", "conversion_receipt_artifact_id", "output_container_artifact_id", "proof"],
+      "properties": {"original_artifact_id": {"$ref": "#/$defs/id"}, "crop_artifact_id": {"$ref": "#/$defs/id"}, "crop_recipe_artifact_id": {"$ref": "#/$defs/id"}, "conversion_receipt_artifact_id": {"$ref": "#/$defs/id"}, "output_container_artifact_id": {"$ref": "#/$defs/id"}, "source_uri": {"type": "string", "format": "uri"}, "proof": {"$ref": "#/$defs/proofRef"}}
+    },
+    "portraitPatch": {
+      "type": "object", "additionalProperties": false, "required": ["id", "player_id", "expected_status", "action", "reason", "proof"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"}, "player_id": {"$ref": "#/$defs/id"},
+        "expected_status": {"type": "string", "enum": ["applied", "native-no-photo", "unresolved"]},
+        "action": {"type": "string", "enum": ["set-native-no-photo", "set-applied"]},
+        "reason": {"type": "string", "minLength": 1}, "proof": {"$ref": "#/$defs/proofRef"},
+        "portrait": {"$ref": "#/$defs/portraitDeclaration"}
+      }
+    }
+  }
+}

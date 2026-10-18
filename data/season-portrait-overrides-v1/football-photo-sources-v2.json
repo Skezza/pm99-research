@@ -1,0 +1,20 @@
+{
+  "schema_version": "pm99-approved-football-photo-sources-v1",
+  "review_basis": "User approved the two source alternatives; source dates/authors/licences verified on Commons 2026-10-04. Still subject to per-season recipe identity, period, framing and native bitmap checks.",
+  "players": {
+    "Cristiano Ronaldo": {
+      "title": "File:Ronaldo - Manchester United vs Chelsea (cropped-3-4).jpg",
+      "source_page": "https://commons.wikimedia.org/wiki/File:Ronaldo_-_Manchester_United_vs_Chelsea_(cropped-3-4).jpg",
+      "photo_date": "2006-04-29",
+      "artist": "Ray Booysen",
+      "licence": "CC BY 2.0"
+    },
+    "Lamine Yamal": {
+      "title": "File:Lamine Yamal in 2025 (cropped2).jpg",
+      "source_page": "https://commons.wikimedia.org/wiki/File:Lamine_Yamal_in_2025_(cropped2).jpg",
+      "photo_date": "2025-09-04",
+      "artist": "Biso",
+      "licence": "CC BY 4.0"
+    }
+  }
+}

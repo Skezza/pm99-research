@@ -130,6 +130,8 @@ def render_rows(
     palette: list[tuple[int, int, int]],
     mapper: hem_renderer.boundary_renderer.recipe_renderer.PaletteMapper,
     style_row: dict[str, Any],
+    *,
+    native_regions_override: list[list[int | None]] | None = None,
 ) -> list[list[int]]:
     """Render recipe colours through the original PM99 tonal structure."""
     height = len(rows)
@@ -142,8 +144,8 @@ def render_rows(
     shirt_top, waist = hem_renderer.boundary_renderer._shirt_top_and_waist(mask)
     hems = hem_renderer._hem_by_column(mask, waist)
     pattern = str(style_row.get("pattern", "solid"))
-    native_regions = hem_renderer.boundary_renderer._smoothed_native_regions(
-        rows, palette, mask, shirt_top, waist
+    native_regions = native_regions_override if native_regions_override is not None else (
+        hem_renderer.boundary_renderer._smoothed_native_regions(rows, palette, mask, shirt_top, waist)
     )
     profiles = _tone_profiles(rows, palette, mask, native_regions, hems, pattern)
     shorts_rgb = hem_renderer.boundary_renderer.recipe_renderer.color_rgb(

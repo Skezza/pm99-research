@@ -1,0 +1,1 @@
+{"carrier_updates":[],"ledger_id":"pm99-2020-21-fixed-carrier-ledger","registry_sha256":"19c921ad64a6694f33087a96ebff30553b7ff5906de35fc72b3d973e17e6e19b","schema_version":"pm99-world-fixed-carrier-ledger-v2","season":{"end_year":2021,"label":"2020/21","start_year":2020},"sources":[],"topology_policy":"preserve-existing-carriers-no-membership-write"}

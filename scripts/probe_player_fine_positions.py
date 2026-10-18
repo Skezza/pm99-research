@@ -84,7 +84,11 @@ def _decode_marker_slots(raw: bytes) -> dict[str, Any] | None:
     if name_end is None:
         return None
 
-    start = int(name_end) - 1
+    # The six values begin two bytes before the marker boundary.  Starting one
+    # byte later drops the first live role (Larus Sigurdsson's Inside Centre
+    # Right is the regression case) and turns the marker padding into a fake
+    # slot window.
+    start = int(name_end) - 2
     if start < 0 or (start + 6) > len(raw):
         return None
 
@@ -225,7 +229,7 @@ def run(jug_file: Path, output_dir: Path) -> dict[str, Any]:
         "decode_contract": {
             "marker_slot_contract": {
                 "source_name": "name_end_minus2_slot1",
-                "window_rule": "Read six bytes at offsets name_end-1..name_end+4",
+                "window_rule": "Read six bytes at offsets name_end-2..name_end+3",
                 "decode_rule": "slot_code = ((byte ^ 0x61) - 1) when xor>0 else 98",
                 "primary_rule": "Primary fine position = decoded slot 0",
             },

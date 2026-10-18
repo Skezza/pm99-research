@@ -86,10 +86,9 @@ def test_v5_is_deterministic_and_changes_only_target_pixel_lane() -> None:
             shape = validate_minifoto_bitmap(first)
             original = validate_minifoto_bitmap(target.raw_bitmap)
             assert shape.bitmap_length == original.bitmap_length
-            start = int(target.pixel_offset)
-            end = start + int(target.width) * int(target.height)
-            assert first[:start] == target.raw_bitmap[:start]
-            assert first[end:] == target.raw_bitmap[end:]
+            from app.bitmap_pixel_rows import bitmap_pixel_ranges
+            allowed = {i for lo, hi in bitmap_pixel_ranges(target) for i in range(lo, hi)}
+            assert all(a == b for i, (a, b) in enumerate(zip(first, target.raw_bitmap)) if i not in allowed)
 
 
 def test_v5_retains_v4_no_shirt_colour_below_native_hem() -> None:

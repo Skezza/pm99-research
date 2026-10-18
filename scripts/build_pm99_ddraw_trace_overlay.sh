@@ -20,6 +20,8 @@ OUTPUT_DIR="${REPO_ROOT}/.local/runner-overlays/ddraw-trace"
 LOCAL_ARTIFACT_DIR="${REPO_ROOT}/artifacts/pm99_ddraw_trace_build"
 DOCKER_TIMEOUT_SECONDS="${PM99_RUNNER_DOCKER_TIMEOUT_SECONDS:-300}"
 KEEP_REMOTE=0
+SOURCE_C="${REPO_ROOT}/scripts/pm99_ddraw_trace_proxy.c"
+SOURCE_DEF="${REPO_ROOT}/scripts/pm99_ddraw_trace_proxy.def"
 
 usage() {
   cat <<'USAGE'
@@ -35,6 +37,8 @@ Options:
   --local-artifact-dir <p> Local artifact root (default: artifacts/pm99_ddraw_trace_build)
   --docker-timeout <sec>   Hard timeout for the build container (default: 300)
   --keep-remote            Do not clean remote run/artifacts after success
+  --source-c <path>        Research-only alternative forwarding proxy source
+  --source-def <path>      Matching research-only DLL export definition
   -h, --help               Show this help
 USAGE
 }
@@ -47,13 +51,13 @@ while [[ $# -gt 0 ]]; do
     --local-artifact-dir) LOCAL_ARTIFACT_DIR="$2"; shift 2 ;;
     --docker-timeout) DOCKER_TIMEOUT_SECONDS="$2"; shift 2 ;;
     --keep-remote) KEEP_REMOTE=1; shift ;;
+    --source-c) SOURCE_C="$2"; shift 2 ;;
+    --source-def) SOURCE_DEF="$2"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown option: $1" >&2; usage >&2; exit 2 ;;
   esac
 done
 
-SOURCE_C="${REPO_ROOT}/scripts/pm99_ddraw_trace_proxy.c"
-SOURCE_DEF="${REPO_ROOT}/scripts/pm99_ddraw_trace_proxy.def"
 if [[ ! -f "${SOURCE_C}" || ! -f "${SOURCE_DEF}" ]]; then
   echo "Missing DirectDraw trace proxy source files" >&2
   exit 2
@@ -77,8 +81,9 @@ FINAL_LOCAL_ARTIFACT_DIR="${LOCAL_ARTIFACT_DIR}/${RUN_TAG}"
 pm99_runner_prepare_remote_run_root "${REMOTE_RUN_ROOT}" "${REMOTE_ARTIFACT_DIR}"
 pm99_runner_ssh "mkdir -p $(printf '%q' "${REMOTE_BUILD_DIR}")"
 "${PM99_RUNNER_RSYNC_BIN}" -az \
-  "${SOURCE_C}" "${SOURCE_DEF}" \
-  "$(pm99_runner_remote_spec):${REMOTE_BUILD_DIR}/"
+  "${SOURCE_C}" "$(pm99_runner_remote_spec):${REMOTE_BUILD_DIR}/pm99_ddraw_trace_proxy.c"
+"${PM99_RUNNER_RSYNC_BIN}" -az \
+  "${SOURCE_DEF}" "$(pm99_runner_remote_spec):${REMOTE_BUILD_DIR}/pm99_ddraw_trace_proxy.def"
 
 BUILD_COMMAND=(
   i686-w64-mingw32-gcc
@@ -92,6 +97,7 @@ BUILD_COMMAND=(
   -o /workspace/artifacts/ddraw.dll
   /workspace/build/pm99_ddraw_trace_proxy.c
   /workspace/build/pm99_ddraw_trace_proxy.def
+  -lgdi32
 )
 
 set +e
@@ -122,11 +128,13 @@ if [[ ${RUN_STATUS} -eq 0 && ${SYNC_STATUS} -eq 0 ]]; then
   mkdir -p "${OUTPUT_DIR}"
   cp "${FINAL_LOCAL_ARTIFACT_DIR}/ddraw.dll" "${OUTPUT_DIR}/ddraw.dll"
   cat > "${OUTPUT_DIR}/README.txt" <<'EOF'
-PM99 DirectDraw trace overlay.
+PM99 DirectDraw trace/scaling overlay.
 
 Use with WINEDLLOVERRIDES=ddraw=n,b and PM99_DDRAW_TRACE_LOG pointing at an
-artifact path. The proxy is log-only: it forwards DirectDraw calls and records
-startup/mode HRESULTs without forcing windowed mode or scaling.
+artifact path. It forwards DirectDraw calls and records startup/mode HRESULTs.
+The runner's --upscale-primary path captures final 640x480 primary-surface
+lock presents and displays one scaled frame in the largest centred 4:3 host
+viewport.
 EOF
 fi
 

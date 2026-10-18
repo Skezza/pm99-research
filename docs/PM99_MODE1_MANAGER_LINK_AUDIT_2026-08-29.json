@@ -1,0 +1,6350 @@
+{
+  "schema": "pm99-mode1-manager-link-audit/v1",
+  "scope": {
+    "structural": "all indexed 700-byte mode-1 EQ carriers",
+    "runtime": "F.C. Barcelona only: ENT-1069 name and final EQ link mutations",
+    "not_claimed": "a separate visible dashboard check for every individual foreign club"
+  },
+  "mode1_carrier_count": 451,
+  "link_count_distribution": {
+    "1": 438,
+    "2": 10,
+    "3": 2,
+    "4": 1
+  },
+  "all_active_links_resolve_to_parsed_ent_profiles": true,
+  "errors": [],
+  "carriers": [
+    {
+      "eq_record_id": 1,
+      "club": "F.C. Barcelona",
+      "link_count": 1,
+      "manager_record_ids": [
+        1069
+      ],
+      "active_manager_record_id": 1069,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Van Gaal"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2,
+      "club": "R.C. Deportivo",
+      "link_count": 1,
+      "manager_record_ids": [
+        52
+      ],
+      "active_manager_record_id": 52,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Dick Advocaat"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3,
+      "club": "R. Zaragoza",
+      "link_count": 1,
+      "manager_record_ids": [
+        60
+      ],
+      "active_manager_record_id": 60,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Mauricio Pochettino"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 4,
+      "club": "Real Madrid C.F.",
+      "link_count": 1,
+      "manager_record_ids": [
+        1641
+      ],
+      "active_manager_record_id": 1641,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Hiddink"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 5,
+      "club": "Athletic Club",
+      "link_count": 1,
+      "manager_record_ids": [
+        501
+      ],
+      "active_manager_record_id": 501,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Uwe Rosler"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 7,
+      "club": "Valencia C.F.",
+      "link_count": 1,
+      "manager_record_ids": [
+        214
+      ],
+      "active_manager_record_id": 214,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Steve Cotterill"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 8,
+      "club": "R. Racing",
+      "link_count": 3,
+      "manager_record_ids": [
+        56,
+        2242,
+        1190
+      ],
+      "active_manager_record_id": 1190,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Gustavo Benítez"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 9,
+      "club": "R. Oviedo",
+      "link_count": 1,
+      "manager_record_ids": [
+        19
+      ],
+      "active_manager_record_id": 19,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Brendan Rodgers"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 10,
+      "club": "C.D. Tenerife",
+      "link_count": 2,
+      "manager_record_ids": [
+        22,
+        15
+      ],
+      "active_manager_record_id": 15,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Roberto Martinez"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 11,
+      "club": "Real Sociedad",
+      "link_count": 1,
+      "manager_record_ids": [
+        1140
+      ],
+      "active_manager_record_id": 1140,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Krauss"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 12,
+      "club": "C. At. Madrid",
+      "link_count": 1,
+      "manager_record_ids": [
+        1012
+      ],
+      "active_manager_record_id": 1012,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Sacchi"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 15,
+      "club": "R.C. Celta",
+      "link_count": 1,
+      "manager_record_ids": [
+        4
+      ],
+      "active_manager_record_id": 4,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Tim Sherwood"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 17,
+      "club": "R. Valladolid",
+      "link_count": 1,
+      "manager_record_ids": [
+        21
+      ],
+      "active_manager_record_id": 21,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Manuel Pellegrini"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 18,
+      "club": "R.C.D. Espanyol",
+      "link_count": 2,
+      "manager_record_ids": [
+        1223,
+        1901
+      ],
+      "active_manager_record_id": 1901,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Brindisi"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 19,
+      "club": "R. Betis B.",
+      "link_count": 4,
+      "manager_record_ids": [
+        7,
+        65,
+        592,
+        1789
+      ],
+      "active_manager_record_id": 1789,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Clemente"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 25,
+      "club": "R.C.D. Mallorca",
+      "link_count": 1,
+      "manager_record_ids": [
+        1141
+      ],
+      "active_manager_record_id": 1141,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Cúper"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 36,
+      "club": "Villarreal C. F.",
+      "link_count": 1,
+      "manager_record_ids": [
+        27
+      ],
+      "active_manager_record_id": 27,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Steve McClaren"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 38,
+      "club": "U. D. Salamanca",
+      "link_count": 3,
+      "manager_record_ids": [
+        1227,
+        1282,
+        38
+      ],
+      "active_manager_record_id": 38,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Alex Neil"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 40,
+      "club": "C.F. Extremadura",
+      "link_count": 1,
+      "manager_record_ids": [
+        16
+      ],
+      "active_manager_record_id": 16,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Claudio Ranieri"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 48,
+      "club": "D. Alavés",
+      "link_count": 1,
+      "manager_record_ids": [
+        49
+      ],
+      "active_manager_record_id": 49,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Mark Hughes"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 201,
+      "club": "Milan",
+      "link_count": 1,
+      "manager_record_ids": [
+        219
+      ],
+      "active_manager_record_id": 219,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Guy Luzon"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 202,
+      "club": "Juventus",
+      "link_count": 2,
+      "manager_record_ids": [
+        201,
+        663
+      ],
+      "active_manager_record_id": 663,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Phil Brown"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 203,
+      "club": "Sampdoria",
+      "link_count": 2,
+      "manager_record_ids": [
+        2204,
+        1029
+      ],
+      "active_manager_record_id": 1029,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Spalletti"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 204,
+      "club": "Lazio",
+      "link_count": 1,
+      "manager_record_ids": [
+        202
+      ],
+      "active_manager_record_id": 202,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Slaven Bilic"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 205,
+      "club": "Parma",
+      "link_count": 1,
+      "manager_record_ids": [
+        230
+      ],
+      "active_manager_record_id": 230,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Chris Powell"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 207,
+      "club": "Roma",
+      "link_count": 1,
+      "manager_record_ids": [
+        203
+      ],
+      "active_manager_record_id": 203,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Gary Rowett"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 212,
+      "club": "Cagliari",
+      "link_count": 1,
+      "manager_record_ids": [
+        245
+      ],
+      "active_manager_record_id": 245,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Steve Bruce"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 213,
+      "club": "Inter",
+      "link_count": 2,
+      "manager_record_ids": [
+        209,
+        1991
+      ],
+      "active_manager_record_id": 1991,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Lucescu"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 215,
+      "club": "Fiorentina",
+      "link_count": 1,
+      "manager_record_ids": [
+        664
+      ],
+      "active_manager_record_id": 664,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Mark Cooper"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 216,
+      "club": "Bari",
+      "link_count": 1,
+      "manager_record_ids": [
+        215
+      ],
+      "active_manager_record_id": 215,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Sean Dyche"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 219,
+      "club": "Piacenza",
+      "link_count": 1,
+      "manager_record_ids": [
+        1018
+      ],
+      "active_manager_record_id": 1018,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Materazzi"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 220,
+      "club": "Udinese",
+      "link_count": 1,
+      "manager_record_ids": [
+        220
+      ],
+      "active_manager_record_id": 220,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Paul Clement"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 221,
+      "club": "Vicenza",
+      "link_count": 2,
+      "manager_record_ids": [
+        222,
+        1017
+      ],
+      "active_manager_record_id": 1017,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Reja"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 223,
+      "club": "Salernitana",
+      "link_count": 1,
+      "manager_record_ids": [
+        208
+      ],
+      "active_manager_record_id": 208,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Marinus Dijkhuizen"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 225,
+      "club": "Perugia",
+      "link_count": 2,
+      "manager_record_ids": [
+        1660,
+        205
+      ],
+      "active_manager_record_id": 205,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Gary Bowyer"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 227,
+      "club": "Venezia",
+      "link_count": 1,
+      "manager_record_ids": [
+        1030
+      ],
+      "active_manager_record_id": 1030,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Novellino"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 236,
+      "club": "Bologna",
+      "link_count": 1,
+      "manager_record_ids": [
+        206
+      ],
+      "active_manager_record_id": 206,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Neil Lennon"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 250,
+      "club": "Empoli",
+      "link_count": 2,
+      "manager_record_ids": [
+        217,
+        2264
+      ],
+      "active_manager_record_id": 2264,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Orrico"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 377,
+      "club": "Doncaster R.",
+      "link_count": 1,
+      "manager_record_ids": [
+        1063
+      ],
+      "active_manager_record_id": 1063,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Dixon"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 381,
+      "club": "Hereford U.",
+      "link_count": 1,
+      "manager_record_ids": [
+        766
+      ],
+      "active_manager_record_id": 766,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Turner"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 401,
+      "club": "Borussia D.",
+      "link_count": 1,
+      "manager_record_ids": [
+        2022
+      ],
+      "active_manager_record_id": 2022,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Skibbe"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 402,
+      "club": "Borussia M.",
+      "link_count": 1,
+      "manager_record_ids": [
+        1936
+      ],
+      "active_manager_record_id": 1936,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Bonhoff"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 403,
+      "club": "W. Bremen",
+      "link_count": 1,
+      "manager_record_ids": [
+        1930
+      ],
+      "active_manager_record_id": 1930,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Sidka"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 404,
+      "club": "Kaiserslautern",
+      "link_count": 1,
+      "manager_record_ids": [
+        598
+      ],
+      "active_manager_record_id": 598,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Chris Ramsey"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 406,
+      "club": "Bayern M.",
+      "link_count": 1,
+      "manager_record_ids": [
+        2024
+      ],
+      "active_manager_record_id": 2024,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Ottmar Hitzfeld"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 407,
+      "club": "Karlsruher",
+      "link_count": 1,
+      "manager_record_ids": [
+        1937
+      ],
+      "active_manager_record_id": 1937,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Ulrich"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 408,
+      "club": "Schalke 04",
+      "link_count": 1,
+      "manager_record_ids": [
+        658
+      ],
+      "active_manager_record_id": 658,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Nigel Adkins"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 409,
+      "club": "Hamburg",
+      "link_count": 1,
+      "manager_record_ids": [
+        1311
+      ],
+      "active_manager_record_id": 1311,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Pagelsdorf"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 410,
+      "club": "Hansa Rostock",
+      "link_count": 1,
+      "manager_record_ids": [
+        1642
+      ],
+      "active_manager_record_id": 1642,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Lienen"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 411,
+      "club": "Munich 1860",
+      "link_count": 1,
+      "manager_record_ids": [
+        830
+      ],
+      "active_manager_record_id": 830,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Lorant"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 412,
+      "club": "Stuttgart",
+      "link_count": 1,
+      "manager_record_ids": [
+        2246
+      ],
+      "active_manager_record_id": 2246,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Adrion"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 413,
+      "club": "Cologne",
+      "link_count": 1,
+      "manager_record_ids": [
+        1938
+      ],
+      "active_manager_record_id": 1938,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Bernd Schuster"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 415,
+      "club": "B. Leverkusen",
+      "link_count": 1,
+      "manager_record_ids": [
+        834
+      ],
+      "active_manager_record_id": 834,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Daum"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 417,
+      "club": "Bochum",
+      "link_count": 1,
+      "manager_record_ids": [
+        836
+      ],
+      "active_manager_record_id": 836,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Toppmöller"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 418,
+      "club": "Arminia Biel.",
+      "link_count": 1,
+      "manager_record_ids": [
+        837
+      ],
+      "active_manager_record_id": 837,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Middendorp"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 419,
+      "club": "MSV Duisburg",
+      "link_count": 1,
+      "manager_record_ids": [
+        838
+      ],
+      "active_manager_record_id": 838,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Funkel"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 420,
+      "club": "Wolfsburg",
+      "link_count": 1,
+      "manager_record_ids": [
+        1941
+      ],
+      "active_manager_record_id": 1941,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Wolf"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 421,
+      "club": "Hertha Berlín",
+      "link_count": 1,
+      "manager_record_ids": [
+        1313
+      ],
+      "active_manager_record_id": 1313,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Röber"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 501,
+      "club": "Nantes",
+      "link_count": 1,
+      "manager_record_ids": [
+        1413
+      ],
+      "active_manager_record_id": 1413,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Raynald Denoueix"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 502,
+      "club": "P.S.G.",
+      "link_count": 1,
+      "manager_record_ids": [
+        1279
+      ],
+      "active_manager_record_id": 1279,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Artur Jorge"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 503,
+      "club": "Auxerre",
+      "link_count": 1,
+      "manager_record_ids": [
+        2028
+      ],
+      "active_manager_record_id": 2028,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Guy Roux"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 504,
+      "club": "Lens",
+      "link_count": 1,
+      "manager_record_ids": [
+        1342
+      ],
+      "active_manager_record_id": 1342,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Daniel Leclercq"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 505,
+      "club": "Mónaco",
+      "link_count": 1,
+      "manager_record_ids": [
+        2029
+      ],
+      "active_manager_record_id": 2029,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Jean Tigana"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 506,
+      "club": "Lyon",
+      "link_count": 1,
+      "manager_record_ids": [
+        1343
+      ],
+      "active_manager_record_id": 1343,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Bernard Lacombe"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 507,
+      "club": "Strasbourg",
+      "link_count": 1,
+      "manager_record_ids": [
+        2173
+      ],
+      "active_manager_record_id": 2173,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Mankowski"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 508,
+      "club": "G. Bordeaux",
+      "link_count": 1,
+      "manager_record_ids": [
+        1601
+      ],
+      "active_manager_record_id": 1601,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Elie Baup"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 509,
+      "club": "Montpellier",
+      "link_count": 1,
+      "manager_record_ids": [
+        2174
+      ],
+      "active_manager_record_id": 2174,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Gasset"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 510,
+      "club": "Metz",
+      "link_count": 1,
+      "manager_record_ids": [
+        657
+      ],
+      "active_manager_record_id": 657,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Mark Robins"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 513,
+      "club": "Rennes",
+      "link_count": 1,
+      "manager_record_ids": [
+        1657
+      ],
+      "active_manager_record_id": 1657,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Le Guen"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 515,
+      "club": "Le Havre",
+      "link_count": 1,
+      "manager_record_ids": [
+        1345
+      ],
+      "active_manager_record_id": 1345,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Denis Troch"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 517,
+      "club": "Bastia",
+      "link_count": 1,
+      "manager_record_ids": [
+        2265
+      ],
+      "active_manager_record_id": 2265,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Fournier"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 520,
+      "club": "Olympique M.",
+      "link_count": 1,
+      "manager_record_ids": [
+        1347
+      ],
+      "active_manager_record_id": 1347,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Rolland Courbis"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 521,
+      "club": "Nancy",
+      "link_count": 1,
+      "manager_record_ids": [
+        895
+      ],
+      "active_manager_record_id": 895,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Boloni"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 523,
+      "club": "Toulouse",
+      "link_count": 1,
+      "manager_record_ids": [
+        1349
+      ],
+      "active_manager_record_id": 1349,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Giresse"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 529,
+      "club": "Lorient",
+      "link_count": 1,
+      "manager_record_ids": [
+        1609
+      ],
+      "active_manager_record_id": 1609,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Gourcuff"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 536,
+      "club": "Sochaux",
+      "link_count": 1,
+      "manager_record_ids": [
+        1616
+      ],
+      "active_manager_record_id": 1616,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Hadzibegic"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 601,
+      "club": "Oporto",
+      "link_count": 1,
+      "manager_record_ids": [
+        980
+      ],
+      "active_manager_record_id": 980,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Fernando Santos"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 602,
+      "club": "Sporting Port.",
+      "link_count": 1,
+      "manager_record_ids": [
+        1948
+      ],
+      "active_manager_record_id": 1948,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Jozic"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 603,
+      "club": "Benfica",
+      "link_count": 1,
+      "manager_record_ids": [
+        1383
+      ],
+      "active_manager_record_id": 1383,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Souness"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 604,
+      "club": "V. Guimaraes",
+      "link_count": 1,
+      "manager_record_ids": [
+        1949
+      ],
+      "active_manager_record_id": 1949,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Filipovic"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 605,
+      "club": "Farense",
+      "link_count": 1,
+      "manager_record_ids": [
+        2030
+      ],
+      "active_manager_record_id": 2030,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Paco Fortes"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 606,
+      "club": "Boavista",
+      "link_count": 1,
+      "manager_record_ids": [
+        655
+      ],
+      "active_manager_record_id": 655,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Rob Page"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 608,
+      "club": "Uniao Leiria",
+      "link_count": 1,
+      "manager_record_ids": [
+        1950
+      ],
+      "active_manager_record_id": 1950,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "M. Reis"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 609,
+      "club": "SC Braga",
+      "link_count": 1,
+      "manager_record_ids": [
+        1951
+      ],
+      "active_manager_record_id": 1951,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "V. Oliveira"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 610,
+      "club": "Marítimo",
+      "link_count": 1,
+      "manager_record_ids": [
+        1386
+      ],
+      "active_manager_record_id": 1386,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Inácio"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 612,
+      "club": "Salgueiros",
+      "link_count": 1,
+      "manager_record_ids": [
+        1952
+      ],
+      "active_manager_record_id": 1952,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Dito"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 613,
+      "club": "Estrela Amad.",
+      "link_count": 1,
+      "manager_record_ids": [
+        1832
+      ],
+      "active_manager_record_id": 1832,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Jorge Jesus"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 615,
+      "club": "Chaves",
+      "link_count": 1,
+      "manager_record_ids": [
+        1953
+      ],
+      "active_manager_record_id": 1953,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Gonçalves"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 616,
+      "club": "Río Ave",
+      "link_count": 1,
+      "manager_record_ids": [
+        1387
+      ],
+      "active_manager_record_id": 1387,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Brito"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 617,
+      "club": "Vitoria Setub.",
+      "link_count": 1,
+      "manager_record_ids": [
+        1476
+      ],
+      "active_manager_record_id": 1476,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Barrios"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 620,
+      "club": "Coimbra",
+      "link_count": 1,
+      "manager_record_ids": [
+        1477
+      ],
+      "active_manager_record_id": 1477,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "José Romao"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 621,
+      "club": "Campomaiorense",
+      "link_count": 1,
+      "manager_record_ids": [
+        1391
+      ],
+      "active_manager_record_id": 1391,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Pedroto"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 622,
+      "club": "Beira Mar",
+      "link_count": 1,
+      "manager_record_ids": [
+        2031
+      ],
+      "active_manager_record_id": 2031,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "A. Sousa"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 623,
+      "club": "Alverca",
+      "link_count": 1,
+      "manager_record_ids": [
+        2032
+      ],
+      "active_manager_record_id": 2032,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "M. Wilson"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 701,
+      "club": "Red Star",
+      "link_count": 1,
+      "manager_record_ids": [
+        1403
+      ],
+      "active_manager_record_id": 1403,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Kosanovic"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 703,
+      "club": "Partizán",
+      "link_count": 1,
+      "manager_record_ids": [
+        1009
+      ],
+      "active_manager_record_id": 1009,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Tumbakovic"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 704,
+      "club": "Vojvodina",
+      "link_count": 1,
+      "manager_record_ids": [
+        1010
+      ],
+      "active_manager_record_id": 1010,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Bekvalec"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 706,
+      "club": "Becej",
+      "link_count": 1,
+      "manager_record_ids": [
+        1404
+      ],
+      "active_manager_record_id": 1404,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Savic"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 707,
+      "club": "Obilic",
+      "link_count": 1,
+      "manager_record_ids": [
+        2176
+      ],
+      "active_manager_record_id": 2176,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Ostojic"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 751,
+      "club": "Spartak Moscow",
+      "link_count": 1,
+      "manager_record_ids": [
+        1396
+      ],
+      "active_manager_record_id": 1396,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Romantsev"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 752,
+      "club": "Dinamo Moscow",
+      "link_count": 1,
+      "manager_record_ids": [
+        2177
+      ],
+      "active_manager_record_id": 2177,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Yartsev"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 753,
+      "club": "Rotor",
+      "link_count": 1,
+      "manager_record_ids": [
+        1397
+      ],
+      "active_manager_record_id": 1397,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Prokopenko"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 754,
+      "club": "A. Vladikavkaz",
+      "link_count": 1,
+      "manager_record_ids": [
+        656
+      ],
+      "active_manager_record_id": 656,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Keith Hill"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 755,
+      "club": "Lokomotiv M.",
+      "link_count": 1,
+      "manager_record_ids": [
+        2248
+      ],
+      "active_manager_record_id": 2248,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Siomin"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 756,
+      "club": "CSKA Moscow",
+      "link_count": 1,
+      "manager_record_ids": [
+        620
+      ],
+      "active_manager_record_id": 620,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Jimmy Floyd Hasselbaink"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 757,
+      "club": "Torpedo Moscow",
+      "link_count": 1,
+      "manager_record_ids": [
+        634
+      ],
+      "active_manager_record_id": 634,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Justin Edinburgh"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 801,
+      "club": "Ajax",
+      "link_count": 1,
+      "manager_record_ids": [
+        2138
+      ],
+      "active_manager_record_id": 2138,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Wouters"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 802,
+      "club": "Feyenoord",
+      "link_count": 1,
+      "manager_record_ids": [
+        919
+      ],
+      "active_manager_record_id": 919,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Beenhakker"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 803,
+      "club": "Roda J.C",
+      "link_count": 1,
+      "manager_record_ids": [
+        2104
+      ],
+      "active_manager_record_id": 2104,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Vergoossen"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 804,
+      "club": "PSV",
+      "link_count": 1,
+      "manager_record_ids": [
+        500
+      ],
+      "active_manager_record_id": 500,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Mick McCarthy"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 805,
+      "club": "Vitesse",
+      "link_count": 1,
+      "manager_record_ids": [
+        2105
+      ],
+      "active_manager_record_id": 2105,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Artur Jorge"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 806,
+      "club": "Sparta R.",
+      "link_count": 1,
+      "manager_record_ids": [
+        2249
+      ],
+      "active_manager_record_id": 2249,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Everse"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 807,
+      "club": "Heerenveen",
+      "link_count": 1,
+      "manager_record_ids": [
+        921
+      ],
+      "active_manager_record_id": 921,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "De Haan"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 808,
+      "club": "NAC",
+      "link_count": 1,
+      "manager_record_ids": [
+        1352
+      ],
+      "active_manager_record_id": 1352,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Neumann"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 810,
+      "club": "Twente",
+      "link_count": 1,
+      "manager_record_ids": [
+        924
+      ],
+      "active_manager_record_id": 924,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Meyer"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 812,
+      "club": "Willem II",
+      "link_count": 1,
+      "manager_record_ids": [
+        1355
+      ],
+      "active_manager_record_id": 1355,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Adriaanse"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 813,
+      "club": "Fortuna Sitt.",
+      "link_count": 1,
+      "manager_record_ids": [
+        2106
+      ],
+      "active_manager_record_id": 2106,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Van Marwijk"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 814,
+      "club": "De Graafschap",
+      "link_count": 1,
+      "manager_record_ids": [
+        928
+      ],
+      "active_manager_record_id": 928,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Korbach"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 815,
+      "club": "Utrecht",
+      "link_count": 1,
+      "manager_record_ids": [
+        2107
+      ],
+      "active_manager_record_id": 2107,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Wotte"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 817,
+      "club": "NEC",
+      "link_count": 1,
+      "manager_record_ids": [
+        1357
+      ],
+      "active_manager_record_id": 1357,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Calderwood"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 818,
+      "club": "AZ",
+      "link_count": 1,
+      "manager_record_ids": [
+        2139
+      ],
+      "active_manager_record_id": 2139,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Van Hanegem"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 820,
+      "club": "MVV",
+      "link_count": 1,
+      "manager_record_ids": [
+        2140
+      ],
+      "active_manager_record_id": 2140,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Koevermans"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 821,
+      "club": "Cambuur",
+      "link_count": 1,
+      "manager_record_ids": [
+        2141
+      ],
+      "active_manager_record_id": 2141,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Kruys"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 851,
+      "club": "Anderlecht",
+      "link_count": 1,
+      "manager_record_ids": [
+        667
+      ],
+      "active_manager_record_id": 667,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Dean Smith"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 852,
+      "club": "Brujas",
+      "link_count": 1,
+      "manager_record_ids": [
+        2033
+      ],
+      "active_manager_record_id": 2033,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Eric Gerets"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 853,
+      "club": "Standard Lieja",
+      "link_count": 1,
+      "manager_record_ids": [
+        1954
+      ],
+      "active_manager_record_id": 1954,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Ivic"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 854,
+      "club": "Lierse",
+      "link_count": 1,
+      "manager_record_ids": [
+        1955
+      ],
+      "active_manager_record_id": 1955,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Meeuws"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 855,
+      "club": "Alost",
+      "link_count": 1,
+      "manager_record_ids": [
+        1976
+      ],
+      "active_manager_record_id": 1976,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Hulshoff"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 856,
+      "club": "G. Ekeren",
+      "link_count": 1,
+      "manager_record_ids": [
+        1321
+      ],
+      "active_manager_record_id": 1321,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Helleputte"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 859,
+      "club": "Charleroi",
+      "link_count": 1,
+      "manager_record_ids": [
+        1977
+      ],
+      "active_manager_record_id": 1977,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Waseige"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 860,
+      "club": "Lommel",
+      "link_count": 1,
+      "manager_record_ids": [
+        2250
+      ],
+      "active_manager_record_id": 2250,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Daerden"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 862,
+      "club": "Harelbeke",
+      "link_count": 1,
+      "manager_record_ids": [
+        847
+      ],
+      "active_manager_record_id": 847,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Houwaart"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 864,
+      "club": "Gent",
+      "link_count": 1,
+      "manager_record_ids": [
+        849
+      ],
+      "active_manager_record_id": 849,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Anthuenis"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 865,
+      "club": "Sint Truidense",
+      "link_count": 1,
+      "manager_record_ids": [
+        1445
+      ],
+      "active_manager_record_id": 1445,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Mangelschots"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 866,
+      "club": "Mouscron",
+      "link_count": 1,
+      "manager_record_ids": [
+        2034
+      ],
+      "active_manager_record_id": 2034,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Hugo Broos"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 867,
+      "club": "Genk",
+      "link_count": 1,
+      "manager_record_ids": [
+        1957
+      ],
+      "active_manager_record_id": 1957,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Anthuenis"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 868,
+      "club": "Ostende",
+      "link_count": 1,
+      "manager_record_ids": [
+        2003
+      ],
+      "active_manager_record_id": 2003,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Van Wijk"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 869,
+      "club": "Kortrijk",
+      "link_count": 1,
+      "manager_record_ids": [
+        2004
+      ],
+      "active_manager_record_id": 2004,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "De Wolf"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 870,
+      "club": "Beveren",
+      "link_count": 1,
+      "manager_record_ids": [
+        2005
+      ],
+      "active_manager_record_id": 2005,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Gzil"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 871,
+      "club": "Lokeren",
+      "link_count": 1,
+      "manager_record_ids": [
+        1978
+      ],
+      "active_manager_record_id": 1978,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Reynders"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 872,
+      "club": "Westerlo",
+      "link_count": 1,
+      "manager_record_ids": [
+        1979
+      ],
+      "active_manager_record_id": 1979,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Heyligen"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 901,
+      "club": "Hajduk Split",
+      "link_count": 1,
+      "manager_record_ids": [
+        2178
+      ],
+      "active_manager_record_id": 2178,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "I. Katalinic"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 902,
+      "club": "Croatia Zag.",
+      "link_count": 1,
+      "manager_record_ids": [
+        2179
+      ],
+      "active_manager_record_id": 2179,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Kranjcar"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 903,
+      "club": "Osijek",
+      "link_count": 1,
+      "manager_record_ids": [
+        1326
+      ],
+      "active_manager_record_id": 1326,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Djuricic"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 904,
+      "club": "Varteks",
+      "link_count": 1,
+      "manager_record_ids": [
+        2206
+      ],
+      "active_manager_record_id": 2206,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Stozer"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 951,
+      "club": "Göteborg",
+      "link_count": 1,
+      "manager_record_ids": [
+        593
+      ],
+      "active_manager_record_id": 593,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Dougie Freedman"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 952,
+      "club": "Halmstads",
+      "link_count": 1,
+      "manager_record_ids": [
+        627
+      ],
+      "active_manager_record_id": 627,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Tony Mowbray"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 953,
+      "club": "Orebro",
+      "link_count": 1,
+      "manager_record_ids": [
+        990
+      ],
+      "active_manager_record_id": 990,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Dahlkvist"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 954,
+      "club": "Malmo",
+      "link_count": 1,
+      "manager_record_ids": [
+        1399
+      ],
+      "active_manager_record_id": 1399,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Thijssen"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 955,
+      "club": "AIK Estoc.",
+      "link_count": 1,
+      "manager_record_ids": [
+        2036
+      ],
+      "active_manager_record_id": 2036,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Baxter"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 956,
+      "club": "Helsingborgs",
+      "link_count": 1,
+      "manager_record_ids": [
+        2037
+      ],
+      "active_manager_record_id": 2037,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Hareide"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 957,
+      "club": "Djurgardens",
+      "link_count": 1,
+      "manager_record_ids": [
+        991
+      ],
+      "active_manager_record_id": 991,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Gronhagen"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 958,
+      "club": "Orgryte",
+      "link_count": 1,
+      "manager_record_ids": [
+        2038
+      ],
+      "active_manager_record_id": 2038,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Backamn"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 959,
+      "club": "Degerfors",
+      "link_count": 1,
+      "manager_record_ids": [
+        993
+      ],
+      "active_manager_record_id": 993,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Cratz"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 960,
+      "club": "Trelleborgs",
+      "link_count": 1,
+      "manager_record_ids": [
+        2039
+      ],
+      "active_manager_record_id": 2039,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "S. Cratz"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 961,
+      "club": "Norrkoping",
+      "link_count": 1,
+      "manager_record_ids": [
+        2040
+      ],
+      "active_manager_record_id": 2040,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Nordin"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1001,
+      "club": "Besiktas",
+      "link_count": 1,
+      "manager_record_ids": [
+        3
+      ],
+      "active_manager_record_id": 3,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Arsene Wenger"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1002,
+      "club": "Trabzonspor",
+      "link_count": 1,
+      "manager_record_ids": [
+        2041
+      ],
+      "active_manager_record_id": 2041,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Senol Günes"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1003,
+      "club": "Galatasaray",
+      "link_count": 1,
+      "manager_record_ids": [
+        604
+      ],
+      "active_manager_record_id": 604,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Steve Clarke"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1004,
+      "club": "Fenerbahce",
+      "link_count": 1,
+      "manager_record_ids": [
+        2180
+      ],
+      "active_manager_record_id": 2180,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "J. Löw"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1005,
+      "club": "Kocaelispor",
+      "link_count": 1,
+      "manager_record_ids": [
+        1004
+      ],
+      "active_manager_record_id": 1004,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Denizli"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1006,
+      "club": "Gaziantepspor",
+      "link_count": 1,
+      "manager_record_ids": [
+        1005
+      ],
+      "active_manager_record_id": 1005,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Sakip"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1007,
+      "club": "Antalyaspor",
+      "link_count": 1,
+      "manager_record_ids": [
+        1006
+      ],
+      "active_manager_record_id": 1006,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Ümit"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1008,
+      "club": "Samsunspor",
+      "link_count": 1,
+      "manager_record_ids": [
+        1007
+      ],
+      "active_manager_record_id": 1007,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Multescu"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1009,
+      "club": "Bursaspor",
+      "link_count": 1,
+      "manager_record_ids": [
+        1008
+      ],
+      "active_manager_record_id": 1008,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Milne"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1051,
+      "club": "Legia Warsaw",
+      "link_count": 1,
+      "manager_record_ids": [
+        635
+      ],
+      "active_manager_record_id": 635,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Neil Harris"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1052,
+      "club": "Katowice",
+      "link_count": 1,
+      "manager_record_ids": [
+        2042
+      ],
+      "active_manager_record_id": 2042,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Piotr Piekarczyk"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1053,
+      "club": "W.Lodz",
+      "link_count": 1,
+      "manager_record_ids": [
+        594
+      ],
+      "active_manager_record_id": 594,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Simon Grayson"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1054,
+      "club": "Zaglebie L.",
+      "link_count": 1,
+      "manager_record_ids": [
+        1376
+      ],
+      "active_manager_record_id": 1376,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Topolski"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1055,
+      "club": "R.Chorzow",
+      "link_count": 1,
+      "manager_record_ids": [
+        1377
+      ],
+      "active_manager_record_id": 1377,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Lenczyk"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1056,
+      "club": "H. Cracovia",
+      "link_count": 1,
+      "manager_record_ids": [
+        632
+      ],
+      "active_manager_record_id": 632,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Paul Dickov"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1057,
+      "club": "LKS Lodz",
+      "link_count": 1,
+      "manager_record_ids": [
+        1378
+      ],
+      "active_manager_record_id": 1378,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Dziuba"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1058,
+      "club": "Amika Wronki",
+      "link_count": 1,
+      "manager_record_ids": [
+        1379
+      ],
+      "active_manager_record_id": 1379,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Gzil"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1059,
+      "club": "Lech Poznan",
+      "link_count": 1,
+      "manager_record_ids": [
+        1380
+      ],
+      "active_manager_record_id": 1380,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Pawlak"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1060,
+      "club": "Gornik Zabrze",
+      "link_count": 1,
+      "manager_record_ids": [
+        1381
+      ],
+      "active_manager_record_id": 1381,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Apostel"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1061,
+      "club": "Stomil Olsztyn",
+      "link_count": 1,
+      "manager_record_ids": [
+        1382
+      ],
+      "active_manager_record_id": 1382,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Oblewski"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1101,
+      "club": "Grasshoppers",
+      "link_count": 1,
+      "manager_record_ids": [
+        1517
+      ],
+      "active_manager_record_id": 1517,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Fringer"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1102,
+      "club": "Sion",
+      "link_count": 1,
+      "manager_record_ids": [
+        1400
+      ],
+      "active_manager_record_id": 1400,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Bignon"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1103,
+      "club": "Lugano",
+      "link_count": 1,
+      "manager_record_ids": [
+        996
+      ],
+      "active_manager_record_id": 996,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Pont"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1104,
+      "club": "Neuchatel",
+      "link_count": 1,
+      "manager_record_ids": [
+        2043
+      ],
+      "active_manager_record_id": 2043,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Gilbert Gress"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1105,
+      "club": "Aarau",
+      "link_count": 1,
+      "manager_record_ids": [
+        622
+      ],
+      "active_manager_record_id": 622,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Dean Saunders"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1106,
+      "club": "Luzern",
+      "link_count": 1,
+      "manager_record_ids": [
+        997
+      ],
+      "active_manager_record_id": 997,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Brigger"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1107,
+      "club": "Basel",
+      "link_count": 1,
+      "manager_record_ids": [
+        998
+      ],
+      "active_manager_record_id": 998,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Engel"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1108,
+      "club": "Servette",
+      "link_count": 1,
+      "manager_record_ids": [
+        999
+      ],
+      "active_manager_record_id": 999,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Boskov"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1109,
+      "club": "St. Gallen",
+      "link_count": 1,
+      "manager_record_ids": [
+        1000
+      ],
+      "active_manager_record_id": 1000,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Hegi"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1110,
+      "club": "Lausanne S.",
+      "link_count": 1,
+      "manager_record_ids": [
+        1001
+      ],
+      "active_manager_record_id": 1001,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Bregy"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1111,
+      "club": "Zurich",
+      "link_count": 1,
+      "manager_record_ids": [
+        1002
+      ],
+      "active_manager_record_id": 1002,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Ponte"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1112,
+      "club": "Young Boys",
+      "link_count": 1,
+      "manager_record_ids": [
+        1003
+      ],
+      "active_manager_record_id": 1003,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Conz"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1151,
+      "club": "W. Salzburg",
+      "link_count": 1,
+      "manager_record_ids": [
+        1931
+      ],
+      "active_manager_record_id": 1931,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "H. Krankl"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1152,
+      "club": "Rapid Vienna",
+      "link_count": 1,
+      "manager_record_ids": [
+        1932
+      ],
+      "active_manager_record_id": 1932,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Weber"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1153,
+      "club": "Sturm Graz",
+      "link_count": 1,
+      "manager_record_ids": [
+        2044
+      ],
+      "active_manager_record_id": 2044,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Ivica Osim"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1154,
+      "club": "Austria M.",
+      "link_count": 1,
+      "manager_record_ids": [
+        1958
+      ],
+      "active_manager_record_id": 1958,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Verdenik"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1155,
+      "club": "Tirol",
+      "link_count": 1,
+      "manager_record_ids": [
+        1959
+      ],
+      "active_manager_record_id": 1959,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Cipro"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1156,
+      "club": "Liebherr-GAK",
+      "link_count": 1,
+      "manager_record_ids": [
+        1315
+      ],
+      "active_manager_record_id": 1315,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Augenthaler"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1157,
+      "club": "LASK Linz",
+      "link_count": 1,
+      "manager_record_ids": [
+        1401
+      ],
+      "active_manager_record_id": 1401,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Baric"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1158,
+      "club": "SV Ried",
+      "link_count": 1,
+      "manager_record_ids": [
+        841
+      ],
+      "active_manager_record_id": 841,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Roitinger"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1160,
+      "club": "A. Lustenau",
+      "link_count": 1,
+      "manager_record_ids": [
+        1960
+      ],
+      "active_manager_record_id": 1960,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Stöhr"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1161,
+      "club": "Vorwärts Steyr",
+      "link_count": 1,
+      "manager_record_ids": [
+        1961
+      ],
+      "active_manager_record_id": 1961,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Eggenberger"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1201,
+      "club": "Aalborg",
+      "link_count": 1,
+      "manager_record_ids": [
+        1328
+      ],
+      "active_manager_record_id": 1328,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Westergaard"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1202,
+      "club": "Copenhagen",
+      "link_count": 1,
+      "manager_record_ids": [
+        1329
+      ],
+      "active_manager_record_id": 1329,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Karlson"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1203,
+      "club": "Brondby",
+      "link_count": 1,
+      "manager_record_ids": [
+        2045
+      ],
+      "active_manager_record_id": 2045,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Ebbe Skovdahl"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1204,
+      "club": "Silkeborg",
+      "link_count": 1,
+      "manager_record_ids": [
+        1330
+      ],
+      "active_manager_record_id": 1330,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Piontek"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1205,
+      "club": "Aarhus",
+      "link_count": 1,
+      "manager_record_ids": [
+        1331
+      ],
+      "active_manager_record_id": 1331,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Rudbaek"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1207,
+      "club": "Lyngby",
+      "link_count": 1,
+      "manager_record_ids": [
+        2257
+      ],
+      "active_manager_record_id": 2257,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Johansson"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1208,
+      "club": "Viborg FF",
+      "link_count": 1,
+      "manager_record_ids": [
+        865
+      ],
+      "active_manager_record_id": 865,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Christensen"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1209,
+      "club": "Vejle BK",
+      "link_count": 1,
+      "manager_record_ids": [
+        866
+      ],
+      "active_manager_record_id": 866,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Fritsen"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1210,
+      "club": "Herfolge BK",
+      "link_count": 1,
+      "manager_record_ids": [
+        867
+      ],
+      "active_manager_record_id": 867,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Morch"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1212,
+      "club": "Naestved BK",
+      "link_count": 1,
+      "manager_record_ids": [
+        869
+      ],
+      "active_manager_record_id": 869,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Bonde"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1213,
+      "club": "Fremad",
+      "link_count": 1,
+      "manager_record_ids": [
+        2108
+      ],
+      "active_manager_record_id": 2108,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Poulsen"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1251,
+      "club": "G. Rangers",
+      "link_count": 1,
+      "manager_record_ids": [
+        43
+      ],
+      "active_manager_record_id": 43,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Ronald Koeman"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1252,
+      "club": "G.Celtic",
+      "link_count": 1,
+      "manager_record_ids": [
+        1333
+      ],
+      "active_manager_record_id": 1333,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Jock Brown"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1253,
+      "club": "Motherwell",
+      "link_count": 1,
+      "manager_record_ids": [
+        2047
+      ],
+      "active_manager_record_id": 2047,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Kampman"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1254,
+      "club": "Hibernian",
+      "link_count": 1,
+      "manager_record_ids": [
+        1334
+      ],
+      "active_manager_record_id": 1334,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "James Duffy"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1255,
+      "club": "Aberdeen",
+      "link_count": 1,
+      "manager_record_ids": [
+        2048
+      ],
+      "active_manager_record_id": 2048,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Miller"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1256,
+      "club": "Heart of M.",
+      "link_count": 1,
+      "manager_record_ids": [
+        871
+      ],
+      "active_manager_record_id": 871,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "James Jefferies"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1258,
+      "club": "Kilmarnock",
+      "link_count": 1,
+      "manager_record_ids": [
+        1335
+      ],
+      "active_manager_record_id": 1335,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Robert Williamson"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1259,
+      "club": "Dundee U.",
+      "link_count": 1,
+      "manager_record_ids": [
+        2049
+      ],
+      "active_manager_record_id": 2049,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Sturrock"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1260,
+      "club": "Dunfermline At.",
+      "link_count": 1,
+      "manager_record_ids": [
+        875
+      ],
+      "active_manager_record_id": 875,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Robert Paton"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1261,
+      "club": "St. Johnstone",
+      "link_count": 1,
+      "manager_record_ids": [
+        2050
+      ],
+      "active_manager_record_id": 2050,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Clark"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1262,
+      "club": "Dundee",
+      "link_count": 1,
+      "manager_record_ids": [
+        2051
+      ],
+      "active_manager_record_id": 2051,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Scott"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1301,
+      "club": "Panathinaikos",
+      "link_count": 1,
+      "manager_record_ids": [
+        2181
+      ],
+      "active_manager_record_id": 2181,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Danill Vassilis"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1302,
+      "club": "AEK Athens",
+      "link_count": 1,
+      "manager_record_ids": [
+        2182
+      ],
+      "active_manager_record_id": 2182,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Blokhin"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1303,
+      "club": "Olympiakos",
+      "link_count": 1,
+      "manager_record_ids": [
+        625
+      ],
+      "active_manager_record_id": 625,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Tony Humes"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1304,
+      "club": "Apollon",
+      "link_count": 1,
+      "manager_record_ids": [
+        910
+      ],
+      "active_manager_record_id": 910,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Tennes"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1305,
+      "club": "Iraklis",
+      "link_count": 1,
+      "manager_record_ids": [
+        911
+      ],
+      "active_manager_record_id": 911,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Antoniadis"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1306,
+      "club": "OFI",
+      "link_count": 1,
+      "manager_record_ids": [
+        912
+      ],
+      "active_manager_record_id": 912,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Gerard"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1307,
+      "club": "Paniliakos",
+      "link_count": 1,
+      "manager_record_ids": [
+        913
+      ],
+      "active_manager_record_id": 913,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Daniil"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1309,
+      "club": "Ionikos",
+      "link_count": 1,
+      "manager_record_ids": [
+        915
+      ],
+      "active_manager_record_id": 915,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Blokhin"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1311,
+      "club": "Athinaikos",
+      "link_count": 1,
+      "manager_record_ids": [
+        917
+      ],
+      "active_manager_record_id": 917,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Pathiakis"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1312,
+      "club": "PAOK",
+      "link_count": 1,
+      "manager_record_ids": [
+        918
+      ],
+      "active_manager_record_id": 918,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Bengtsson"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1313,
+      "club": "Panionios",
+      "link_count": 1,
+      "manager_record_ids": [
+        1668
+      ],
+      "active_manager_record_id": 1668,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Kirastas"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1351,
+      "club": "Rosenborg",
+      "link_count": 1,
+      "manager_record_ids": [
+        2109
+      ],
+      "active_manager_record_id": 2109,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Trond Sollied"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1352,
+      "club": "Molde FK",
+      "link_count": 1,
+      "manager_record_ids": [
+        2110
+      ],
+      "active_manager_record_id": 2110,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Erik Brakstad"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1353,
+      "club": "Lillestrom",
+      "link_count": 1,
+      "manager_record_ids": [
+        2111
+      ],
+      "active_manager_record_id": 2111,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "A. Erlandsen"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1354,
+      "club": "Viking",
+      "link_count": 1,
+      "manager_record_ids": [
+        968
+      ],
+      "active_manager_record_id": 968,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Andreassen"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1355,
+      "club": "Bodo Glimt",
+      "link_count": 1,
+      "manager_record_ids": [
+        1374
+      ],
+      "active_manager_record_id": 1374,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Oystein Gare"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1356,
+      "club": "Brann",
+      "link_count": 1,
+      "manager_record_ids": [
+        619
+      ],
+      "active_manager_record_id": 619,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Phil Parkinson"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1357,
+      "club": "Tromso",
+      "link_count": 1,
+      "manager_record_ids": [
+        1206
+      ],
+      "active_manager_record_id": 1206,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Sandberg"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1358,
+      "club": "Stromsgodset",
+      "link_count": 1,
+      "manager_record_ids": [
+        1662
+      ],
+      "active_manager_record_id": 1662,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Kristoffersen"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1359,
+      "club": "Valerenga",
+      "link_count": 1,
+      "manager_record_ids": [
+        2112
+      ],
+      "active_manager_record_id": 2112,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "L. Tjaernas"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1401,
+      "club": "Steaua B.",
+      "link_count": 1,
+      "manager_record_ids": [
+        1395
+      ],
+      "active_manager_record_id": 1395,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Mihai Stoichita"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1402,
+      "club": "Petrolul",
+      "link_count": 1,
+      "manager_record_ids": [
+        986
+      ],
+      "active_manager_record_id": 986,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Olteanu"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1403,
+      "club": "Universitatea",
+      "link_count": 1,
+      "manager_record_ids": [
+        987
+      ],
+      "active_manager_record_id": 987,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Cartu"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1404,
+      "club": "D.Bucarest",
+      "link_count": 1,
+      "manager_record_ids": [
+        988
+      ],
+      "active_manager_record_id": 988,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Bondrea"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1405,
+      "club": "G. Bistrita",
+      "link_count": 1,
+      "manager_record_ids": [
+        608
+      ],
+      "active_manager_record_id": 608,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Carlos Carvalhal"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1406,
+      "club": "R. Bucarest",
+      "link_count": 1,
+      "manager_record_ids": [
+        640
+      ],
+      "active_manager_record_id": 640,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Dave Robertson"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1407,
+      "club": "Nat.Bucarest",
+      "link_count": 1,
+      "manager_record_ids": [
+        2055
+      ],
+      "active_manager_record_id": 2055,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Alexanco"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1409,
+      "club": "Arges Pitesti",
+      "link_count": 1,
+      "manager_record_ids": [
+        2183
+      ],
+      "active_manager_record_id": 2183,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Dimitrescu"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1451,
+      "club": "Hradec Kral.",
+      "link_count": 1,
+      "manager_record_ids": [
+        857
+      ],
+      "active_manager_record_id": 857,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Vladimir Taborsky"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1452,
+      "club": "Sparta Prague",
+      "link_count": 1,
+      "manager_record_ids": [
+        2184
+      ],
+      "active_manager_record_id": 2184,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Skansy"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1453,
+      "club": "Slavia Prague",
+      "link_count": 1,
+      "manager_record_ids": [
+        2185
+      ],
+      "active_manager_record_id": 2185,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Milan Boksa"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1454,
+      "club": "Sigma Olomouc",
+      "link_count": 1,
+      "manager_record_ids": [
+        1393
+      ],
+      "active_manager_record_id": 1393,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Boksa"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1455,
+      "club": "Jablonec N.",
+      "link_count": 1,
+      "manager_record_ids": [
+        859
+      ],
+      "active_manager_record_id": 859,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Jiri Kotrba"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1456,
+      "club": "Petra Drnovice",
+      "link_count": 1,
+      "manager_record_ids": [
+        1394
+      ],
+      "active_manager_record_id": 1394,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Ján Kócian"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1457,
+      "club": "Boby Brno",
+      "link_count": 1,
+      "manager_record_ids": [
+        861
+      ],
+      "active_manager_record_id": 861,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Karel Vecera"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1458,
+      "club": "Banik Ostrava",
+      "link_count": 1,
+      "manager_record_ids": [
+        862
+      ],
+      "active_manager_record_id": 862,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Petr Ulicny"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1501,
+      "club": "Lok. Sofia",
+      "link_count": 1,
+      "manager_record_ids": [
+        1318
+      ],
+      "active_manager_record_id": 1318,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Angelov"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1502,
+      "club": "Levski Sofia",
+      "link_count": 1,
+      "manager_record_ids": [
+        2207
+      ],
+      "active_manager_record_id": 2207,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "V. Grozni"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1503,
+      "club": "Botev Plovdiv",
+      "link_count": 1,
+      "manager_record_ids": [
+        852
+      ],
+      "active_manager_record_id": 852,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Dramov"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1504,
+      "club": "Slavia Sofia",
+      "link_count": 1,
+      "manager_record_ids": [
+        853
+      ],
+      "active_manager_record_id": 853,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Zdravkov"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1505,
+      "club": "CSKA Sofía",
+      "link_count": 2,
+      "manager_record_ids": [
+        1319,
+        2186
+      ],
+      "active_manager_record_id": 2186,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Penev"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1506,
+      "club": "Litex Lovech",
+      "link_count": 1,
+      "manager_record_ids": [
+        2187
+      ],
+      "active_manager_record_id": 2187,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "D. Dimitrov"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1551,
+      "club": "S. Bratislava",
+      "link_count": 1,
+      "manager_record_ids": [
+        2057
+      ],
+      "active_manager_record_id": 2057,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Griga"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1552,
+      "club": "Inter Bratislava",
+      "link_count": 1,
+      "manager_record_ids": [
+        876
+      ],
+      "active_manager_record_id": 876,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Bubenko"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1553,
+      "club": "Chemlon H.",
+      "link_count": 1,
+      "manager_record_ids": [
+        2058
+      ],
+      "active_manager_record_id": 2058,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Gombar"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1554,
+      "club": "Kosice",
+      "link_count": 1,
+      "manager_record_ids": [
+        877
+      ],
+      "active_manager_record_id": 877,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Kozak"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1555,
+      "club": "Spartak Trnava",
+      "link_count": 1,
+      "manager_record_ids": [
+        1338
+      ],
+      "active_manager_record_id": 1338,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Dusan Galis"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1556,
+      "club": "Dukla Banska",
+      "link_count": 1,
+      "manager_record_ids": [
+        2059
+      ],
+      "active_manager_record_id": 2059,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Jarabek"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1557,
+      "club": "Tartan Presov",
+      "link_count": 1,
+      "manager_record_ids": [
+        2060
+      ],
+      "active_manager_record_id": 2060,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Adamec"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1558,
+      "club": "Bardejov",
+      "link_count": 1,
+      "manager_record_ids": [
+        2061
+      ],
+      "active_manager_record_id": 2061,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Komanicky"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1601,
+      "club": "Mura",
+      "link_count": 1,
+      "manager_record_ids": [
+        882
+      ],
+      "active_manager_record_id": 882,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Mendas"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1602,
+      "club": "Olimpia",
+      "link_count": 1,
+      "manager_record_ids": [
+        612
+      ],
+      "active_manager_record_id": 612,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Lee Johnson"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1603,
+      "club": "Maribor B.",
+      "link_count": 1,
+      "manager_record_ids": [
+        1339
+      ],
+      "active_manager_record_id": 1339,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Prasnikar"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1604,
+      "club": "Primorje",
+      "link_count": 1,
+      "manager_record_ids": [
+        1340
+      ],
+      "active_manager_record_id": 1340,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Kovacic"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1605,
+      "club": "Gorica",
+      "link_count": 1,
+      "manager_record_ids": [
+        1341
+      ],
+      "active_manager_record_id": 1341,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Zupan"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1606,
+      "club": "Rudar Velenje",
+      "link_count": 1,
+      "manager_record_ids": [
+        2251
+      ],
+      "active_manager_record_id": 2251,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Drago"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1651,
+      "club": "Anorthosis",
+      "link_count": 1,
+      "manager_record_ids": [
+        1322
+      ],
+      "active_manager_record_id": 1322,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Mitosevic"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1652,
+      "club": "Apoel Nic.",
+      "link_count": 1,
+      "manager_record_ids": [
+        621
+      ],
+      "active_manager_record_id": 621,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "David Flitcroft"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1653,
+      "club": "Omonia",
+      "link_count": 1,
+      "manager_record_ids": [
+        1323
+      ],
+      "active_manager_record_id": 1323,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Michaelides"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1654,
+      "club": "AEK Larnaca",
+      "link_count": 1,
+      "manager_record_ids": [
+        607
+      ],
+      "active_manager_record_id": 607,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Steve Evans"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1655,
+      "club": "Apollon L.",
+      "link_count": 1,
+      "manager_record_ids": [
+        1324
+      ],
+      "active_manager_record_id": 1324,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "G. Papas"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1701,
+      "club": "Ferencvaros",
+      "link_count": 1,
+      "manager_record_ids": [
+        2062
+      ],
+      "active_manager_record_id": 2062,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Nyilasi"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1702,
+      "club": "VAC Zollner",
+      "link_count": 1,
+      "manager_record_ids": [
+        2063
+      ],
+      "active_manager_record_id": 2063,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Csank"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1703,
+      "club": "Ujpesti Dozsa",
+      "link_count": 1,
+      "manager_record_ids": [
+        2064
+      ],
+      "active_manager_record_id": 2064,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Várhidi"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1704,
+      "club": "Kispest",
+      "link_count": 1,
+      "manager_record_ids": [
+        2065
+      ],
+      "active_manager_record_id": 2065,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Gálhidi"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1705,
+      "club": "Vasutas",
+      "link_count": 1,
+      "manager_record_ids": [
+        2066
+      ],
+      "active_manager_record_id": 2066,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Sándor"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1706,
+      "club": "DVSC Epona",
+      "link_count": 1,
+      "manager_record_ids": [
+        2067
+      ],
+      "active_manager_record_id": 2067,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Herczeg"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1707,
+      "club": "MTK",
+      "link_count": 1,
+      "manager_record_ids": [
+        2068
+      ],
+      "active_manager_record_id": 2068,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Egervári"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1708,
+      "club": "Vasas CV",
+      "link_count": 1,
+      "manager_record_ids": [
+        938
+      ],
+      "active_manager_record_id": 938,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Gellei"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1709,
+      "club": "Csepel",
+      "link_count": 1,
+      "manager_record_ids": [
+        939
+      ],
+      "active_manager_record_id": 939,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Varga"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1751,
+      "club": "S.Donetsk",
+      "link_count": 1,
+      "manager_record_ids": [
+        2069
+      ],
+      "active_manager_record_id": 2069,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Valery Yaremchenko"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1752,
+      "club": "Dinamo Kiev",
+      "link_count": 1,
+      "manager_record_ids": [
+        1402
+      ],
+      "active_manager_record_id": 1402,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Lobanovsky"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1753,
+      "club": "Chernomorets",
+      "link_count": 1,
+      "manager_record_ids": [
+        2070
+      ],
+      "active_manager_record_id": 2070,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Leonid Burjak"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1755,
+      "club": "CSKA Kiev",
+      "link_count": 1,
+      "manager_record_ids": [
+        2252
+      ],
+      "active_manager_record_id": 2252,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Bessonov"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1801,
+      "club": "Grevenmacher",
+      "link_count": 1,
+      "manager_record_ids": [
+        1373
+      ],
+      "active_manager_record_id": 1373,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Romantsev"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1802,
+      "club": "Jeunesse",
+      "link_count": 1,
+      "manager_record_ids": [
+        964
+      ],
+      "active_manager_record_id": 964,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Alex Pecqueur"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1804,
+      "club": "Avenir Beggen",
+      "link_count": 1,
+      "manager_record_ids": [
+        2071
+      ],
+      "active_manager_record_id": 2071,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Michel Clement"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1805,
+      "club": "Vaduz",
+      "link_count": 1,
+      "manager_record_ids": [
+        610
+      ],
+      "active_manager_record_id": 610,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Kenny Jackett"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1851,
+      "club": "Derry City",
+      "link_count": 1,
+      "manager_record_ids": [
+        2222
+      ],
+      "active_manager_record_id": 2222,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Kevin Mahon"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1852,
+      "club": "Dundalk",
+      "link_count": 1,
+      "manager_record_ids": [
+        1520
+      ],
+      "active_manager_record_id": 1520,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "McLaughlin"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1853,
+      "club": "Shelbourne",
+      "link_count": 1,
+      "manager_record_ids": [
+        2223
+      ],
+      "active_manager_record_id": 2223,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Keely"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1854,
+      "club": "St. Patrick's At.",
+      "link_count": 1,
+      "manager_record_ids": [
+        2253
+      ],
+      "active_manager_record_id": 2253,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Buckley"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1855,
+      "club": "Bohemians",
+      "link_count": 1,
+      "manager_record_ids": [
+        943
+      ],
+      "active_manager_record_id": 943,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "O'Connor"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1856,
+      "club": "Sligo Rovers",
+      "link_count": 1,
+      "manager_record_ids": [
+        1360
+      ],
+      "active_manager_record_id": 1360,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Nicky Reid"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1857,
+      "club": "Shamrock Rov.",
+      "link_count": 1,
+      "manager_record_ids": [
+        2224
+      ],
+      "active_manager_record_id": 2224,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Mick Byrne"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1858,
+      "club": "Univ. C. Dublin",
+      "link_count": 1,
+      "manager_record_ids": [
+        948
+      ],
+      "active_manager_record_id": 948,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Dunne"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1859,
+      "club": "Cork City",
+      "link_count": 1,
+      "manager_record_ids": [
+        1361
+      ],
+      "active_manager_record_id": 1361,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Davy Barry"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1860,
+      "club": "Athlone Town",
+      "link_count": 1,
+      "manager_record_ids": [
+        950
+      ],
+      "active_manager_record_id": 950,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "O'Connor"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1861,
+      "club": "Drogheda Utd",
+      "link_count": 1,
+      "manager_record_ids": [
+        951
+      ],
+      "active_manager_record_id": 951,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "McLaughlin"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1862,
+      "club": "Galway Utd",
+      "link_count": 2,
+      "manager_record_ids": [
+        952,
+        953
+      ],
+      "active_manager_record_id": 953,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Clarke"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1901,
+      "club": "Linfield",
+      "link_count": 1,
+      "manager_record_ids": [
+        1362
+      ],
+      "active_manager_record_id": 1362,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Jeffrey"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1902,
+      "club": "Crusaders",
+      "link_count": 1,
+      "manager_record_ids": [
+        2072
+      ],
+      "active_manager_record_id": 2072,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Roy Walker"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1903,
+      "club": "Glenavon",
+      "link_count": 1,
+      "manager_record_ids": [
+        955
+      ],
+      "active_manager_record_id": 955,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Nigel Best"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1904,
+      "club": "Portadown",
+      "link_count": 1,
+      "manager_record_ids": [
+        956
+      ],
+      "active_manager_record_id": 956,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Ronnie McFall"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1905,
+      "club": "Glentoran",
+      "link_count": 1,
+      "manager_record_ids": [
+        957
+      ],
+      "active_manager_record_id": 957,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Tommy Cassidy"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1906,
+      "club": "Cliftonville",
+      "link_count": 1,
+      "manager_record_ids": [
+        958
+      ],
+      "active_manager_record_id": 958,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Martyn Quinn"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1907,
+      "club": "Ards",
+      "link_count": 1,
+      "manager_record_ids": [
+        959
+      ],
+      "active_manager_record_id": 959,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Roy Coyle"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1951,
+      "club": "KR Reykjavik",
+      "link_count": 1,
+      "manager_record_ids": [
+        2225
+      ],
+      "active_manager_record_id": 2225,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Haraldsson"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 1952,
+      "club": "Akranes",
+      "link_count": 1,
+      "manager_record_ids": [
+        961
+      ],
+      "active_manager_record_id": 961,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Thordarson"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2002,
+      "club": "TPV",
+      "link_count": 1,
+      "manager_record_ids": [
+        2074
+      ],
+      "active_manager_record_id": 2074,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Pertti Lundell"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2003,
+      "club": "MyPa",
+      "link_count": 1,
+      "manager_record_ids": [
+        2075
+      ],
+      "active_manager_record_id": 2075,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Harri Kampman"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2004,
+      "club": "Haka",
+      "link_count": 1,
+      "manager_record_ids": [
+        884
+      ],
+      "active_manager_record_id": 884,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Vakkila"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2005,
+      "club": "Jazz",
+      "link_count": 1,
+      "manager_record_ids": [
+        1205
+      ],
+      "active_manager_record_id": 1205,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Jari Pyylölä"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2006,
+      "club": "HJK Helsinki",
+      "link_count": 1,
+      "manager_record_ids": [
+        2142
+      ],
+      "active_manager_record_id": 2142,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Muurinen"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2052,
+      "club": "Bangor City",
+      "link_count": 1,
+      "manager_record_ids": [
+        1375
+      ],
+      "active_manager_record_id": 1375,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Sharp"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2053,
+      "club": "Afan Lido",
+      "link_count": 1,
+      "manager_record_ids": [
+        896
+      ],
+      "active_manager_record_id": 896,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Rees"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2054,
+      "club": "Barry Town",
+      "link_count": 1,
+      "manager_record_ids": [
+        629
+      ],
+      "active_manager_record_id": 629,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Steve Davis"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2055,
+      "club": "Newton",
+      "link_count": 1,
+      "manager_record_ids": [
+        897
+      ],
+      "active_manager_record_id": 897,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Coyne"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2056,
+      "club": "Conwy Utd",
+      "link_count": 1,
+      "manager_record_ids": [
+        899
+      ],
+      "active_manager_record_id": 899,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Hulse"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2058,
+      "club": "Caernarfon",
+      "link_count": 1,
+      "manager_record_ids": [
+        901
+      ],
+      "active_manager_record_id": 901,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Aspinall"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2059,
+      "club": "Cwmbran",
+      "link_count": 1,
+      "manager_record_ids": [
+        902
+      ],
+      "active_manager_record_id": 902,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Wilcox"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2060,
+      "club": "Inter Cardiff",
+      "link_count": 1,
+      "manager_record_ids": [
+        903
+      ],
+      "active_manager_record_id": 903,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Wood"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2061,
+      "club": "Caersws",
+      "link_count": 1,
+      "manager_record_ids": [
+        904
+      ],
+      "active_manager_record_id": 904,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Evans"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2062,
+      "club": "Connah's Quay",
+      "link_count": 1,
+      "manager_record_ids": [
+        905
+      ],
+      "active_manager_record_id": 905,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Powell"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2063,
+      "club": "Ebbw Vale",
+      "link_count": 1,
+      "manager_record_ids": [
+        906
+      ],
+      "active_manager_record_id": 906,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Lewis"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2064,
+      "club": "Llasantffraid",
+      "link_count": 1,
+      "manager_record_ids": [
+        907
+      ],
+      "active_manager_record_id": 907,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Breeze"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2066,
+      "club": "Aberyswyth Town",
+      "link_count": 1,
+      "manager_record_ids": [
+        909
+      ],
+      "active_manager_record_id": 909,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Appleton"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2101,
+      "club": "M.Tel Aviv",
+      "link_count": 1,
+      "manager_record_ids": [
+        2076
+      ],
+      "active_manager_record_id": 2076,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Avraham Grant"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2102,
+      "club": "Maccabi Haifa",
+      "link_count": 1,
+      "manager_record_ids": [
+        2188
+      ],
+      "active_manager_record_id": 2188,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Orin"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2103,
+      "club": "Beitar",
+      "link_count": 1,
+      "manager_record_ids": [
+        1365
+      ],
+      "active_manager_record_id": 1365,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Cohen"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2104,
+      "club": "H.Tel Aviv",
+      "link_count": 1,
+      "manager_record_ids": [
+        2077
+      ],
+      "active_manager_record_id": 2077,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Ya'acob Cohen-Tsedek"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2105,
+      "club": "Hap. Petach",
+      "link_count": 1,
+      "manager_record_ids": [
+        1207
+      ],
+      "active_manager_record_id": 1207,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Nir Levin"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2151,
+      "club": "Valletta",
+      "link_count": 1,
+      "manager_record_ids": [
+        965
+      ],
+      "active_manager_record_id": 965,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Aquilina"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2152,
+      "club": "Hibernians",
+      "link_count": 1,
+      "manager_record_ids": [
+        2078
+      ],
+      "active_manager_record_id": 2078,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Brian Talbot"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2153,
+      "club": "Sliema",
+      "link_count": 1,
+      "manager_record_ids": [
+        966
+      ],
+      "active_manager_record_id": 966,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Miller"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2202,
+      "club": "KI",
+      "link_count": 1,
+      "manager_record_ids": [
+        1363
+      ],
+      "active_manager_record_id": 1363,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Jakobsen"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2203,
+      "club": "Gotu",
+      "link_count": 1,
+      "manager_record_ids": [
+        1364
+      ],
+      "active_manager_record_id": 1364,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Gudlaugsson"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2251,
+      "club": "Zalguiris",
+      "link_count": 1,
+      "manager_record_ids": [
+        1370
+      ],
+      "active_manager_record_id": 1370,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Riabovas"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2252,
+      "club": "Inkaras Kaunas",
+      "link_count": 1,
+      "manager_record_ids": [
+        1521
+      ],
+      "active_manager_record_id": 1521,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Stankus"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2253,
+      "club": "Kareda S.",
+      "link_count": 1,
+      "manager_record_ids": [
+        1372
+      ],
+      "active_manager_record_id": 1372,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Liubinskas"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2401,
+      "club": "Teuta",
+      "link_count": 1,
+      "manager_record_ids": [
+        1310
+      ],
+      "active_manager_record_id": 1310,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Muça"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2402,
+      "club": "P. Tirana",
+      "link_count": 1,
+      "manager_record_ids": [
+        2079
+      ],
+      "active_manager_record_id": 2079,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Sulejman Starova"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2502,
+      "club": "Dinamo Tbilisi",
+      "link_count": 1,
+      "manager_record_ids": [
+        2189
+      ],
+      "active_manager_record_id": 2189,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Khurtsilava"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2503,
+      "club": "Dinamo Batumi",
+      "link_count": 1,
+      "manager_record_ids": [
+        1350
+      ],
+      "active_manager_record_id": 1350,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Cheishvi"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2553,
+      "club": "Constructorul",
+      "link_count": 1,
+      "manager_record_ids": [
+        614
+      ],
+      "active_manager_record_id": 614,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Neil McDonald"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2601,
+      "club": "Bolívar",
+      "link_count": 1,
+      "manager_record_ids": [
+        1239
+      ],
+      "active_manager_record_id": 1239,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Orozco"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2602,
+      "club": "The Strongest",
+      "link_count": 1,
+      "manager_record_ids": [
+        1240
+      ],
+      "active_manager_record_id": 1240,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Núñez"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2603,
+      "club": "Oriente Petrol.",
+      "link_count": 1,
+      "manager_record_ids": [
+        1241
+      ],
+      "active_manager_record_id": 1241,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Rivero"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2651,
+      "club": "El Nacional",
+      "link_count": 1,
+      "manager_record_ids": [
+        1243
+      ],
+      "active_manager_record_id": 1243,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Massa"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2652,
+      "club": "Emelec",
+      "link_count": 1,
+      "manager_record_ids": [
+        2190
+      ],
+      "active_manager_record_id": 2190,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Carlos Sevilla"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2653,
+      "club": "Barc. Guayaquil",
+      "link_count": 1,
+      "manager_record_ids": [
+        1245
+      ],
+      "active_manager_record_id": 1245,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Insúa"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2701,
+      "club": "Dinamo Minsk",
+      "link_count": 1,
+      "manager_record_ids": [
+        2080
+      ],
+      "active_manager_record_id": 2080,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Ivan Schekin"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2751,
+      "club": "Universitario",
+      "link_count": 1,
+      "manager_record_ids": [
+        9
+      ],
+      "active_manager_record_id": 9,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Jose Mourinho"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2752,
+      "club": "Alianza Lima",
+      "link_count": 1,
+      "manager_record_ids": [
+        1248
+      ],
+      "active_manager_record_id": 1248,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Pinto"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2753,
+      "club": "Sporting Cristal",
+      "link_count": 1,
+      "manager_record_ids": [
+        2226
+      ],
+      "active_manager_record_id": 2226,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Luis García"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2800,
+      "club": "Flamengo",
+      "link_count": 1,
+      "manager_record_ids": [
+        2191
+      ],
+      "active_manager_record_id": 2191,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Joel Santana"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2801,
+      "club": "Vasco da Gama",
+      "link_count": 1,
+      "manager_record_ids": [
+        1178
+      ],
+      "active_manager_record_id": 1178,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "A. Lopes"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2802,
+      "club": "Palmeiras",
+      "link_count": 1,
+      "manager_record_ids": [
+        1179
+      ],
+      "active_manager_record_id": 1179,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Scolari"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2803,
+      "club": "Botafogo",
+      "link_count": 1,
+      "manager_record_ids": [
+        2192
+      ],
+      "active_manager_record_id": 2192,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Paulo Autori"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2804,
+      "club": "Sao Paulo",
+      "link_count": 1,
+      "manager_record_ids": [
+        2193
+      ],
+      "active_manager_record_id": 2193,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Carpegiani"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2805,
+      "club": "Gremio",
+      "link_count": 1,
+      "manager_record_ids": [
+        2194
+      ],
+      "active_manager_record_id": 2194,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Edinho"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2806,
+      "club": "Corinthians",
+      "link_count": 1,
+      "manager_record_ids": [
+        2195
+      ],
+      "active_manager_record_id": 2195,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Luxemburgo"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2807,
+      "club": "Santos",
+      "link_count": 1,
+      "manager_record_ids": [
+        1184
+      ],
+      "active_manager_record_id": 1184,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Luxemburgo"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2809,
+      "club": "Cruzeiro",
+      "link_count": 1,
+      "manager_record_ids": [
+        2196
+      ],
+      "active_manager_record_id": 2196,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Culpi"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2900,
+      "club": "Peñarol",
+      "link_count": 1,
+      "manager_record_ids": [
+        2143
+      ],
+      "active_manager_record_id": 2143,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "G. Pérez"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2901,
+      "club": "Nacional",
+      "link_count": 1,
+      "manager_record_ids": [
+        1518
+      ],
+      "active_manager_record_id": 1518,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "De León"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2902,
+      "club": "Wanderers",
+      "link_count": 1,
+      "manager_record_ids": [
+        1250
+      ],
+      "active_manager_record_id": 1250,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Falero"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2951,
+      "club": "Caracas F.C",
+      "link_count": 1,
+      "manager_record_ids": [
+        1251
+      ],
+      "active_manager_record_id": 1251,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Plasencia"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2952,
+      "club": "Atlético Zulia",
+      "link_count": 1,
+      "manager_record_ids": [
+        2261
+      ],
+      "active_manager_record_id": 2261,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Pippa"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 2953,
+      "club": "Minervén",
+      "link_count": 1,
+      "manager_record_ids": [
+        1253
+      ],
+      "active_manager_record_id": 1253,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Hernández"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3000,
+      "club": "U. de Chile",
+      "link_count": 1,
+      "manager_record_ids": [
+        1514
+      ],
+      "active_manager_record_id": 1514,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Hernández"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3001,
+      "club": "U. Católica",
+      "link_count": 1,
+      "manager_record_ids": [
+        1189
+      ],
+      "active_manager_record_id": 1189,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Fernando Carvallo"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3002,
+      "club": "Colo Colo",
+      "link_count": 1,
+      "manager_record_ids": [
+        1190
+      ],
+      "active_manager_record_id": 1190,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Gustavo Benítez"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3100,
+      "club": "A. de Cali",
+      "link_count": 1,
+      "manager_record_ids": [
+        1191
+      ],
+      "active_manager_record_id": 1191,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "L. A. García"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3101,
+      "club": "Nacional Medellín",
+      "link_count": 1,
+      "manager_record_ids": [
+        2197
+      ],
+      "active_manager_record_id": 2197,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Gómez"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3102,
+      "club": "Millonarios",
+      "link_count": 1,
+      "manager_record_ids": [
+        2227
+      ],
+      "active_manager_record_id": 2227,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Pinto"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3200,
+      "club": "O. Asunción",
+      "link_count": 1,
+      "manager_record_ids": [
+        1193
+      ],
+      "active_manager_record_id": 1193,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Luis Cubilla"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3201,
+      "club": "Cerro Porteño",
+      "link_count": 1,
+      "manager_record_ids": [
+        2198
+      ],
+      "active_manager_record_id": 2198,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Jair Pereira"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3202,
+      "club": "Guaraní",
+      "link_count": 1,
+      "manager_record_ids": [
+        1516
+      ],
+      "active_manager_record_id": 1516,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Muricy Ramalho"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3300,
+      "club": "Altrincham",
+      "link_count": 1,
+      "manager_record_ids": [
+        797
+      ],
+      "active_manager_record_id": 797,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "John King"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3301,
+      "club": "Bath City",
+      "link_count": 1,
+      "manager_record_ids": [
+        2228
+      ],
+      "active_manager_record_id": 2228,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Bodin"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3302,
+      "club": "Bromsgrove R.",
+      "link_count": 1,
+      "manager_record_ids": [
+        799
+      ],
+      "active_manager_record_id": 799,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Brian Kenning"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3303,
+      "club": "Dover Ath.",
+      "link_count": 1,
+      "manager_record_ids": [
+        800
+      ],
+      "active_manager_record_id": 800,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Joe O´Sullivan"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3304,
+      "club": "Farnborough T.",
+      "link_count": 1,
+      "manager_record_ids": [
+        801
+      ],
+      "active_manager_record_id": 801,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Alan Taylor"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3305,
+      "club": "Gateshead",
+      "link_count": 1,
+      "manager_record_ids": [
+        802
+      ],
+      "active_manager_record_id": 802,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Colin Richardson"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3307,
+      "club": "Hayes",
+      "link_count": 1,
+      "manager_record_ids": [
+        804
+      ],
+      "active_manager_record_id": 804,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Terry Brown"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3308,
+      "club": "Hednesford T.",
+      "link_count": 1,
+      "manager_record_ids": [
+        805
+      ],
+      "active_manager_record_id": 805,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "John Baldwin"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3309,
+      "club": "Kettering T.",
+      "link_count": 1,
+      "manager_record_ids": [
+        806
+      ],
+      "active_manager_record_id": 806,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Gary Johnson"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3310,
+      "club": "Kidderminster H.",
+      "link_count": 1,
+      "manager_record_ids": [
+        807
+      ],
+      "active_manager_record_id": 807,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Graham Allner"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3312,
+      "club": "Morecambe",
+      "link_count": 1,
+      "manager_record_ids": [
+        809
+      ],
+      "active_manager_record_id": 809,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Jim Harvey"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3313,
+      "club": "Northwich V.",
+      "link_count": 1,
+      "manager_record_ids": [
+        810
+      ],
+      "active_manager_record_id": 810,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Mark Hancock"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3314,
+      "club": "Rushden & D.",
+      "link_count": 1,
+      "manager_record_ids": [
+        811
+      ],
+      "active_manager_record_id": 811,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Paul Richardson"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3315,
+      "club": "Slough T.",
+      "link_count": 1,
+      "manager_record_ids": [
+        812
+      ],
+      "active_manager_record_id": 812,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Brian McDermott"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3316,
+      "club": "Southport",
+      "link_count": 1,
+      "manager_record_ids": [
+        813
+      ],
+      "active_manager_record_id": 813,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Steve Joel"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3317,
+      "club": "Stalybridge C.",
+      "link_count": 1,
+      "manager_record_ids": [
+        814
+      ],
+      "active_manager_record_id": 814,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Dave Denby"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3318,
+      "club": "Stevenage B.",
+      "link_count": 1,
+      "manager_record_ids": [
+        815
+      ],
+      "active_manager_record_id": 815,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Paul Fairclough"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3319,
+      "club": "Telford U.",
+      "link_count": 1,
+      "manager_record_ids": [
+        816
+      ],
+      "active_manager_record_id": 816,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Wayne Clarke"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3320,
+      "club": "Welling U.",
+      "link_count": 1,
+      "manager_record_ids": [
+        817
+      ],
+      "active_manager_record_id": 817,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Kevin Hales"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3321,
+      "club": "Woking",
+      "link_count": 1,
+      "manager_record_ids": [
+        818
+      ],
+      "active_manager_record_id": 818,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Geoff Chapple"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3322,
+      "club": "Accrington S.",
+      "link_count": 1,
+      "manager_record_ids": [
+        819
+      ],
+      "active_manager_record_id": 819,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Stan Allen"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3323,
+      "club": "Alfreton T.",
+      "link_count": 1,
+      "manager_record_ids": [
+        820
+      ],
+      "active_manager_record_id": 820,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Hague/Mitchel"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3324,
+      "club": "Bamber B.",
+      "link_count": 1,
+      "manager_record_ids": [
+        821
+      ],
+      "active_manager_record_id": 821,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Mick Holgate"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3325,
+      "club": "Barrow",
+      "link_count": 1,
+      "manager_record_ids": [
+        822
+      ],
+      "active_manager_record_id": 822,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Mike Walsh"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3326,
+      "club": "Bishop A.",
+      "link_count": 1,
+      "manager_record_ids": [
+        823
+      ],
+      "active_manager_record_id": 823,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Tony Lee"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3327,
+      "club": "Blyth S.",
+      "link_count": 1,
+      "manager_record_ids": [
+        824
+      ],
+      "active_manager_record_id": 824,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Peter Harrison"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3328,
+      "club": "Boston U.",
+      "link_count": 1,
+      "manager_record_ids": [
+        825
+      ],
+      "active_manager_record_id": 825,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Gregg Fee"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3329,
+      "club": "Buxton",
+      "link_count": 1,
+      "manager_record_ids": [
+        826
+      ],
+      "active_manager_record_id": 826,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "David Vaughan"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3330,
+      "club": "Chorley",
+      "link_count": 1,
+      "manager_record_ids": [
+        827
+      ],
+      "active_manager_record_id": 827,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Dave Sutton"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 3331,
+      "club": "Colwyn B.",
+      "link_count": 1,
+      "manager_record_ids": [
+        828
+      ],
+      "active_manager_record_id": 828,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Bryn Jones"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 4000,
+      "club": "Skonto Riga",
+      "link_count": 1,
+      "manager_record_ids": [
+        1200
+      ],
+      "active_manager_record_id": 1200,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Alexander Starkov"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 4001,
+      "club": "Met. Liepaja",
+      "link_count": 1,
+      "manager_record_ids": [
+        2230
+      ],
+      "active_manager_record_id": 2230,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Jurijs Popkovs"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 4025,
+      "club": "Pyunic",
+      "link_count": 1,
+      "manager_record_ids": [
+        1210
+      ],
+      "active_manager_record_id": 1210,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Albertoyan"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 4050,
+      "club": "Sileks",
+      "link_count": 1,
+      "manager_record_ids": [
+        1211
+      ],
+      "active_manager_record_id": 1211,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Zoran Smilevski"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 4075,
+      "club": "Mozyr",
+      "link_count": 1,
+      "manager_record_ids": [
+        1201
+      ],
+      "active_manager_record_id": 1201,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Anatoli Yurevich"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 4100,
+      "club": "Lantana",
+      "link_count": 1,
+      "manager_record_ids": [
+        1202
+      ],
+      "active_manager_record_id": 1202,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Anatoli Belov"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 4125,
+      "club": "Neftchi",
+      "link_count": 1,
+      "manager_record_ids": [
+        1209
+      ],
+      "active_manager_record_id": 1209,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Vitalij Khluchin"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 8800,
+      "club": "Sel. Europa",
+      "link_count": 1,
+      "manager_record_ids": [
+        548
+      ],
+      "active_manager_record_id": 548,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Aitor Karanka"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 8801,
+      "club": "Sel. América",
+      "link_count": 1,
+      "manager_record_ids": [
+        548
+      ],
+      "active_manager_record_id": 548,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Aitor Karanka"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 9001,
+      "club": "River Plate",
+      "link_count": 1,
+      "manager_record_ids": [
+        1194
+      ],
+      "active_manager_record_id": 1194,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Ramón Díaz"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 9002,
+      "club": "San Lorenzo",
+      "link_count": 1,
+      "manager_record_ids": [
+        1643
+      ],
+      "active_manager_record_id": 1643,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Basile"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 9003,
+      "club": "Vélez",
+      "link_count": 1,
+      "manager_record_ids": [
+        1644
+      ],
+      "active_manager_record_id": 1644,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Solari"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 9004,
+      "club": "Argentinos Jrs.",
+      "link_count": 1,
+      "manager_record_ids": [
+        1224
+      ],
+      "active_manager_record_id": 1224,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "\"Chiche\" Sosa"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 9005,
+      "club": "Newell's O.B",
+      "link_count": 1,
+      "manager_record_ids": [
+        1195
+      ],
+      "active_manager_record_id": 1195,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Castelli"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 9006,
+      "club": "Belgrano",
+      "link_count": 1,
+      "manager_record_ids": [
+        14
+      ],
+      "active_manager_record_id": 14,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Alan Pardew"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 9007,
+      "club": "Lanús",
+      "link_count": 1,
+      "manager_record_ids": [
+        1645
+      ],
+      "active_manager_record_id": 1645,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Gómez"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 9009,
+      "club": "Rosario Central",
+      "link_count": 1,
+      "manager_record_ids": [
+        1646
+      ],
+      "active_manager_record_id": 1646,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Bauzá"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 9010,
+      "club": "Gim. Esgrima (LP)",
+      "link_count": 1,
+      "manager_record_ids": [
+        1228
+      ],
+      "active_manager_record_id": 1228,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "C. Griguol"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 9011,
+      "club": "Independiente",
+      "link_count": 1,
+      "manager_record_ids": [
+        1169
+      ],
+      "active_manager_record_id": 1169,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Menotti"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 9012,
+      "club": "Racing",
+      "link_count": 1,
+      "manager_record_ids": [
+        668
+      ],
+      "active_manager_record_id": 668,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Gary Caldwell"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 9013,
+      "club": "Boca Jrs.",
+      "link_count": 1,
+      "manager_record_ids": [
+        661
+      ],
+      "active_manager_record_id": 661,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Micky Mellon"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 9014,
+      "club": "Huracán",
+      "link_count": 1,
+      "manager_record_ids": [
+        1647
+      ],
+      "active_manager_record_id": 1647,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "López/Cavallero"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 9015,
+      "club": "Platense",
+      "link_count": 1,
+      "manager_record_ids": [
+        1231
+      ],
+      "active_manager_record_id": 1231,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Picerni"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 9016,
+      "club": "Gimnasia (J)",
+      "link_count": 1,
+      "manager_record_ids": [
+        1232
+      ],
+      "active_manager_record_id": 1232,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Manfredi"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 9017,
+      "club": "Ferro",
+      "link_count": 1,
+      "manager_record_ids": [
+        1233
+      ],
+      "active_manager_record_id": 1233,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Saccardi"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 9019,
+      "club": "Colón",
+      "link_count": 1,
+      "manager_record_ids": [
+        1648
+      ],
+      "active_manager_record_id": 1648,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Ferraro"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 9020,
+      "club": "Estudiantes (LP)",
+      "link_count": 1,
+      "manager_record_ids": [
+        1649
+      ],
+      "active_manager_record_id": 1649,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Hernández"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 9027,
+      "club": "Talleres (Cba)",
+      "link_count": 1,
+      "manager_record_ids": [
+        1197
+      ],
+      "active_manager_record_id": 1197,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Gareca"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 9030,
+      "club": "Unión",
+      "link_count": 1,
+      "manager_record_ids": [
+        1225
+      ],
+      "active_manager_record_id": 1225,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "Zanabria"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 9900,
+      "club": "Stars",
+      "link_count": 1,
+      "manager_record_ids": [
+        9999
+      ],
+      "active_manager_record_id": 9999,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "x"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 9950,
+      "club": "Free players",
+      "link_count": 1,
+      "manager_record_ids": [
+        9999
+      ],
+      "active_manager_record_id": 9999,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "x"
+      },
+      "missing_ent_record_ids": []
+    },
+    {
+      "eq_record_id": 9956,
+      "club": "Youth players",
+      "link_count": 1,
+      "manager_record_ids": [
+        9999
+      ],
+      "active_manager_record_id": 9999,
+      "active_manager": {
+        "format": "surname_only",
+        "display_name": "x"
+      },
+      "missing_ent_record_ids": []
+    }
+  ]
+}

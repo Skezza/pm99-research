@@ -27,6 +27,16 @@ Reverse-engineering notes and Ghidra validation indicate that the original game 
 
 ## Identity
 
+Native indexed JUG headers are distinct from the legacy flat record fields
+below. In `dd6360`/`dd6361` indexed rows, raw payload offsets 5–6 hold the
+little-endian uint16 native player self-ID; byte 7 precedes the name strings
+which start at offset 8. The self-ID must match the FDI directory record ID.
+These ID bytes are XOR-obfuscated in the generic decoded payload, unlike the
+directory key. See the canonical
+[cloning safety notes](../../upstream/pm99-skezmod-db-editor/docs/OPERATIONS.md).
+Do not interpret a small self-ID as a string length or carry a donor's ID into
+an appended player record.
+
 - `team_id`
   - Bytes `0-1`
   - Type: `uint16` little-endian
@@ -140,9 +150,10 @@ The game’s fine-role string table starts at `0x00735340` and contains 18 roles
 17. Left Forward
 18. Inside Left
 
-### Database Decode Rules (Editable Bytes)
+### Database Decode Rules and Write Contracts
 
-The six fine slots are editable in the decoded payload (before re-encoding).
+The decoded byte locations below are not all automatically writable. A field
+is editable only where its family-specific runtime contract says so.
 
 - Marker-shaped rows:
   - Slot window is `name_end - 1 .. name_end + 4` (6 bytes).
@@ -151,6 +162,25 @@ The six fine slots are editable in the decoded payload (before re-encoding).
   - Slot window starts at `indexed_suffix_anchor + 2`.
   - Read up to 6 bytes while `xor = (byte ^ 0x61)` stays in `1..18`.
   - `code = xor - 1`.
+- Indexed compact `dd6360` rows:
+  - MANAGPRE reads the two native compact name strings from byte 8, consumes
+    one following control byte and skips one additional byte, then reads six bytes as the role
+    window. In decoded-payload coordinates the window is therefore
+    `end_of_second_native_string + 2 .. +7`.
+  - Both pre-role bytes must be preserved. This corrects the older +1..+6
+    interpretation: direct disassembly on 2026-10-04 shows the skip at
+    `0x004afe29`, the six reads at `0x004afe2e..54`, and the first role copied
+    into the displayed field at `0x004afe58..5b`. The loader bytes are identical
+    across all 26 registered season executables.
+  - Decode each role byte with the same `xor - 1` rule; zero means `98`
+    (unassigned). The fixed PM99 corpus has one legacy outlier which remains
+    preserve-only.
+  - The six values are a tactical candidate set. `FUN_004b13f0` iterates all
+    six when scoring a player for a role. Slot zero is copied into the initial
+    displayed role by the loader, even though the array is also a tactical
+    candidate set. The complete compact window is writable for one to six codes
+    in `0..17`; a missing candidate is native zero/unassigned. Other bytes remain
+    preserve-only in a role-only edit.
 
 `code` range `0..17` maps to fine roles; `98` is unassigned.
 
@@ -178,6 +208,35 @@ python3 scripts/probe_role_slot_forensics.py \
 
 ## Attributes
 
+### Compact `dd6360` visible-skill contract
+
+The compact indexed family has a separate, native cursor.  Its player-profile
+skills are **not** a generic twelve-byte tail.  After the two compact name
+strings and the role/control block, `MANAGPRE.EXE` `FUN_004afd80` reads ten
+named bytes.  All are individually XOR'd with `0x61` in the decoded payload.
+
+| Native offset from compact `role_start` | Profile field(s) | Writer status |
+| ---: | --- | --- |
+| `+18` | Speed | editable with the compact native writer |
+| `+19` | Stamina | editable with the compact native writer |
+| `+20` | Aggression | editable with the compact native writer |
+| `+21` | Quality | editable with the compact native writer |
+| `+22` | Fitness and Heading (one shared stored value) | editable; the UI must say it is shared |
+| `+23` | Dribbling | editable with the compact native writer |
+| `+24` | Passing | editable with the compact native writer |
+| `+25` | Shooting | editable with the compact native writer |
+| `+26` | Moral and Tackling (one shared stored value) | editable; the UI must say it is shared |
+| `+27` | Handling | editable with the compact native writer |
+
+The immediately preceding control byte, the six fine-role bytes and the
+following control byte have their own contracts; no generic skills writer may
+move or overwrite them.  `handling` is deliberately a named tenth input in a
+season manifest.  Older manifests that omit it preserve the existing compact
+value rather than guessing one.
+
+Runtime proof for this mapping is retained in
+[`PM99_DD6360_COMPACT_VISIBLE_SKILLS_2026-08-30.md`](../HISTORY/Investigations/PM99_DD6360_COMPACT_VISIBLE_SKILLS_2026-08-30.md).
+
 - The current parser reads up to 12 skill bytes from the trailing attribute window.
 - The effective window is `len(payload) - 19` through `len(payload) - 7`.
 - Each byte is XOR’d with `0x61` after outer payload decoding.
@@ -187,11 +246,11 @@ python3 scripts/probe_role_slot_forensics.py \
   - `attributes[4]` = `stamina`
   - `attributes[5]` = `aggression`
   - `attributes[6]` = `quality`
-  - `attributes[7]` = `heading`
+  - `attributes[7]` = the shared visible `fitness` / `heading` byte
   - `attributes[8]` = `dribbling`
   - `attributes[9]` = `passing`
   - `attributes[10]` = `shooting`
-  - `attributes[11]` = `tackling`
+  - `attributes[11]` = the shared visible `morale` / `tackling` byte
 - `attributes[0]`, `attributes[1]`, and `attributes[2]` remain unresolved.
 - The inspection surfaces now expose these three leading tail bytes as a read-only
   `tail_prefix=[a, b, c]` probe in both the CLI (`player-inspect`) and the GUI
@@ -244,7 +303,9 @@ python3 scripts/probe_role_slot_forensics.py \
   probe rather than a normal named stat. The same caution applies to
   `post_weight_byte`: it is fixed and parser-backed, and likely nationality-adjacent,
   but still not safe to rename as a normal editable field.
-- `handling` is part of the separate `dd6361` visible-skill trailer contract, not this 12-byte player-record tail.
+- `handling` is family-specific: `dd6361` has its own visible-skill trailer
+  contract, and compact `dd6360` reads it at the named native offset `+27`
+  above.  It is not an unresolved generic tail byte.
 - The GUI now treats `attributes[0..2]` as read-only probe bytes and only exposes `attributes[3..11]`
   as normal editable fields.
 
@@ -279,8 +340,15 @@ python3 scripts/probe_role_slot_forensics.py \
 - `weight` is now parser-backed for indexed `DMFIv1.0` JUG payloads and for non-indexed / legacy records only when the conservative marker anchor exposes a real extra byte at `name_end + 14` before the trailing attribute window. In those legacy cases the same in-place slot is writable too. Canonical synthesized records still do not emit this extra byte, so they remain weightless unless a real slot already exists in `raw_data`.
 - `DBASEPRE.EXE` player-view code also treats the in-memory physical stat bytes as adjacent values: it reads `[player + 0x4E]` as a centimetre height value (then converts it to feet/inches for display) and `[player + 0x4F]` as a raw weight-like value after drawing the `HEIGHT` / `WEIGHT` labels. That strongly corroborates the indexed JUG `height`/`weight` mapping.
 - `DBASEPRE.EXE`'s indexed player parser helper (`FUN_0043d170`) also places the first two bytes of the indexed suffix block into struct offsets `[player + 0x20]` and `[player + 0x4C]`. These bytes are now surfaced as raw `indexed_unknown_0` / `indexed_unknown_1` probe values.
-- `DBASEPRE.EXE` portrait rendering also confirms that indexed suffix bytes `name_suffix + 2 .. + 7` are the variable-length face-component sequence used to build the player head graphic.
-- Separate from those per-record face-component bytes, the mirrored game corpus
+- **Terminology correction (2026-08-28):** indexed suffix bytes
+  `name_suffix + 2 .. + 7` are not safe to call face components. They are the
+  variable-length fine-position sequence: their decoded values map to the six
+  role slots used for labels such as `Centre Forward`, `Inside Right`, and
+  `Defensive Midfielder`. `MANAGPRE.EXE`'s player loader consumes those slots
+  for the tactics/role system. The historical `face_components` parser name is
+  retained only for API compatibility and must not be read as evidence about
+  3D head rendering.
+- Separate from those per-record fine-position bytes, the mirrored game corpus
   now also exposes a distinct player mini-photo asset archive:
   `FDI-PKF/DBDAT/MINIFOTO.PKF`. That archive currently yields `1354`
   `J96#####.BMP` player-photo records, and it should be treated as a separate

@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pm99-research.local/schemas/pm99-asset-store-import-v1.schema.json",
+  "title": "PM99 Content-addressed Asset Store Import V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "store_layout", "input_receipts", "portraits", "kits", "unlinked_loose_outputs", "build_modes", "known_limits"],
+  "properties": {
+    "schema_version": {"const": "pm99-asset-store-import-v1"},
+    "store_layout": {"type": "object", "additionalProperties": false, "required": ["blob_algorithm", "blob_path_template"], "properties": {"blob_algorithm": {"const": "sha256"}, "blob_path_template": {"const": "blobs/{sha256[0:2]}/{sha256}"}}},
+    "input_receipts": {"type": "array", "items": {"$ref": "#/$defs/receipt"}, "minItems": 2},
+    "portraits": {"type": "array", "items": {"$ref": "#/$defs/portrait"}},
+    "kits": {"type": "array", "items": {"$ref": "#/$defs/kit"}},
+    "unlinked_loose_outputs": {"type": "array", "items": {"$ref": "#/$defs/looseOutput"}},
+    "build_modes": {"$ref": "#/$defs/buildModes"},
+    "known_limits": {"type": "array", "items": {"type": "string"}}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "blob": {"type": "object", "additionalProperties": false, "required": ["sha256", "blob"], "properties": {"sha256": {"$ref": "#/$defs/sha256"}, "blob": {"type": "string", "pattern": "^blobs/[0-9a-f]{2}/[0-9a-f]{64}$"}}},
+    "receipt": {"type": "object", "additionalProperties": false, "required": ["id", "sha256"], "properties": {"id": {"type": "string", "pattern": "^[a-z][a-z0-9-]+$"}, "sha256": {"$ref": "#/$defs/sha256"}}},
+    "portrait": {"type": "object", "additionalProperties": false, "required": ["record_id", "status", "regeneration"], "properties": {"record_id": {"type": "integer", "minimum": 1}, "status": {"type": "string", "enum": ["cached-output", "native-no-photo", "unresolved"]}, "source": {"$ref": "#/$defs/blob"}, "preview": {"$ref": "#/$defs/blob"}, "output": {"$ref": "#/$defs/portraitOutput"}, "regeneration": {"$ref": "#/$defs/regeneration"}}},
+    "portraitOutput": {"type": "object", "additionalProperties": false, "required": ["storage", "blob"], "properties": {"storage": {"type": "string", "enum": ["MINIFOTO.PKF", "loose-DBDAT/MINIFOTO"]}, "blob": {"$ref": "#/$defs/blob"}, "offset": {"type": "integer", "minimum": 0}, "length": {"type": "integer", "minimum": 1}, "container_before_sha256": {"$ref": "#/$defs/sha256"}, "container_after_sha256": {"$ref": "#/$defs/sha256"}, "target_filename": {"type": "string", "pattern": "^J96[0-9]{5}\\.BMP$"}}},
+    "kit": {"type": "object", "additionalProperties": false, "required": ["archive_name", "before_sha256", "after_sha256", "patches", "regeneration"], "properties": {"archive_name": {"type": "string", "pattern": "^[A-Z0-9]+\\.PKF$"}, "before_sha256": {"$ref": "#/$defs/sha256"}, "after_sha256": {"$ref": "#/$defs/sha256"}, "patches": {"type": "array", "items": {"$ref": "#/$defs/kitPatch"}}, "regeneration": {"$ref": "#/$defs/regeneration"}}},
+    "kitPatch": {"type": "object", "additionalProperties": false, "required": ["team_id", "slot", "offset", "length", "blob"], "properties": {"team_id": {"type": "integer", "minimum": 1}, "slot": {"type": "integer", "minimum": 1}, "offset": {"type": "integer", "minimum": 0}, "length": {"type": "integer", "minimum": 1}, "blob": {"$ref": "#/$defs/blob"}}},
+    "looseOutput": {"type": "object", "additionalProperties": false, "required": ["filename", "blob"], "properties": {"filename": {"type": "string", "pattern": "^J96[0-9]{5}\\.BMP$"}, "blob": {"$ref": "#/$defs/blob"}}},
+    "regeneration": {"type": "object", "additionalProperties": false, "required": ["state", "reasons"], "properties": {"state": {"type": "string", "enum": ["non-regenerable-legacy", "source-regenerable"]}, "reasons": {"type": "array", "items": {"type": "string"}}}},
+    "buildModes": {"type": "object", "additionalProperties": false, "required": ["cached_output", "strict_source_provenance"], "properties": {"cached_output": {"$ref": "#/$defs/buildMode"}, "strict_source_provenance": {"$ref": "#/$defs/buildMode"}}},
+    "buildMode": {"type": "object", "additionalProperties": false, "required": ["status", "reasons"], "properties": {"status": {"type": "string", "enum": ["qualified-with-matching-base", "blocked"]}, "reasons": {"type": "array", "items": {"type": "string"}}}}
+  }
+}

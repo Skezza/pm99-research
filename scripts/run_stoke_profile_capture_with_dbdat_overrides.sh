@@ -10,12 +10,24 @@ RUN_TAG="stoke_2015_faces_capture_$(pm99_runner_timestamp_utc)"
 GAME_ROOT=""
 DBDAT_DIR=""
 PROFILE_COUNT=20
+PROFILE_START_SLOT=1
 ROW_X=40
 ROW_START_Y=127
-ROW_PITCH=15
+ROW_PITCH=16
+SQUAD_VISIBLE_ROWS=21
 SQUAD_ENABLE_STATUS_FILTERS=0
+CAPTURE_PROFILE_TACTICS=0
+PROFILE_ROLE_CYCLE_COUNT=0
+PROFILE_ROLE_NEXT_X=""
+PROFILE_ROLE_NEXT_Y=""
+EXPECTED_PROFILE_NAMES=()
+DIVISION_SELECT_X=559
+DIVISION_SELECT_Y=302
+TEAM_SELECT_X=327
+TEAM_SELECT_Y=356
 OVERRIDE_ENT=0
 EXE_OVERRIDE=""
+LOOSE_MINIFOTO_DIR=""
 LATE_DBDAT_DIR=""
 LATE_DBDAT_FILES="JUG98030.FDI,EQ98030.FDI,MINIFOTO.PKF"
 ALLOW_LEGACY_LATE_INJECTION=0
@@ -39,13 +51,30 @@ Options:
   --dbdat-dir <path>          Local directory with override DBDAT files
   --run-tag <id>              Override run tag
   --profile-count <n>         Number of squad profile rows to capture (default: 20)
+  --profile-start-slot <n>    First squad row to capture (default: 1)
   --row-x <pixels>            Squad row click X coordinate (default: 40)
   --row-start-y <pixels>      Squad row 1 click Y coordinate (default: 127)
-  --row-pitch <pixels>        Squad row vertical spacing (default: 15)
+  --row-pitch <pixels>        Squad row vertical spacing (default: 16)
+  --squad-visible-rows <n>    Number of visible squad rows (default: 21)
   --squad-enable-status-filters
                               Tick squad status filters before squad/profile proof
+  --capture-profile-tactics-screen
+                              Capture the TACTICS panel from each selected profile
+  --profile-role-cycle-count <n>
+                              Capture <n> role-selector steps in each selected profile
+  --profile-role-next-x <pixels>
+  --profile-role-next-y <pixels>
+                              Override the profile role-next control coordinates
+  --expected-profile-name <name>
+                              Expected profile header in capture order; repeat to make
+                              a wrong player selection fail the run
+  --division-select-x <pixels>
+  --division-select-y <pixels> Select a division in the new-game club chooser
+  --team-select-x <pixels>
+  --team-select-y <pixels>     Select a club in the chosen division
   --override-ent              Also override ENT98030.FDI from --dbdat-dir
   --exe-override <path>       Optional MANAGPRE.EXE override to copy into the run
+  --loose-minifoto-dir <path> Optional folder of J96xxxxx.BMP files copied to DBDAT/MINIFOTO/
   --allow-legacy-late-injection
                               Permit debug-only late DBDAT injection
   --late-dbdat-dir <path>     Debug-only DBDAT dir injected after dashboard is reached
@@ -68,12 +97,24 @@ while [[ $# -gt 0 ]]; do
     --dbdat-dir) DBDAT_DIR="$2"; shift 2 ;;
     --run-tag) RUN_TAG="$2"; shift 2 ;;
     --profile-count) PROFILE_COUNT="$2"; shift 2 ;;
+    --profile-start-slot) PROFILE_START_SLOT="$2"; shift 2 ;;
     --row-x) ROW_X="$2"; shift 2 ;;
     --row-start-y) ROW_START_Y="$2"; shift 2 ;;
     --row-pitch) ROW_PITCH="$2"; shift 2 ;;
+    --squad-visible-rows) SQUAD_VISIBLE_ROWS="$2"; shift 2 ;;
     --squad-enable-status-filters) SQUAD_ENABLE_STATUS_FILTERS=1; shift ;;
+    --capture-profile-tactics-screen) CAPTURE_PROFILE_TACTICS=1; shift ;;
+    --profile-role-cycle-count) PROFILE_ROLE_CYCLE_COUNT="$2"; shift 2 ;;
+    --profile-role-next-x) PROFILE_ROLE_NEXT_X="$2"; shift 2 ;;
+    --profile-role-next-y) PROFILE_ROLE_NEXT_Y="$2"; shift 2 ;;
+    --expected-profile-name) EXPECTED_PROFILE_NAMES+=("$2"); shift 2 ;;
+    --division-select-x) DIVISION_SELECT_X="$2"; shift 2 ;;
+    --division-select-y) DIVISION_SELECT_Y="$2"; shift 2 ;;
+    --team-select-x) TEAM_SELECT_X="$2"; shift 2 ;;
+    --team-select-y) TEAM_SELECT_Y="$2"; shift 2 ;;
     --override-ent) OVERRIDE_ENT=1; shift ;;
     --exe-override) EXE_OVERRIDE="$2"; shift 2 ;;
+    --loose-minifoto-dir) LOOSE_MINIFOTO_DIR="$2"; shift 2 ;;
     --allow-legacy-late-injection) ALLOW_LEGACY_LATE_INJECTION=1; shift ;;
     --late-dbdat-dir) LATE_DBDAT_DIR="$2"; shift 2 ;;
     --late-dbdat-files) LATE_DBDAT_FILES="$2"; shift 2 ;;
@@ -131,6 +172,13 @@ fi
 if [[ -n "${EXE_OVERRIDE}" && ! -f "${EXE_OVERRIDE}" ]]; then
   echo "Missing MANAGPRE.EXE override: ${EXE_OVERRIDE}" >&2
   exit 2
+fi
+if [[ -n "${LOOSE_MINIFOTO_DIR}" ]]; then
+  LOOSE_MINIFOTO_DIR="$(cd "${LOOSE_MINIFOTO_DIR}" && pwd)"
+  if ! find "${LOOSE_MINIFOTO_DIR}" -maxdepth 1 -type f -iname 'J96*.BMP' -print -quit | rg -q .; then
+    echo "No J96xxxxx.BMP files found in --loose-minifoto-dir" >&2
+    exit 2
+  fi
 fi
 LATE_FILE_LIST=()
 if [[ -n "${LATE_DBDAT_DIR}" ]]; then
@@ -191,6 +239,11 @@ REMOTE_LATE_DBDAT_DIR="${REMOTE_RUN_ROOT}/late_dbdat"
 LOCAL_ARTIFACT_DIR="${PM99_RUNNER_LOCAL_ARTIFACT_ROOT}/${RUN_TAG}"
 pm99_runner_ssh "
 set -euo pipefail
+if [[ -e '${REMOTE_RUN_ROOT}' ]]; then
+  # A previous source copy may retain CD-ROM-style read-only directories.
+  # Make only this known disposable run tree removable before replacing it.
+  chmod -R u+rwX '${REMOTE_RUN_ROOT}'
+fi
 rm -rf '${REMOTE_RUN_ROOT}' '${REMOTE_ARTIFACT_DIR}'
 mkdir -p '${REMOTE_RUN_ROOT}' '${REMOTE_HOME_DIR}' '${REMOTE_WINE_PREFIX_DIR}' '${REMOTE_ARTIFACT_DIR}' '${REMOTE_LATE_DBDAT_DIR}'
 mkdir -p '${REMOTE_GAME_DIR}'
@@ -202,6 +255,12 @@ if [[ ${FULL_GAME_ROOT_MODE} -eq 1 ]]; then
     "$(pm99_runner_remote_spec):${REMOTE_GAME_DIR}/"
 else
   pm99_runner_ssh "cp -a '$(pm99_runner_remote_source_install_dir)/.' '${REMOTE_GAME_DIR}/'"
+  # The archived game source intentionally retains its original read-only
+  # distribution permissions.  A disposable runner copy is a writable test
+  # sandbox, however: without this normalisation the documented --dbdat-dir
+  # path fails before the driver starts because scp cannot replace JUG/EQ.
+  # Scope it to the per-run copy; the verified source install is untouched.
+  pm99_runner_ssh "chmod -R u+rwX '${REMOTE_GAME_DIR}'"
   for file_name in JUG98030.FDI EQ98030.FDI MINIFOTO.PKF; do
     pm99_runner_scp_to_remote \
       "${DBDAT_DIR}/${file_name}" \
@@ -218,6 +277,12 @@ else
       "${REMOTE_GAME_DIR}/MANAGPRE.EXE"
   fi
 fi
+if [[ -n "${LOOSE_MINIFOTO_DIR}" ]]; then
+  pm99_runner_ssh "mkdir -p '${REMOTE_GAME_DIR}/DBDAT/MINIFOTO'"
+  "${PM99_RUNNER_RSYNC_BIN}" -az \
+    "${LOOSE_MINIFOTO_DIR}/" \
+    "$(pm99_runner_remote_spec):${REMOTE_GAME_DIR}/DBDAT/MINIFOTO/"
+fi
 if [[ -n "${LATE_DBDAT_DIR}" ]]; then
   for file_name in "${LATE_FILE_LIST[@]}"; do
     pm99_runner_scp_to_remote \
@@ -232,6 +297,23 @@ DRIVER_SQUAD_FILTER_ARGS=()
 if [[ ${SQUAD_ENABLE_STATUS_FILTERS} -eq 1 ]]; then
   DRIVER_SQUAD_FILTER_ARGS=(--squad-enable-status-filters)
 fi
+DRIVER_PROFILE_ROLE_ARGS=()
+if [[ ${CAPTURE_PROFILE_TACTICS} -eq 1 ]]; then
+  DRIVER_PROFILE_ROLE_ARGS+=(--capture-profile-tactics-screen)
+fi
+if [[ ${PROFILE_ROLE_CYCLE_COUNT} -gt 0 ]]; then
+  DRIVER_PROFILE_ROLE_ARGS+=(--profile-role-cycle-count "${PROFILE_ROLE_CYCLE_COUNT}")
+fi
+if [[ -n "${PROFILE_ROLE_NEXT_X}" ]]; then
+  DRIVER_PROFILE_ROLE_ARGS+=(--profile-role-next-x "${PROFILE_ROLE_NEXT_X}")
+fi
+if [[ -n "${PROFILE_ROLE_NEXT_Y}" ]]; then
+  DRIVER_PROFILE_ROLE_ARGS+=(--profile-role-next-y "${PROFILE_ROLE_NEXT_Y}")
+fi
+DRIVER_EXPECTED_NAME_ARGS=()
+for expected_name in "${EXPECTED_PROFILE_NAMES[@]}"; do
+  DRIVER_EXPECTED_NAME_ARGS+=(--expected-profile-name "${expected_name}")
+done
 if [[ -n "${LATE_DBDAT_DIR}" ]]; then
   DOCKER_LATE_MOUNT_ARGS=(--volume "${REMOTE_LATE_DBDAT_DIR}:/workspace/late_dbdat")
   DRIVER_LATE_ARGS="--late-dbdat-override-dir /workspace/late_dbdat --late-dbdat-files $(printf '%q' "${LATE_DBDAT_FILES}")"
@@ -263,10 +345,18 @@ pm99_runner_remote_one_shot_container_with_timeout \
     --game-dir /workspace/game \
     --artifacts-dir /workspace/artifacts \
     --profile-count "${PROFILE_COUNT}" \
+    --profile-start-slot "${PROFILE_START_SLOT}" \
     --row-x "${ROW_X}" \
     --row-start-y "${ROW_START_Y}" \
     --row-pitch "${ROW_PITCH}" \
+    --squad-visible-rows "${SQUAD_VISIBLE_ROWS}" \
+    --division-select-x "${DIVISION_SELECT_X}" \
+    --division-select-y "${DIVISION_SELECT_Y}" \
+    --team-select-x "${TEAM_SELECT_X}" \
+    --team-select-y "${TEAM_SELECT_Y}" \
     "${DRIVER_SQUAD_FILTER_ARGS[@]}" \
+    "${DRIVER_PROFILE_ROLE_ARGS[@]}" \
+    "${DRIVER_EXPECTED_NAME_ARGS[@]}" \
     ${DRIVER_LATE_ARGS}
 RUN_STATUS=$?
 set -e

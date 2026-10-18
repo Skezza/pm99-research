@@ -26,6 +26,7 @@ if str(EDITOR_DIR) not in sys.path:
     sys.path.insert(0, str(EDITOR_DIR))
 
 from app.minifoto_bitmap_archive import iter_obfuscated_bmp_records, parse_riff_palette  # noqa: E402
+from app.bitmap_pixel_rows import read_top_down_bitmap_rows, replace_top_down_bitmap_rows
 
 
 ARCHIVES = ("BIGCAMP.PKF", "BIGESC.PKF", "MINIESC.PKF", "NANOESC.PKF", "RIDIESC.PKF")
@@ -223,27 +224,11 @@ def load_dat_palette(game_root: Path) -> list[tuple[int, int, int]]:
 
 
 def record_to_top_down_indices(record: Any) -> list[list[int]]:
-    width = int(record.width)
-    height = int(record.height)
-    pixels = record.raw_bitmap[record.pixel_offset : record.pixel_offset + width * height]
-    rows: list[list[int]] = []
-    for y in range(height):
-        source_row = (height - 1 - y) * width
-        rows.append([int(value) for value in pixels[source_row : source_row + width]])
-    return rows
+    return read_top_down_bitmap_rows(record)
 
 
 def top_down_indices_to_raw(record: Any, rows: list[list[int]]) -> bytes:
-    width = int(record.width)
-    height = int(record.height)
-    raw = bytearray(record.raw_bitmap)
-    for y, row in enumerate(rows):
-        if len(row) != width:
-            raise ValueError("row width mismatch")
-        target_row = (height - 1 - y) * width
-        start = int(record.pixel_offset) + target_row
-        raw[start : start + width] = bytes(max(0, min(255, int(value))) for value in row)
-    return bytes(raw)
+    return replace_top_down_bitmap_rows(record, rows)
 
 
 def render_rows(
@@ -285,8 +270,21 @@ def edge_pixel(mask: list[list[bool]], x: int, y: int) -> bool:
     return False
 
 
-def color_rgb(name: str | None, fallback: str = "white") -> tuple[int, int, int]:
-    return COLORS[name or fallback]
+def color_rgb(value: Any, fallback: str = "white") -> tuple[int, int, int]:
+    """Resolve a named project colour or an explicit source-derived RGB triplet.
+
+    The named palette keeps the reviewed English ledgers readable.  The
+    explicit form lets a hash-bound source image yield a small PM99 rendering
+    recipe without first pretending its colours are an editorially named kit.
+    """
+    if isinstance(value, (list, tuple)) and len(value) == 3:
+        try:
+            return tuple(max(0, min(255, int(channel))) for channel in value)  # type: ignore[return-value]
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"invalid explicit RGB colour: {value!r}") from exc
+    if value is None:
+        return COLORS[fallback]
+    return COLORS[str(value)]
 
 
 def luminance(rgb: tuple[int, int, int]) -> float:
@@ -307,7 +305,7 @@ def style_color(
     shirt_bottom: int,
 ) -> tuple[int, int, int]:
     pattern = str(style_row.get("pattern", "solid"))
-    colors = tuple(color_rgb(str(item)) for item in style_row.get("colors", ("white",)))
+    colors = tuple(color_rgb(item) for item in style_row.get("colors", ("white",)))
     row_width = max(1, row_max - row_min + 1)
     row_center = (row_min + row_max) / 2.0
     shirt_height = max(1, shirt_bottom - shirt_top + 1)
@@ -330,7 +328,8 @@ def style_color(
         first = (left and top) or ((not left) and (not top))
         return colors[0] if first else colors[min(1, len(colors) - 1)]
     if pattern == "sleeves":
-        sleeve_rgb = color_rgb(style_row.get("sleeves"), str(style_row.get("colors", ("white",))[0]))
+        colour_values = tuple(style_row.get("colors", ("white",)))
+        sleeve_rgb = color_rgb(style_row.get("sleeves") if style_row.get("sleeves") is not None else colour_values[0])
         sleeve_width = max(2, int(row_width * 0.23))
         if y_norm <= 0.82 and (x <= row_min + sleeve_width or x >= row_max - sleeve_width):
             return sleeve_rgb
@@ -409,7 +408,7 @@ def build_updated_kit_rows(
     last_y = max(nonzero_rows)
     shirt_top = max(first_y, int(height * 0.04))
     shirt_bottom = min(last_y, int(height * 0.58))
-    shorts_rgb = color_rgb(str(style_row.get("shorts") or "white"))
+    shorts_rgb = color_rgb(style_row.get("shorts") if style_row.get("shorts") is not None else "white")
 
     out = [list(row) for row in rows]
     for y in range(height):

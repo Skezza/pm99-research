@@ -1,0 +1,63 @@
+{
+  "schema_version": "pm99-season-source-intake-blockers-v1",
+  "season": {
+    "start_year": 2004,
+    "end_year": 2005,
+    "label": "2004/05"
+  },
+  "source": {
+    "title": "footballcsv/cache.footballsquads",
+    "repository": "https://github.com/footballcsv/cache.footballsquads",
+    "revision": "187c963e76e2bd1d9a65e2f0f3b04d9b57ba3555",
+    "license": "CC0-1.0"
+  },
+  "capture_command": "scripts/capture_footballsquads_season.py --source-root .local/external-sources/cache.footballsquads --season 2004-2005",
+  "blocked_catalogues": [
+    {
+      "country_catalog": "arg",
+      "source_file_count": 20,
+      "blocker": "split-year capture rejects the cache's calendar-year Clausura title",
+      "first_rejected_source": {
+        "relative_path": "arg/2004-2005/clausura/almagro.txt",
+        "sha256": "cf316f09979572648a488a37dc1ff410e87f196af043eb9522dee261d8ec1f4c",
+        "title": "Almagro - Argentinian Primera División 2005 Clausura",
+        "tool_error": "title season 2005 does not match 2004/05"
+      }
+    },
+    {
+      "country_catalog": "mexico",
+      "source_file_count": 18,
+      "blocker": "split-year capture rejects the cache's calendar-year Clausura title",
+      "first_rejected_source": {
+        "relative_path": "mexico/2004-2005/clausura/america.txt",
+        "sha256": "342ba29778cae4cde827ba6322327d810e9b0978de222e46b26954353a7fec5a",
+        "title": "UANL Tigres - Mexican Primera División 2005 Clausura",
+        "tool_error": "title season 2005 does not match 2004/05"
+      }
+    },
+    {
+      "country_catalog": "switz",
+      "source_file_count": 10,
+      "blocker": "source page contains duplicate shirt number 25 in the parsed roster",
+      "first_rejected_source": {
+        "relative_path": "switz/2004-2005/superl/servette.txt",
+        "sha256": "4be19db1d974af3e84fb2292b4720db50674e9a94e39b96b99e40458dd7dc87e",
+        "tool_error": "duplicate current-squad shirt numbers"
+      }
+    },
+    {
+      "country_catalog": "turkey",
+      "source_file_count": 18,
+      "blocker": "source page has a numbered row with no player name",
+      "first_rejected_source": {
+        "relative_path": "turkey/2004-2005/superl/ankgucu.txt",
+        "sha256": "040e5976666b182804161bd8eb3e9ca7d0f3dfebcd7f2d384c802ee627177437",
+        "line": 15,
+        "raw_row": "21, , , , , , , Samsunspor",
+        "tool_error": "missing player name"
+      }
+    }
+  ],
+  "release_blocker": true,
+  "resolution_required": "A source-aware capture policy or independently dated identity-safe replacement source must be reviewed before these facts enter a strict package."
+}

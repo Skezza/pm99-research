@@ -1,0 +1,330 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pm99-research.local/schemas/pm99-season-package-v2.schema.json",
+  "title": "PM99 Historical Season Package V2",
+  "description": "Canonical, metadata-only contract for a reproducible PM99 historical season package. Cross-record integrity and canonical-byte checks are implemented by scripts/season_package_v2.py.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "package_id",
+    "season",
+    "scope",
+    "artifacts",
+    "sources",
+    "clubs",
+    "players",
+    "managers",
+    "assets",
+    "calendar",
+    "proofs",
+    "migration"
+  ],
+  "properties": {
+    "schema_version": {"const": "pm99-season-package-v2"},
+    "package_id": {"$ref": "#/$defs/id"},
+    "season": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start_year", "end_year", "label"],
+      "properties": {
+        "start_year": {"type": "integer", "minimum": 1900, "maximum": 2025},
+        "end_year": {"type": "integer", "minimum": 1901, "maximum": 2026},
+        "label": {"type": "string", "pattern": "^(?:19[0-9]{2}|20(?:0[0-9]|1[0-9]|2[0-5]))/[0-9]{2}$"}
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "countries", "competition_policy"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "title": {"type": "string", "minLength": 1},
+        "countries": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "^[A-Z]{3}$"}, "uniqueItems": true},
+        "competition_policy": {"type": "string", "enum": ["proven-membership-only", "existing-carriers-only", "research-limited"]}
+      }
+    },
+    "artifacts": {"type": "array", "items": {"$ref": "#/$defs/artifact"}},
+    "sources": {"type": "array", "items": {"$ref": "#/$defs/source"}},
+    "clubs": {"type": "array", "items": {"$ref": "#/$defs/club"}},
+    "players": {"type": "array", "items": {"$ref": "#/$defs/player"}},
+    "managers": {"type": "array", "items": {"$ref": "#/$defs/manager"}},
+    "assets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kits", "portraits"],
+      "properties": {
+        "kits": {"type": "array", "items": {"$ref": "#/$defs/kit"}},
+        "portraits": {"type": "array", "items": {"$ref": "#/$defs/portrait"}}
+      }
+    },
+    "calendar": {"$ref": "#/$defs/calendar"},
+    "proofs": {"type": "array", "items": {"$ref": "#/$defs/proof"}},
+    "migration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "source_artifact_ids", "known_gaps"],
+      "properties": {
+        "status": {"type": "string", "enum": ["native-v2", "legacy-migrated"]},
+        "source_artifact_ids": {"type": "array", "items": {"$ref": "#/$defs/id"}, "uniqueItems": true},
+        "known_gaps": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[a-z][a-z0-9-]{1,79}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "proof_grade": {"type": "string", "enum": ["source-captured", "source-receipt", "reviewed-editorial", "static-contract", "runtime-wine", "runtime-native-windows", "legacy-migrated"]},
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "sha256"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "kind": {"type": "string", "enum": ["base-file", "season-input", "database-output", "legacy-receipt", "portrait-original", "portrait-crop", "portrait-conversion", "kit-render", "calendar-patch", "runtime-proof", "release-inventory"]},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "media_type": {"type": "string"},
+        "relative_path": {"type": "string", "pattern": "^(?!/)(?![A-Za-z]:[\\\\/])(?!.*(?:^|/)\\.\\.(?:/|$)).+$"}
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "proof_grade", "evidence_artifact_id"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "title": {"type": "string", "minLength": 1},
+        "uri": {"type": "string", "format": "uri"},
+        "proof_grade": {"$ref": "#/$defs/proof_grade"},
+        "evidence_artifact_id": {"$ref": "#/$defs/id"}
+      }
+    },
+    "proof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "grade", "artifact_id", "covers"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "grade": {"$ref": "#/$defs/proof_grade"},
+        "artifact_id": {"$ref": "#/$defs/id"},
+        "covers": {"type": "array", "minItems": 1, "items": {"type": "string"}, "uniqueItems": true}
+      }
+    },
+    "club": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "carrier_id", "name", "division", "manager_id", "roster_player_ids", "opening"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "identity_id": {"$ref": "#/$defs/id"},
+        "carrier_id": {"type": "integer", "minimum": 1},
+        "name": {"type": "string", "minLength": 1},
+        "full_name": {"type": "string"},
+        "division": {"type": "string", "minLength": 1},
+        "ground_name": {"type": "string"},
+        "seated_capacity": {"type": "integer", "minimum": 0},
+        "ground_policy": {"enum": ["write", "preserve-existing-mode1"]},
+        "capacity_policy": {"enum": ["write", "preserve-existing-mode1"]},
+        "starting_finance": {"type": "integer"},
+        "manager_id": {"$ref": "#/$defs/id"},
+        "roster_player_ids": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/id"}, "uniqueItems": true},
+        "shared_preserve_player_ids": {"type": "array", "items": {"$ref": "#/$defs/id"}, "uniqueItems": true},
+        "opening": {
+          "oneOf": [
+            {"$ref": "#/$defs/opening"},
+            {"$ref": "#/$defs/opening-preserve"}
+          ]
+        },
+        "proof": {"$ref": "#/$defs/proof-ref"}
+      }
+    },
+    "opening": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fixture_date", "starting_xi_player_ids", "substitute_player_ids", "formation", "tactics_positions", "proof"],
+      "properties": {
+        "fixture_date": {"type": "string", "pattern": "^(?:19|20)[0-9]{2}-[0-9]{2}-[0-9]{2}$"},
+        "starting_xi_player_ids": {"type": "array", "minItems": 11, "maxItems": 11, "items": {"$ref": "#/$defs/id"}, "uniqueItems": true},
+        "substitute_player_ids": {"type": "array", "items": {"$ref": "#/$defs/id"}, "uniqueItems": true},
+        "formation": {"type": "string", "pattern": "^[1-5](-[0-5]){1,4}$"},
+        "tactics_positions": {"type": "array", "minItems": 11, "maxItems": 11, "items": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "integer", "minimum": 0, "maximum": 65535}}},
+        "tactics_context": {"$ref": "#/$defs/tactics-context"},
+        "proof": {"$ref": "#/$defs/proof-ref"}
+      }
+    },
+    "tactics-context": {
+      "type": "object", "additionalProperties": false,
+      "required": ["format", "template_id", "slots"],
+      "properties": {
+        "format": {"const": "pm99-mode0-contextual-pitch-v1"},
+        "template_id": {"type": "string", "minLength": 1},
+        "slots": {"type": "array", "minItems": 11, "maxItems": 11, "items": {
+          "type": "object", "additionalProperties": false,
+          "required": ["player_id", "native_player_id", "native_name", "role", "states"],
+          "properties": {
+            "player_id": {"$ref": "#/$defs/id"},
+            "native_player_id": {"type": "integer", "minimum": 1},
+            "native_name": {"type": "string", "minLength": 1},
+            "role": {"enum": ["GK", "RCB", "LCB", "LB", "RB", "DM", "RCM", "LCM", "LW", "RW", "ST", "CB", "RWB", "LWB", "CM", "RM", "LM", "AM", "SS"]},
+            "states": {"type": "array", "minItems": 20, "maxItems": 20, "items": {
+              "type": "array", "minItems": 4, "maxItems": 4,
+              "prefixItems": [
+                {"type": "integer", "minimum": 0, "maximum": 228},
+                {"type": "integer", "minimum": 0, "maximum": 398},
+                {"type": "integer", "minimum": 0, "maximum": 228},
+                {"type": "integer", "minimum": 0, "maximum": 398}
+              ], "items": false
+            }}
+          }
+        }}
+      }
+    },
+    "opening-preserve": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["policy", "proof"],
+      "properties": {
+        "policy": {"const": "preserve-existing-mode1"},
+        "proof": {"$ref": "#/$defs/proof-ref"}
+      }
+    },
+    "player": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "carrier_id", "carrier_family", "club_id", "name", "facts", "ratings", "proof"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "person_id": {"$ref": "#/$defs/id"},
+        "carrier_id": {"type": "integer", "minimum": 1},
+        "append_from_carrier_id": {"type": "integer", "minimum": 1},
+        "recycle_from_mode1_carrier_id": {"type": "integer", "minimum": 1},
+        "mode0_clone_carrier_id": {"type": "integer", "minimum": 1, "maximum": 32767},
+        "policy": {"const": "preserve-existing-mode1"},
+        "carrier_family": {"type": "string", "minLength": 1},
+        "club_id": {"$ref": "#/$defs/id"},
+        "name": {"type": "string", "minLength": 1},
+        "source_name": {"type": "string", "minLength": 1},
+        "source_identity": {"$ref": "#/$defs/source-identity"},
+        "facts": {"$ref": "#/$defs/player-facts"},
+        "fact_fallbacks": {"type": "array", "items": {"$ref": "#/$defs/fact-fallback"}},
+        "ratings": {"$ref": "#/$defs/ratings"},
+        "proof": {"$ref": "#/$defs/proof-ref"}
+      }
+    },
+    "player-facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["birth_date", "nationality", "height_cm", "weight_kg", "primary_position", "fine_roles", "shirt_number"],
+      "properties": {
+        "birth_date": {"oneOf": [{"type": "string", "pattern": "^(19|20)[0-9]{2}-[0-9]{2}-[0-9]{2}$"}, {"$ref": "#/$defs/preserve-field"}]},
+        "nationality": {"oneOf": [{"type": "string", "pattern": "^[A-Z]{3}$"}, {"$ref": "#/$defs/preserve-field"}]},
+        "height_cm": {"oneOf": [{"type": "integer", "minimum": 100, "maximum": 250}, {"$ref": "#/$defs/preserve-field"}]},
+        "weight_kg": {"oneOf": [{"type": "integer", "minimum": 30, "maximum": 200}, {"$ref": "#/$defs/preserve-field"}]},
+        "primary_position": {"oneOf": [{"type": "string", "enum": ["G", "D", "M", "F"]}, {"$ref": "#/$defs/preserve-field"}]},
+        "fine_roles": {"oneOf": [{"type": "array", "items": {"type": "integer", "minimum": 0, "maximum": 255}, "uniqueItems": true}, {"$ref": "#/$defs/preserve-field"}]},
+        "shirt_number": {"oneOf": [{"type": "integer", "minimum": 0, "maximum": 99}, {"$ref": "#/$defs/preserve-field"}]}
+      }
+    },
+    "ratings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile", "values", "provenance"],
+      "properties": {
+        "profile": {"const": "pm99-visible-skills-v1"},
+        "values": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["quality", "speed", "stamina", "aggression", "passing", "tackling", "heading", "shooting", "dribbling", "handling"],
+          "properties": {
+            "quality": {"$ref": "#/$defs/rating"}, "speed": {"$ref": "#/$defs/rating"}, "stamina": {"$ref": "#/$defs/rating"}, "aggression": {"$ref": "#/$defs/rating"}, "passing": {"$ref": "#/$defs/rating"}, "tackling": {"$ref": "#/$defs/rating"}, "heading": {"$ref": "#/$defs/rating"}, "shooting": {"$ref": "#/$defs/rating"}, "dribbling": {"$ref": "#/$defs/rating"}, "handling": {"$ref": "#/$defs/rating"}
+          }
+        },
+        "provenance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["method", "proof_grade", "source_ids"],
+          "properties": {
+            "method": {"type": "string", "minLength": 1},
+            "proof_grade": {"$ref": "#/$defs/proof_grade"},
+            "source_ids": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/id"}, "uniqueItems": true}
+          }
+        }
+      }
+    },
+    "rating": {"type": "integer", "minimum": 0, "maximum": 99},
+    "preserve-field": {"type": "object", "additionalProperties": false, "required": ["policy"], "properties": {"policy": {"const": "preserve-existing-mode1"}}},
+    "fact-fallback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field", "method", "value", "reason", "proof"],
+      "properties": {
+        "field": {"enum": ["birth_date", "nationality", "height_cm", "weight_kg", "shirt_number"]},
+        "method": {"enum": ["deterministic-default", "nearby-season", "preserve-existing-mode1"]},
+        "value": {},
+        "reason": {"type": "string", "minLength": 1},
+        "proof": {"$ref": "#/$defs/proof-ref"}
+      }
+    },
+    "manager": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "carrier_id", "name", "proof"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"}, "person_id": {"$ref": "#/$defs/id"},
+        "carrier_id": {"type": "integer", "minimum": 1},
+        "name": {"type": "string", "minLength": 1},
+        "native_names": {
+          "type": "object", "additionalProperties": false,
+          "required": ["surname", "display_name"],
+          "properties": {
+            "surname": {"type": "string", "minLength": 1, "maxLength": 255},
+            "display_name": {"type": "string", "minLength": 1, "maxLength": 255}
+          }
+        },
+        "policy": {"enum": ["write", "preserve-existing-mode1"]},
+        "proof": {"$ref": "#/$defs/proof-ref"}
+      }
+    },
+    "kit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["club_id", "artifact_ids", "proof"],
+      "properties": {"club_id": {"$ref": "#/$defs/id"}, "artifact_ids": {"type": "array", "items": {"$ref": "#/$defs/id"}, "uniqueItems": true}, "policy": {"enum": ["write", "preserve-existing-mode1"]}, "proof": {"$ref": "#/$defs/proof-ref"}}
+    },
+    "portrait": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["player_id", "status", "proof"],
+      "properties": {
+        "player_id": {"$ref": "#/$defs/id"},
+        "status": {"type": "string", "enum": ["applied", "native-no-photo", "unresolved"]},
+        "original_artifact_id": {"$ref": "#/$defs/id"},
+        "crop_artifact_id": {"$ref": "#/$defs/id"},
+        "crop_recipe_artifact_id": {"$ref": "#/$defs/id"},
+        "conversion_receipt_artifact_id": {"$ref": "#/$defs/id"},
+        "output_container_artifact_id": {"$ref": "#/$defs/id"},
+        "source_uri": {"type": "string", "format": "uri"},
+        "review_reason": {"type": "string", "minLength": 1},
+        "proof": {"$ref": "#/$defs/proof-ref"}
+      }
+    },
+    "calendar": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["base_year", "target_year", "target_rollover_year", "patch_artifact_id", "proof"],
+      "properties": {"base_year": {"const": 1998}, "target_year": {"type": "integer", "minimum": 1900, "maximum": 2025}, "target_rollover_year": {"type": "integer", "minimum": 1901, "maximum": 2026}, "patch_artifact_id": {"$ref": "#/$defs/id"}, "proof": {"$ref": "#/$defs/proof-ref"}}
+    },
+    "proof-ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["grade", "artifact_id"],
+      "properties": {"grade": {"$ref": "#/$defs/proof_grade"}, "artifact_id": {"$ref": "#/$defs/id"}}
+    },
+    "source-identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "player_id"],
+      "properties": {"provider": {"const": "transfermarkt"}, "player_id": {"type": "string", "pattern": "^[1-9][0-9]{0,17}$"}}
+    }
+  }
+}

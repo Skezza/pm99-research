@@ -2,6 +2,13 @@
 
 This file is the only documentation index. Use it as the first stop.
 
+## Current Work
+
+- [../CURRENT_WORK.md](../CURRENT_WORK.md): current priorities, workers and progress.
+- [WORK_HANDOFF.md](WORK_HANDOFF.md): source session, receipts and update rules.
+- [../plan.md](../plan.md): entry point; the May English 80 plan is historical.
+- [ITALIAN_OPENING_XI_DELIVERY_2026-10-08.md](ITALIAN_OPENING_XI_DELIVERY_2026-10-08.md): three source-bound XI repairs, evidence scopes, supported reconstruction and pending delivery gates.
+
 ## Current Authority
 
 PM99RE is a research/integration workspace. Current repository-shape and agent

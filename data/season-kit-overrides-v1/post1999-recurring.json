@@ -1,0 +1,138 @@
+{
+  "schema_version": "pm99-season-kit-source-overrides-batch-v1",
+  "allow_unhashed_source": true,
+  "credit": "Football Kit Archive; season-specific factual pages linked per row. PM99 renders are independent coarse editorial approximations.",
+  "seasons": [
+    {
+      "season": "2006/07",
+      "clubs": [
+        {"club": "Accrington Stanley", "source_url": "https://www.footballkitarchive.com/accrington-stanley-2006-07-home-kit/", "attribution": "Football Kit Archive", "facts": "2006/07 home kit", "style": {"name": "Accrington Stanley", "pattern": "solid", "colors": ["red"], "shorts": "white", "trim": "white", "notes": "Source-linked PM99-scale editorial approximation"}}
+      ]
+    },
+    {
+      "season": "2007/08",
+      "clubs": [
+        {"club": "Accrington Stanley", "source_url": "https://www.footballkitarchive.com/accrington-stanley-2007-08-home-kit/", "attribution": "Football Kit Archive", "facts": "2007/08 home kit", "style": {"name": "Accrington Stanley", "pattern": "solid", "colors": ["red"], "shorts": "white", "trim": "white", "notes": "Source-linked PM99-scale editorial approximation"}}
+      ]
+    },
+    {
+      "season": "2008/09",
+      "clubs": [
+        {"club": "Accrington Stanley", "source_url": "https://www.footballkitarchive.com/accrington-stanley-2008-09-home-kit/", "attribution": "Football Kit Archive", "facts": "2008/09 home kit", "style": {"name": "Accrington Stanley", "pattern": "solid", "colors": ["red"], "shorts": "white", "trim": "white", "notes": "Source-linked PM99-scale editorial approximation"}},
+        {"club": "Brighton & Hove Albion", "source_url": "https://www.historicalkits.co.uk/Brighton_and_Hove_Albion/Brighton_and_Hove_Albion.htm", "attribution": "Copyright Historical Football Kits and reproduced by kind permission.", "facts": "2008/09 home kit; exact-season HFK variants require visual selection", "style": {"name": "Brighton & Hove Albion", "pattern": "vertical_stripes", "colors": ["blue", "white"], "shorts": "blue", "trim": "white", "stripe_count": 5, "notes": "Source-linked PM99-scale editorial approximation"}},
+        {"club": "Gillingham", "source_url": "https://www.footballkitarchive.com/gillingham-2008-09-home-kit/", "attribution": "Football Kit Archive", "facts": "2008/09 home kit", "style": {"name": "Gillingham", "pattern": "solid", "colors": ["blue"], "shorts": "blue", "trim": "white", "notes": "Source-linked PM99-scale editorial approximation"}},
+        {"club": "Luton Town", "source_url": "https://www.historicalkits.co.uk/Luton_Town/Luton_Town.htm", "attribution": "Copyright Historical Football Kits and reproduced by kind permission.", "facts": "Opening August 2008 home variant; exact dated HFK page", "style": {"name": "Luton Town", "pattern": "solid", "colors": ["orange"], "shorts": "white", "trim": "black", "notes": "Source-linked PM99-scale editorial approximation"}}
+      ]
+    },
+    {
+      "season": "2009/10",
+      "clubs": [
+        {"club": "Accrington Stanley", "source_url": "https://www.footballkitarchive.com/accrington-stanley-2009-10-home-kit/", "attribution": "Football Kit Archive", "facts": "2009/10 home kit", "style": {"name": "Accrington Stanley", "pattern": "solid", "colors": ["red"], "shorts": "white", "trim": "white", "notes": "Source-linked PM99-scale editorial approximation"}}
+      ]
+    },
+    {
+      "season": "2010/11",
+      "clubs": [
+        {"club": "Accrington Stanley", "source_url": "https://www.footballkitarchive.com/accrington-stanley-2010-11-home-kit/", "attribution": "Football Kit Archive", "facts": "2010/11 home kit", "style": {"name": "Accrington Stanley", "pattern": "solid", "colors": ["red"], "shorts": "white", "trim": "white", "notes": "Source-linked PM99-scale editorial approximation"}}
+      ]
+    },
+    {
+      "season": "2011/12",
+      "clubs": [
+        {"club": "Accrington Stanley", "source_url": "https://www.footballkitarchive.com/accrington-stanley-2011-12-home-kit/", "attribution": "Football Kit Archive", "facts": "2011/12 home kit", "style": {"name": "Accrington Stanley", "pattern": "solid", "colors": ["red"], "shorts": "white", "trim": "white", "notes": "Source-linked PM99-scale editorial approximation"}}
+      ]
+    },
+    {
+      "season": "2012/13",
+      "clubs": [
+        {"club": "Accrington Stanley", "source_url": "https://www.footballkitarchive.com/accrington-stanley-2012-13-home-kit/", "attribution": "Football Kit Archive", "facts": "2012/13 home kit", "style": {"name": "Accrington Stanley", "pattern": "solid", "colors": ["red"], "shorts": "white", "trim": "white", "notes": "Source-linked PM99-scale editorial approximation"}}
+      ]
+    },
+    {
+      "season": "2013/14",
+      "clubs": [
+        {"club": "Accrington Stanley", "source_url": "https://www.footballkitarchive.com/accrington-stanley-2013-14-home-kit/", "attribution": "Football Kit Archive", "facts": "2013/14 home kit", "style": {"name": "Accrington Stanley", "pattern": "solid", "colors": ["red"], "shorts": "white", "trim": "white", "notes": "Source-linked PM99-scale editorial approximation"}},
+        {"club": "Newport County", "source_url": "https://www.footballkitarchive.com/newport-county-2013-14-home-kit/", "attribution": "Football Kit Archive", "facts": "2013/14 home kit", "style": {"name": "Newport County", "pattern": "solid", "colors": ["gold"], "shorts": "black", "trim": "black", "notes": "Source-linked PM99-scale editorial approximation"}}
+      ]
+    },
+    {
+      "season": "2014/15",
+      "clubs": [
+        {"club": "Accrington Stanley", "source_url": "https://www.footballkitarchive.com/accrington-stanley-2014-15-home-kit/", "attribution": "Football Kit Archive", "facts": "2014/15 home kit", "style": {"name": "Accrington Stanley", "pattern": "solid", "colors": ["red"], "shorts": "white", "trim": "white", "notes": "Source-linked PM99-scale editorial approximation"}},
+        {"club": "Newport County", "source_url": "https://www.footballkitarchive.com/newport-county-2014-15-home-kit/", "attribution": "Football Kit Archive", "facts": "2014/15 home kit", "style": {"name": "Newport County", "pattern": "solid", "colors": ["gold"], "shorts": "black", "trim": "black", "notes": "Source-linked PM99-scale editorial approximation"}}
+      ]
+    },
+    {
+      "season": "2016/17",
+      "clubs": [
+        {"club": "Accrington Stanley", "source_url": "https://www.footballkitarchive.com/accrington-stanley-2016-17-home-kit/", "attribution": "Football Kit Archive", "facts": "2016/17 home kit", "style": {"name": "Accrington Stanley", "pattern": "solid", "colors": ["red"], "shorts": "white", "trim": "white", "notes": "Source-linked PM99-scale editorial approximation"}},
+        {"club": "Newport County", "source_url": "https://www.footballkitarchive.com/newport-county-2016-17-home-kit/", "attribution": "Football Kit Archive", "facts": "2016/17 home kit", "style": {"name": "Newport County", "pattern": "solid", "colors": ["gold"], "shorts": "black", "trim": "black", "notes": "Source-linked PM99-scale editorial approximation"}}
+      ]
+    },
+    {
+      "season": "2017/18",
+      "clubs": [
+        {"club": "Accrington Stanley", "source_url": "https://www.footballkitarchive.com/accrington-stanley-2017-18-home-kit/", "attribution": "Football Kit Archive", "facts": "2017/18 home kit", "style": {"name": "Accrington Stanley", "pattern": "solid", "colors": ["red"], "shorts": "white", "trim": "white", "notes": "Source-linked PM99-scale editorial approximation"}},
+        {"club": "Newport County", "source_url": "https://www.footballkitarchive.com/newport-county-2017-18-home-kit/", "attribution": "Football Kit Archive", "facts": "2017/18 home kit", "style": {"name": "Newport County", "pattern": "solid", "colors": ["gold"], "shorts": "black", "trim": "black", "notes": "Source-linked PM99-scale editorial approximation"}}
+      ]
+    },
+    {
+      "season": "2018/19",
+      "clubs": [
+        {"club": "Accrington Stanley", "source_url": "https://www.footballkitarchive.com/accrington-stanley-2018-19-home-kit/", "attribution": "Football Kit Archive", "facts": "2018/19 home kit", "style": {"name": "Accrington Stanley", "pattern": "solid", "colors": ["red"], "shorts": "white", "trim": "white", "notes": "Source-linked PM99-scale editorial approximation"}},
+        {"club": "Newport County", "source_url": "https://www.footballkitarchive.com/newport-county-2018-19-home-kit/", "attribution": "Football Kit Archive", "facts": "2018/19 home kit", "style": {"name": "Newport County", "pattern": "solid", "colors": ["gold"], "shorts": "black", "trim": "black", "notes": "Source-linked PM99-scale editorial approximation"}}
+      ]
+    },
+    {
+      "season": "2019/20",
+      "clubs": [
+        {"club": "Accrington Stanley", "source_url": "https://www.footballkitarchive.com/accrington-stanley-2019-20-home-kit/", "attribution": "Football Kit Archive", "facts": "2019/20 home kit", "style": {"name": "Accrington Stanley", "pattern": "solid", "colors": ["red"], "shorts": "white", "trim": "white", "notes": "Source-linked PM99-scale editorial approximation"}},
+        {"club": "Newport County", "source_url": "https://www.footballkitarchive.com/newport-county-2019-20-home-kit/", "attribution": "Football Kit Archive", "facts": "2019/20 home kit", "style": {"name": "Newport County", "pattern": "solid", "colors": ["gold"], "shorts": "black", "trim": "black", "notes": "Source-linked PM99-scale editorial approximation"}}
+      ]
+    },
+    {
+      "season": "2020/21",
+      "clubs": [
+        {"club": "Accrington Stanley", "source_url": "https://www.footballkitarchive.com/accrington-stanley-2020-21-home-kit/", "attribution": "Football Kit Archive", "facts": "2020/21 home kit", "style": {"name": "Accrington Stanley", "pattern": "solid", "colors": ["red"], "shorts": "white", "trim": "white", "notes": "Source-linked PM99-scale editorial approximation"}},
+        {"club": "Newport County", "source_url": "https://www.footballkitarchive.com/newport-county-2020-21-home-kit/", "attribution": "Football Kit Archive", "facts": "2020/21 home kit", "style": {"name": "Newport County", "pattern": "solid", "colors": ["gold"], "shorts": "black", "trim": "black", "notes": "Source-linked PM99-scale editorial approximation"}},
+        {"club": "Bournemouth", "source_url": "https://www.footballkitarchive.com/afc-bournemouth-2020-21-home-kit/", "attribution": "Football Kit Archive", "facts": "Opening league-season September 2020 home kit", "style": {"name": "Bournemouth", "pattern": "vertical_stripes", "colors": ["red", "black"], "shorts": "black", "trim": "black", "stripe_count": 5, "notes": "Source-linked PM99-scale editorial approximation"}}
+      ]
+    },
+    {
+      "season": "2021/22",
+      "clubs": [
+        {"club": "Accrington Stanley", "source_url": "https://www.footballkitarchive.com/accrington-stanley-2021-22-home-kit/", "attribution": "Football Kit Archive", "facts": "2021/22 home kit", "style": {"name": "Accrington Stanley", "pattern": "solid", "colors": ["red"], "shorts": "white", "trim": "white", "notes": "Source-linked PM99-scale editorial approximation"}},
+        {"club": "Newport County", "source_url": "https://www.footballkitarchive.com/newport-county-2021-22-home-kit/", "attribution": "Football Kit Archive", "facts": "2021/22 home kit", "style": {"name": "Newport County", "pattern": "solid", "colors": ["gold"], "shorts": "black", "trim": "black", "notes": "Source-linked PM99-scale editorial approximation"}}
+      ]
+    },
+    {
+      "season": "2022/23",
+      "clubs": [
+        {"club": "Accrington Stanley", "source_url": "https://www.footballkitarchive.com/accrington-stanley-2022-23-home-kit/", "attribution": "Football Kit Archive", "facts": "2022/23 home kit", "style": {"name": "Accrington Stanley", "pattern": "solid", "colors": ["red"], "shorts": "white", "trim": "white", "notes": "Source-linked PM99-scale editorial approximation"}},
+        {"club": "Newport County", "source_url": "https://www.footballkitarchive.com/newport-county-2022-23-home-kit/", "attribution": "Football Kit Archive", "facts": "2022/23 home kit", "style": {"name": "Newport County", "pattern": "solid", "colors": ["gold"], "shorts": "black", "trim": "black", "notes": "Source-linked PM99-scale editorial approximation"}}
+      ]
+    },
+    {
+      "season": "2023/24",
+      "clubs": [
+        {"club": "Accrington Stanley", "source_url": "https://www.footballkitarchive.com/accrington-stanley-2023-24-home-kit/", "attribution": "Football Kit Archive", "facts": "2023/24 home kit", "style": {"name": "Accrington Stanley", "pattern": "solid", "colors": ["red"], "shorts": "white", "trim": "white", "notes": "Source-linked PM99-scale editorial approximation"}},
+        {"club": "Newport County", "source_url": "https://www.footballkitarchive.com/newport-county-2023-24-home-kit/", "attribution": "Football Kit Archive", "facts": "2023/24 home kit", "style": {"name": "Newport County", "pattern": "solid", "colors": ["gold"], "shorts": "black", "trim": "black", "notes": "Source-linked PM99-scale editorial approximation"}}
+      ]
+    },
+    {
+      "season": "2024/25",
+      "clubs": [
+        {"club": "Accrington Stanley", "source_url": "https://www.footballkitarchive.com/accrington-stanley-2024-25-home-kit/", "attribution": "Football Kit Archive", "facts": "2024/25 home kit", "style": {"name": "Accrington Stanley", "pattern": "solid", "colors": ["red"], "shorts": "white", "trim": "white", "notes": "Source-linked PM99-scale editorial approximation"}},
+        {"club": "Newport County", "source_url": "https://www.footballkitarchive.com/newport-county-2024-25-home-kit/", "attribution": "Football Kit Archive", "facts": "2024/25 home kit", "style": {"name": "Newport County", "pattern": "solid", "colors": ["gold"], "shorts": "black", "trim": "black", "notes": "Source-linked PM99-scale editorial approximation"}},
+        {"club": "Bromley", "source_url": "https://www.footballkitarchive.com/bromley-2024-25-home-kit/", "attribution": "Football Kit Archive", "facts": "2024/25 home kit", "style": {"name": "Bromley", "pattern": "solid", "colors": ["white"], "shorts": "black", "trim": "black", "notes": "Source-linked PM99-scale editorial approximation"}}
+      ]
+    },
+    {
+      "season": "2025/26",
+      "clubs": [
+        {"club": "Accrington Stanley", "source_url": "https://www.footballkitarchive.com/accrington-stanley-2025-26-home-kit/", "attribution": "Football Kit Archive", "facts": "2025/26 home kit", "style": {"name": "Accrington Stanley", "pattern": "solid", "colors": ["red"], "shorts": "white", "trim": "white", "notes": "Source-linked PM99-scale editorial approximation"}},
+        {"club": "Newport County", "source_url": "https://www.footballkitarchive.com/newport-county-2025-26-home-kit/", "attribution": "Football Kit Archive", "facts": "2025/26 home kit", "style": {"name": "Newport County", "pattern": "solid", "colors": ["gold"], "shorts": "black", "trim": "black", "notes": "Source-linked PM99-scale editorial approximation"}}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "schema": "pm99-foreign-host-hitpoints-v1",
+  "capture_id": "foreign-host-spain-tile-sweep-20260830",
+  "purpose": "Click a visibly opaque shirt-body pixel for each Spain tile; replaces transparent-centre probes.",
+  "hitpoints": [
+    {"tile_index": 0, "x": 27, "y": 382},
+    {"tile_index": 1, "x": 59, "y": 382},
+    {"tile_index": 2, "x": 91, "y": 382},
+    {"tile_index": 3, "x": 123, "y": 382},
+    {"tile_index": 4, "x": 145, "y": 382},
+    {"tile_index": 5, "x": 187, "y": 382},
+    {"tile_index": 6, "x": 211, "y": 382},
+    {"tile_index": 7, "x": 251, "y": 382},
+    {"tile_index": 8, "x": 275, "y": 382},
+    {"tile_index": 9, "x": 315, "y": 382},
+    {"tile_index": 10, "x": 19, "y": 420},
+    {"tile_index": 11, "x": 52, "y": 420},
+    {"tile_index": 12, "x": 91, "y": 420},
+    {"tile_index": 13, "x": 115, "y": 420},
+    {"tile_index": 14, "x": 155, "y": 420},
+    {"tile_index": 15, "x": 179, "y": 420},
+    {"tile_index": 16, "x": 211, "y": 420},
+    {"tile_index": 17, "x": 251, "y": 420},
+    {"tile_index": 18, "x": 275, "y": 420},
+    {"tile_index": 19, "x": 307, "y": 420}
+  ]
+}

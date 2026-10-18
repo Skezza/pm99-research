@@ -1,0 +1,220 @@
+{
+  "schema": "pm99-world-editability-matrix/v1",
+  "scope": {
+    "season": "2015/16 research baseline",
+    "carrier_capacity": 543,
+    "carrier_modes": {
+      "0": 92,
+      "1": 451
+    },
+    "rule": "Record mode is a layout marker, not a country, league or playability flag."
+  },
+  "status_legend": {
+    "green": "Parser and runtime proof exist for the stated scope.",
+    "amber": "Readable or structurally understood, but a field-specific runtime proof is still required.",
+    "mixed": "A named sub-surface is green while a different explicitly named sub-surface remains unavailable.",
+    "red": "Preserve-only. Do not expose a write in the editor or compiler."
+  },
+  "surfaces": [
+    {
+      "id": "team.short_name",
+      "status": "green",
+      "storage": "Indexed EQ variable-length string",
+      "scope": "Mode 0 and mode 1 existing carrier records",
+      "runtime_contract": "Parser-backed container rebuild; all unapproved bytes are preserved.",
+      "browser_editor": "editable"
+    },
+    {
+      "id": "team.full_name",
+      "status": "green",
+      "storage": "Indexed EQ variable-length string",
+      "scope": "Mode 0 and mode 1 existing carrier records",
+      "runtime_contract": "Parser-backed container rebuild; all unapproved bytes are preserved.",
+      "browser_editor": "editable"
+    },
+    {
+      "id": "team.stadium_name",
+      "status": "green",
+      "storage": "Indexed EQ variable-length string",
+      "scope": "Mode 0 and mode 1 existing carrier records",
+      "runtime_contract": "Parser-backed container rebuild; all unapproved bytes are preserved.",
+      "browser_editor": "editable"
+    },
+    {
+      "id": "team.seated_capacity",
+      "status": "green",
+      "storage": "Signed 32-bit EQ lane immediately after the three structured club strings",
+      "scope": "Existing modern carriers. The one-lane structural patch reparses for every accepted record shape; mode 0 and the mode-1 Barcelona representative have fresh-game runtime proof.",
+      "runtime_contract": "Write only the signed seated-capacity lane; preserve standing capacity and every later byte. Barcelona EQ 1, Camp Nou, visibly changed from 120,000 to 123,456 in a fresh pre-season match.",
+      "browser_editor": "editable_existing_carrier_only"
+    },
+    {
+      "id": "team.standing_capacity",
+      "status": "amber",
+      "storage": "Second signed 32-bit EQ capacity lane where present",
+      "scope": "Directly parsed for every modern carrier",
+      "runtime_contract": "No released write or mode-1 runtime proof. Preserve this lane while editing seated capacity.",
+      "browser_editor": "read_only"
+    },
+    {
+      "id": "team.starting_finance",
+      "status": "amber",
+      "storage": "Traced DBASEPRE mode-0 finance inputs",
+      "scope": "Runtime-proven for mode 0 only; mode 1 does not share the mode-0 metadata block",
+      "runtime_contract": "Do not treat mode-0 offsets as foreign-club finance fields. Preserve mode-1 baseline values. Reopen research only if an AI-economy experiment proves a mode-1 finance input affects an in-scope gameplay surface.",
+      "browser_editor": "mode_0_only;_mode_1_preserve_baseline"
+    },
+    {
+      "id": "team.active_manager_link",
+      "status": "green",
+      "storage": "Final existing ENT id in modern EQ link table",
+      "scope": "Modern 700-byte mode-0 and mode-1 existing carriers. Barcelona proves the foreign mode-1 path with an exact 1069→1641 relink; all 451 mode-1 final IDs structurally resolve to ENT profiles.",
+      "runtime_contract": "Replace only the existing final link with an existing non-zero ENT ID. Preserve the count and every preceding ID; do not insert, delete or reorder the list.",
+      "browser_editor": "constrained_existing_final_link_only"
+    },
+    {
+      "id": "manager.surname_variable_length",
+      "status": "green",
+      "storage": "ENT dd6360/dd6361 first variable-length CP1252 name segment, rebuilt with the indexed directory",
+      "scope": "Both manager record families. Barcelona ENT 1069 `Van Gaal`→`Long Test Mgr` grows a surname-only payload 17→22 bytes; relinked full-profile ENT 731 shrinks 65→58 bytes and displays its rebuilt surname `Tester Name`.",
+      "runtime_contract": "CP1252 only and non-empty. Rebuild every indexed payload offset/length, reparse the container and prove every unrelated payload byte is unchanged. Preserve the full-profile display segment and prose tail byte-for-byte.",
+      "browser_editor": "variable_length_surname_with_indexed_rebuild"
+    },
+    {
+      "id": "manager.display_name_full_profile",
+      "status": "red",
+      "storage": "ENT dd6361 second variable-length CP1252 display-name segment",
+      "scope": "92 full-profile records. The Barcelona full-profile control shows the dashboard consumes the first surname segment, not this second name segment.",
+      "runtime_contract": "No screen that consumes this exact segment and no field-specific write proof. Preserve it and the following prose tail byte-for-byte.",
+      "browser_editor": "read_only"
+    },
+    {
+      "id": "manager.biography_and_career",
+      "status": "red",
+      "storage": "ENT prose and control delimiters",
+      "scope": "All manager profiles",
+      "runtime_contract": "No field grammar; preserve byte-for-byte.",
+      "browser_editor": "read_only"
+    },
+    {
+      "id": "player.name",
+      "status": "amber",
+      "storage": "Family-specific JUG variable/fixed native name layouts",
+      "scope": "Mode-1 linked rosters are 9,211 dd6360 rows plus one dd6361 row (Marcus Bignot, JUG 10958); corpus-wide family totals include unlinked rows. The dd6360 subset has a separate green native-window contract below.",
+      "runtime_contract": "Do not infer global variable-length support. dd6361 remains unproved; dd6360 may only use the stated native safe-window contract.",
+      "browser_editor": "family_gated"
+    },
+    {
+      "id": "player.dd6360.name_native_window",
+      "status": "green",
+      "storage": "Two compact XOR/u16 CP1252 name strings at decoded payload offset 8; the native role stream begins immediately after them",
+      "scope": "All structurally valid dd6360 records whose proposed compact strings end at or before the existing native role cursor. Kluivert / JUG 1802 is the foreign gap-4 runtime fixture.",
+      "runtime_contract": "Rebuild the compact prefix, role block and padding through the staged indexed writer; reparse it and prove every unrelated JUG payload byte is unchanged. Reject a name that would grow beyond the old native role cursor.",
+      "browser_editor": "editable_dd6360_native_window_only"
+    },
+    {
+      "id": "player.primary_and_secondary_positions",
+      "status": "amber",
+      "storage": "Six JUG fine-role bytes immediately after the dd6360 native compact strings; separate dd6361 role layout",
+      "scope": "dd6360 native cursor structurally audited across 9,353 rows; it covers 9,211 of 9,212 mode-1 roster links. Existing English work is runtime-proven; mode-1 proof is outstanding",
+      "runtime_contract": "Never use generic PlayerRecord marker offsets for dd6360. Preserve role-score bytes outside the confirmed secondary-position model.",
+      "browser_editor": "family_gated"
+    },
+    {
+      "id": "player.dd6360.nationality_and_birth_date",
+      "status": "green",
+      "storage": "dd6360 native metadata cursor after the six fine-role bytes",
+      "scope": "All 9,353 dd6360 rows, including 9,211 mode-1 roster links; two foreign mutations cover both cursor gaps. Birth year stays preserve-only for ids 28453 and 29678.",
+      "runtime_contract": "Use only the native dd6360 cursor. Kluivert (gap 4) and Guardiola (gap 3) visibly prove nationality and date in the foreign-club profile. Preserve the named legacy birth-year exceptions.",
+      "browser_editor": "editable_dd6360_only_after_native_writer_reconciliation"
+    },
+    {
+      "id": "player.dd6360.height_and_weight",
+      "status": "green",
+      "storage": "dd6360 native metadata cursor immediately after the date bytes",
+      "scope": "All 9,353 dd6360 rows, including 9,211 mode-1 roster links; both cursor gaps are runtime-proven.",
+      "runtime_contract": "The disposable foreign profiles visibly show 199 cm / 99 kg as 6 ft 6 / 15 st 8. A product writer must use the same native cursor and preserve every other byte.",
+      "browser_editor": "editable_dd6360_only_after_native_writer_reconciliation"
+    },
+    {
+      "id": "player.dd6360.visible_skills",
+      "status": "green",
+      "storage": "Nine post-cursor dd6360 skill bytes with the existing named-skill mapping",
+      "scope": "All 9,353 dd6360 rows, including 9,211 mode-1 roster links; both cursor gaps are runtime-proven.",
+      "runtime_contract": "Kluivert and Guardiola visibly show all nine skill values at 99. Only named visible skills may be written; attr0..attr2 and every unnamed byte stay preserve-only.",
+      "browser_editor": "editable_dd6360_only_after_native_writer_reconciliation"
+    },
+    {
+      "id": "player.dd6361.core_metadata",
+      "status": "amber",
+      "storage": "Separate dd6361 metadata layout",
+      "scope": "The sole mode-1 linked row is Marcus Bignot (JUG 10958, Kidderminster Harriers); corpus-wide dd6361 totals include English and unlinked rows.",
+      "runtime_contract": "Do not borrow dd6360 offsets. A generic release-mode mutation changed three unapproved decoded header/control bytes (0, 1 and 48), so it is an explicit negative control. A family-specific byte-preserving writer and visible Bignot profile proof are required.",
+      "browser_editor": "read_only_until_dd6361_byte_preserving_writer_and_runtime_proof"
+    },
+    {
+      "id": "player.attr0_attr2",
+      "status": "red",
+      "storage": "Raw JUG attribute indices",
+      "scope": "All player families",
+      "runtime_contract": "Their in-game semantics and cross-family effects are not closed.",
+      "browser_editor": "read_only"
+    },
+    {
+      "id": "player.minifoto",
+      "status": "green",
+      "storage": "MINIFOTO player-id keyed BMP record or loose player-id BMP",
+      "scope": "Existing player record ids",
+      "runtime_contract": "Validate an exact PM99 BMP; where no appropriate image exists use native no-photo, never a fake silhouette.",
+      "browser_editor": "editable"
+    },
+    {
+      "id": "team.roster_links",
+      "status": "green",
+      "storage": "EQ external JUG links",
+      "scope": "All 543 can be read. A F.C. Barcelona/Real Madrid mode-1 control proves one-for-one replacement of existing JUG rows changes the foreign offer list and the player's profile club when both sides are updated, with flags and row counts preserved.",
+      "runtime_contract": "Use a source-and-target transaction, re-open validation and a final no-duplicate-JUG-id audit. Do not expose additions, removals, reordering or flag changes. The 35 legacy duplicate rows are preserve-only until loan/duplicate precedence is traced.",
+      "browser_editor": "constrained_transaction_only"
+    },
+    {
+      "id": "team.opening_xi_and_tactics",
+      "status": "amber",
+      "storage": "Team-specific initial EQ state",
+      "scope": "Mode 0 proven. Mode 1 grid is parsed by DBASEPRE and a valid Barcelona 4-3-3 reaches a fresh match while an impossible grid is rejected, but visual mapping and opening-XI order remain unproved.",
+      "runtime_contract": "This is not the user-facing TACTIC.* library. Keep mode-1 grid and XI order read-only until a reproducible visual pitch/lineup proof or deeper final object-consumer trace closes each separately.",
+      "browser_editor": "read_only_until_mode_1_proof"
+    },
+    {
+      "id": "team.kit",
+      "status": "mixed",
+      "storage": "Carrier-keyed bitmap records named EQ96<four-digit EQ id>.BMP",
+      "scope": "MINIESC.PKF, NANOESC.PKF and RIDIESC.PKF contain one compact UI record for every one of the 543 modern carriers. Barcelona EQ 1 copied from Real Madrid EQ 4 is visibly proved in the foreign preseason selector. BIGCAMP.PKF (80) and BIGESC.PKF (91) are mode-0 English-only stock surfaces.",
+      "runtime_contract": "A compiler may write only the existing three compact UI bitmap extents as one exact-shape transaction. Do not create foreign BIG* records or claim a distinct home/away or 3D kit until that separate render path has an in-game proof.",
+      "browser_editor": "compact_ui_asset_edit_only;_large_or_3d_surface_read_only"
+    },
+    {
+      "id": "competition.membership",
+      "status": "red",
+      "storage": "Unidentified continental draw candidate-pool membership contract; resolved fixtures reference existing EQ carriers, while no foreign domestic-table storage is exposed in an English-managed game",
+      "scope": "Foreign topology and continental competitions",
+      "runtime_contract": "Manchester United's live Round 2 draw resolves to existing EQ 2151 Valletta and consumes an indexed variable-length rename in both legs. A fresh trace confirms the loaded carrier before the draw and distinct generated fixture copies afterward. The apparent raw 2151-id sequence at 0x003dcf46 is Wine's mapped normnfc.nls Unicode-normalisation resource, not PM99 data or a club pool. This proves carrier identity consumption, not candidate-pool membership. Never infer a country or division field from record order, mode, a preseason picker, or a viewer grouping. Preserve foreign topology until the pool source and a safe membership-write proof exist.",
+      "browser_editor": "read_only"
+    },
+    {
+      "id": "competition.display_name",
+      "status": "green",
+      "storage": "MANAGPRE executable string, not database data",
+      "scope": "Separate SkezMod patcher feature",
+      "runtime_contract": "Keep the database editor out of this path.",
+      "browser_editor": "not_in_database_editor"
+    },
+    {
+      "id": "stars.special_carrier",
+      "status": "green",
+      "storage": "EQ id 9900 special path and linked JUG rows",
+      "scope": "Ten Stars slots",
+      "runtime_contract": "Database repair re-keys 9900 to 9899 and pads linked payloads to >=80; all ten exact profile routes and one offer route now pass with an unmodified EXE.",
+      "browser_editor": "compiler_internal_only"
+    }
+  ]
+}

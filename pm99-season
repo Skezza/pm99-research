@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+
+case "${1:-}" in
+  preview)
+    shift
+    exec python3 "$repo_dir/scripts/pm99_simple_season_v1.py" "$@"
+    ;;
+  status)
+    shift
+    exec python3 "$repo_dir/scripts/pm99_season_status_v2.py" "$@"
+    ;;
+  play)
+    shift
+    exec python3 "$repo_dir/scripts/pm99_season_play_v1.py" "$@"
+    ;;
+  build)
+    shift
+    exec python3 "$repo_dir/scripts/build_registered_quality_release_v1.py" "$@"
+    ;;
+  validate)
+    shift
+    exec python3 "$repo_dir/scripts/pm99_season_play_v1.py" "${1:-all}" --check
+    ;;
+  qa)
+    shift
+    if [[ $# -eq 0 ]]; then
+      set -- all
+    fi
+    exec python3 "$repo_dir/scripts/pm99_season_qa_v1.py" "$@"
+    ;;
+  prove)
+    shift
+    exec python3 "$repo_dir/scripts/capture_registered_season_runtime_v1.py" "$@"
+    ;;
+  evidence)
+    shift
+    exec python3 "$repo_dir/scripts/pm99_season_evidence_v1.py" "$@"
+    ;;
+  portraits)
+    shift
+    exec python3 "$repo_dir/scripts/season_portrait_pipeline_v1.py" "$@"
+    ;;
+  visual-fix)
+    shift
+    exec python3 "$repo_dir/scripts/season_visual_patch_v1.py" "$@"
+    ;;
+  record-qa)
+    shift
+    exec python3 "$repo_dir/scripts/register_season_qa_results_v1.py" "$@"
+    ;;
+  *)
+    echo "usage:" >&2
+    echo "  ./pm99-season preview YYYY-YY [--offline] [--output-root PATH]" >&2
+    echo "  ./pm99-season status [YYYY-YY|all] [--verify] [--json]" >&2
+    echo "  ./pm99-season validate [YYYY-YY|all]" >&2
+    echo "  ./pm99-season build YYYY-YY|all [--release-id ID] [--jobs N] [--resume] [--register]" >&2
+    echo "  ./pm99-season qa [YYYY-YY|all] [--jobs N]" >&2
+    echo "  ./pm99-season prove YYYY-YY [--execute --attest] [--worker NAME]" >&2
+    echo "  ./pm99-season evidence [YYYY-YY|all] [--json]" >&2
+    echo "  ./pm99-season portraits {plan|fetch|apply|validate} ..." >&2
+    echo "  ./pm99-season visual-fix {plan|materialise|apply|publish|extend-kit} YYYY-YY|all [--game PATH]" >&2
+    echo "  ./pm99-season record-qa REPORT_ROOT [YYYY-YY|all]" >&2
+    echo "  ./pm99-season play YYYY-YY [--print-command] [--original for 2015-16]" >&2
+    exit 2
+    ;;
+esac

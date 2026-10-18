@@ -1,0 +1,32 @@
+{
+  "schema": "pm99-foreign-host-capture-v1",
+  "capture_id": "foreign-host-spain-tile-sweep-20260830",
+  "route_selection_limit": 1,
+  "country": {
+    "canonical_name": "Spain",
+    "ui_label": "SPAIN",
+    "flag_selector": {"x": 67, "y": 250}
+  },
+  "tiles": [
+    {"tile_index": 0, "selector": {"x": 27, "y": 382}, "eq_record_id": 1, "reviewed_visible_club_name": "F.C. Barcelona", "screenshot": "screens/19_spain_tile_382_0.png", "reviewed_frame_sha256": "e1798b8ffa50399c7889cc65635f631519e5fea4e4deae5d40d71bc72c188c00"},
+    {"tile_index": 1, "selector": {"x": 59, "y": 382}, "eq_record_id": 2, "reviewed_visible_club_name": "R.C. Deportivo", "screenshot": "screens/20_spain_tile_382_1.png", "reviewed_frame_sha256": "05c103cf0b670b9ebcce550c7250119917a5593080043f9abc9bdf955f0d2085"},
+    {"tile_index": 2, "selector": {"x": 91, "y": 382}, "eq_record_id": 3, "reviewed_visible_club_name": "R. Zaragoza", "screenshot": "screens/21_spain_tile_382_2.png", "reviewed_frame_sha256": "ac5b306feabe82c05e88596cf40d3dbc3ae967941869e5c0e4b628a18c927cd3"},
+    {"tile_index": 3, "selector": {"x": 123, "y": 382}, "eq_record_id": 4, "reviewed_visible_club_name": "Real Madrid C.F.", "screenshot": "screens/22_spain_tile_382_3.png", "reviewed_frame_sha256": "dec085efc5b7ee471122ec3a680a0d28a7ecef495eac369e47604eb629ed52e3"},
+    {"tile_index": 4, "selector": {"x": 155, "y": 382}, "eq_record_id": 5, "reviewed_visible_club_name": "Athletic Club", "screenshot": "screens/23_spain_tile_382_4.png", "reviewed_frame_sha256": "dec085efc5b7ee471122ec3a680a0d28a7ecef495eac369e47604eb629ed52e3"},
+    {"tile_index": 5, "selector": {"x": 187, "y": 382}, "eq_record_id": 7, "reviewed_visible_club_name": "Valencia C.F.", "screenshot": "screens/24_spain_tile_382_5.png", "reviewed_frame_sha256": "ce019229200d7c286b2810396db4b40e501dfe5cc4afbed64429d573a7b97b7e"},
+    {"tile_index": 6, "selector": {"x": 219, "y": 382}, "eq_record_id": 8, "reviewed_visible_club_name": "R. Racing", "screenshot": "screens/25_spain_tile_382_6.png", "reviewed_frame_sha256": "ce019229200d7c286b2810396db4b40e501dfe5cc4afbed64429d573a7b97b7e"},
+    {"tile_index": 7, "selector": {"x": 251, "y": 382}, "eq_record_id": 9, "reviewed_visible_club_name": "R. Oviedo", "screenshot": "screens/26_spain_tile_382_7.png", "reviewed_frame_sha256": "fdff2ff3a97b619e67a82f72542b134a78507ebe2d7967f65c4e038830aadfa2"},
+    {"tile_index": 8, "selector": {"x": 283, "y": 382}, "eq_record_id": 10, "reviewed_visible_club_name": "C.D. Tenerife", "screenshot": "screens/27_spain_tile_382_8.png", "reviewed_frame_sha256": "fdff2ff3a97b619e67a82f72542b134a78507ebe2d7967f65c4e038830aadfa2"},
+    {"tile_index": 9, "selector": {"x": 315, "y": 382}, "eq_record_id": 11, "reviewed_visible_club_name": "Real Sociedad", "screenshot": "screens/28_spain_tile_382_9.png", "reviewed_frame_sha256": "5dfd14a75be8a7391b5e1990ecdbd5ecfac9a99d12908ad45c1e27e55f44fc3e"},
+    {"tile_index": 10, "selector": {"x": 27, "y": 420}, "eq_record_id": 12, "reviewed_visible_club_name": "C. At. Madrid", "screenshot": "screens/29_spain_tile_420_0.png", "reviewed_frame_sha256": "5dfd14a75be8a7391b5e1990ecdbd5ecfac9a99d12908ad45c1e27e55f44fc3e"},
+    {"tile_index": 11, "selector": {"x": 59, "y": 420}, "eq_record_id": 15, "reviewed_visible_club_name": "R.C. Celta", "screenshot": "screens/30_spain_tile_420_1.png", "reviewed_frame_sha256": "5dfd14a75be8a7391b5e1990ecdbd5ecfac9a99d12908ad45c1e27e55f44fc3e"},
+    {"tile_index": 12, "selector": {"x": 91, "y": 420}, "eq_record_id": 17, "reviewed_visible_club_name": "R. Valladolid", "screenshot": "screens/31_spain_tile_420_2.png", "reviewed_frame_sha256": "8a816f956a69ef8cadd433eb3024933195734dce8ff224c7588adc5c3c434499"},
+    {"tile_index": 13, "selector": {"x": 123, "y": 420}, "eq_record_id": 18, "reviewed_visible_club_name": "R.C.D. Espanyol", "screenshot": "screens/32_spain_tile_420_3.png", "reviewed_frame_sha256": "8a816f956a69ef8cadd433eb3024933195734dce8ff224c7588adc5c3c434499"},
+    {"tile_index": 14, "selector": {"x": 155, "y": 420}, "eq_record_id": 19, "reviewed_visible_club_name": "R. Betis B.", "screenshot": "screens/33_spain_tile_420_4.png", "reviewed_frame_sha256": "d44b8169056a7cfe4002d7d86a0d22cca7aa57fd732b79812a8dfa987528301f"},
+    {"tile_index": 15, "selector": {"x": 187, "y": 420}, "eq_record_id": 25, "reviewed_visible_club_name": "R.C.D. Mallorca", "screenshot": "screens/34_spain_tile_420_5.png", "reviewed_frame_sha256": "d44b8169056a7cfe4002d7d86a0d22cca7aa57fd732b79812a8dfa987528301f"},
+    {"tile_index": 16, "selector": {"x": 219, "y": 420}, "eq_record_id": 36, "reviewed_visible_club_name": "Villarreal C. F.", "screenshot": "screens/35_spain_tile_420_6.png", "reviewed_frame_sha256": "d44b8169056a7cfe4002d7d86a0d22cca7aa57fd732b79812a8dfa987528301f"},
+    {"tile_index": 17, "selector": {"x": 251, "y": 420}, "eq_record_id": 38, "reviewed_visible_club_name": "U. D. Salamanca", "screenshot": "screens/36_spain_tile_420_7.png", "reviewed_frame_sha256": "4b1c5137f41c95c0ce683d0e8ff6a885511e9805f781335aeceb4f747963e47a"},
+    {"tile_index": 18, "selector": {"x": 283, "y": 420}, "eq_record_id": 40, "reviewed_visible_club_name": "C.F. Extremadura", "screenshot": "screens/37_spain_tile_420_8.png", "reviewed_frame_sha256": "4b1c5137f41c95c0ce683d0e8ff6a885511e9805f781335aeceb4f747963e47a"},
+    {"tile_index": 19, "selector": {"x": 315, "y": 420}, "eq_record_id": 48, "reviewed_visible_club_name": "D. Alavés", "screenshot": "screens/38_spain_tile_420_9.png", "reviewed_frame_sha256": "4b1c5137f41c95c0ce683d0e8ff6a885511e9805f781335aeceb4f747963e47a"}
+  ]
+}

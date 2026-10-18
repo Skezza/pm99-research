@@ -1,0 +1,20 @@
+{
+  "schema_version": "pm99-season-kit-source-overrides-v1",
+  "season": "2001/02",
+  "clubs": [
+    {
+      "club": "Oxford United",
+      "source_url": "https://commons.wikimedia.org/wiki/Oxford_United_F.C._kits",
+      "attribution": "Wikimedia Commons contributors; individual files retain their stated licences. Exact-season factual description cross-checked against Football Kit Archive.",
+      "facts": "2001/02 home (Commons labels the home interval 2001-03); plain yellow and black; TFG Sports; Buildbase",
+      "style": {
+        "name": "Oxford United",
+        "pattern": "solid",
+        "colors": ["yellow"],
+        "shorts": "black",
+        "trim": "black",
+        "notes": "PM99-scale factual approximation from exact-season source: plain yellow/black home kit"
+      }
+    }
+  ]
+}

@@ -47,6 +47,7 @@ TRANSFERMARKT_EXACT_SEARCH_HISTORY_SCHEMA = (
     "pm99-world-2015-transfermarkt-exact-search-manager-history-v6"
 )
 SOURCE_TAIL_MANAGER_HISTORY_SCHEMA = "pm99-world-2015-source-tail-manager-history-v1"
+RESIDUAL_MANAGER_HISTORY_SCHEMA = "pm99-world-2015-residual-manager-history-v1"
 
 
 class AllocationError(ValueError):
@@ -178,7 +179,10 @@ def _foreign_manager_sources(
         "dated-national-wikipedia-manager-match": "dated-national-wikipedia-history-source",
     }
     for history in histories:
-        if history.get("schema_version") == SOURCE_TAIL_MANAGER_HISTORY_SCHEMA:
+        if history.get("schema_version") in {
+            SOURCE_TAIL_MANAGER_HISTORY_SCHEMA,
+            RESIDUAL_MANAGER_HISTORY_SCHEMA,
+        }:
             for row in history.get("rows", []):
                 if not isinstance(row, Mapping):
                     continue
@@ -188,7 +192,11 @@ def _foreign_manager_sources(
                     raise AllocationError("source-tail manager history has a malformed manager row")
                 add_source(
                     carrier_id,
-                    "dated-transfermarkt-source-tail-manager-history-source",
+                    (
+                        "dated-transfermarkt-source-tail-manager-history-source"
+                        if history.get("schema_version") == SOURCE_TAIL_MANAGER_HISTORY_SCHEMA
+                        else "dated-residual-target-manager-history-source"
+                    ),
                     name,
                 )
             continue
@@ -242,6 +250,7 @@ def build(
     transfermarkt_snapshot_history: Mapping[str, Any] | None = None,
     transfermarkt_exact_search_history: Mapping[str, Any] | None = None,
     source_tail_manager_history: Mapping[str, Any] | None = None,
+    residual_manager_history: Mapping[str, Any] | None = None,
     eq_data: bytes, ent_data: bytes,
 ) -> dict[str, Any]:
     if package.get("schema_version") != PACKAGE_SCHEMA:
@@ -274,6 +283,14 @@ def build(
             "source-tail manager history receipt must use "
             f"{SOURCE_TAIL_MANAGER_HISTORY_SCHEMA}"
         )
+    if (
+        residual_manager_history is not None
+        and residual_manager_history.get("schema_version") != RESIDUAL_MANAGER_HISTORY_SCHEMA
+    ):
+        raise AllocationError(
+            "residual manager history receipt must use "
+            f"{RESIDUAL_MANAGER_HISTORY_SCHEMA}"
+        )
     teams = _live_teams(eq_data)
     foreign_carriers = {
         int(club["carrier_id"])
@@ -292,6 +309,7 @@ def build(
             *([transfermarkt_snapshot_history] if transfermarkt_snapshot_history is not None else []),
             *([transfermarkt_exact_search_history] if transfermarkt_exact_search_history is not None else []),
             *([source_tail_manager_history] if source_tail_manager_history is not None else []),
+            *([residual_manager_history] if residual_manager_history is not None else []),
         ],
     )
     non_club_foreign_carriers = {
@@ -375,6 +393,7 @@ def main() -> int:
     parser.add_argument("--transfermarkt-snapshot-history", type=Path)
     parser.add_argument("--transfermarkt-exact-search-history", type=Path)
     parser.add_argument("--source-tail-manager-history", type=Path)
+    parser.add_argument("--residual-manager-history", type=Path)
     parser.add_argument("--base-tree", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
@@ -395,6 +414,10 @@ def main() -> int:
         args.source_tail_manager_history.read_bytes()
         if args.source_tail_manager_history else None
     )
+    residual_manager_raw = (
+        args.residual_manager_history.read_bytes()
+        if args.residual_manager_history else None
+    )
     package = json.loads(package_raw.decode("utf-8"))
     history = json.loads(history_raw.decode("utf-8"))
     multilingual_history = json.loads(multilingual_raw.decode("utf-8")) if multilingual_raw else None
@@ -409,6 +432,10 @@ def main() -> int:
     source_tail_manager_history = (
         json.loads(source_tail_manager_raw.decode("utf-8"))
         if source_tail_manager_raw else None
+    )
+    residual_manager_history = (
+        json.loads(residual_manager_raw.decode("utf-8"))
+        if residual_manager_raw else None
     )
     if package_raw != canonical_json_bytes(package):
         parser.error("world package must use canonical JSON bytes")
@@ -431,6 +458,11 @@ def main() -> int:
         and source_tail_manager_raw != canonical_json_bytes(source_tail_manager_history)
     ):
         parser.error("source-tail manager history receipt must use canonical JSON bytes")
+    if (
+        residual_manager_raw is not None
+        and residual_manager_raw != canonical_json_bytes(residual_manager_history)
+    ):
+        parser.error("residual manager history receipt must use canonical JSON bytes")
     eq_path = args.base_tree / "DBDAT" / "EQ98030.FDI"
     ent_path = args.base_tree / "DBDAT" / "ENT98030.FDI"
     try:
@@ -439,6 +471,7 @@ def main() -> int:
             transfermarkt_snapshot_history=transfermarkt_snapshot_history,
             transfermarkt_exact_search_history=transfermarkt_exact_search_history,
             source_tail_manager_history=source_tail_manager_history,
+            residual_manager_history=residual_manager_history,
             eq_data=eq_path.read_bytes(), ent_data=ent_path.read_bytes(),
         )
     except (AllocationError, OSError) as exc:
@@ -458,6 +491,10 @@ def main() -> int:
         "source_tail_manager_history_sha256": (
             hashlib.sha256(source_tail_manager_raw).hexdigest()
             if source_tail_manager_raw else None
+        ),
+        "residual_manager_history_sha256": (
+            hashlib.sha256(residual_manager_raw).hexdigest()
+            if residual_manager_raw else None
         ),
         "EQ98030.FDI_sha256": _sha256(eq_path),
         "ENT98030.FDI_sha256": _sha256(ent_path),

@@ -1,0 +1,169 @@
+"""Explicit source-backed player field edits over a known-good native game.
+
+The first admitted field mask is nationality-only completion of an explicit XXX.
+No identity, rating, role, roster, tactical or unknown byte may change. Other
+edit kinds must acquire their own source and native guards before admission.
+"""
+import copy
+from pathlib import Path
+from app.fdi_indexed import IndexedFDIFile
+from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
+from scripts import season_package_v2 as packages,season_package_compiler_v2 as compiler
+from scripts import season_quality_only_delta_v1 as native
+from scripts import season_soccerbase_secondary_facts_v2 as source
+from scripts import season_opening_order_repair_v1 as ownership
+from scripts.season_frozen_fixture_reserve_v2 import heading_name
+from scripts.season_historical_roster_audit_v1 import native_player,normalise
+
+SCHEMA='pm99-explicit-source-backed-player-field-changes-v1'
+INPUT_SCHEMA='pm99-explicit-source-backed-player-change-input-v1'
+PREFIX='source-backed-player-changes-'
+MODE='known-good-baseline-explicit-source-backed-player-changes-v1'
+KIND='missing-profile-nationality'
+SCOPE='Only selected explicit missing nationality recipe fields and one country byte per selected native player; all names, DOBs, roles, ratings, orders, ownership, tactics, managers, photos, kits, EXE and opaque data unchanged.'
+digest=native.digest
+
+def filename(plan):return 'source-backed-player-changes-'+plan['transaction_id']+'.json'
+def artifact_id(plan):return PREFIX+plan['transaction_id']
+def binding(path):return dict(path=registry.relative_workspace_path(path),sha256=registry.sha256_file(path))
+
+def original_path(relative):
+    path=registry.ROOT/relative
+    if Path(relative).is_absolute() or not path.resolve().is_relative_to(registry.ROOT.resolve()) or not path.is_file():
+        raise ValueError('source input must be a retained workspace file')
+    return path
+
+def prepare(base,input_path):
+    path=Path(input_path)
+    original_path(registry.relative_workspace_path(path))
+    request=pipeline.read_json_file(path)
+    if (request.get('schema')!=INPUT_SCHEMA or request.get('season')!=base.season
+            or request.get('release_id')!=base.release_id or request.get('kind')!=KIND
+            or not request.get('changes')):
+        raise ValueError('explicit supported field-change source input and exact parent required')
+    actors={p['carrier_id']:p for p in pipeline.read_json_file(base.package_path)['players']}
+    clubs={c['id']:c for c in pipeline.read_json_file(base.package_path)['clubs']}
+    jug=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes();eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    entries={e.record_id:e for e in IndexedFDIFile.from_bytes(jug).entries}
+    owners=ownership.native_owners(eq)
+    codes=compiler._extract_country_codes_from_textos(base.game_path/'DBDAT/TEXTOS.PKF')
+    updates=[];seen=set()
+    for selection in request['changes']:
+        carrier=selection['carrier_id']
+        if type(carrier)is not int or carrier in seen or selection.get('field_mask')!=['nationality']:
+            raise ValueError('unique literal carriers and nationality-only field mask required')
+        seen.add(carrier);actor=actors[carrier];club=clubs[actor['club_id']]
+        raw=entries[carrier].decode_payload(jug);observed=native_player(raw,carrier);end=observed['name_end']
+        if (actor['facts']['nationality']!='XXX' or (raw[end+8]^0x61)!=codes['XXX']
+                or owners.get(carrier)!={club['carrier_id']}
+                or normalise(observed['name'])!=normalise(actor['name'])):
+            raise ValueError('only an explicitly unknown country on the exact exclusively owned actor may be completed')
+        original=selection['source'];body=original_path(original['path'])
+        receipt_path=body.with_suffix(body.suffix+'.source.json')
+        receipt=pipeline.read_json_file(receipt_path)
+        if (registry.sha256_file(body)!=original['sha256'] or receipt.get('url')!=original['url']
+                or receipt.get('sha256')!=original['sha256']):
+            raise ValueError('original profile body/URL receipt differs')
+        identity=source.country(body.read_bytes(),person_id=original['provider_player_id'],
+            name=heading_name(actor.get('source_name') or actor['name']),birth_date=actor['facts']['birth_date'],url=original['url'])
+        # Read the actual native date too: recipe agreement alone is insufficient.
+        from scripts.season_within_club_reserve_repair_v1 import native_facts
+        if native_facts(jug,carrier)['birth_date']!=actor['facts']['birth_date']:
+            raise ValueError('actual native biography does not identify this source person')
+        code=compiler._country_code(identity['nationality'],codes)
+        if code==codes['XXX']:raise ValueError('unsupported native countries are documented, not guessed')
+        updates.append(dict(carrier_id=carrier,before=copy.deepcopy(actor),nationality=identity['nationality'],
+            field_mask=['nationality'],native_mask=dict(file='DBDAT/JUG98030.FDI',record_offset=end+8,
+                file_offset=entries[carrier].payload_offset+end+8,
+                before=jug[entries[carrier].payload_offset+end+8],after=code),
+            source_identity=identity,source=binding(body),source_receipt=binding(receipt_path),
+            expected_owner=club['carrier_id']))
+    result=dict(schema=SCHEMA,season=base.season,release_id=base.release_id,kind=KIND,
+        source_input=binding(path),package_sha256=registry.sha256_file(base.package_path),jug_sha256=digest(jug),
+        eq_sha256=digest(eq),textos_sha256=registry.sha256_file(base.game_path/'DBDAT/TEXTOS.PKF'),
+        updates=updates,scope=SCOPE,source_policy=source.POLICY)
+    result['transaction_id']=digest(packages.canonical_json_bytes(result))[:24]
+    return result
+
+def verify(base,plan):
+    if (plan.get('schema')!=SCHEMA or registry.sha256_file(original_path(plan['source_input']['path']))!=plan['source_input']['sha256']
+            or prepare(base,original_path(plan['source_input']['path']))!=plan):
+        raise ValueError('source-backed field plan does not independently reproduce')
+
+def validate_mask(plan):
+    rows=plan.get('updates',[])
+    if plan.get('schema')!=SCHEMA or plan.get('kind')!=KIND or not rows or len({r['carrier_id'] for r in rows})!=len(rows):
+        raise ValueError('nonempty unique supported source-backed field changes required')
+    allowed={'carrier_id','before','nationality','field_mask','native_mask','source_identity','source','source_receipt','expected_owner'}
+    if any(set(r)!=allowed or r['field_mask']!=['nationality'] or r['native_mask']['file']!='DBDAT/JUG98030.FDI' for r in rows):
+        raise ValueError('source-backed field/native mask cannot authorise other profile edits')
+    offsets=set()
+    for row in rows:
+        mask=row['native_mask']
+        if (set(mask)!={'file','record_offset','file_offset','before','after'}
+                or type(row['carrier_id']) is not int
+                or any(type(mask[k]) is not int for k in ('record_offset','file_offset','before','after'))
+                or mask['record_offset']<0 or mask['file_offset']<mask['record_offset']
+                or not 0<=mask['before']<=255 or not 0<=mask['after']<=255
+                or mask['before']==mask['after'] or mask['file_offset'] in offsets):
+            raise ValueError('exact distinct one-byte native pre/post masks required')
+        offsets.add(mask['file_offset'])
+
+def bind(package,plan):
+    validate_mask(plan)
+    base=registry.load_registered_release(plan['season'],plan['release_id'])
+    verify(base,plan)
+    if pipeline.read_json_file(base.package_path)!=package or registry.sha256_file(base.package_path)!=plan['package_sha256']:
+        raise ValueError('exact source-backed recipe preimage required')
+    result=copy.deepcopy(package);actors={p['carrier_id']:p for p in result['players']}
+    for row in plan['updates']:
+        actor=actors[row['carrier_id']]
+        if actor!=row['before']:raise ValueError('selected actor preimage differs')
+        actor['facts']['nationality']=row['nationality']
+        if 'fact_fallbacks' in actor:actor['fact_fallbacks']=[f for f in actor['fact_fallbacks'] if f['field']!='nationality']
+    result['artifacts'].append(dict(id=artifact_id(plan),kind='season-input',relative_path=filename(plan),
+        sha256=digest(packages.canonical_json_bytes(plan)),media_type='application/json'))
+    result['artifacts'].sort(key=lambda a:a['id']);packages.validate_package(result)
+    return result
+
+def apply(jug,eq,plan):
+    validate_mask(plan);base=registry.load_registered_release(plan['season'],plan['release_id']);verify(base,plan)
+    if digest(eq)!=plan['eq_sha256']:raise ValueError('source-backed exact EQ required')
+    after,after_eq=native.apply(jug,eq,plan)
+    before=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    allowed={r['native_mask']['file_offset'] for r in plan['updates']}
+    changed={i for i,(a,b) in enumerate(zip(before,after)) if a!=b}
+    if len(before)!=len(after) or changed!=allowed or len(allowed)!=len(plan['updates']):
+        raise ValueError('source-backed change altered bytes outside the exact native field mask')
+    for row in plan['updates']:
+        mask=row['native_mask']
+        if before[mask['file_offset']]!=mask['before'] or after[mask['file_offset']]!=mask['after']:
+            raise ValueError('source-backed native pre/post value differs')
+    return after,after_eq
+
+def reject_factory_recipe(package):
+    if any(a['id'].startswith(PREFIX) for a in package.get('artifacts',[])):
+        raise ValueError('source-backed field recipe requires exact SOURCE reconstruction')
+
+def reconstruction(previous,release_id):
+    relative=getattr(previous,'locator',{}).get('sourced_profile_assignment_plan_path')
+    if not relative:return None
+    path=registry.ROOT/relative;plan=pipeline.read_json_file(path)
+    if plan.get('schema')!=SCHEMA:return None
+    base=registry.load_registered_release(previous.season,plan['release_id']);verify(base,plan)
+    receipt=pipeline.read_json_file(previous.compiler_receipt_path)
+    if (receipt.get('compilation_mode')!=MODE or path.resolve()!=(previous.package_path.parent/filename(plan)).resolve()
+            or registry.sha256_file(path)!=receipt['original_profile_assignment_plan_sha256']):
+        raise ValueError('source-backed SOURCE receipt/plan binding differs')
+    package=pipeline.read_json_file(previous.package_path)
+    if bind(pipeline.read_json_file(base.package_path),plan)!=package:raise ValueError('SOURCE would discard recipe edits')
+    descriptor=previous.package_path.parent/'role-delta-input.json'
+    if pipeline.read_json_file(descriptor)!=dict(season=base.season,release_id=base.release_id,
+            package_sha256=plan['package_sha256'],jug_sha256=plan['jug_sha256'],updates=[],unresolved=[]):
+        raise ValueError('exact inert SOURCE descriptor required')
+    from scripts import publish_historical_role_delta_v1 as publisher
+    publisher.publish(previous.season,descriptor,release_id=release_id,source_release_id=base.release_id,profile_assignment_plan_path=path)
+    rebuilt=registry.load_registered_release(previous.season,release_id)
+    pipeline.assert_tree_matches_inventory(rebuilt.game_path,pipeline.read_json_file(previous.inventory_path))
+    if rebuilt.package_path.read_bytes()!=previous.package_path.read_bytes():raise ValueError('whole SOURCE recipe differs')
+    return dict(season=previous.season,complete_game_inventory_identical=True,complete_recipe_identical=True)

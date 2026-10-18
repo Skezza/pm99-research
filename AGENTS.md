@@ -1,5 +1,16 @@
 # Repository Guidelines
 
+## Current Work and Handoffs
+
+Read `CURRENT_WORK.md` before choosing tasks, answering status questions or
+resuming work. `plan.md` points to it; `docs/WORK_HANDOFF.md` records the source
+session, evidence and update rules. Workers update verified progress, blockers
+and the next step at handoff; the PM maintains priorities and assignments.
+Include UTC time, source session, machine and evidence paths. Preserve other
+workers' updates, and distinguish built, installed and verified work.
+The Vostro working copy is current; ThinkPad copies are dated mirrors. A
+read-only agent proposes an update rather than claiming to save it.
+
 ## Project Structure & Module Organization
 PM99RE is a research/integration workspace, not the product-code home.
 

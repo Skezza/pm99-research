@@ -1,0 +1,16 @@
+{
+  "rows": [
+    {
+      "parser": "wikipedia-infobox-v1",
+      "source_name": "Wikipedia, Dean Holness, permanent revision 1355093614",
+      "source_player_id": "soccerbase:26968",
+      "source_selector": {
+        "club_name": "Southend United",
+        "competition_catalog": "d3",
+        "country_catalog": "eng"
+      },
+      "source_url": "https://en.wikipedia.org/w/index.php?title=Dean_Holness&oldid=1355093614"
+    }
+  ],
+  "schema_version": "pm99-opening-person-profile-source-overrides-v1"
+}

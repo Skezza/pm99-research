@@ -1,0 +1,210 @@
+{
+  "case_count": 10,
+  "pass_count": 10,
+  "purpose": "Stars database-only profile proof against an unmodified MANAGPRE.EXE",
+  "result": "pass",
+  "rows": [
+    {
+      "accepted_title_tokens": [
+        "vazquez"
+      ],
+      "artifact_dir": "artifacts/stars_player_offer_probe/stars_db_only_rafael_martin_vazquez_20260828",
+      "checks": {
+        "no_crash": true,
+        "phase_reached": true,
+        "profile_screenshot_present": true,
+        "profile_title_matches_expected_player": true,
+        "summary_success": true,
+        "window_detected": true
+      },
+      "player": "Rafael Martin Vazquez",
+      "profile_screenshot": "artifacts/stars_player_offer_probe/stars_db_only_rafael_martin_vazquez_20260828/screens/59_inspect_rafael_martin_vazquez_profile.png",
+      "profile_title_ocr": "fael martin vazquez",
+      "result": "pass",
+      "slug": "rafael_martin_vazquez",
+      "summary": "artifacts/stars_player_offer_probe/stars_db_only_rafael_martin_vazquez_20260828/summary.json"
+    },
+    {
+      "accepted_title_tokens": [
+        "paz"
+      ],
+      "artifact_dir": "artifacts/stars_player_offer_probe/stars_db_only_rafa_paz_20260828",
+      "checks": {
+        "no_crash": true,
+        "phase_reached": true,
+        "profile_screenshot_present": true,
+        "profile_title_matches_expected_player": true,
+        "summary_success": true,
+        "window_detected": true
+      },
+      "player": "Rafa Paz",
+      "profile_screenshot": "artifacts/stars_player_offer_probe/stars_db_only_rafa_paz_20260828/screens/46_inspect_rafa_paz_profile.png",
+      "profile_title_ocr": "fael paz marin rafa paz",
+      "result": "pass",
+      "slug": "rafa_paz",
+      "summary": "artifacts/stars_player_offer_probe/stars_db_only_rafa_paz_20260828/summary.json"
+    },
+    {
+      "accepted_title_tokens": [
+        "santos"
+      ],
+      "artifact_dir": "artifacts/stars_player_offer_probe/stars_db_only_marcio_santos_20260828",
+      "checks": {
+        "no_crash": true,
+        "phase_reached": true,
+        "profile_screenshot_present": true,
+        "profile_title_matches_expected_player": true,
+        "summary_success": true,
+        "window_detected": true
+      },
+      "player": "Marcio Santos",
+      "profile_screenshot": "artifacts/stars_player_offer_probe/stars_db_only_marcio_santos_20260828/screens/51_inspect_marcio_santos_profile.png",
+      "profile_title_ocr": "ircio santos",
+      "result": "pass",
+      "slug": "marcio_santos",
+      "summary": "artifacts/stars_player_offer_probe/stars_db_only_marcio_santos_20260828/summary.json"
+    },
+    {
+      "accepted_title_tokens": [
+        "hernandez"
+      ],
+      "artifact_dir": "artifacts/stars_player_offer_probe/stars_db_only_luis_hernandez_r4_20260829",
+      "checks": {
+        "no_crash": true,
+        "phase_reached": true,
+        "profile_screenshot_present": true,
+        "profile_title_matches_expected_player": true,
+        "summary_success": true,
+        "window_detected": true
+      },
+      "player": "Luis Hernandez",
+      "profile_screenshot": "artifacts/stars_player_offer_probe/stars_db_only_luis_hernandez_r4_20260829/screens/52_inspect_luis_hernandez_profile.png",
+      "profile_title_ocr": "is arturo hernandez carre r",
+      "result": "pass",
+      "slug": "luis_hernandez",
+      "summary": "artifacts/stars_player_offer_probe/stars_db_only_luis_hernandez_r4_20260829/summary.json"
+    },
+    {
+      "accepted_title_tokens": [
+        "munoz",
+        "mufioz"
+      ],
+      "artifact_dir": "artifacts/stars_player_offer_probe/stars_db_only_carlos_munoz_r11_20260829",
+      "checks": {
+        "no_crash": true,
+        "phase_reached": true,
+        "profile_screenshot_present": true,
+        "profile_title_matches_expected_player": true,
+        "summary_success": true,
+        "window_detected": true
+      },
+      "player": "Carlos Munoz",
+      "profile_screenshot": "artifacts/stars_player_offer_probe/stars_db_only_carlos_munoz_r11_20260829/screens/85_inspect_carlos_munoz_profile.png",
+      "profile_title_ocr": "rlos mufioz cobos",
+      "result": "pass",
+      "slug": "carlos_munoz",
+      "summary": "artifacts/stars_player_offer_probe/stars_db_only_carlos_munoz_r11_20260829/summary.json"
+    },
+    {
+      "accepted_title_tokens": [
+        "alvarez"
+      ],
+      "artifact_dir": "artifacts/stars_player_offer_probe/stars_db_only_leonel_alvarez_20260828",
+      "checks": {
+        "no_crash": true,
+        "phase_reached": true,
+        "profile_screenshot_present": true,
+        "profile_title_matches_expected_player": true,
+        "summary_success": true,
+        "window_detected": true
+      },
+      "player": "Leonel Alvarez",
+      "profile_screenshot": "artifacts/stars_player_offer_probe/stars_db_only_leonel_alvarez_20260828/screens/52_inspect_leonel_alvarez_profile.png",
+      "profile_title_ocr": "anel alvarez",
+      "result": "pass",
+      "slug": "leonel_alvarez",
+      "summary": "artifacts/stars_player_offer_probe/stars_db_only_leonel_alvarez_20260828/summary.json"
+    },
+    {
+      "accepted_title_tokens": [
+        "valderrama"
+      ],
+      "artifact_dir": "artifacts/stars_player_offer_probe/stars_db_only_carlos_valderrama_20260828",
+      "checks": {
+        "no_crash": true,
+        "phase_reached": true,
+        "profile_screenshot_present": true,
+        "profile_title_matches_expected_player": true,
+        "summary_success": true,
+        "window_detected": true
+      },
+      "player": "Carlos Valderrama",
+      "profile_screenshot": "artifacts/stars_player_offer_probe/stars_db_only_carlos_valderrama_20260828/screens/55_inspect_carlos_valderrama_profile.png",
+      "profile_title_ocr": "rlos valderrama ee",
+      "result": "pass",
+      "slug": "carlos_valderrama",
+      "summary": "artifacts/stars_player_offer_probe/stars_db_only_carlos_valderrama_20260828/summary.json"
+    },
+    {
+      "accepted_title_tokens": [
+        "etcheverry"
+      ],
+      "artifact_dir": "artifacts/stars_player_offer_probe/stars_db_only_marco_etcheverry_20260828",
+      "checks": {
+        "no_crash": true,
+        "phase_reached": true,
+        "profile_screenshot_present": true,
+        "profile_title_matches_expected_player": true,
+        "summary_success": true,
+        "window_detected": true
+      },
+      "player": "Marco Etcheverry",
+      "profile_screenshot": "artifacts/stars_player_offer_probe/stars_db_only_marco_etcheverry_20260828/screens/54_inspect_marco_etcheverry_profile.png",
+      "profile_title_ocr": "irco etcheverry ee",
+      "result": "pass",
+      "slug": "marco_etcheverry",
+      "summary": "artifacts/stars_player_offer_probe/stars_db_only_marco_etcheverry_20260828/summary.json"
+    },
+    {
+      "accepted_title_tokens": [
+        "sonora"
+      ],
+      "artifact_dir": "artifacts/stars_player_offer_probe/stars_db_only_diego_sonora_r3_20260829",
+      "checks": {
+        "no_crash": true,
+        "phase_reached": true,
+        "profile_screenshot_present": true,
+        "profile_title_matches_expected_player": true,
+        "summary_success": true,
+        "window_detected": true
+      },
+      "player": "Diego Sonora",
+      "profile_screenshot": "artifacts/stars_player_offer_probe/stars_db_only_diego_sonora_r3_20260829/screens/50_inspect_diego_sonora_profile.png",
+      "profile_title_ocr": "go sonora",
+      "result": "pass",
+      "slug": "diego_sonora",
+      "summary": "artifacts/stars_player_offer_probe/stars_db_only_diego_sonora_r3_20260829/summary.json"
+    },
+    {
+      "accepted_title_tokens": [
+        "lalas"
+      ],
+      "artifact_dir": "artifacts/stars_player_offer_probe/stars_db_only_alexi_lalas_r2_20260829",
+      "checks": {
+        "no_crash": true,
+        "phase_reached": true,
+        "profile_screenshot_present": true,
+        "profile_title_matches_expected_player": true,
+        "summary_success": true,
+        "window_detected": true
+      },
+      "player": "Alexi Lalas",
+      "profile_screenshot": "artifacts/stars_player_offer_probe/stars_db_only_alexi_lalas_r2_20260829/screens/50_inspect_alexi_lalas_profile.png",
+      "profile_title_ocr": "xis lalas",
+      "result": "pass",
+      "slug": "alexi_lalas",
+      "summary": "artifacts/stars_player_offer_probe/stars_db_only_alexi_lalas_r2_20260829/summary.json"
+    }
+  ],
+  "schema_version": 1
+}

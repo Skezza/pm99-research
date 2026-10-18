@@ -9,6 +9,40 @@ typedef HRESULT (WINAPI *PFN_DirectDrawCreate)(GUID *, LPDIRECTDRAW *, IUnknown 
 typedef HRESULT (WINAPI *PFN_DirectDrawCreateEx)(GUID *, LPVOID *, REFIID, IUnknown *);
 typedef HRESULT (WINAPI *PFN_DirectDrawEnumerateA)(LPDDENUMCALLBACKA, LPVOID);
 typedef HRESULT (WINAPI *PFN_DirectDrawEnumerateExA)(LPDDENUMCALLBACKEXA, LPVOID, DWORD);
+typedef HRESULT (WINAPI *PFN_DirectDrawSurface4Blt)(
+    LPDIRECTDRAWSURFACE4,
+    LPRECT,
+    LPDIRECTDRAWSURFACE4,
+    LPRECT,
+    DWORD,
+    LPDDBLTFX
+);
+typedef HRESULT (WINAPI *PFN_DirectDrawSurface4QueryInterface)(
+    LPDIRECTDRAWSURFACE4,
+    REFIID,
+    LPVOID *
+);
+typedef HRESULT (WINAPI *PFN_DirectDrawSurface4Flip)(
+    LPDIRECTDRAWSURFACE4,
+    LPDIRECTDRAWSURFACE4,
+    DWORD
+);
+typedef HRESULT (WINAPI *PFN_DirectDrawSurface4Lock)(
+    LPDIRECTDRAWSURFACE4,
+    LPRECT,
+    LPDDSURFACEDESC2,
+    DWORD,
+    HANDLE
+);
+typedef HRESULT (WINAPI *PFN_DirectDrawSurface4Unlock)(
+    LPDIRECTDRAWSURFACE4,
+    LPRECT
+);
+typedef HRESULT (WINAPI *PFN_DirectDrawClipperSetHWnd)(
+    LPDIRECTDRAWCLIPPER,
+    DWORD,
+    HWND
+);
 
 typedef struct TraceDirectDraw {
     IDirectDraw iface;
@@ -52,6 +86,188 @@ static PFN_DirectDrawCreate real_DirectDrawCreate;
 static PFN_DirectDrawCreateEx real_DirectDrawCreateEx;
 static PFN_DirectDrawEnumerateA real_DirectDrawEnumerateA;
 static PFN_DirectDrawEnumerateExA real_DirectDrawEnumerateExA;
+static PFN_DirectDrawSurface4Blt real_DirectDrawSurface4_Blt;
+static PFN_DirectDrawSurface4QueryInterface real_DirectDrawSurface4_QueryInterface;
+static PFN_DirectDrawSurface4Flip real_DirectDrawSurface4_Flip;
+static PFN_DirectDrawSurface4Lock real_DirectDrawSurface4_Lock;
+static PFN_DirectDrawSurface4Unlock real_DirectDrawSurface4_Unlock;
+static PFN_DirectDrawClipperSetHWnd real_DirectDrawClipper_SetHWnd;
+static LPDIRECTDRAWSURFACE4 primary_surface4;
+static DWORD primary_surface4_width;
+static DWORD primary_surface4_height;
+static DWORD primary_presentation_width;
+static DWORD primary_presentation_height;
+static DWORD primary_presentation_x;
+static DWORD primary_presentation_y;
+static HWND primary_game_window;
+static HWND primary_presentation_overlay;
+static HWND primary_clipper_presentation_window;
+static LONG primary_surface4_blt_hook_installed;
+static LPVOID primary_locked_pixels;
+static LONG primary_locked_pitch;
+static DWORD primary_locked_width;
+static DWORD primary_locked_height;
+static DWORD primary_locked_rgbbits;
+static LONG primary_surface4_locked;
+static LONG primary_frame_source_locked;
+static LONG primary_unlock_pending;
+static RECT primary_pending_unlock_rect;
+static int primary_pending_unlock_rect_present;
+static WORD *primary_upscale_source;
+static LONG primary_gdi_presentation_logged;
+static DWORD primary_frame_last_written_tick;
+static LONG directdraw_clipper_hook_installed;
+
+static const char primary_presentation_overlay_class_name[] = "PM99DirectDrawPresentationOverlay";
+
+static HRESULT WINAPI trace_surface4_Blt(
+    LPDIRECTDRAWSURFACE4 destination,
+    LPRECT destination_rect,
+    LPDIRECTDRAWSURFACE4 source,
+    LPRECT source_rect,
+    DWORD flags,
+    LPDDBLTFX effects
+);
+static HRESULT WINAPI trace_surface4_QueryInterface(
+    LPDIRECTDRAWSURFACE4 surface,
+    REFIID riid,
+    LPVOID *out
+);
+static HRESULT WINAPI trace_surface4_Flip(
+    LPDIRECTDRAWSURFACE4 surface,
+    LPDIRECTDRAWSURFACE4 target_override,
+    DWORD flags
+);
+static HRESULT WINAPI trace_surface4_Lock(
+    LPDIRECTDRAWSURFACE4 surface,
+    LPRECT rect,
+    LPDDSURFACEDESC2 desc,
+    DWORD flags,
+    HANDLE event
+);
+static HRESULT WINAPI trace_surface4_Unlock(
+    LPDIRECTDRAWSURFACE4 surface,
+    LPRECT rect
+);
+static HRESULT WINAPI trace_clipper_SetHWnd(
+    LPDIRECTDRAWCLIPPER clipper,
+    DWORD flags,
+    HWND hwnd
+);
+static void guid_to_text(const GUID *guid, char *out, size_t out_size);
+
+typedef struct PrimaryPresentationInputSearch {
+    HWND window;
+    LONG area;
+} PrimaryPresentationInputSearch;
+
+static BOOL CALLBACK find_primary_presentation_input_window(HWND hwnd, LPARAM context_value)
+{
+    PrimaryPresentationInputSearch *context = (PrimaryPresentationInputSearch *)context_value;
+    RECT rect;
+    LONG width;
+    LONG height;
+    LONG area;
+
+    if (!context || !IsWindowVisible(hwnd) || !GetWindowRect(hwnd, &rect)) {
+        return TRUE;
+    }
+    width = rect.right - rect.left;
+    height = rect.bottom - rect.top;
+    if (width <= 0 || height <= 0) {
+        return TRUE;
+    }
+    area = width * height;
+    if (area > context->area) {
+        context->area = area;
+        context->window = hwnd;
+    }
+    return TRUE;
+}
+
+static HWND primary_presentation_input_window(void)
+{
+    PrimaryPresentationInputSearch context;
+
+    if (!primary_game_window || !IsWindow(primary_game_window)) {
+        return NULL;
+    }
+    ZeroMemory(&context, sizeof(context));
+    EnumChildWindows(
+        primary_game_window,
+        find_primary_presentation_input_window,
+        (LPARAM)&context
+    );
+    return context.window ? context.window : primary_game_window;
+}
+
+static LPARAM primary_presentation_overlay_input_lparam(LPARAM input)
+{
+    int x = (int)(short)LOWORD(input);
+    int y = (int)(short)HIWORD(input);
+
+    /* Existing PM99 automation injects logical 640x480 coordinates. */
+    if (x >= 0 && x < 640 && y >= 0 && y < 480) {
+        return input;
+    }
+    if (primary_presentation_width) {
+        x = ((x - (int)primary_presentation_x) * 640) / (int)primary_presentation_width;
+    }
+    if (primary_presentation_height) {
+        y = ((y - (int)primary_presentation_y) * 480) / (int)primary_presentation_height;
+    }
+    if (x < 0) {
+        x = 0;
+    } else if (x > 639) {
+        x = 639;
+    }
+    if (y < 0) {
+        y = 0;
+    } else if (y > 479) {
+        y = 479;
+    }
+    return MAKELPARAM((WORD)x, (WORD)y);
+}
+
+static LRESULT CALLBACK primary_presentation_overlay_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
+{
+    (void)hwnd;
+    switch (message) {
+        case WM_MOUSEMOVE:
+        case WM_LBUTTONDOWN:
+        case WM_LBUTTONUP:
+        case WM_LBUTTONDBLCLK:
+        case WM_RBUTTONDOWN:
+        case WM_RBUTTONUP:
+        case WM_RBUTTONDBLCLK:
+        case WM_MBUTTONDOWN:
+        case WM_MBUTTONUP:
+        case WM_MBUTTONDBLCLK:
+        {
+            HWND input_window = primary_presentation_input_window();
+            if (input_window) {
+                SendMessageA(
+                    input_window,
+                    message,
+                    wparam,
+                    primary_presentation_overlay_input_lparam(lparam)
+                );
+            }
+            return 0;
+        }
+        case WM_MOUSEACTIVATE:
+            return MA_NOACTIVATE;
+        default:
+            break;
+    }
+    if (message == WM_NCHITTEST) {
+        return HTCLIENT;
+    }
+    if (message == WM_ERASEBKGND) {
+        return 1;
+    }
+    return DefWindowProcA(hwnd, message, wparam, lparam);
+}
 
 static void trace_log(const char *fmt, ...)
 {
@@ -109,6 +325,933 @@ static int enum_mode_injection_enabled(void)
 static int force_set_display_mode_ok_enabled(void)
 {
     return env_flag_enabled("PM99_DDRAW_FORCE_SET_DISPLAY_MODE_OK");
+}
+
+static int managed_texture_fallback_enabled(void)
+{
+    return env_flag_enabled("PM99_DDRAW_FALLBACK_MANAGED_TEXTURES");
+}
+
+static int upscale_primary_enabled(void)
+{
+    return env_flag_enabled("PM99_DDRAW_UPSCALE_PRIMARY");
+}
+
+static int disable_clipper_binding_enabled(void)
+{
+    return env_flag_enabled("PM99_DDRAW_DISABLE_CLIPPER_BINDING");
+}
+
+static int root_presentation_enabled(void)
+{
+    return env_flag_enabled("PM99_DDRAW_ROOT_PRESENTATION");
+}
+
+static int click_through_overlay_enabled(void)
+{
+    return env_flag_enabled("PM99_DDRAW_CLICK_THROUGH_OVERLAY");
+}
+
+static int redirect_clipper_enabled(void)
+{
+    return env_flag_enabled("PM99_DDRAW_REDIRECT_CLIPPER");
+}
+
+static int keep_native_window_enabled(void)
+{
+    return env_flag_enabled("PM99_DDRAW_KEEP_NATIVE_WINDOW");
+}
+
+static HWND ensure_primary_presentation_overlay(void)
+{
+    WNDCLASSA window_class;
+    HINSTANCE instance;
+
+    if (!root_presentation_enabled() || !click_through_overlay_enabled()) {
+        return NULL;
+    }
+    if (primary_presentation_overlay && IsWindow(primary_presentation_overlay)) {
+        SetWindowPos(
+            primary_presentation_overlay,
+            HWND_TOPMOST,
+            0,
+            0,
+            (int)primary_surface4_width,
+            (int)primary_surface4_height,
+            SWP_NOACTIVATE | SWP_SHOWWINDOW
+        );
+        return primary_presentation_overlay;
+    }
+
+    instance = GetModuleHandleA(NULL);
+    ZeroMemory(&window_class, sizeof(window_class));
+    window_class.lpfnWndProc = primary_presentation_overlay_proc;
+    window_class.hInstance = instance;
+    window_class.hCursor = LoadCursor(NULL, IDC_ARROW);
+    window_class.lpszClassName = primary_presentation_overlay_class_name;
+    if (!RegisterClassA(&window_class) && GetLastError() != ERROR_CLASS_ALREADY_EXISTS) {
+        trace_log("IDirectDrawSurface4 overlay class registration failed last_error=0x%08lX", GetLastError());
+        return NULL;
+    }
+
+    primary_presentation_overlay = CreateWindowExA(
+        WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW,
+        primary_presentation_overlay_class_name,
+        "",
+        WS_POPUP,
+        0,
+        0,
+        (int)primary_surface4_width,
+        (int)primary_surface4_height,
+        NULL,
+        NULL,
+        instance,
+        NULL
+    );
+    if (!primary_presentation_overlay) {
+        trace_log("IDirectDrawSurface4 overlay creation failed last_error=0x%08lX", GetLastError());
+        return NULL;
+    }
+    SetWindowPos(
+        primary_presentation_overlay,
+        HWND_TOPMOST,
+        0,
+        0,
+        (int)primary_surface4_width,
+        (int)primary_surface4_height,
+        SWP_NOACTIVATE | SWP_SHOWWINDOW
+    );
+    trace_log(
+        "IDirectDrawSurface4 overlay created hwnd=%p host=%lux%lu",
+        primary_presentation_overlay,
+        primary_surface4_width,
+        primary_surface4_height
+    );
+    return primary_presentation_overlay;
+}
+
+static HWND ensure_primary_clipper_presentation_window(void)
+{
+    WNDCLASSA window_class;
+    HINSTANCE instance;
+
+    if (!redirect_clipper_enabled() || !primary_surface4_width || !primary_surface4_height) {
+        return NULL;
+    }
+    if (primary_clipper_presentation_window && IsWindow(primary_clipper_presentation_window)) {
+        SetWindowPos(
+            primary_clipper_presentation_window,
+            HWND_TOPMOST,
+            (int)primary_presentation_x,
+            (int)primary_presentation_y,
+            (int)primary_presentation_width,
+            (int)primary_presentation_height,
+            SWP_NOACTIVATE | SWP_SHOWWINDOW
+        );
+        return primary_clipper_presentation_window;
+    }
+
+    instance = GetModuleHandleA(NULL);
+    ZeroMemory(&window_class, sizeof(window_class));
+    window_class.lpfnWndProc = primary_presentation_overlay_proc;
+    window_class.hInstance = instance;
+    window_class.hCursor = LoadCursor(NULL, IDC_ARROW);
+    window_class.lpszClassName = primary_presentation_overlay_class_name;
+    if (!RegisterClassA(&window_class) && GetLastError() != ERROR_CLASS_ALREADY_EXISTS) {
+        trace_log("IDirectDrawSurface4 clipper presentation class registration failed last_error=0x%08lX", GetLastError());
+        return NULL;
+    }
+
+    primary_clipper_presentation_window = CreateWindowExA(
+        WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW,
+        primary_presentation_overlay_class_name,
+        "",
+        WS_POPUP,
+        (int)primary_presentation_x,
+        (int)primary_presentation_y,
+        (int)primary_presentation_width,
+        (int)primary_presentation_height,
+        NULL,
+        NULL,
+        instance,
+        NULL
+    );
+    if (!primary_clipper_presentation_window) {
+        trace_log("IDirectDrawSurface4 clipper presentation creation failed last_error=0x%08lX", GetLastError());
+        return NULL;
+    }
+    SetWindowPos(
+        primary_clipper_presentation_window,
+        HWND_TOPMOST,
+        (int)primary_presentation_x,
+        (int)primary_presentation_y,
+        (int)primary_presentation_width,
+        (int)primary_presentation_height,
+        SWP_NOACTIVATE | SWP_SHOWWINDOW
+    );
+    trace_log(
+        "IDirectDrawSurface4 clipper presentation created hwnd=%p target=%lux%lu offset=%lu,%lu",
+        primary_clipper_presentation_window,
+        primary_presentation_width,
+        primary_presentation_height,
+        primary_presentation_x,
+        primary_presentation_y
+    );
+    return primary_clipper_presentation_window;
+}
+
+static void install_directdraw_clipper_hook(LPDIRECTDRAWCLIPPER clipper)
+{
+    IDirectDrawClipperVtbl *vtbl;
+    DWORD old_protect;
+
+    if (!clipper) {
+        return;
+    }
+    if (InterlockedCompareExchange(&directdraw_clipper_hook_installed, 1, 0) != 0) {
+        return;
+    }
+
+    vtbl = (IDirectDrawClipperVtbl *)clipper->lpVtbl;
+    if (!vtbl || !vtbl->SetHWnd) {
+        trace_log("IDirectDrawClipper unable to install SetHWnd hook: missing vtable");
+        InterlockedExchange(&directdraw_clipper_hook_installed, 0);
+        return;
+    }
+    if (!VirtualProtect(vtbl, sizeof(*vtbl), PAGE_EXECUTE_READWRITE, &old_protect)) {
+        trace_log("IDirectDrawClipper unable to make vtable writable last_error=0x%08lX", GetLastError());
+        InterlockedExchange(&directdraw_clipper_hook_installed, 0);
+        return;
+    }
+    real_DirectDrawClipper_SetHWnd = vtbl->SetHWnd;
+    vtbl->SetHWnd = trace_clipper_SetHWnd;
+    VirtualProtect(vtbl, sizeof(*vtbl), old_protect, &old_protect);
+    FlushInstructionCache(GetCurrentProcess(), vtbl, sizeof(*vtbl));
+    trace_log(
+        "IDirectDrawClipper installed SetHWnd hook vtable=%p real_sethwnd=%p",
+        vtbl,
+        real_DirectDrawClipper_SetHWnd
+    );
+}
+
+static HRESULT WINAPI trace_clipper_SetHWnd(
+    LPDIRECTDRAWCLIPPER clipper,
+    DWORD flags,
+    HWND hwnd
+)
+{
+    HRESULT hr;
+    HWND presentation_window;
+
+    if (!real_DirectDrawClipper_SetHWnd) {
+        return DDERR_GENERIC;
+    }
+    if (disable_clipper_binding_enabled()) {
+        trace_log(
+            "IDirectDrawClipper::SetHWnd suppressed clipper=%p flags=0x%08lX hwnd=%p",
+            clipper,
+            flags,
+            hwnd
+        );
+        return DD_OK;
+    }
+    presentation_window = ensure_primary_clipper_presentation_window();
+    if (presentation_window) {
+        hr = real_DirectDrawClipper_SetHWnd(clipper, flags, presentation_window);
+        trace_log(
+            "IDirectDrawClipper::SetHWnd redirected clipper=%p flags=0x%08lX game_hwnd=%p presentation_hwnd=%p hr=0x%08lX %s",
+            clipper,
+            flags,
+            hwnd,
+            presentation_window,
+            (unsigned long)hr,
+            hr_state(hr)
+        );
+        return hr;
+    }
+    hr = real_DirectDrawClipper_SetHWnd(clipper, flags, hwnd);
+    trace_log(
+        "IDirectDrawClipper::SetHWnd clipper=%p flags=0x%08lX hwnd=%p hr=0x%08lX %s",
+        clipper,
+        flags,
+        hwnd,
+        (unsigned long)hr,
+        hr_state(hr)
+    );
+    return hr;
+}
+
+static int rect_is_pm99_logical_viewport(const RECT *rect)
+{
+    if (!rect) {
+        return 1;
+    }
+    return rect->left >= 0
+        && rect->top >= 0
+        && rect->right > rect->left
+        && rect->bottom > rect->top
+        && rect->right <= 640
+        && rect->bottom <= 480;
+}
+
+static void scale_pm99_logical_rect_to_primary(const RECT *input, RECT *output)
+{
+    RECT logical_rect;
+    DWORD content_width;
+    DWORD content_height;
+    LONG offset_x;
+    LONG offset_y;
+
+    if (input) {
+        logical_rect = *input;
+    } else {
+        logical_rect.left = 0;
+        logical_rect.top = 0;
+        logical_rect.right = 640;
+        logical_rect.bottom = 480;
+    }
+
+    content_width = primary_presentation_width ? primary_presentation_width : primary_surface4_width;
+    content_height = primary_presentation_height ? primary_presentation_height : primary_surface4_height;
+    offset_x = 0;
+    offset_y = 0;
+    output->left = offset_x + MulDiv(logical_rect.left, (int)content_width, 640);
+    output->top = offset_y + MulDiv(logical_rect.top, (int)content_height, 480);
+    output->right = offset_x + MulDiv(logical_rect.right, (int)content_width, 640);
+    output->bottom = offset_y + MulDiv(logical_rect.bottom, (int)content_height, 480);
+}
+
+static void configure_upscale_presentation(void)
+{
+    DWORD host_offset_x;
+    DWORD host_offset_y;
+    RECT client_rect;
+
+    primary_presentation_width = primary_surface4_width;
+    primary_presentation_height = (primary_surface4_width * 3) / 4;
+    if (primary_presentation_height > primary_surface4_height) {
+        primary_presentation_height = primary_surface4_height;
+        primary_presentation_width = (primary_surface4_height * 4) / 3;
+    }
+    if (!upscale_primary_enabled() || !primary_game_window) {
+        return;
+    }
+
+    host_offset_x = (primary_surface4_width - primary_presentation_width) / 2;
+    host_offset_y = (primary_surface4_height - primary_presentation_height) / 2;
+    primary_presentation_x = host_offset_x;
+    primary_presentation_y = host_offset_y;
+    if (root_presentation_enabled()) {
+        if (click_through_overlay_enabled()) {
+            if (!ensure_primary_presentation_overlay()) {
+                trace_log("IDirectDrawSurface4 root presentation overlay unavailable");
+                return;
+            }
+            trace_log(
+                "IDirectDrawSurface4 root presentation overlay active target=%lux%lu offset=%lu,%lu",
+                primary_presentation_width,
+                primary_presentation_height,
+                primary_presentation_x,
+                primary_presentation_y
+            );
+            return;
+        }
+        if (!SetWindowPos(
+                primary_game_window,
+                NULL,
+                -(int)primary_surface4_width,
+                0,
+                640,
+                480,
+                SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_NOZORDER
+            )) {
+            trace_log("IDirectDrawSurface4 root presentation move failed hwnd=%p last_error=0x%08lX", primary_game_window, GetLastError());
+            return;
+        }
+        trace_log(
+            "IDirectDrawSurface4 root presentation moved legacy hwnd=%p offscreen target=%lux%lu offset=%lu,%lu",
+            primary_game_window,
+            primary_presentation_width,
+            primary_presentation_height,
+            primary_presentation_x,
+            primary_presentation_y
+        );
+        return;
+    }
+    if (redirect_clipper_enabled()) {
+        trace_log(
+            "IDirectDrawSurface4 clipper presentation prepared target=%lux%lu offset=%lu,%lu",
+            primary_presentation_width,
+            primary_presentation_height,
+            primary_presentation_x,
+            primary_presentation_y
+        );
+        return;
+    }
+    if (keep_native_window_enabled()) {
+        trace_log("IDirectDrawSurface4 retained native input window for external presentation");
+        return;
+    }
+    if (!SetWindowPos(
+            primary_game_window,
+            NULL,
+            (int)host_offset_x,
+            (int)host_offset_y,
+            (int)primary_presentation_width,
+            (int)primary_presentation_height,
+            SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_NOZORDER
+        )) {
+        trace_log("IDirectDrawSurface4 primary resize failed hwnd=%p last_error=0x%08lX", primary_game_window, GetLastError());
+        return;
+    }
+    ZeroMemory(&client_rect, sizeof(client_rect));
+    GetClientRect(primary_game_window, &client_rect);
+    trace_log(
+        "IDirectDrawSurface4 primary resize hwnd=%p host_offset=%lu,%lu requested=%lux%lu client=%ldx%ld",
+        primary_game_window,
+        host_offset_x,
+        host_offset_y,
+        primary_presentation_width,
+        primary_presentation_height,
+        client_rect.right - client_rect.left,
+        client_rect.bottom - client_rect.top
+    );
+}
+
+static void upscale_locked_primary_640x480(void)
+{
+    BYTE *pixels = (BYTE *)primary_locked_pixels;
+    DWORD content_width;
+    DWORD content_height;
+    DWORD offset_x;
+    DWORD offset_y;
+    DWORD target_y;
+    DWORD target_x;
+
+    if (
+        !pixels
+        || primary_locked_width != primary_surface4_width
+        || primary_locked_height != primary_surface4_height
+        || primary_locked_rgbbits != 16
+        || primary_locked_pitch < 1280
+    ) {
+        trace_log(
+            "IDirectDrawSurface4 primary upscale skipped pixels=%p locked=%lux%lu pitch=%ld rgbbits=%lu",
+            pixels,
+            primary_locked_width,
+            primary_locked_height,
+            primary_locked_pitch,
+            primary_locked_rgbbits
+        );
+        return;
+    }
+
+    if (!primary_upscale_source) {
+        primary_upscale_source = (WORD *)HeapAlloc(GetProcessHeap(), 0, 640 * 480 * sizeof(WORD));
+        if (!primary_upscale_source) {
+            trace_log("IDirectDrawSurface4 primary upscale skipped: scratch allocation failed");
+            return;
+        }
+    }
+
+    for (target_y = 0; target_y < 480; ++target_y) {
+        CopyMemory(
+            primary_upscale_source + (target_y * 640),
+            pixels + ((size_t)target_y * (size_t)primary_locked_pitch),
+            640 * sizeof(WORD)
+        );
+    }
+
+    content_width = primary_presentation_width ? primary_presentation_width : primary_surface4_width;
+    content_height = primary_presentation_height ? primary_presentation_height : primary_surface4_height;
+    offset_x = 0;
+    offset_y = 0;
+
+    ZeroMemory(pixels, (size_t)primary_locked_pitch * (size_t)primary_locked_height);
+    for (target_y = 0; target_y < content_height; ++target_y) {
+        WORD *destination = (WORD *)(pixels + ((size_t)(offset_y + target_y) * (size_t)primary_locked_pitch));
+        WORD *source = primary_upscale_source + ((target_y * 480 / content_height) * 640);
+        for (target_x = 0; target_x < content_width; ++target_x) {
+            destination[offset_x + target_x] = source[target_x * 640 / content_width];
+        }
+    }
+    trace_log(
+        "IDirectDrawSurface4 primary upscale applied source=640x480 target=%lux%lu offset=%lu,%lu",
+        content_width,
+        content_height,
+        offset_x,
+        offset_y
+    );
+}
+
+static void publish_primary_upscale_frame(void)
+{
+    const char *path = getenv("PM99_DDRAW_FRAME_PATH");
+    DWORD now;
+    FILE *frame;
+    char temporary_path[MAX_PATH];
+    int written;
+
+    if (!path || !path[0] || !primary_upscale_source) {
+        return;
+    }
+    now = GetTickCount();
+    if ((DWORD)(now - primary_frame_last_written_tick) < 33) {
+        return;
+    }
+    written = _snprintf(temporary_path, sizeof(temporary_path), "%s.tmp", path);
+    if (written < 0 || (size_t)written >= sizeof(temporary_path)) {
+        return;
+    }
+    frame = fopen(temporary_path, "wb");
+    if (!frame) {
+        return;
+    }
+    if (fwrite(primary_upscale_source, sizeof(WORD), 640 * 480, frame) == 640 * 480) {
+        if (fclose(frame) == 0 && MoveFileExA(
+                temporary_path,
+                path,
+                MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH
+            )) {
+            primary_frame_last_written_tick = now;
+            return;
+        }
+    } else {
+        fclose(frame);
+    }
+    DeleteFileA(temporary_path);
+}
+
+static void draw_upscaled_primary_with_gdi(void)
+{
+    struct {
+        BITMAPINFOHEADER header;
+        DWORD masks[3];
+    } bitmap_info;
+    HDC dc;
+    HWND presentation_window;
+    RECT overlay_rect;
+    int lines;
+
+    if (!primary_game_window || !primary_upscale_source || !primary_presentation_width || !primary_presentation_height) {
+        return;
+    }
+    ZeroMemory(&bitmap_info, sizeof(bitmap_info));
+    bitmap_info.header.biSize = sizeof(bitmap_info.header);
+    bitmap_info.header.biWidth = 640;
+    bitmap_info.header.biHeight = -480;
+    bitmap_info.header.biPlanes = 1;
+    bitmap_info.header.biBitCount = 16;
+    bitmap_info.header.biCompression = BI_BITFIELDS;
+    bitmap_info.masks[0] = 0x0000F800;
+    bitmap_info.masks[1] = 0x000007E0;
+    bitmap_info.masks[2] = 0x0000001F;
+
+    presentation_window = root_presentation_enabled() && click_through_overlay_enabled()
+        ? ensure_primary_presentation_overlay()
+        : (root_presentation_enabled() ? NULL : primary_game_window);
+    if (!presentation_window && !root_presentation_enabled()) {
+        trace_log("IDirectDrawSurface4 GDI presentation skipped: target window unavailable");
+        return;
+    }
+    dc = GetDC(presentation_window);
+    if (!dc) {
+        trace_log("IDirectDrawSurface4 GDI presentation skipped: GetDC failed last_error=0x%08lX", GetLastError());
+        return;
+    }
+    if (root_presentation_enabled() && click_through_overlay_enabled()) {
+        SetRect(&overlay_rect, 0, 0, (int)primary_surface4_width, (int)primary_surface4_height);
+        FillRect(dc, &overlay_rect, (HBRUSH)GetStockObject(BLACK_BRUSH));
+    }
+    SetStretchBltMode(dc, COLORONCOLOR);
+    lines = StretchDIBits(
+        dc,
+        root_presentation_enabled() ? (int)primary_presentation_x : 0,
+        root_presentation_enabled() ? (int)primary_presentation_y : 0,
+        (int)primary_presentation_width,
+        (int)primary_presentation_height,
+        0,
+        0,
+        640,
+        480,
+        primary_upscale_source,
+        (const BITMAPINFO *)&bitmap_info,
+        DIB_RGB_COLORS,
+        SRCCOPY
+    );
+    ReleaseDC(presentation_window, dc);
+    if (lines == (int)GDI_ERROR) {
+        trace_log("IDirectDrawSurface4 GDI presentation failed last_error=0x%08lX", GetLastError());
+    } else if (InterlockedCompareExchange(&primary_gdi_presentation_logged, 1, 0) == 0) {
+        trace_log(
+            "IDirectDrawSurface4 GDI presentation active root=%d target=%lux%lu offset=%lu,%lu lines=%d",
+            root_presentation_enabled(),
+            primary_presentation_width,
+            primary_presentation_height,
+            primary_presentation_x,
+            primary_presentation_y,
+            lines
+        );
+    }
+}
+
+static HRESULT finish_delayed_primary_unlock(void)
+{
+    LPRECT pending_rect = NULL;
+    HRESULT hr;
+
+    if (InterlockedCompareExchange(&primary_unlock_pending, 0, 1) != 1) {
+        return DD_OK;
+    }
+    if (primary_pending_unlock_rect_present) {
+        pending_rect = &primary_pending_unlock_rect;
+    }
+    upscale_locked_primary_640x480();
+    publish_primary_upscale_frame();
+    hr = real_DirectDrawSurface4_Unlock(primary_surface4, pending_rect);
+    if (SUCCEEDED(hr)) {
+        draw_upscaled_primary_with_gdi();
+    }
+    InterlockedExchange(&primary_surface4_locked, 0);
+    InterlockedExchange(&primary_frame_source_locked, 0);
+    primary_locked_pixels = NULL;
+    trace_log(
+        "IDirectDrawSurface4 delayed primary unlock rect=%p hr=0x%08lX %s",
+        pending_rect,
+        (unsigned long)hr,
+        hr_state(hr)
+    );
+    return hr;
+}
+
+static int surface4_matches_primary_extent(LPDIRECTDRAWSURFACE4 surface)
+{
+    if (!surface || !primary_surface4_width || !primary_surface4_height) {
+        return 0;
+    }
+    return surface == primary_surface4;
+}
+
+static void install_primary_surface4_blt_hook(LPDIRECTDRAWSURFACE4 surface)
+{
+    IDirectDrawSurface4Vtbl *vtbl;
+    DDSURFACEDESC2 surface_desc;
+    DWORD old_protect;
+
+    if (!surface) {
+        return;
+    }
+
+    primary_surface4 = surface;
+    ZeroMemory(&surface_desc, sizeof(surface_desc));
+    surface_desc.dwSize = sizeof(surface_desc);
+    if (SUCCEEDED(surface->lpVtbl->GetSurfaceDesc(surface, &surface_desc))) {
+        primary_surface4_width = surface_desc.dwWidth;
+        primary_surface4_height = surface_desc.dwHeight;
+    }
+    if (!primary_surface4_width || !primary_surface4_height) {
+        primary_surface4_width = (DWORD)GetSystemMetrics(SM_CXSCREEN);
+        primary_surface4_height = (DWORD)GetSystemMetrics(SM_CYSCREEN);
+    }
+    trace_log(
+        "IDirectDrawSurface4 primary surface=%p width=%lu height=%lu upscale_primary=%d",
+        surface,
+        primary_surface4_width,
+        primary_surface4_height,
+        upscale_primary_enabled()
+    );
+    configure_upscale_presentation();
+
+    if (InterlockedCompareExchange(&primary_surface4_blt_hook_installed, 1, 0) != 0) {
+        return;
+    }
+
+    vtbl = (IDirectDrawSurface4Vtbl *)surface->lpVtbl;
+    if (!vtbl || !vtbl->Blt) {
+        trace_log("IDirectDrawSurface4 unable to install Blt hook: missing vtable");
+        InterlockedExchange(&primary_surface4_blt_hook_installed, 0);
+        return;
+    }
+    if (!VirtualProtect(vtbl, sizeof(*vtbl), PAGE_EXECUTE_READWRITE, &old_protect)) {
+        trace_log("IDirectDrawSurface4 unable to make vtable writable last_error=0x%08lX", GetLastError());
+        InterlockedExchange(&primary_surface4_blt_hook_installed, 0);
+        return;
+    }
+    real_DirectDrawSurface4_Blt = vtbl->Blt;
+    real_DirectDrawSurface4_QueryInterface = vtbl->QueryInterface;
+    real_DirectDrawSurface4_Flip = vtbl->Flip;
+    real_DirectDrawSurface4_Lock = vtbl->Lock;
+    real_DirectDrawSurface4_Unlock = vtbl->Unlock;
+    vtbl->Blt = trace_surface4_Blt;
+    vtbl->QueryInterface = trace_surface4_QueryInterface;
+    vtbl->Flip = trace_surface4_Flip;
+    vtbl->Lock = trace_surface4_Lock;
+    vtbl->Unlock = trace_surface4_Unlock;
+    VirtualProtect(vtbl, sizeof(*vtbl), old_protect, &old_protect);
+    FlushInstructionCache(GetCurrentProcess(), vtbl, sizeof(*vtbl));
+    trace_log(
+        "IDirectDrawSurface4 installed Blt/Flip/Lock/Unlock/QueryInterface hooks vtable=%p real_blt=%p real_flip=%p real_lock=%p real_unlock=%p real_query=%p",
+        vtbl,
+        real_DirectDrawSurface4_Blt,
+        real_DirectDrawSurface4_Flip,
+        real_DirectDrawSurface4_Lock,
+        real_DirectDrawSurface4_Unlock,
+        real_DirectDrawSurface4_QueryInterface
+    );
+}
+
+static HRESULT WINAPI trace_surface4_QueryInterface(
+    LPDIRECTDRAWSURFACE4 surface,
+    REFIID riid,
+    LPVOID *out
+)
+{
+    char riid_text[64];
+    HRESULT hr;
+
+    if (!real_DirectDrawSurface4_QueryInterface) {
+        return E_NOINTERFACE;
+    }
+    guid_to_text(riid, riid_text, sizeof(riid_text));
+    hr = real_DirectDrawSurface4_QueryInterface(surface, riid, out);
+    trace_log(
+        "IDirectDrawSurface4::QueryInterface surface=%p riid=%s hr=0x%08lX %s out=%p",
+        surface,
+        riid_text,
+        (unsigned long)hr,
+        hr_state(hr),
+        out ? *out : NULL
+    );
+    return hr;
+}
+
+static HRESULT WINAPI trace_surface4_Flip(
+    LPDIRECTDRAWSURFACE4 surface,
+    LPDIRECTDRAWSURFACE4 target_override,
+    DWORD flags
+)
+{
+    HRESULT hr;
+
+    if (!real_DirectDrawSurface4_Flip) {
+        return DDERR_GENERIC;
+    }
+    hr = real_DirectDrawSurface4_Flip(surface, target_override, flags);
+    trace_log(
+        "IDirectDrawSurface4::Flip surface=%p target_override=%p flags=0x%08lX hr=0x%08lX %s",
+        surface,
+        target_override,
+        flags,
+        (unsigned long)hr,
+        hr_state(hr)
+    );
+    return hr;
+}
+
+static HRESULT WINAPI trace_surface4_Lock(
+    LPDIRECTDRAWSURFACE4 surface,
+    LPRECT rect,
+    LPDDSURFACEDESC2 desc,
+    DWORD flags,
+    HANDLE event
+)
+{
+    HRESULT hr;
+
+    if (!real_DirectDrawSurface4_Lock) {
+        return DDERR_GENERIC;
+    }
+    if (
+        surface == primary_surface4
+        && InterlockedCompareExchange(&primary_unlock_pending, 0, 0) == 1
+    ) {
+        HRESULT delayed_hr = finish_delayed_primary_unlock();
+        trace_log(
+            "IDirectDrawSurface4::Lock completed pending primary unlock before relock hr=0x%08lX %s",
+            (unsigned long)delayed_hr,
+            hr_state(delayed_hr)
+        );
+        if (FAILED(delayed_hr)) {
+            return delayed_hr;
+        }
+    }
+    hr = real_DirectDrawSurface4_Lock(surface, rect, desc, flags, event);
+    if (hr == DDERR_SURFACELOST && upscale_primary_enabled()) {
+        HRESULT restore_hr = surface->lpVtbl->Restore(surface);
+        trace_log(
+            "IDirectDrawSurface4::Lock surface-lost recovery surface=%p primary=%p restore hr=0x%08lX %s",
+            surface,
+            primary_surface4,
+            (unsigned long)restore_hr,
+            hr_state(restore_hr)
+        );
+        if (SUCCEEDED(restore_hr)) {
+            hr = real_DirectDrawSurface4_Lock(surface, rect, desc, flags, event);
+            trace_log(
+                "IDirectDrawSurface4::Lock surface-lost recovery retry hr=0x%08lX %s",
+                (unsigned long)hr,
+                hr_state(hr)
+            );
+        }
+    }
+    if (
+        SUCCEEDED(hr)
+        && surface == primary_surface4
+        && desc
+    ) {
+        primary_locked_pixels = desc->lpSurface;
+        primary_locked_pitch = desc->lPitch;
+        primary_locked_width = desc->dwWidth;
+        primary_locked_height = desc->dwHeight;
+        primary_locked_rgbbits = desc->ddpfPixelFormat.dwRGBBitCount;
+        InterlockedExchange(&primary_surface4_locked, 1);
+        InterlockedExchange(&primary_frame_source_locked, 0);
+    } else if (
+        SUCCEEDED(hr)
+        && InterlockedCompareExchange(&primary_surface4_locked, 0, 0) == 1
+        && desc
+        && desc->dwWidth == 640
+        && desc->dwHeight == 480
+        && desc->ddpfPixelFormat.dwRGBBitCount == 8
+    ) {
+        InterlockedExchange(&primary_frame_source_locked, 1);
+    }
+    trace_log(
+        "IDirectDrawSurface4::Lock surface=%p rect=%p flags=0x%08lX event=%p hr=0x%08lX %s width=%lu height=%lu pitch=%ld rgbbits=%lu pixels=%p",
+        surface,
+        rect,
+        flags,
+        event,
+        (unsigned long)hr,
+        hr_state(hr),
+        SUCCEEDED(hr) && desc ? desc->dwWidth : 0,
+        SUCCEEDED(hr) && desc ? desc->dwHeight : 0,
+        SUCCEEDED(hr) && desc ? desc->lPitch : 0,
+        SUCCEEDED(hr) && desc ? desc->ddpfPixelFormat.dwRGBBitCount : 0,
+        SUCCEEDED(hr) && desc ? desc->lpSurface : NULL
+    );
+    return hr;
+}
+
+static HRESULT WINAPI trace_surface4_Unlock(
+    LPDIRECTDRAWSURFACE4 surface,
+    LPRECT rect
+)
+{
+    HRESULT hr;
+
+    if (!real_DirectDrawSurface4_Unlock) {
+        return DDERR_GENERIC;
+    }
+    if (surface == primary_surface4 && InterlockedCompareExchange(&primary_surface4_locked, 0, 0) == 1) {
+        if (
+            upscale_primary_enabled()
+            && InterlockedCompareExchange(&primary_frame_source_locked, 0, 0) == 1
+        ) {
+            if (rect) {
+                primary_pending_unlock_rect = *rect;
+                primary_pending_unlock_rect_present = 1;
+            } else {
+                primary_pending_unlock_rect_present = 0;
+            }
+            InterlockedExchange(&primary_unlock_pending, 1);
+            trace_log("IDirectDrawSurface4 primary unlock delayed pending source release");
+            return DD_OK;
+        }
+        hr = real_DirectDrawSurface4_Unlock(surface, rect);
+        InterlockedExchange(&primary_surface4_locked, 0);
+        InterlockedExchange(&primary_frame_source_locked, 0);
+        primary_locked_pixels = NULL;
+        trace_log(
+            "IDirectDrawSurface4::Unlock surface=%p rect=%p hr=0x%08lX %s",
+            surface,
+            rect,
+            (unsigned long)hr,
+            hr_state(hr)
+        );
+        return hr;
+    }
+
+    hr = real_DirectDrawSurface4_Unlock(surface, rect);
+    if (InterlockedCompareExchange(&primary_unlock_pending, 0, 0) == 1) {
+        HRESULT delayed_hr = finish_delayed_primary_unlock();
+        if (SUCCEEDED(hr) && FAILED(delayed_hr)) {
+            hr = delayed_hr;
+        }
+    }
+    trace_log(
+        "IDirectDrawSurface4::Unlock surface=%p rect=%p hr=0x%08lX %s",
+        surface,
+        rect,
+        (unsigned long)hr,
+        hr_state(hr)
+    );
+    return hr;
+}
+
+static HRESULT WINAPI trace_surface4_Blt(
+    LPDIRECTDRAWSURFACE4 destination,
+    LPRECT destination_rect,
+    LPDIRECTDRAWSURFACE4 source,
+    LPRECT source_rect,
+    DWORD flags,
+    LPDDBLTFX effects
+)
+{
+    RECT scaled_destination;
+    LPRECT effective_destination = destination_rect;
+    int host_sized_destination = surface4_matches_primary_extent(destination);
+    HRESULT hr;
+
+    if (!real_DirectDrawSurface4_Blt) {
+        return DDERR_GENERIC;
+    }
+
+    if (
+        host_sized_destination
+        && upscale_primary_enabled()
+        && primary_surface4_width >= 640
+        && primary_surface4_height >= 480
+        && rect_is_pm99_logical_viewport(destination_rect)
+    ) {
+        scale_pm99_logical_rect_to_primary(destination_rect, &scaled_destination);
+        effective_destination = &scaled_destination;
+        trace_log(
+            "IDirectDrawSurface4::Blt host-sized upscale dst_surface=%p src=%p dst=(%ld,%ld,%ld,%ld) scaled=(%ld,%ld,%ld,%ld) flags=0x%08lX",
+            destination,
+            source,
+            destination_rect ? destination_rect->left : 0,
+            destination_rect ? destination_rect->top : 0,
+            destination_rect ? destination_rect->right : 640,
+            destination_rect ? destination_rect->bottom : 480,
+            scaled_destination.left,
+            scaled_destination.top,
+            scaled_destination.right,
+            scaled_destination.bottom,
+            flags
+        );
+    } else if (host_sized_destination) {
+        trace_log(
+            "IDirectDrawSurface4::Blt host-sized passthrough dst_surface=%p src=%p dst=%p flags=0x%08lX",
+            destination,
+            source,
+            destination_rect,
+            flags
+        );
+    }
+
+    hr = real_DirectDrawSurface4_Blt(
+        destination,
+        effective_destination,
+        source,
+        source_rect,
+        flags,
+        effects
+    );
+    if (host_sized_destination) {
+        trace_log("IDirectDrawSurface4::Blt host-sized hr=0x%08lX %s", (unsigned long)hr, hr_state(hr));
+    }
+    return hr;
 }
 
 static int mode_desc_matches_640x480x16(LPDDSURFACEDESC desc)
@@ -176,6 +1319,45 @@ static HRESULT maybe_force_set_display_mode_ok(HRESULT real_hr, DWORD width, DWO
         return DD_OK;
     }
     return real_hr;
+}
+
+static HRESULT set_display_mode_with_upscale(
+    LPDIRECTDRAW4 ddraw,
+    DWORD width,
+    DWORD height,
+    DWORD bpp,
+    DWORD refresh,
+    DWORD flags
+)
+{
+    DWORD host_width;
+    DWORD host_height;
+    HRESULT hr;
+
+    if (
+        !upscale_primary_enabled()
+        || width != 640
+        || height != 480
+        || bpp != 16
+    ) {
+        return ddraw->lpVtbl->SetDisplayMode(ddraw, width, height, bpp, refresh, flags);
+    }
+
+    host_width = (DWORD)GetSystemMetrics(SM_CXSCREEN);
+    host_height = (DWORD)GetSystemMetrics(SM_CYSCREEN);
+    hr = ddraw->lpVtbl->SetDisplayMode(ddraw, host_width, host_height, bpp, refresh, flags);
+    trace_log(
+        "IDirectDraw4::SetDisplayMode upscale real_target=%lux%lux%lu requested=%lux%lux%lu hr=0x%08lX %s",
+        host_width,
+        host_height,
+        bpp,
+        width,
+        height,
+        bpp,
+        (unsigned long)hr,
+        hr_state(hr)
+    );
+    return hr;
 }
 
 static void normalize_display_mode_desc(LPDDSURFACEDESC desc, const char *source)
@@ -606,6 +1788,9 @@ static HRESULT WINAPI trace_ddraw_CreateClipper(LPDIRECTDRAW iface, DWORD flags,
     TraceDirectDraw *self = trace_from_iface(iface);
     HRESULT hr = self->real->lpVtbl->CreateClipper(self->real, flags, clipper, outer);
     trace_log("IDirectDraw::CreateClipper flags=0x%08lX hr=0x%08lX %s clipper=%p", flags, (unsigned long)hr, hr_state(hr), clipper ? *clipper : NULL);
+    if (SUCCEEDED(hr) && clipper && *clipper) {
+        install_directdraw_clipper_hook(*clipper);
+    }
     return hr;
 }
 
@@ -867,6 +2052,9 @@ static HRESULT WINAPI trace_ddraw4_CreateClipper(LPDIRECTDRAW4 iface, DWORD flag
     TraceDirectDraw4 *self = trace4_from_iface(iface);
     HRESULT hr = self->real->lpVtbl->CreateClipper(self->real, flags, clipper, outer);
     trace_log("IDirectDraw4::CreateClipper flags=0x%08lX hr=0x%08lX %s clipper=%p", flags, (unsigned long)hr, hr_state(hr), clipper ? *clipper : NULL);
+    if (SUCCEEDED(hr) && clipper && *clipper) {
+        install_directdraw_clipper_hook(*clipper);
+    }
     return hr;
 }
 
@@ -882,10 +2070,41 @@ static HRESULT WINAPI trace_ddraw4_CreateSurface(LPDIRECTDRAW4 iface, LPDDSURFAC
 {
     TraceDirectDraw4 *self = trace4_from_iface(iface);
     HRESULT hr;
+    DDSURFACEDESC2 fallback_desc;
     log_surface_desc2("IDirectDraw4::CreateSurface input", desc);
     clamp_huge_surface_desc2(desc, "IDirectDraw4::CreateSurface");
     hr = self->real->lpVtbl->CreateSurface(self->real, desc, surface, outer);
     trace_log("IDirectDraw4::CreateSurface hr=0x%08lX %s surface=%p", (unsigned long)hr, hr_state(hr), surface ? *surface : NULL);
+    if (
+        FAILED(hr)
+        && managed_texture_fallback_enabled()
+        && desc
+        && (desc->ddsCaps.dwCaps & DDSCAPS_TEXTURE)
+        && (desc->ddsCaps.dwCaps2 & DDSCAPS2_TEXTUREMANAGE)
+    ) {
+        fallback_desc = *desc;
+        fallback_desc.ddsCaps.dwCaps2 &= ~DDSCAPS2_TEXTUREMANAGE;
+        log_surface_desc2("IDirectDraw4::CreateSurface managed-texture fallback", &fallback_desc);
+        if (surface) {
+            *surface = NULL;
+        }
+        hr = self->real->lpVtbl->CreateSurface(self->real, &fallback_desc, surface, outer);
+        trace_log(
+            "IDirectDraw4::CreateSurface managed-texture fallback hr=0x%08lX %s surface=%p",
+            (unsigned long)hr,
+            hr_state(hr),
+            surface ? *surface : NULL
+        );
+    }
+    if (
+        SUCCEEDED(hr)
+        && desc
+        && (desc->ddsCaps.dwCaps & DDSCAPS_PRIMARYSURFACE)
+        && surface
+        && *surface
+    ) {
+        install_primary_surface4_blt_hook(*surface);
+    }
     return hr;
 }
 
@@ -1030,6 +2249,9 @@ static HRESULT WINAPI trace_ddraw4_SetCooperativeLevel(LPDIRECTDRAW4 iface, HWND
 {
     TraceDirectDraw4 *self = trace4_from_iface(iface);
     HRESULT hr = self->real->lpVtbl->SetCooperativeLevel(self->real, hwnd, flags);
+    if (SUCCEEDED(hr) && hwnd) {
+        primary_game_window = hwnd;
+    }
     trace_log("IDirectDraw4::SetCooperativeLevel hwnd=%p flags=0x%08lX hr=0x%08lX %s", hwnd, flags, (unsigned long)hr, hr_state(hr));
     return hr;
 }
@@ -1037,7 +2259,7 @@ static HRESULT WINAPI trace_ddraw4_SetCooperativeLevel(LPDIRECTDRAW4 iface, HWND
 static HRESULT WINAPI trace_ddraw4_SetDisplayMode(LPDIRECTDRAW4 iface, DWORD width, DWORD height, DWORD bpp, DWORD refresh, DWORD flags)
 {
     TraceDirectDraw4 *self = trace4_from_iface(iface);
-    HRESULT hr = self->real->lpVtbl->SetDisplayMode(self->real, width, height, bpp, refresh, flags);
+    HRESULT hr = set_display_mode_with_upscale(self->real, width, height, bpp, refresh, flags);
     trace_log("IDirectDraw4::SetDisplayMode width=%lu height=%lu bpp=%lu refresh=%lu flags=0x%08lX hr=0x%08lX %s", width, height, bpp, refresh, flags, (unsigned long)hr, hr_state(hr));
     hr = maybe_force_set_display_mode_ok(hr, width, height, bpp, "IDirectDraw4::SetDisplayMode");
     return hr;

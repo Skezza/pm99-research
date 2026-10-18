@@ -1,0 +1,1 @@
+{"carrier_updates":[],"ledger_id":"pm99-2019-20-fixed-carrier-intake","registry_sha256":"7476d4a59fc9d7ebbcf31c40268940f5a4399cc75db67ddf3e11e7b6db0a4375","schema_version":"pm99-world-fixed-carrier-ledger-v2","season":{"end_year":2020,"label":"2019/20","start_year":2019},"sources":[],"topology_policy":"preserve-existing-carriers-no-membership-write"}

@@ -3,7 +3,7 @@
 
 This probe is fail-closed:
 - Marker-backed rows use the exact six-byte window consumed by MANAGPRE parser
-  (`name_end-1 .. name_end+4` in decoded payload space).
+  (`name_end-2 .. name_end+3` in decoded payload space).
 - Indexed rows use the existing indexed-face component extraction contract.
 - No external reconciliation data is used for slot interpretation.
 """
@@ -119,7 +119,7 @@ def _decode_marker_slot_window(raw: bytes, record: PlayerRecord) -> dict[str, An
 
     Contract anchor:
     - marker name_end is found by PlayerRecord._find_name_end_in_data(raw)
-    - six slot bytes are read at name_end-1 .. name_end+4
+    - six slot bytes are read at name_end-2 .. name_end+3
     - slot decode: ((byte ^ 0x61) - 1) if xor>0 else 98
 
     Additional checks confirm marker-aligned DOB/height/weight bytes continue to
@@ -129,7 +129,7 @@ def _decode_marker_slot_window(raw: bytes, record: PlayerRecord) -> dict[str, An
     if name_end is None:
         return None
 
-    start = int(name_end) - 1
+    start = int(name_end) - 2
     if start < 0 or (start + 6) > len(raw):
         return None
 
@@ -184,7 +184,7 @@ def _decode_marker_slot_window(raw: bytes, record: PlayerRecord) -> dict[str, An
 
     return {
         "decode_status": "ok",
-        "decode_source": "marker_window_name_end_minus1",
+        "decode_source": "marker_window_name_end_minus2",
         "fine_position_slots": slots,
         "marker_anchor": int(name_end),
         "marker_slot_window_start": int(start),
@@ -324,7 +324,7 @@ def run(
 
         source = str(decoded["decode_source"])
         marker_alignment = decoded.get("marker_alignment")
-        if source == "marker_window_name_end_minus1":
+        if source == "marker_window_name_end_minus2":
             marker_rows += 1
             if bool((marker_alignment or {}).get("overall_pass", False)):
                 marker_alignment_pass_rows += 1
@@ -446,7 +446,7 @@ def run(
         },
         "criteria": criteria,
         "notes": [
-            "Marker rows use strict parser slot window: name_end-1..name_end+4 (decoded payload bytes).",
+            "Marker rows use strict parser slot window: name_end-2..name_end+3 (decoded payload bytes).",
             "For marker rows, slot0 is primary; slot1..4 are secondary candidates; slot5 is treated as non-position tail.",
             "Indexed rows use indexed_face_component0 decode with slot0 primary and slot1.. secondary candidates.",
             "No external reconciliation inputs are used in this contract probe.",

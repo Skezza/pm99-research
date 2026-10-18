@@ -1,0 +1,11 @@
+{
+  "schema_version": "pm99-english-manager-overrides-v1",
+  "season": "2021/22",
+  "corrections": [{
+    "club": "Arsenal",
+    "expected_incorrect_manager": "Thomas Frank",
+    "manager_name": "Mikel Arteta",
+    "reason": "The match-page parser selected Brentford's home manager for both sides; Arteta managed Arsenal in the opening fixture.",
+    "source_url": "https://www.11v11.com/matches/brentford-v-arsenal-13-august-2021-371048/"
+  }]
+}

@@ -1,0 +1,1 @@
+{"carrier_updates":[],"ledger_id":"pm99-2011-12-world-ledger","registry_sha256":"e2671c63245f71953bb15eb00f0595c1d11c3abf14fcab3538f4047b77cd0157","schema_version":"pm99-world-fixed-carrier-ledger-v2","season":{"end_year":2012,"label":"2011/12","start_year":2011},"sources":[],"topology_policy":"preserve-existing-carriers-no-membership-write"}

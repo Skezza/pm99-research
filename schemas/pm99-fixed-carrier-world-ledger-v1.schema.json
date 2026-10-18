@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pm99-research.local/schemas/pm99-fixed-carrier-world-ledger-v1.schema.json",
+  "title": "PM99 Fixed-Carrier World Ledger V1",
+  "description": "A canonical, metadata-only binding from a historical season package to immutable existing EQ carriers. It intentionally contains no country, division, league or draw-membership field.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "ledger_id",
+    "package_sha256",
+    "season_label",
+    "topology_lock",
+    "sources",
+    "carrier_assignments",
+    "portrait_policy"
+  ],
+  "properties": {
+    "schema_version": {"const": "pm99-fixed-carrier-world-ledger-v1"},
+    "ledger_id": {"$ref": "#/$defs/id"},
+    "package_sha256": {"$ref": "#/$defs/sha256"},
+    "season_label": {"type": "string", "pattern": "^20(0[0-9]|1[0-9]|2[0-5])/([0-9]{2})$"},
+    "topology_lock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["eq98030_sha256", "record_count", "directory_identity_sha256", "write_policy"],
+      "properties": {
+        "eq98030_sha256": {"$ref": "#/$defs/sha256"},
+        "record_count": {"type": "integer", "minimum": 1},
+        "directory_identity_sha256": {"$ref": "#/$defs/sha256"},
+        "write_policy": {"const": "preserve-existing-carriers"}
+      }
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/source"}
+    },
+    "carrier_assignments": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/assignment"}
+    },
+    "portrait_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["on_unavailable", "on_unsafe_conversion", "emit_review_queue"],
+      "properties": {
+        "on_unavailable": {"const": "native-no-photo"},
+        "on_unsafe_conversion": {"const": "native-no-photo"},
+        "emit_review_queue": {"const": true}
+      }
+    }
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[a-z][a-z0-9-]{1,79}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "evidence_sha256", "package_source_ids"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "title": {"type": "string", "minLength": 1},
+        "evidence_sha256": {"$ref": "#/$defs/sha256"},
+        "package_source_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+        "uri": {"type": "string", "format": "uri"}
+      }
+    },
+    "assignment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["club_id", "carrier_id", "carrier_ordinal", "identity_source_ids"],
+      "properties": {
+        "club_id": {"$ref": "#/$defs/id"},
+        "carrier_id": {"type": "integer", "minimum": 1},
+        "carrier_ordinal": {"type": "integer", "minimum": 0},
+        "identity_source_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+        "note": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

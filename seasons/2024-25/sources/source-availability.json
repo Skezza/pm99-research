@@ -1,0 +1,64 @@
+{
+  "checked_at": "2026-08-31",
+  "expected_catalog_folder": "2024-2025",
+  "repository": {
+    "license": "CC0-1.0",
+    "local_path": ".local/external-sources/cache.footballsquads",
+    "remote": "https://github.com/footballcsv/cache.footballsquads.git",
+    "revision": "187c963e76e2bd1d9a65e2f0f3b04d9b57ba3555"
+  },
+  "result": {
+    "catalog_folder_present": false,
+    "club_source_file_count": 0,
+    "coverage_status": "blocked",
+    "reason": "The pinned FootballSquads repository has no 2024-2025 catalogue directory. Its origin/master ref is the pinned revision, and its complete Git tree has zero paths containing 2024-2025."
+  },
+  "schema": "pm99-season-source-availability-v1",
+  "season": {
+    "end_year": 2025,
+    "label": "2024/25",
+    "start_year": 2024
+  },
+  "top_level_catalog_latest_folders": {
+    "arg": "2024",
+    "australia": "2023-2024",
+    "austria": "2023-2024",
+    "belgium": "2023-2024",
+    "brazil": "2024",
+    "chile": "2024",
+    "china": "2021",
+    "colombia": "2019",
+    "croatia": "2023-2024",
+    "czech": "2023-2024",
+    "denmark": "2023-2024",
+    "eng": "2023-2024",
+    "france": "2023-2024",
+    "ger": "2023-2024",
+    "greece": "2023-2024",
+    "holland": "2010-2011",
+    "hungary": "2023-2024",
+    "ireland": "2024",
+    "italy": "2023-2024",
+    "japan": "2024",
+    "mexico": "2023-2024",
+    "national": "worldcup",
+    "netherl": "2023-2024",
+    "norway": "2024",
+    "poland": "2023-2024",
+    "portugal": "2023-2024",
+    "russia": "2023-2024",
+    "scots": "2023-2024",
+    "spain": "2023-2024",
+    "sweden": "2024",
+    "switz": "2023-2024",
+    "turkey": "2023-2024",
+    "ukraine": "2023-2024",
+    "uruguay": "2024",
+    "usa": "2024"
+  },
+  "verification": {
+    "catalog_folder_check": "find .local/external-sources/cache.footballsquads -path '*2024-2025*' -type f",
+    "remote_ref_check": "git -C .local/external-sources/cache.footballsquads ls-remote --heads origin",
+    "tree_check": "git -C .local/external-sources/cache.footballsquads ls-tree -d -r HEAD | rg '2024-2025'"
+  }
+}

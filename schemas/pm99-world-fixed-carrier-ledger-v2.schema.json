@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pm99-research.local/schemas/pm99-world-fixed-carrier-ledger-v2.schema.json",
+  "title": "PM99 World Fixed-Carrier Season Ledger V2",
+  "description": "Portable authoring ledger for existing mode-1 carriers. The companion validator enforces registry slot identity, source references, uniqueness and no-photo decisions.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "ledger_id", "season", "registry_sha256", "topology_policy", "sources", "carrier_updates"],
+  "properties": {
+    "schema_version": {"const": "pm99-world-fixed-carrier-ledger-v2"},
+    "ledger_id": {"$ref": "#/$defs/id"},
+    "season": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start_year", "end_year", "label"],
+      "properties": {
+        "start_year": {"type": "integer", "minimum": 1999, "maximum": 2025},
+        "end_year": {"type": "integer", "minimum": 2000, "maximum": 2026},
+        "label": {"type": "string", "pattern": "^20(0[0-9]|1[0-9]|2[0-5])/([0-9]{2})$"}
+      }
+    },
+    "registry_sha256": {"$ref": "#/$defs/sha256"},
+    "topology_policy": {"const": "preserve-existing-carriers-no-membership-write"},
+    "sources": {"type": "array", "items": {"$ref": "#/$defs/source"}},
+    "carrier_updates": {"type": "array", "items": {"$ref": "#/$defs/carrier-update"}}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[a-z][a-z0-9-]{1,79}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "kind", "content_sha256"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "title": {"type": "string", "minLength": 1},
+        "kind": {"type": "string", "enum": ["club", "manager", "squad", "player", "portrait", "kit", "ratings", "other"]},
+        "content_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "source-ids": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/id"}, "uniqueItems": true},
+    "carrier-update": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["carrier_id", "status", "club", "manager", "players", "kit", "blockers"],
+      "properties": {
+        "carrier_id": {"type": "integer", "minimum": 1},
+        "status": {"type": "string", "enum": ["draft", "blocked", "complete"]},
+        "club": {"$ref": "#/$defs/club"},
+        "manager": {"$ref": "#/$defs/manager"},
+        "players": {"type": "array", "items": {"$ref": "#/$defs/player"}},
+        "kit": {"$ref": "#/$defs/kit"},
+        "blockers": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true}
+      }
+    },
+    "club": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity_key", "name", "full_name", "ground_name", "seated_capacity", "source_ids"],
+      "properties": {
+        "identity_key": {"$ref": "#/$defs/id"},
+        "name": {"type": "string", "minLength": 1},
+        "full_name": {"type": "string", "minLength": 1},
+        "ground_name": {"type": "string", "minLength": 1},
+        "seated_capacity": {"type": "integer", "minimum": 0},
+        "source_ids": {"$ref": "#/$defs/source-ids"}
+      }
+    },
+    "manager": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["carrier_id", "person_id", "name", "source_ids"],
+      "properties": {
+        "carrier_id": {"type": "integer", "minimum": 1},
+        "person_id": {"$ref": "#/$defs/id"},
+        "name": {"type": "string", "minLength": 1},
+        "source_ids": {"$ref": "#/$defs/source-ids"}
+      }
+    },
+    "player": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slot_index", "player_carrier_id", "person_id", "name", "facts", "ratings", "source_ids", "portrait"],
+      "properties": {
+        "slot_index": {"type": "integer", "minimum": 0},
+        "player_carrier_id": {"type": "integer", "minimum": 1},
+        "person_id": {"$ref": "#/$defs/id"},
+        "name": {"type": "string", "minLength": 1},
+        "facts": {"$ref": "#/$defs/facts"},
+        "ratings": {"$ref": "#/$defs/ratings"},
+        "source_ids": {"$ref": "#/$defs/source-ids"},
+        "portrait": {"$ref": "#/$defs/portrait"}
+      }
+    },
+    "facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["birth_date", "nationality", "height_cm", "weight_kg", "primary_position", "fine_roles", "shirt_number"],
+      "properties": {
+        "birth_date": {"type": "string", "pattern": "^(?:19|20)[0-9]{2}-[0-9]{2}-[0-9]{2}$"},
+        "nationality": {"type": "string", "pattern": "^[A-Z]{3}$"},
+        "height_cm": {"type": "integer", "minimum": 100, "maximum": 250},
+        "weight_kg": {"type": "integer", "minimum": 30, "maximum": 200},
+        "primary_position": {"type": "string", "enum": ["G", "D", "M", "F"]},
+        "fine_roles": {"type": "array", "minItems": 1, "items": {"type": "integer", "minimum": 0, "maximum": 17}},
+        "shirt_number": {"type": "integer", "minimum": 0, "maximum": 99}
+      }
+    },
+    "ratings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["quality", "speed", "stamina", "aggression", "passing", "tackling", "heading", "shooting", "dribbling", "handling"],
+      "properties": {
+        "quality": {"$ref": "#/$defs/rating"}, "speed": {"$ref": "#/$defs/rating"}, "stamina": {"$ref": "#/$defs/rating"}, "aggression": {"$ref": "#/$defs/rating"}, "passing": {"$ref": "#/$defs/rating"}, "tackling": {"$ref": "#/$defs/rating"}, "heading": {"$ref": "#/$defs/rating"}, "shooting": {"$ref": "#/$defs/rating"}, "dribbling": {"$ref": "#/$defs/rating"}, "handling": {"$ref": "#/$defs/rating"}
+      }
+    },
+    "rating": {"type": "integer", "minimum": 0, "maximum": 99},
+    "kit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status": {"type": "string", "enum": ["applied", "unresolved"]},
+        "source_ids": {"$ref": "#/$defs/source-ids"},
+        "reason": {"type": "string", "minLength": 1}
+      }
+    },
+    "portrait": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status": {"type": "string", "enum": ["applied", "native-no-photo", "unresolved"]},
+        "source_ids": {"$ref": "#/$defs/source-ids"},
+        "reason": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

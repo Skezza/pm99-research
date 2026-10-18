@@ -1,0 +1,18 @@
+{
+  "schema_version": "pm99-explicit-provider-person-identity-resolution-v1",
+  "season": "2017-18",
+  "club": "Wrexham",
+  "resolutions": [
+    {
+      "source_provider_person_id": "soccerbase:49642",
+      "name": "Scott Boden",
+      "published_birth_date": "1989-11-23",
+      "canonical_birth_date": "1989-11-23",
+      "canonical_source_player_id": 74777,
+      "annual_fact_policy": "discard-conflicting-annual-biography",
+      "rejected_annual_birth_date": "1989-12-19",
+      "corroboration_url": "https://www.transfermarkt.co.uk/scott-boden/profil/spieler/74777",
+      "reason": "Original numerical Soccerbase49642 and independently replayed original numerical Transfermarkt74777 both publish 1989-11-23. Reject the conflicting FootballSquads date and all secondary facts from that conflicting annual biography; do not infer a new person or birthday from a name alone. Original first-match membership remains separately bound."
+    }
+  ]
+}

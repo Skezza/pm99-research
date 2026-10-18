@@ -1,0 +1,11 @@
+{
+  "schema_version": "pm99-english-manager-overrides-v1",
+  "season": "2023/24",
+  "corrections": [{
+    "club": "Tranmere Rovers",
+    "expected_incorrect_manager": "Andy Crosby",
+    "manager_name": "Ian Dawes",
+    "reason": "Dawes managed Tranmere from May until 10 September 2023; the parser selected opposing Port Vale manager Andy Crosby.",
+    "source_url": "https://www.bbc.co.uk/sport/football/67300762"
+  }]
+}

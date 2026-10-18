@@ -261,27 +261,34 @@ def _build_replacement_bitmap(
     candidate_indices = sorted(set(int(index) for index in allowed_indices if 0 <= int(index) < len(palette_rgb)))
     if not candidate_indices:
         raise ValueError("allowed_indices resolved to an empty candidate index set")
-    candidate_colors = {index: palette_rgb[index] for index in candidate_indices}
-
-    cache: dict[tuple[int, int, int], int] = {}
-    top_down_array = bytearray(width * height)
-    for offset, pixel in enumerate(prepared.getdata()):
-        red, green, blue = (int(pixel[0]), int(pixel[1]), int(pixel[2]))
-        key = (red, green, blue)
-        selected = cache.get(key)
-        if selected is None:
-            selected = min(
-                candidate_indices,
-                key=lambda idx: (
-                    (red - int(candidate_colors[idx][0])) ** 2
-                    + (green - int(candidate_colors[idx][1])) ** 2
-                    + (blue - int(candidate_colors[idx][2])) ** 2
-                ),
-            )
-            cache[key] = selected
-        top_down_array[offset] = selected
-
-    top_down = bytes(top_down_array)
+    if candidate_indices == list(range(len(palette_rgb))):
+        # The historical-season importer deliberately permits the complete
+        # PM99 palette. Pillow's native palette quantiser is equivalent to
+        # choosing from that exact index set, but avoids doing 256 Python
+        # distance calculations per minifoto pixel. This keeps the BMP bytes
+        # and palette contract intact while making a 2,000-player build
+        # practical.
+        top_down = prepared.quantize(palette=palette_image, dither=Image.Dither.NONE).tobytes()
+    else:
+        candidate_colors = {index: palette_rgb[index] for index in candidate_indices}
+        cache: dict[tuple[int, int, int], int] = {}
+        top_down_array = bytearray(width * height)
+        for offset, pixel in enumerate(prepared.getdata()):
+            red, green, blue = (int(pixel[0]), int(pixel[1]), int(pixel[2]))
+            key = (red, green, blue)
+            selected = cache.get(key)
+            if selected is None:
+                selected = min(
+                    candidate_indices,
+                    key=lambda idx: (
+                        (red - int(candidate_colors[idx][0])) ** 2
+                        + (green - int(candidate_colors[idx][1])) ** 2
+                        + (blue - int(candidate_colors[idx][2])) ** 2
+                    ),
+                )
+                cache[key] = selected
+            top_down_array[offset] = selected
+        top_down = bytes(top_down_array)
     rows = [top_down[row * width : (row + 1) * width] for row in range(height)]
     bottom_up = b"".join(reversed(rows))
 

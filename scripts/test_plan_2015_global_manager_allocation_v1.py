@@ -75,3 +75,18 @@ def test_source_tail_manager_history_is_a_dated_manager_source() -> None:
         "status": "dated-transfermarkt-source-tail-manager-history-source",
         "name": "Historical Manager",
     }
+
+
+def test_residual_manager_history_is_a_dated_manager_source() -> None:
+    package = {"managers": [], "clubs": [{"carrier_id": 961, "manager_id": "manager-961"}]}
+    source = {
+        "schema_version": allocation.RESIDUAL_MANAGER_HISTORY_SCHEMA,
+        "rows": [{"carrier_id": 961, "manager_name": "Joel Cedergren / Roger Franzén"}],
+    }
+
+    result = allocation._foreign_manager_sources(package, [source])
+
+    assert result[961] == {
+        "status": "dated-residual-target-manager-history-source",
+        "name": "Joel Cedergren / Roger Franzén",
+    }

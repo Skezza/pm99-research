@@ -1,0 +1,27 @@
+{
+  "schema_version": "pm99-explicit-provider-person-identity-resolution-v1",
+  "season": "2017-18",
+  "club": "Guiseley",
+  "resolutions": [
+    {
+      "source_provider_person_id": "soccerbase:24606",
+      "name": "Danny Lowe",
+      "published_birth_date": "1984-01-12",
+      "canonical_birth_date": "1984-01-12",
+      "canonical_source_player_id": 105310,
+      "annual_fact_policy": "discard-conflicting-annual-biography",
+      "rejected_annual_birth_date": "1985-07-03",
+      "corroboration_url": "https://www.transfermarkt.co.uk/danny-lowe/profil/spieler/105310",
+      "reason": "Original numerical Soccerbase24606 and independently replayed original numerical Transfermarkt105310 both publish 1984-01-12. Discard the conflicting annual birthday and secondary biography; the original dated fixture establishes membership separately."
+    },
+    {
+      "source_provider_person_id": "soccerbase:61229",
+      "name": "Danny East",
+      "published_birth_date": "1992-01-23",
+      "canonical_birth_date": "1991-12-26",
+      "canonical_source_player_id": 194474,
+      "corroboration_url": "https://www.transfermarkt.co.uk/danny-east/profil/spieler/194474",
+      "reason": "Original numerical Transfermarkt194474 and independently reparsed target-season annual biography agree on 1991-12-26. The linked Soccerbase61229 birthday is explicitly rejected, not silently transposed. Original dated fixture membership and numeric person/full-name identity remain bound."
+    }
+  ]
+}

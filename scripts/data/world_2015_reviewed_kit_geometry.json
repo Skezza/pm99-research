@@ -1,0 +1,16 @@
+{
+  "schema_version": "pm99-world-2015-reviewed-kit-geometry-v1",
+  "season": "2015-16",
+  "policy": "Identity, season, home-kit type, design and colours are bound to the cited dated catalogue page. Geometry is re-rendered for PM99; this is not a claim that the source raster was copied.",
+  "clubs": [
+    {"carrier_id":701,"source_club_name":"Crvena Zvezda Beograd","source_team_name":"Red Star Belgrade","source_url":"https://www.footballkitarchive.com/red-star-belgrade-2015-16-home-kit-25797/","season":"2015-16","kit_type":"home","design":"stripes","colors":["#FFFFFF","#D71920"]},
+    {"carrier_id":703,"source_club_name":"Partizan Beograd","source_team_name":"FK Partizan","source_url":"https://www.footballkitarchive.com/fk-partizan-2015-16-home-kit-52198/","season":"2015-16","kit_type":"home","design":"stripes","colors":["#FFFFFF","#111111"]},
+    {"carrier_id":704,"source_club_name":"Vojvodina Novi Sad","source_team_name":"FK Vojvodina","source_url":"https://www.footballkitarchive.com/fk-vojvodina-2015-16-home-kit/","season":"2015-16","kit_type":"home","design":"half-and-half","colors":["#D71920","#FFFFFF"]},
+    {"carrier_id":902,"source_club_name":"Dinamo Zagreb","source_team_name":"GNK Dinamo Zagreb","source_url":"https://www.footballkitarchive.com/gnk-dinamo-zagreb-2015-16-home-kit-18751/","season":"2015-16","kit_type":"home","design":"plain","colors":["#0057B8","#FFFFFF"]},
+    {"carrier_id":1303,"source_club_name":"Olympiakos","source_team_name":"Olympiacos Piraeus","source_url":"https://www.footballkitarchive.com/olympiacos-piraeus-2015-16-home-kit/","season":"2015-16","kit_type":"home","design":"stripes","colors":["#FFFFFF","#D71920"]},
+    {"carrier_id":1401,"source_club_name":"Steaua Bucureşti","source_team_name":"FCSB","source_url":"https://www.footballkitarchive.com/fcsb-2015-16-home-kit-25421/","season":"2015-16","kit_type":"home","design":"contrasting-sleeves","colors":["#D71920","#0057B8"]},
+    {"carrier_id":1452,"source_club_name":"Sparta Praha","source_team_name":"Sparta Prague","source_url":"https://www.footballkitarchive.com/it/sparta-prague-2015-16-home-kit/14995/","season":"2015-16","kit_type":"home","design":"plain","colors":["#7A263A","#4A2C2A"]},
+    {"carrier_id":1755,"source_club_name":"Dynamo Kyiv","source_team_name":"Dynamo Kyiv","source_url":"https://www.footballkitarchive.com/dynamo-kyiv-2015-16-home-kit/21785/","season":"2015-16","kit_type":"home","design":"hoops","colors":["#FFFFFF","#0057B8","#B0B0B0"]},
+    {"carrier_id":2806,"source_club_name":"Corinthians","source_team_name":"SC Corinthians Paulista","source_url":"https://www.footballkitarchive.com/sc-corinthians-paulista-2015-home-kit-21680/","season":"2015","kit_type":"home","design":"contrasting-sleeves","colors":["#FFFFFF","#111111"]}
+  ]
+}

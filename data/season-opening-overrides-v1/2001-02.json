@@ -1,0 +1,22 @@
+{
+  "schema_version": "pm99-opening-preallocation-overrides-v1",
+  "season": "2001/02",
+  "corrections": [
+    {
+      "club": "Bristol Rovers",
+      "player": "James Thomas",
+      "action": "exclude-from-opening-squad",
+      "reason": "The season squad list marks a Blackburn loan, but the dated transfer record places the Bristol loan after the August opening snapshot.",
+      "source_url": "https://www.soccerbase.com/players/player.sd?player_id=11681"
+    },
+    {
+      "club": "Tranmere Rovers",
+      "player": "Seyni N'Diaye",
+      "action": "set-fact",
+      "field": "position",
+      "value": "F",
+      "reason": "Published position is striker/forward.",
+      "source_url": "https://en.wikipedia.org/wiki/Seyni_N%27Diaye"
+    }
+  ]
+}

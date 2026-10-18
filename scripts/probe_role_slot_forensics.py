@@ -98,7 +98,7 @@ def _decode_marker_slots(raw: bytes) -> tuple[int | None, list[dict[str, Any]]]:
     name_end = PlayerRecord._find_name_end_in_data(raw)
     if name_end is None:
         return None, []
-    start = int(name_end) - 1
+    start = int(name_end) - 2
     if start < 0 or (start + 6) > len(raw):
         return int(name_end), []
     slots: list[dict[str, Any]] = []

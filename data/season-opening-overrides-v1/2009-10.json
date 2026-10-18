@@ -1,0 +1,33 @@
+{
+  "schema_version": "pm99-opening-preallocation-overrides-v1",
+  "season": "2009/10",
+  "corrections": [
+    {
+      "club": "Cheltenham Town",
+      "player": "Scott Brown",
+      "action": "set-fact",
+      "field": "position",
+      "value": "G",
+      "reason": "Opening source player ID 21703 is Cheltenham goalkeeper Scott Peter Andrew Brown, not the namesake midfielder whose profile facts were joined by name.",
+      "source_url": "https://www.transfermarkt.co.uk/scott-brown/profil/spieler/21703"
+    },
+    {
+      "club": "Cheltenham Town",
+      "player": "Scott Brown",
+      "action": "set-fact",
+      "field": "birth_date",
+      "value": "1985-04-26",
+      "reason": "Correct the name-collision profile join for opening source player ID 21703.",
+      "source_url": "https://www.transfermarkt.co.uk/scott-brown/profil/spieler/21703"
+    },
+    {
+      "club": "Cheltenham Town",
+      "player": "Scott Brown",
+      "action": "set-fact",
+      "field": "height_cm",
+      "value": 184,
+      "reason": "Correct the name-collision profile join for opening source player ID 21703.",
+      "source_url": "https://www.transfermarkt.co.uk/scott-brown/profil/spieler/21703"
+    }
+  ]
+}

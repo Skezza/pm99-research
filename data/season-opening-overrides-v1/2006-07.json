@@ -1,0 +1,15 @@
+{
+  "schema_version": "pm99-opening-preallocation-overrides-v1",
+  "season": "2006/07",
+  "corrections": [
+    {
+      "club": "Cheltenham Town",
+      "player": "Scott Brown",
+      "match_facts": {"birth_date": "1985-05-08", "position": "M"},
+      "allow_already_absent": true,
+      "action": "exclude-from-opening-squad",
+      "reason": "Cheltenham's 2006/07 squad member was the goalkeeper born 26 April 1985; remove the namesake midfielder born 8 May 1985.",
+      "source_url": "https://www.transfermarkt.co.uk/scott-brown/profil/spieler/21703"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "schema_version": "pm99-opening-preallocation-overrides-v1",
+  "season": "2005/06",
+  "corrections": [
+    {
+      "club": "Brentford",
+      "player": "Scott Fitzgerald",
+      "match_facts": {"birth_date": "1969-08-13", "position": "D"},
+      "allow_already_absent": true,
+      "action": "exclude-from-opening-squad",
+      "reason": "The namesake born in 1969 was Brentford's manager, not the Scott Fitzgerald in the 2005/06 playing squad; retain the 1979-born forward.",
+      "source_url": "https://en.wikipedia.org/wiki/Scott_Fitzgerald_(footballer,_born_1969)"
+    }
+  ]
+}

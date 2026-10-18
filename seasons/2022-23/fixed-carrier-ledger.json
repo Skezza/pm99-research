@@ -1,0 +1,1 @@
+{"carrier_updates":[],"ledger_id":"pm99-2022-23-fixed-carrier-intake","registry_sha256":"c057fa90f34d04a08cdbcce6351870c8cb729155b40b9d40b98121743c3db370","schema_version":"pm99-world-fixed-carrier-ledger-v2","season":{"end_year":2023,"label":"2022/23","start_year":2022},"sources":[],"topology_policy":"preserve-existing-carriers-no-membership-write"}

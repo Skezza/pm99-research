@@ -1,0 +1,14 @@
+{
+  "schema_version": "pm99-retained-season-releases-v1",
+  "releases": [
+    {
+      "season": "2015-16",
+      "release_id": "legacy-world-2015-16",
+      "reason": "User requested permanent preservation of the original fun 2015 worldwide release",
+      "locator_path": ".local/season-release-registry-v1/releases/2015-16/legacy-world-2015-16/locator.json",
+      "locator_sha256": "851184d76d0bdb25964fe2fe8c13b0fc1a77c8467936b5fdcc966ddf518c95c7",
+      "inventory_sha256": "a9cc5126d553c7e63b565191e0b1aff11b8e0d9f5c4d51ff347294bd77a67e8d",
+      "play_command": "./pm99-season play 2015-16 --original"
+    }
+  ]
+}

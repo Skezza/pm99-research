@@ -1,0 +1,30 @@
+{
+  "attempted_capture": {
+    "command": "python3 scripts/capture_footballsquads_season.py --source-root .local/external-sources/cache.footballsquads --season 2025-2026 --output seasons/2025-26/sources/footballsquads-2025-26.json",
+    "exit_status": 1,
+    "message": "capture failed: no usable current-squad source files matched the requested season"
+  },
+  "observed_on": "2026-08-31",
+  "schema_version": "pm99-season-source-availability-v1",
+  "season": {
+    "end_year": 2026,
+    "label": "2025/26",
+    "start_year": 2025
+  },
+  "source_cache": {
+    "license": "CC0-1.0",
+    "listing_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "remote_head": "187c963e76e2bd1d9a65e2f0f3b04d9b57ba3555",
+    "repository": "https://github.com/footballcsv/cache.footballsquads.git",
+    "revision": "187c963e76e2bd1d9a65e2f0f3b04d9b57ba3555",
+    "root": ".local/external-sources/cache.footballsquads",
+    "season_file_count": 0,
+    "selection": "all regular files below <source-root>/<catalog>/2025-2026/"
+  },
+  "status": "blocked-no-dated-squad-source",
+  "unresolved": [
+    "No dated club-squad source is available from the pinned corpus for any catalogue.",
+    "No dated English catalogue is available, so there is no captured Stoke City squad or opening-lineup evidence.",
+    "Club, player, manager, rating, kit, portrait, carrier-assignment and opening-state work cannot begin without dated, identity-safe source material."
+  ]
+}

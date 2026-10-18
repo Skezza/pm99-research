@@ -1,0 +1,59 @@
+{
+  "by_pre_marker_gap": {
+    "3": {
+      "generic_birth_day_match": 6487,
+      "generic_birth_month_match": 6487,
+      "generic_birth_year_match": 6487,
+      "generic_height_match": 4130,
+      "generic_height_mismatch": 2357,
+      "generic_nationality_match": 197,
+      "generic_nationality_mismatch": 6290,
+      "generic_position_match": 1913,
+      "generic_position_mismatch": 4574,
+      "records": 6487
+    },
+    "4": {
+      "generic_birth_day_match": 643,
+      "generic_birth_day_mismatch": 2223,
+      "generic_birth_month_mismatch": 2866,
+      "generic_birth_year_match": 173,
+      "generic_birth_year_mismatch": 2693,
+      "generic_height_match": 112,
+      "generic_height_mismatch": 2754,
+      "generic_nationality_match": 47,
+      "generic_nationality_mismatch": 2819,
+      "generic_position_match": 2866,
+      "records": 2866
+    }
+  },
+  "dd6360_records": 9353,
+  "legacy_birth_year_anomalies": [
+    {
+      "key": "",
+      "name": "DELFIM Jos\u00e9 Fernandes",
+      "native_birth_day": 5,
+      "native_birth_month": 2,
+      "native_birth_year": 777,
+      "record_id": 28453
+    },
+    {
+      "key": "",
+      "name": "NELSON Leonel Alves",
+      "native_birth_day": 30,
+      "native_birth_month": 6,
+      "native_birth_year": 764,
+      "record_id": 29678
+    }
+  ],
+  "native_cursor_contract": {
+    "generic_marker_offset": "three or four bytes later; not a metadata cursor",
+    "role_start": "end of the second XOR/u16 compact string",
+    "string_count": 2,
+    "string_start": 8
+  },
+  "parser_errors": [],
+  "purpose": "Read-only validation of the native dd6360 compact-string cursor.",
+  "result": "pass",
+  "schema_version": 1,
+  "source_file": ".local/season-2015-16/english92-2015-16-build36-native-no-photo/game/DBDAT/JUG98030.FDI"
+}

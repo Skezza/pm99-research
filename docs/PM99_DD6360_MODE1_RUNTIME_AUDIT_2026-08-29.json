@@ -1,0 +1,47 @@
+{
+  "case_count": 2,
+  "pass_count": 2,
+  "purpose": "Foreign dd6360 native-cursor same-span mutation proof",
+  "result": "pass",
+  "rows": [
+    {
+      "checks": {
+        "expected_native_gap": true,
+        "mutated_core_values_reparse": true,
+        "no_crash": true,
+        "profile_phase_reached": true,
+        "profile_screenshot_present": true,
+        "profile_title_matches": true,
+        "single_span_only": true,
+        "summary_success": true,
+        "window_detected": true
+      },
+      "player": "Patrick Kluivert",
+      "profile_title_ocr": "trick kluivert",
+      "receipt": ".local/research-probes/dd6360-mode1-native-20260829/dd6360-kluivert-native-probe.json",
+      "result": "pass",
+      "slug": "kluivert",
+      "summary": "artifacts/stars_player_offer_probe/dd6360_native_kluivert_20260829/summary.json"
+    },
+    {
+      "checks": {
+        "expected_native_gap": true,
+        "mutated_core_values_reparse": true,
+        "no_crash": true,
+        "profile_phase_reached": true,
+        "profile_screenshot_present": true,
+        "profile_title_matches": true,
+        "single_span_only": true,
+        "summary_success": true,
+        "window_detected": true
+      },
+      "player": "Josep Guardiola",
+      "profile_title_ocr": "sep guardiola sala",
+      "receipt": ".local/research-probes/dd6360-mode1-native-guardiola-20260829/dd6360-guardiola-native-probe.json",
+      "result": "pass",
+      "slug": "guardiola",
+      "summary": "artifacts/stars_player_offer_probe/dd6360_native_guardiola_20260829/summary.json"
+    }
+  ],
+  "schema_version": 1
+}

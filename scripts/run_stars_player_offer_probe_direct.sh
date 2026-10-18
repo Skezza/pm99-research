@@ -11,6 +11,10 @@ export PM99_RUNNER_REMOTE_REPO_DIR="${PM99_RUNNER_REMOTE_REPO_DIR:-${PM99_RUNNER
 export PM99_RUNNER_REMOTE_EDITOR_REPO_DIR="${PM99_RUNNER_REMOTE_EDITOR_REPO_DIR:-${PM99_RUNNER_REMOTE_ROOT}/workspace/editor}"
 export PM99_RUNNER_REMOTE_IMAGE="${PM99_RUNNER_REMOTE_IMAGE:-pm99-runner:latest}"
 export PM99_RUNNER_HOST_LOCK_NAME="${PM99_RUNNER_HOST_LOCK_NAME:-runner-host}"
+# This probe mirrors its evidence locally. Do not block a normal interactive
+# research run behind archival of unrelated old remote run roots; callers can
+# opt back in when they are explicitly maintaining that archive.
+export PM99_RUNNER_ARCHIVE_COLD_RUNS="${PM99_RUNNER_ARCHIVE_COLD_RUNS:-0}"
 
 source "${REPO_ROOT}/upstream/pm99-runner/scripts/pm99_runner/common.sh"
 
@@ -22,13 +26,16 @@ LOCAL_ARTIFACT_DIR="${REPO_ROOT}/artifacts/stars_player_offer_probe"
 TEAM_SLOT="1"
 PLAYER_SEARCH_TEXT="${PM99_STARS_PLAYER_SEARCH_TEXT:-VALDERRAMA}"
 PLAYER_LABEL="${PM99_STARS_PLAYER_LABEL:-${PLAYER_SEARCH_TEXT}}"
+PROFILE_NAME_TOKEN="${PM99_STARS_PROFILE_NAME_TOKEN:-}"
 PLAYER_ROW_CLICK="${PM99_STARS_PLAYER_ROW_CLICK:-120,166,1}"
 PROFILE_ONLY=0
+SKIP_DEFAULT_FIRST_RIVAL_PICK=0
 WINDOW_TIMEOUT="120"
 DOCKER_TIMEOUT_SECONDS="${PM99_RUNNER_DOCKER_TIMEOUT_SECONDS:-900}"
 KEEP_REMOTE_RUN=0
 KEEP_REMOTE_ARTIFACTS=0
 CLEANUP_ON_FAILURE=0
+PROVENANCE_FILE=""
 OFFER_BATCH_COUNT="${PM99_STARS_OFFER_BATCH_COUNT:-${PM99_VALDERRAMA_OFFER_BATCH_COUNT:-0}}"
 WAGE_BATCH_COUNT="${PM99_STARS_WAGE_BATCH_COUNT:-${PM99_VALDERRAMA_WAGE_BATCH_COUNT:-0}}"
 SUBMIT_OFFER_ACTION="${PM99_STARS_SUBMIT_OFFER_ACTION:-${PM99_VALDERRAMA_SUBMIT_OFFER_ACTION:-native_double_click}}"
@@ -66,6 +73,8 @@ AUTO_DASHBOARD_PROBE_DELAY="${PM99_STARS_AUTO_DASHBOARD_PROBE_DELAY:-${PM99_VALD
 declare -a TICKER_TARGETS=()
 declare -a POST_AUTO_STEPS=()
 declare -a PRE_ROW_STEPS=()
+declare -a POST_PROFILE_STEPS=()
+declare -a PRE_RIVAL_STEPS=()
 PRE_SUBMIT_STEPS=()
 
 usage() {
@@ -84,8 +93,11 @@ Options:
   --team-slot <n>             Premier team slot for the new game (default: 1)
   --player-search <text>      Name typed into Search Player By Name
   --player-label <label>      Human-readable artifact label for this player
+  --profile-name-token <text> Require this token in the final profile name OCR
   --player-row-click <spec>   Click spec for the row to open after search (default: 120,166,1)
   --profile-only              Stop after opening the selected player profile
+  --skip-default-first-rival-pick
+                            Replace the stock first preseason-rival selection with --pre-rival-step probes
   --window-timeout <sec>      Driver window timeout seconds (default: 120)
   --docker-timeout <sec>      Hard timeout for the container (default: 900)
   --auto-continue-cycles <n>  Let the driver advance dynamically after submit
@@ -93,11 +105,14 @@ Options:
   --auto-dashboard-probe-delay <sec> Delay before each extra dashboard probe
   --ticker-target <token>     Normalized token that must appear in ticker OCR
   --pre-row-step <spec>       LABEL|ACTION|VALUE|DELAY step after search submit before selecting result row
+  --pre-rival-step <spec>     LABEL|ACTION|VALUE|DELAY step after first preseason rival picker opens
+  --post-profile-step <spec>  LABEL|ACTION|VALUE|DELAY step after opening the player profile
   --post-autocontinue-step <spec>  LABEL|ACTION|VALUE|DELAY step after auto-continue
   --pre-submit-step <spec>        LABEL|ACTION|VALUE|DELAY step before offer submit
   --keep-remote-run           Preserve the remote per-run game/home/prefix directory
   --keep-remote-artifacts     Preserve the remote artifact directory after local mirroring
   --cleanup-on-failure        Clean remote run/artifact state after a failed run once mirroring succeeds
+  --provenance-file <path>    Copy immutable local input provenance into the final artifact directory
   -h, --help                  Show this help
 USAGE
 }
@@ -112,8 +127,10 @@ while [[ $# -gt 0 ]]; do
     --team-slot) TEAM_SLOT="$2"; shift 2 ;;
     --player-search) PLAYER_SEARCH_TEXT="$2"; shift 2 ;;
     --player-label) PLAYER_LABEL="$2"; shift 2 ;;
+    --profile-name-token) PROFILE_NAME_TOKEN="$2"; shift 2 ;;
     --player-row-click) PLAYER_ROW_CLICK="$2"; shift 2 ;;
     --profile-only) PROFILE_ONLY=1; shift ;;
+    --skip-default-first-rival-pick) SKIP_DEFAULT_FIRST_RIVAL_PICK=1; shift ;;
     --window-timeout) WINDOW_TIMEOUT="$2"; shift 2 ;;
     --docker-timeout) DOCKER_TIMEOUT_SECONDS="$2"; shift 2 ;;
     --auto-continue-cycles) AUTO_CONTINUE_CYCLES="$2"; shift 2 ;;
@@ -121,11 +138,14 @@ while [[ $# -gt 0 ]]; do
     --auto-dashboard-probe-delay) AUTO_DASHBOARD_PROBE_DELAY="$2"; shift 2 ;;
     --ticker-target) TICKER_TARGETS+=("$2"); shift 2 ;;
     --pre-row-step) PRE_ROW_STEPS+=("$2"); shift 2 ;;
+    --pre-rival-step) PRE_RIVAL_STEPS+=("$2"); shift 2 ;;
+    --post-profile-step) POST_PROFILE_STEPS+=("$2"); shift 2 ;;
     --post-autocontinue-step) POST_AUTO_STEPS+=("$2"); shift 2 ;;
     --pre-submit-step) PRE_SUBMIT_STEPS+=("$2"); shift 2 ;;
     --keep-remote-run) KEEP_REMOTE_RUN=1; shift ;;
     --keep-remote-artifacts) KEEP_REMOTE_ARTIFACTS=1; shift ;;
     --cleanup-on-failure) CLEANUP_ON_FAILURE=1; shift ;;
+    --provenance-file) PROVENANCE_FILE="$2"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown option: $1" >&2; usage >&2; exit 2 ;;
   esac
@@ -141,6 +161,10 @@ if [[ -n "${LOCAL_GAME_DIR}" && ! -d "${LOCAL_GAME_DIR}" ]]; then
 fi
 if [[ -n "${LOCAL_OVERLAY_DIR}" && ! -d "${LOCAL_OVERLAY_DIR}" ]]; then
   echo "Missing local overlay dir: ${LOCAL_OVERLAY_DIR}" >&2
+  exit 2
+fi
+if [[ -n "${PROVENANCE_FILE}" && ! -f "${PROVENANCE_FILE}" ]]; then
+  echo "--provenance-file must name an existing file" >&2
   exit 2
 fi
 
@@ -170,14 +194,93 @@ fi
 
 pm99_runner_prepare_remote_run_root "${REMOTE_RUN_ROOT}" "${REMOTE_ARTIFACT_DIR}"
 
-if [[ -n "${LOCAL_GAME_DIR}" ]]; then
-  "${PM99_RUNNER_RSYNC_BIN}" -az --delete \
-    "${LOCAL_GAME_DIR}/" "$(pm99_runner_remote_spec):${REMOTE_GAME_DIR}/"
-fi
+# game-merged is an OverlayFS view over an immutable shared install.  Writing
+# directly to it looks plausible but either fails or silently tests the wrong
+# files.  Use the common helpers: they copy the complete DBDAT set into the
+# disposable upper layer, mark it opaque, remount it, and hash-check every
+# visible file.  The EXE follows the same upper-layer path.  This is especially
+# important for the DB-only Stars proof: the selected executable must be
+# byte-for-byte the caller's unmodified build, not the runner's base EXE.
+apply_local_database_root() {
+  local source_root="$1"
+  local source_label="$2"
+  local dbdat_root="${source_root}/DBDAT"
+  local required_dbdat=(JUG98030.FDI EQ98030.FDI ENT98030.FDI MINIFOTO.PKF)
+  # Club kit artwork has two stock scopes.  English carriers can use all five
+  # archives; foreign carriers have a complete compact UI set only
+  # (MINIESC/NANOESC/RIDIESC).  Refuse partial sets so a plausible-looking
+  # run cannot silently test one resolution while leaving the others stale.
+  local kit_archives=(BIGCAMP.PKF BIGESC.PKF MINIESC.PKF NANOESC.PKF RIDIESC.PKF)
+  local supplied_kit_count=0
+  local supplied_compact_kit_count=0
+  local file_name=""
+  local local_hash=""
+  local visible_hash=""
+  local receipt_file=""
 
+  if [[ -f "${source_root}/MANAGPRE.EXE" ]]; then
+    pm99_runner_apply_disposable_exe_override "${REMOTE_RUN_ROOT}" "${source_root}/MANAGPRE.EXE"
+  fi
+
+  if [[ ! -d "${dbdat_root}" ]]; then
+    return 0
+  fi
+  for file_name in "${kit_archives[@]}"; do
+    if [[ -f "${dbdat_root}/${file_name}" ]]; then
+      supplied_kit_count=$((supplied_kit_count + 1))
+    fi
+  done
+  for file_name in MINIESC.PKF NANOESC.PKF RIDIESC.PKF; do
+    if [[ -f "${dbdat_root}/${file_name}" ]]; then
+      supplied_compact_kit_count=$((supplied_compact_kit_count + 1))
+    fi
+  done
+  if [[ ${supplied_kit_count} -ne 0 && ${supplied_kit_count} -ne ${#kit_archives[@]} && ${supplied_compact_kit_count} -ne 3 ]]; then
+    echo "${source_label} supplies a partial kit-archive set; provide all five, the three foreign compact archives, or none" >&2
+    return 2
+  fi
+  if [[ ${supplied_kit_count} -eq ${#kit_archives[@]} ]]; then
+    required_dbdat+=("${kit_archives[@]}")
+  elif [[ ${supplied_compact_kit_count} -eq 3 ]]; then
+    required_dbdat+=(MINIESC.PKF NANOESC.PKF RIDIESC.PKF)
+  fi
+  for file_name in "${required_dbdat[@]}"; do
+    if [[ ! -f "${dbdat_root}/${file_name}" ]]; then
+      echo "${source_label} has DBDAT but is missing required override ${file_name}: ${dbdat_root}" >&2
+      return 2
+    fi
+  done
+  pm99_runner_apply_disposable_dbdat_overrides "${REMOTE_RUN_ROOT}" "${dbdat_root}" "${required_dbdat[@]}"
+
+  # The shared helper has already failed closed if the visible OverlayFS hashes
+  # differ.  Keep the independently re-read values with the screenshot
+  # artifacts as well: a later reviewer can prove precisely which database
+  # files Wine saw, even after the disposable run root is cleaned up.
+  receipt_file="$(mktemp "${TMPDIR:-/tmp}/pm99-dbdat-override.XXXXXX")"
+  {
+    printf '# PM99 disposable DBDAT override receipt\n'
+    printf '# source_label=%s\n' "${source_label}"
+    printf '# source_root=%s\n' "${source_root}"
+    for file_name in "${required_dbdat[@]}"; do
+      local_hash="$(sha256sum "${dbdat_root}/${file_name}" | awk '{print $1}')"
+      visible_hash="$(pm99_runner_ssh "sha256sum $(printf '%q' "${REMOTE_GAME_DIR}/DBDAT/${file_name}")" | awk '{print $1}')"
+      if [[ "${local_hash}" != "${visible_hash}" ]]; then
+        rm -f -- "${receipt_file}"
+        echo "Post-install DBDAT evidence hash mismatch for ${file_name}" >&2
+        return 1
+      fi
+      printf '%s  DBDAT/%s\n' "${visible_hash}" "${file_name}"
+    done
+  } > "${receipt_file}"
+  pm99_runner_scp_to_remote "${receipt_file}" "${REMOTE_ARTIFACT_DIR}/dbdat_override.sha256"
+  rm -f -- "${receipt_file}"
+}
+
+if [[ -n "${LOCAL_GAME_DIR}" ]]; then
+  apply_local_database_root "${LOCAL_GAME_DIR}" "--local-game-dir"
+fi
 if [[ -n "${LOCAL_OVERLAY_DIR}" ]]; then
-  "${PM99_RUNNER_RSYNC_BIN}" -az \
-    "${LOCAL_OVERLAY_DIR}/" "$(pm99_runner_remote_spec):${REMOTE_GAME_DIR}/"
+  apply_local_database_root "${LOCAL_OVERLAY_DIR}" "--local-overlay-dir"
 fi
 
 driver_args=(
@@ -197,12 +300,34 @@ driver_args=(
   --post-step 'open_player_name_search|native_input_click|565,360,1|2.5'
   --post-step 'focus_search_name_field|native_input_click|238,141,1|0.8'
 )
+if [[ -n "${PROFILE_NAME_TOKEN}" ]]; then
+  driver_args+=(--expected-profile-token "${PROFILE_NAME_TOKEN}")
+fi
+
+for pre_rival_step in "${PRE_RIVAL_STEPS[@]}"; do
+  driver_args+=(--pre-rival-step "${pre_rival_step}")
+done
+if [[ "${SKIP_DEFAULT_FIRST_RIVAL_PICK}" == "1" ]]; then
+  driver_args+=(--skip-default-first-rival-pick)
+fi
 
 for ((index = 0; index < ${#PLAYER_SEARCH_TEXT}; index++)); do
   char="${PLAYER_SEARCH_TEXT:index:1}"
   case "${char}" in
     " ") key="Space" ;;
-    *) key="${char^^}" ;;
+    [A-Za-z0-9]) key="${char^^}" ;;
+    *)
+      # The PM99 name search stores CP1252, not UTF-8. The runner's native
+      # key helper accepts the explicit byte form so names such as HERNÁNDEZ,
+      # MUÑOZ and SOÑORA can be proven instead of silently falling back to an
+      # unrelated search result.
+      cp1252_hex="$(printf '%s' "${char}" | iconv -f UTF-8 -t CP1252 | od -An -tx1 | tr -d '[:space:]')"
+      if [[ ! "${cp1252_hex}" =~ ^[0-9a-fA-F]{2}$ ]]; then
+        echo "Unsupported non-CP1252 player-search character: ${char@Q}" >&2
+        exit 2
+      fi
+      key="CP1252:${cp1252_hex^^}"
+      ;;
   esac
   driver_args+=(--post-step "name_${PLAYER_SLUG}_$(printf '%02d' $((index + 1)))|native_key|${key}|0.1")
 done
@@ -220,6 +345,10 @@ driver_args+=(
   --post-step "open_${PLAYER_SLUG}_row|native_input_key|Return|5.0"
   --post-step "inspect_${PLAYER_SLUG}_profile|native_inspect|ignored|0.5"
 )
+
+for post_profile_step in "${POST_PROFILE_STEPS[@]}"; do
+  driver_args+=(--post-step "${post_profile_step}")
+done
 
 if [[ "${PROFILE_ONLY}" == "1" ]]; then
   driver_args+=(--post-step "profile_only_${PLAYER_SLUG}_done|native_inspect|ignored|0.5")
@@ -446,5 +575,8 @@ if [[ ${SYNC_STATUS} -ne 0 ]]; then
 fi
 if [[ ${CLEANUP_STATUS} -ne 0 && ${RUN_STATUS} -eq 0 ]]; then
   exit "${CLEANUP_STATUS}"
+fi
+if [[ -n "${PROVENANCE_FILE}" ]]; then
+  cp -- "${PROVENANCE_FILE}" "${LOCAL_FINAL_ARTIFACT_DIR}/input-provenance.json"
 fi
 exit "${RUN_STATUS}"

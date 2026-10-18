@@ -1,0 +1,78 @@
+{
+  "schema": "pm99-manager-entity-field-matrix-v3",
+  "scope": "Indexed EQ98030.FDI and ENT98030.FDI manager relationship",
+  "evidence": {
+    "mode_0": "Coventry final-ID replacement 691 -> 1069 showed Van Gaal in the game dashboard.",
+    "mode_1": "Barcelona ENT 1069 variable-length surname rename showed Long Test Mgr; final EQ ID replacement 1069 -> 1641 showed Hiddink; a relinked full profile showed its rebuilt surname Tester Name. All have retained OverlayFS checksum receipts.",
+    "structural_audit": "451 mode-1 carriers; all final IDs resolve to parsed ENT profiles."
+  },
+  "fields": [
+    {
+      "id": "team.manager.ent_links",
+      "source": "EQ98030.FDI",
+      "scope": "all modern 700-byte mode-0 and mode-1 carriers",
+      "representation": "count byte followed by existing u32 ENT record ids",
+      "read": "supported",
+      "write": "preserve_list_shape",
+      "reason": "Count and preceding IDs have no insertion, deletion, reorder or individual semantic contract."
+    },
+    {
+      "id": "team.manager.active_ent_id",
+      "source": "EQ98030.FDI",
+      "scope": "all modern 700-byte mode-0 and mode-1 carriers",
+      "representation": "final u32 ENT record id in team.manager.ent_links",
+      "read": "supported",
+      "write": "supported_replace_existing_final_id_only",
+      "constraints": [
+        "Target must be an existing non-zero ENT indexed record id.",
+        "Do not change the link count or preceding ids.",
+        "Use the parser-derived cursor; never use an EQ record ordinal or ENT file order.",
+        "Use the mode-0 metadata prelude only for mode 0; mode 1 starts from its post-header cursor."
+      ],
+      "runtime_evidence": "Coventry (mode 0) and Barcelona (mode 1) direct ID-replacement dashboard controls."
+    },
+    {
+      "id": "manager.surname_variable_length",
+      "source": "ENT98030.FDI",
+      "scope": "surname-only dd6360 and full-profile dd6361 manager records",
+      "representation": "first variable-length CP1252 surname segment, rebuilt in the indexed FDI container",
+      "read": "supported",
+      "write": "supported_indexed_rebuild",
+      "reason": "A surname-only payload grows 17->22 bytes and a full-profile payload shrinks 65->58 bytes in Barcelona controls; the indexed directory reparses and all other 555 ENT payloads are unchanged."
+    },
+    {
+      "id": "manager.display_name",
+      "source": "ENT98030.FDI",
+      "scope": "92 dd6361 full-profile records",
+      "representation": "second variable-length CP1252 segment",
+      "read": "supported",
+      "write": "preserve_only",
+      "reason": "The dashboard control consumes the first surname segment, not this second segment. No screen consuming this exact field or field-specific runtime write proof; preserve the following biography/career tail byte-for-byte."
+    },
+    {
+      "id": "manager.profile_text",
+      "source": "ENT98030.FDI",
+      "scope": "92 dd6361 full-profile records",
+      "representation": "unsegmented display prose and career history after the name segments",
+      "read": "supported_read_only",
+      "write": "preserve_only",
+      "reason": "The internal prose controls have no field-by-field write grammar."
+    },
+    {
+      "id": "manager.numeric_attributes",
+      "source": "ENT98030.FDI",
+      "scope": "all ENT manager records",
+      "read": "not_present_in_proven_contract",
+      "write": "not_applicable",
+      "reason": "No manager skill, rating, wage or tactical scalar is stored in the proven ENT manager path."
+    },
+    {
+      "id": "club_personnel.staff_attributes",
+      "source": "unknown separate source",
+      "scope": "Club Personnel screen",
+      "read": "unresearched",
+      "write": "unreleased",
+      "reason": "The visible Staff screen is not the EQ-to-ENT manager relationship and must not be presented as manager attributes."
+    }
+  ]
+}

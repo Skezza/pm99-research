@@ -153,7 +153,7 @@ NATIONALITY_CODES = {
     "Algeria": "ALG", "Angola": "ANG", "Antigua and Barbuda": "ATG", "Australia": "AUS", "Austria": "AUT",
     "Barbados": "BRB", "Belgium": "BEL", "Bosnia-Herzegovina": "BIH", "Cameroon": "CMR", "Canada": "CAN",
     "Cape Verde": "CPV", "Chad": "CHA", "Chile": "CHI", "China": "CHN", "Congo": "CGO",
-    "Costa Rica": "CRC", "Cote d'Ivoire": "CIV", "Curacao": "CUR", "Czech Republic": "CZE",
+    "Costa Rica": "CRC", "Cote d'Ivoire": "CIV", "Curacao": "CUW", "Czech Republic": "CZE",
     "Djibouti": "DJI", "DR Congo": "COD",
     "Egypt": "EGY", "Equatorial Guinea": "EQG", "Estonia": "EST", "Gabon": "GAB", "Gibraltar": "GIB", "Greece": "GRE", "Grenada": "GRN",
     "Guinea": "GUI", "Hungary": "HUN", "Iran": "IRN", "Iraq": "IRQ",

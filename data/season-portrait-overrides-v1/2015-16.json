@@ -1,0 +1,27 @@
+{
+  "schema_version": "pm99-reviewed-portrait-identities-v1",
+  "season": "2015-16",
+  "players": [
+    {
+      "carrier_id": 75,
+      "name": "Samu",
+      "birth_date": "1990-07-13",
+      "source_name": "Samuel García Sánchez",
+      "sofifa_id": 201379,
+      "edition": 16,
+      "source_birth_date_conflict": "1990-06-15",
+      "identity_source": "https://villarrealcf.es/en/fichaje-samus/",
+      "reason": "Official 2015 signing announcement identifies Samuel García; the old face belongs to Samuel Delgado Serna. The FIFA CSV birthday is incorrect."
+    },
+    {
+      "carrier_id": 186,
+      "name": "Lucas",
+      "birth_date": "1988-09-10",
+      "source_name": "Lucas Pérez Martínez",
+      "sofifa_id": 199354,
+      "edition": 16,
+      "identity_source": "https://www.arsenal.com/feature/lucas-perez-a3RjP9K96fRa",
+      "reason": "Contemporary Arsenal interview identifies Deportivo's Lucas Pérez and September 10 birthday; the old face belongs to Lucas Moura."
+    }
+  ]
+}

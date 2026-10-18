@@ -1,0 +1,38 @@
+{
+  "schema_version": "pm99-explicit-provider-person-identity-resolution-v1",
+  "season": "2012-13",
+  "club": "Wrexham",
+  "resolutions": [
+    {
+      "source_provider_person_id": "soccerbase:37529",
+      "name": "Neil Ashton",
+      "canonical_source_player_id": 28041,
+      "published_birth_date": "1985-01-15",
+      "canonical_birth_date": "1985-01-15",
+      "annual_fact_policy": "discard-conflicting-annual-biography",
+      "rejected_annual_birth_date": "1985-04-15",
+      "corroboration_url": "https://www.soccerbase.com/players/player.sd?player_id=37529",
+      "reason": "Original numeric37529 biography publishes 1985-01-15; reject the annual's conflicting April birthday explicitly. Independent dated opening match establishes membership. Canonical public person confirmation must still pass source admission; no arbitrary same-name birthday override."
+    },
+    {
+      "source_provider_person_id": "soccerbase:46691",
+      "name": "Martin Riley",
+      "canonical_source_player_id": 42797,
+      "published_birth_date": "1986-12-05",
+      "canonical_birth_date": "1986-12-05",
+      "annual_fact_policy": "discard-conflicting-annual-biography",
+      "rejected_annual_birth_date": "1988-12-05",
+      "corroboration_url": "https://www.soccerbase.com/players/player.sd?player_id=46691",
+      "reason": "Original numeric46691 biography publishes 1986-12-05; reject the annual's conflicting 1988 birthday explicitly. Independent dated opening match establishes membership. Canonical public person confirmation must still pass source admission; no arbitrary same-name birthday override."
+    },
+    {
+      "source_provider_person_id": "soccerbase:9605",
+      "name": "Dean Keates",
+      "published_birth_date": "1988-06-14",
+      "canonical_birth_date": "1978-06-30",
+      "canonical_source_player_id": 16303,
+      "corroboration_url": "https://www.transfermarkt.co.uk/dean-keates/profil/spieler/16303",
+      "reason": "The original numeric Soccerbase9605 biography publishes a conflicting birthday. The independently captured original numeric Transfermarkt16303 entity confirms 1978-06-30. Reject the conflicting provider birthday explicitly; independently reparse the original 2012 opening match for membership and target annual facts before admission. This does not use current club, current ratings or photographs."
+    }
+  ]
+}
