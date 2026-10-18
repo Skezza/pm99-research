@@ -131,3 +131,40 @@ reviewed the final diff and found the stop/restore assertions correct. This is
 unit-test maintenance, not a genuine game capture or proof of player identity.
 Upstream source commit `3a072b6`, snapshot branch. Existing deleted fixture
 assets were not restored, staged or included in that commit.
+
+## Continued bounded reviews — 2026-10-18 14:43 UTC
+
+Vostro/session as CURRENT_WORK. Two Luna workers remain research/QA only;
+lead owns native changes and serial runtime. Generic opening ownership exchange
+and adult-height-only masks passed independent adversarial review. Approved
+Transfermarkt HTTPS request/canonical origins are now required, with spoof tests.
+90 focused publisher/source/label/recipe tests PASS,2 SKIP. SOURCE equality is
+incremental exact-parent reconstruction, not a clean-machine factory claim.
+
+The current2000/01 audit was refreshed against r148a, not replayed from oldr17.
+Only1252/1258 still need Scottish cohort labels: Celtic/Kilmarnock. Grounds
+already Celtic Park/Rugby Park and stay fixed. Original July29 report3838375
+names Williamson; Celtic July30 report3838377 has no parsed coach. Lead checked
+the retained original Celtic plc June1,2000 RNS announcement naming O'Neill.
+Private r152a therefore corrects two labels and two exclusively owned coach
+names, native aliases O'Neill/Williamson. Actual readback and complete SOURCE
+replay PASS; no player, ground or kit bytes change. Runtime not yet approved.
+Evidence `.local/consolidated-audit-20261009/Scotland2000-label-manager-v1/`.
+Generic planner's unrelated unchanged coach rows were deliberately omitted
+after verifying their before==after; their parent evidence is preserved.
+
+These label corrections DO NOT certify every roster member. Luna identified
+Canero19260 wrong-club and Lennon19261/Douglas19262 late-arrival candidates.
+Lead independently checked the October19,2000 Douglas signing report; other
+claims still require original-source admission before correction. Bonnes22055
+was already Celtic in1999 and must not be rejected merely absent the opener.
+IMPORTANT rejected worker suggestion: McGovern joined Celtic in2001, NOT a
+verified August2000 keeper replacement. Do not admit that season-table inference.
+Riseth may be a source-positive August midfielder; verify exact identity/owner.
+
+Gary Holt frozen case0543df1f3f24c24c94e197f586ef328cb872295d77e5b5367d3432fcdd305013
+remains open. Kilmarnock12209 should retain him; Norwich9962 arrival was March2001.
+Worker proposes actual August12 Norwich substitute Raimond de Waard as the
+capacity-fitting replacement, citing 11v11 match833/profile4029. No admission,
+game change or case closure for this proposal yet. Next independent source/cache
+and native reserve/ownership verification precedes any correction.

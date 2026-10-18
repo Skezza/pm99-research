@@ -1,5 +1,27 @@
 # PM99 worker handoff
 
+## Stoke2013 milestone delivered — 2026-10-18 14:45 UTC
+
+14:46UTC: regression27056terminal0,26/26playable/exactbindings PASS;0regenerations.
+Evidence finalheightfolder/all26-postdelivery-regression.json. No globalRCclaim.
+
+Vostro/session as CURRENT_WORK14:45. Final checkpoint44403terminal0 promotes
+only2013preferredr151a over explicit r145a/r150a ancestry. v118saved:3Stoke
+additionalownershipfindings closed, original2809denominator unchanged55/2754.
+All7ownership profiles and finalstartup/3heightprofiles originalframe/native
+hash/kit/glyph/ageproofs PASS; original4unchangedrecords/dependencies justify
+explicit evidence reuse, not relabelledscreens. BothwholeSOURCEreplays PASS;
+original2015sealedgame/other25bindings verified. Finalattestation/summary in
+Stoke2013-opening-exchange-v1/adult-height-completion/. All26regression launched;
+inspect result before claim26/26. Source5856775 pushed; catalogue/docs pending.
+Scotland2000r152a privatecandidate2labels/2coaches built/native/SOURCE PASS;
+serialcapture75211 startupPASS/profilesunderway. WrongGaryHoltsearchmayselect
+Norwichduplicate; don'tapproveasKilmarnock. Additionalrosterfindings documented,
+not silently closed. No globalRCclaim. Exact next: finishregression/update,
+inspectScottishoriginalprofiles, uniqueKilmarnocklabelproof ifnecessary,
+guardedpromotion/checkpoint; continueGaryHolt/Werderownership corrections.
+8.0GiBfree; existing8GiBbuildreserve, no destructivecleanup this turn.
+
 ## Stoke ownership runtime complete; final height patch running — 2026-10-18 14:30 UTC
 
 Vostro/session as CURRENT_WORK14:30. r150a startup+all7profiles controller27003

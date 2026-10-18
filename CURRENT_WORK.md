@@ -1,5 +1,40 @@
 # PM99: current work
 
+## Stoke2013 delivered and runtime-attested — 2026-10-18 14:45 UTC
+
+14:46UTC: all26postdelivery regression27056terminal0,26/26playable and exact
+v118preferredbindings PASS;0unaffectedregenerations. Evidence
+`Stoke2013-opening-exchange-v1/adult-height-completion/all26-postdelivery-regression.json`.
+
+Vostro/session as below. Controller44403terminal0: final preferred2013 now
+`sourced-published-adult-heights-20261018-r151a`, via guarded r145a->r150a->r151a
+ancestry, no intermediate default promotion/rebuild. Actual recipes/games:
+Jones/Pennant/Jerome at Stoke, Odemwingie WBA, Arnautovic Werder, Guidetti City,
+Gestede Cardiff. All7original profile frames reviewed; native input hashes,
+kit pixels,10skill/age glyphs PASS. r151 genuine startup+3heightchangedprofiles
+PASS;4moved profiles explicitly reused across unchanged records/dependencies,
+not relabelled as new captures. Complete SOURCE replay for both layers PASS.
+Original2015 actual sealed game verified, other25bindings unchanged. v118 now
+authoritative:3additional Stoke ownership findings delivered outside frozen
+denominator;55disposed/2754candidates unchanged. Global historical RC false.
+Evidence `Stoke2013-opening-exchange-v1/adult-height-completion/` includes final
+attestation/summary and v118 bindings. All26postdelivery regression now running.
+90focused tests PASS,2SKIP; source5856775 pushed. Catalogue/docs need commit.
+
+Next actual private2000 correction r152a:2Scottish cohort labels/2coaches built,
+native readback and full SOURCEr152b PASS. Serialcapture75211 startupPASS;
+originalStoke2000screen reviewed, Scottish representative profiles underway.
+Do NOTclaim r152a preferred or globallyrosterapproved. Existing Holt duplicate
+may make generic name search choose Norwich; inspect original and don't falsely
+approve it asKilmarnock. Prefer uniqueKilmarnockplayer for labelvisual if needed.
+Luna identified additionalCanero/Lennon/Douglas Celtic membership candidates;
+lead independently read October19Douglas signing. McGovern2001NOTAugust2000,
+rejected unsafe suggestion recorded in existing Luna research doc. GaryHolt
+Norwich replacement proposal DeWaard sourcedAugust12bench stillunapproved.
+OtherLuna preparing safe completeWerder18+4allocation:GarciaSept1,KroosF->M;
+don'tinvent ineligibility for legitimateAugreserves.8.0GiBfree; no further
+native builds below existing8GiBreserve. No cleanup/deletions this turn.
+
 ## Stoke ownership runner proofs complete; height followup — 2026-10-18 14:30 UTC
 
 Vostro `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
