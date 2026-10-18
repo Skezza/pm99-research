@@ -24,7 +24,8 @@ KIND='missing-profile-nationality'
 HEIGHT_KIND='published-adult-profile-height'
 ADJUDICATED_KIND='adjudicated-source-player-facts'
 DATED_ROLE_KIND='dated-roster-compatible-profile-roles'
-MULTI_FIELD_KINDS=(ADJUDICATED_KIND,DATED_ROLE_KIND)
+PRIMARY_ROLE_KIND='compatible-biography-conflicting-role-set-repair'
+MULTI_FIELD_KINDS=(ADJUDICATED_KIND,DATED_ROLE_KIND,PRIMARY_ROLE_KIND)
 HEIGHT_SCOPE='Only selected adult published-height recipe fields and one height byte per changed native player; names, DOBs, countries, roles, ratings, orders, clubs, managers, photos, kits, EXE and opaque bytes unchanged. Published adult biography height is not a dated target-season measurement claim.'
 SCOPE='Only selected explicit missing nationality recipe fields and one country byte per selected native player; all names, DOBs, roles, ratings, orders, ownership, tactics, managers, photos, kits, EXE and opaque data unchanged.'
 digest=native.digest
@@ -43,6 +44,9 @@ def prepare(base,input_path):
     path=Path(input_path)
     original_path(registry.relative_workspace_path(path))
     request=pipeline.read_json_file(path)
+    if request.get('kind') == PRIMARY_ROLE_KIND:
+        from scripts import season_compatible_primary_role_v1 as primary_role
+        return primary_role.prepare(base, path, request)
     if request.get('kind') == DATED_ROLE_KIND:
         from scripts import season_dated_roster_roles_v1 as dated_roles
         return dated_roles.prepare(base, path, request)
@@ -161,6 +165,9 @@ def verify(base,plan):
         raise ValueError('source-backed field plan does not independently reproduce')
 
 def validate_mask(plan):
+    if plan.get('kind') == PRIMARY_ROLE_KIND:
+        from scripts import season_compatible_primary_role_v1 as primary_role
+        return primary_role.validate_mask(plan)
     if plan.get('kind') == DATED_ROLE_KIND:
         from scripts import season_dated_roster_roles_v1 as dated_roles
         return dated_roles.validate_mask(plan)
