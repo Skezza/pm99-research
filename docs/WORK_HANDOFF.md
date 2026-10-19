@@ -1,5 +1,27 @@
 # PM99 worker handoff
 
+## v125 complete; Goram composed delivery active — 2026-10-19 22:34 UTC
+
+Machine `joe-Vostro-3350`, source session
+`01a0592d-fcd5-7262-a637-743a8253d9b4`. CURRENT_WORK top entry supersedes
+older active-controller descriptions. Checklist v125 is authoritative:
+Hoheneder2007 r164a, Margreitter2009 r165a, Piermayr2010 r166a delivered,
+native/source/full replay/original runner startup/profile/kit/digits PASS.
+All26 regression PASS, no regeneration; original2015 and other23 defaults
+unchanged. Frozen59/2809 disposed,2750 unclosed candidates unchanged.
+
+Goram2000 original Motherwell DOB correction r171a/r171b privately built and
+fully replayed, not promoted. Controller90974 composes r172a/r172b replacing
+ManchesterUnited's late-loan duplicate with positively sourced August-friendly
+bench JonathanGreening. Exact next step: finish serial build/replay, final
+Greening and retained MotherwellGoram runner profiles plus Stoke startup;
+source/native/unchanged proof, guarded chain promotion, one all26 regression.
+Evidence `.local/consolidated-audit-20261009/Goram2000-opening-review-v1/`.
+No duplicate closure or final RC claim before actual delivery/runtime proof.
+New DOB-only and Sky evidence adapters remain narrowly scoped; legacy66 tests
+PASS, expanded focused lane40198 active. No competing builds or runner work.
+No deletion/Pi transfer this batch; 8GiB disk reserve enforced.
+
 ## v124 complete; next role batch active — 2026-10-19 22:05 UTC
 
 Same Vostro/session below. CURRENT_WORK top entry is current. v124 now

@@ -1,5 +1,40 @@
 # PM99: current work
 
+## v125 delivered; Goram correction composing — 2026-10-19 22:34 UTC
+
+Machine `joe-Vostro-3350`, source session
+`01a0592d-fcd5-7262-a637-743a8253d9b4`. Authoritative checklist:
+`.local/consolidated-audit-20261009/release-delivery-checklist-v125.json`.
+Hoheneder2007 r164a, Margreitter2009 r165a and Piermayr2010 r166a are now
+preferred, source/native/full SOURCE and original runner-profile/startup
+verified. Independent skills/age checks PASS. Other23 preferred bindings and
+original2015 unchanged; all26 regression PASS, zero regenerations. Evidence:
+`Hoheneder2007-compatible-role-v1/all26-postdelivery-regression.json` under
+the audit root, plus each player's named evidence directory. Frozen cross-club
+counts remain59/2809 disposed,2750 unclosed candidates, not confirmed bugs.
+
+Private Goram Motherwell DOB1965->1964 r171a actual native proof PASS
+(one changed byte236878; country and all unrelated data exact); full SOURCE
+r171b PASS, controller7218 terminal0. Official ScottishFA and Guardian
+originals retained. ManchesterUnited's wrong March2001 Goram copy is being
+replaced with August2000 published friendly-bench JonathanGreening, exact
+full-name/profile/target-year source binding. Request v2 composes over r171a;
+controller90974 owns serial r172a/r172b build/replay. Do not compete or repeat.
+Neither r171 nor r172 is preferred or runner-verified yet. Evidence:
+`Goram2000-opening-review-v1/` including `dob-correction/`, request v2 and
+`greening-delivery/`. Next: finish build/replay, final Greening and retained
+MotherwellGoram runner profiles plus Stoke startup, then guarded publication.
+
+Legacy reserve/exchange/builder tests66 PASS. New Sky adapter/DOB-only/cache
+tests65 PASS before synthetic clean-checkout expansion; expanded lane40198
+running. Luna country_tests completed synthetic fixture; role_sources performs
+independent adversarial source review, neither operates runner or publishes.
+Five next role-profile downloads returned invalid/empty bodies: NOT admitted,
+NOT corrected. Cache now refuses empty successful payloads. Preserve rejected
+Piermayr visual-transcription receipts; final original-image/digit proof passed.
+Available disk8.4GiB; 8GiB reserve remains enforced. No new deletion/Pi move.
+Still26 playable games, not26 historically approved RCs.
+
 ## v124 delivered and verified — 2026-10-19 22:05 UTC
 
 Vostro/session as below. Authoritative checklist now
@@ -39,8 +74,8 @@ contract evidence and rejection; `disk_audit` classifies five untouched2000
 cross-club cases against current data. Lead alone integrates/publishes/runs.
 Next: finish genuine Hoheneder/Margreitter captures and narrow checkpoint;
 then remaining source-approved role and coupled opening-ownership corrections.
-Code50b1bef pushed; additional HTTPS-slug hardening b3b7838 committed (27 tests
-PASS), pending push. Existing source/compatible/dated-role119, national-country35,
+Code50b1bef and HTTPS-slug hardening b3b7838 pushed with delivery3c2089b (27 tests
+PASS). Existing source/compatible/dated-role119, national-country35,
 sharing3 tests PASS. Preserve dirty upstream/viewer and completed evidence.
 
 ## Restart continuation: country build delivered privately — 2026-10-19 21:54 UTC
