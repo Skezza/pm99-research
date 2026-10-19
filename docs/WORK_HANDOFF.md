@@ -1,5 +1,26 @@
 # PM99 worker handoff
 
+## v126 complete — 2026-10-19 22:48 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+CURRENT_WORK top entry is authoritative; all earlier active controllers below
+are completed. Checklist `.local/consolidated-audit-20261009/release-delivery-checklist-v126.json`:
+2000/01 preferred r172a, two-edge Goram DOB and ManchesterUnited Greening
+ownership correction delivered, source/native/full SOURCE/original startup/
+two profiles/kit/skill and age digits PASS. All26 regression PASS, zero
+regenerations; other25 preferred bindings and original2015 preserved.
+Frozen60/2809 disposed,2749 unclosed candidates, not confirmed bugs.
+Still26 playable, not26 historically approved RCs. No active runner/build.
+Evidence `Goram2000-opening-review-v1/` under audit root.
+
+Next: source-approved Leovac2011/Gansterer2008/Baldauf2012 v2 role requests
+re-prepared against current preferred games; not built. Reserved r167/168/169
+unused. See CURRENT_WORK for exact request roots/transactions and remaining
+coupled starter cases. New Horne/Collins original-source research retained,
+not delivered or closed; no unsupported replacement admission. Pi mounted and
+online241GiB; local8.2GiB, no deletion or transfer. Tests72+66 and boundary/
+diff PASS; preserve dirty upstream/editor/viewer. No rerun of completed proofs.
+
 ## v125 complete; Goram composed delivery active — 2026-10-19 22:34 UTC
 
 Machine `joe-Vostro-3350`, source session

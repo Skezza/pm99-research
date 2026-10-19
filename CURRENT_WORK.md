@@ -1,5 +1,77 @@
 # PM99: current work
 
+## v126 delivered and regression verified — 2026-10-19 22:48 UTC
+
+Machine `joe-Vostro-3350`, source session
+`01a0592d-fcd5-7262-a637-743a8253d9b4`. Authoritative checklist now
+`.local/consolidated-audit-20261009/release-delivery-checklist-v126.json`.
+2000/01 preferred `sourced-manutd-august-greening-20261019-r172a` composes
+Motherwell Goram DOB1965->1964 r171a and ManchesterUnited late-loan copy9267
+replacement with JonathanGreening. Original August16 friendly bench and exact
+target-year numeric identity support Greening; not an appearance claim.
+Actual native/idempotence/unchanged data/full SOURCE replay of BOTH edges PASS.
+Final runner startup original inspected: Stoke,2000-08-01. Final profiles
+inspected: Greening/ManchesterUnited/England/Midfielder/CentralMid/age21;
+AndyGoram/Motherwell/Scotland/Keeper/age36. Native input, kit pixels, independent
+ten-skill and age digits PASS. Displaced portrait cleared; no optional image
+certification. Source and runtime evidence under `Goram2000-opening-review-v1/`
+in audit root, particularly `final-runtime/`, `prepublication-proof-v1.json`
+and `all26-postdelivery-regression.json`.
+
+Controller53314 terminal0: all26 regression PASS,26 playable bindings,
+zero regenerated seasons. Other25 preferred bindings exact, original2015
+backup freshly verified. Frozen cross-club60/2809 disposed,2749 unclosed
+candidates (NOT2749 confirmed bugs). Motherwell DOB is a separately proved
+new finding; original247 date denominator unchanged. Still NOT26 approved RCs.
+No active build or runner jobs. Earlier active-controller entries superseded.
+
+Next source-approved fine-role requests independently re-prepared PASS:
+Leovac2011 (19cd93b3a6b52ca42c763881), Gansterer2008
+(e43550a60f2413fe6611ee04), Baldauf2012(879e30cf19f0196f39ee3cfa),
+all v2 inputs under `current-gk-outfield-pilot-20261018-v1/`. None built;
+r167/r168/r169 remain unused. Exact next implementation batch is those
+narrow actual/native/SOURCE corrections, then serial runner and one regression.
+
+New Luna retained ownership research (NOT delivered/closed):
+`Horne2000-opening-review-v1/source/horne-walsall-kidder-and-august-candidate-v1.json`
+confirms late Walsall Horne; possible AlfieCarter has conflicting birthdays.
+Horne native order16, Walsall mode0/exclusive owner364,25players. Existing
+pruner supports ONLYmode1 and same-club duplicate assignments; cannot safely
+reuse it here without explicit tested extension. Do not bypass guards or force
+new-person enrichment where a source-bound24-player prune could suffice.
+`Collins2000-opening-review-v1/source/collins-case-review-v1.md` and
+`collins-parkinson-supplement-v2.md`: DerekCollins retains Hibs19269, wrong
+Preston10149 late March reserve; positive August GaryParkinson candidate
+provider163589,DOB1968-01-10. Original target-year squad row publishes exact
+identity/role; direct profile capture empty. A source-specific original-squad-row
+biography adapter may resolve this without pretending an empty page is valid.
+Luna disk_audit read-only extracts exact row/adversarial requirements; no writer.
+Celtic/Hearts/Werder coupled starter cases remain open as recorded below.
+
+Tests72 new source/DOB/cache and66 legacy reserve/exchange PASS; boundary and
+diff PASS. Source code13e566c and v12505193df pushed. Pi SSH /srv/hdd verified
+mounted UUID1f364414-880d-4f96-8619-3bd8c9954cc0,241GiB free. Local8.2GiB;
+8GiB reserve enforced. No deletion/move: read-only audit proved no safe
+individual >=0.5GiB cold target; paired replay root remains protected.
+
+## Final Goram/Greening game built; proof active — 2026-10-19 22:38 UTC
+
+Same Vostro/session below. r172a actual build/native proof PASS: Motherwell1931
+is AndyGoram1964-04-13; ManchesterUnited9267 is Greening1979-01-02/M.
+All other r171 records and original startup orders exact; selected obsolete
+portrait cleared exactly. SOURCE replay r172b remains controller90974 active.
+Serial runner39192 captures final r172 Stoke startup, Greening9267 and
+MotherwellGoram1931 profiles under `Goram2000-opening-review-v1/final-runtime/`.
+No preferred change yet, no frozen case closure yet; do not repeat either job.
+Expanded Sky/DOB/cache lane72 PASS, legacy reserve/exchange lane66 PASS;
+boundary and diff checks PASS. Commits05193df (v125 delivery) and13e566c
+(source admission/DOB/cache guards) pushed to GitHub snapshot branch.
+Luna independent original-source/native admission reviews found no concrete
+defect; this does not replace SOURCE or runner validation. role_sources now
+researches Horne2000 next positive replacement; no shared recipe/build edits.
+8.2GiB free, reserve enforced; no deletions. Exact next: finish active proofs,
+inspect actual final frames, narrowly promote composed chain only after PASS.
+
 ## v125 delivered; Goram correction composing — 2026-10-19 22:34 UTC
 
 Machine `joe-Vostro-3350`, source session
