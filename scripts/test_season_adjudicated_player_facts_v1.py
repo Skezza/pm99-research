@@ -3,6 +3,7 @@
 import copy
 import hashlib
 import json
+from datetime import date
 from pathlib import Path
 import re
 
@@ -16,6 +17,7 @@ from scripts import season_package_compiler_v2 as compiler
 from scripts import season_release_registry_v1 as registry
 from scripts import season_source_package_builder_v1 as builder
 from scripts import season_source_verified_player_changes_v1 as changes
+from scripts.season_historical_roster_audit_v1 import native_player
 from scripts.season_within_club_reserve_repair_v1 import native_facts
 
 
@@ -311,3 +313,120 @@ def test_native_writer_rejects_a_mixed_preimage():
 
     with pytest.raises(ValueError, match="exact complete pre/postimages"):
         changes.apply(bytes(mixed), original_eq, plan)
+
+
+def _prepare_dob_only_larsson():
+    base, path, request, _ = _prepared_2000_case()
+    request = copy.deepcopy(request)
+    assert len(request['changes']) == 1
+    row = request['changes'][0]
+    row['field_mask'] = ['birth_date']
+    row['witness']['values'] = {'birth_date': row['witness']['values']['birth_date']}
+    return base, path, request, subject.prepare(base, path, request)
+
+
+def test_birth_date_only_replay_masks_all_four_date_bytes_and_preserves_country_and_eq():
+    base, _path, request, plan = _prepare_dob_only_larsson()
+    row = plan['updates'][0]
+    carrier = row['carrier_id']
+    before_jug = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    before_eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    package_hash = registry.sha256_file(base.package_path)
+    entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(before_jug).entries}
+    original_payload = entries[carrier].decode_payload(before_jug)
+    name_end = native_player(original_payload, carrier)['name_end']
+    country_before = original_payload[name_end + 8] ^ 0x61
+    expected_birth = date.fromisoformat(row['values']['birth_date'])
+    expected_date_bytes = [expected_birth.day, expected_birth.month,
+                           *expected_birth.year.to_bytes(2, 'little')]
+
+    assert row['field_mask'] == ['birth_date']
+    assert row['values'] == {'birth_date': request['changes'][0]['witness']['values']['birth_date']}
+    assert len(row['native_masks']) == 4
+    assert [mask['record_offset'] for mask in row['native_masks']] == [
+        name_end + 12, name_end + 13, name_end + 14, name_end + 15,
+    ]
+    assert [mask['after'] for mask in row['native_masks']] == expected_date_bytes
+
+    # The retained request on disk remains the original DOB+country request;
+    # this opt-in DOB-only request is deliberately ephemeral. Validate and
+    # replay its exact masks without asking apply() to re-open that different
+    # immutable source request.
+    subject.validate_mask(plan)
+    after_jug = bytearray(before_jug)
+    for mask in row['native_masks']:
+        after_jug[mask['file_offset']] = mask['after']
+    after_jug = bytes(after_jug)
+    after_eq = before_eq
+    after_entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(after_jug).entries}
+    after_payload = after_entries[carrier].decode_payload(after_jug)
+    assert after_eq == before_eq
+    assert after_payload[name_end + 8] ^ 0x61 == country_before
+    assert native_facts(after_jug, carrier)['birth_date'] == row['values']['birth_date']
+    allowed = {mask['file_offset'] for mask in row['native_masks']
+               if mask['before'] != mask['after']}
+    actual = {i for i, (before, after) in enumerate(zip(before_jug, after_jug)) if before != after}
+    assert actual == allowed
+    assert registry.sha256_file(base.package_path) == package_hash
+
+
+def test_existing_birthday_and_nationality_mask_remains_accepted_unchanged():
+    base, path, request, _ = _prepared_2000_case()
+    plan = subject.prepare(base, path, request)
+    row = plan['updates'][0]
+
+    assert row['field_mask'] == ['birth_date', 'nationality']
+    assert row['values'] == {
+        'birth_date': '1971-09-20',
+        'nationality': 'SWE',
+    }
+    assert len(row['native_masks']) == 5
+    start = row['native_masks'][0]['record_offset']
+    assert [mask['record_offset'] - start for mask in row['native_masks']] == [0, 4, 5, 6, 7]
+
+
+@pytest.mark.parametrize(('field_mask', 'value_fields'), [
+    (['birth_date', 'nationality', 'height_cm'], {'birth_date'}),
+    (['birth_date', 'nationality'], {'birth_date'}),
+    (['nationality'], {'birth_date'}),
+    (['birth_date'], {'birth_date', 'nationality'}),
+    (['birth_date', 'birth_date'], {'birth_date'}),
+])
+def test_birth_date_only_admission_rejects_malformed_or_expanded_masks(field_mask, value_fields):
+    base, path, request, _ = _prepared_2000_case()
+    request = copy.deepcopy(request)
+    row = request['changes'][0]
+    row['field_mask'] = field_mask
+    row['witness']['values'] = {
+        key: value for key, value in row['witness']['values'].items() if key in value_fields
+    }
+
+    with pytest.raises(ValueError):
+        subject.prepare(base, path, request)
+
+
+def test_birth_date_only_admission_rejects_invalid_calendar_date():
+    base, path, request, _ = _prepared_2000_case()
+    request = copy.deepcopy(request)
+    row = request['changes'][0]
+    row['field_mask'] = ['birth_date']
+    row['witness']['values'] = {'birth_date': '1971-02-29'}
+
+    with pytest.raises(ValueError):
+        subject.prepare(base, path, request)
+
+
+def test_birth_date_only_plan_rejects_missing_or_extra_native_masks():
+    _base, _path, _request, plan = _prepare_dob_only_larsson()
+    missing = copy.deepcopy(plan)
+    missing['updates'][0]['native_masks'].pop()
+    with pytest.raises(ValueError):
+        subject.validate_mask(missing)
+
+    expanded = copy.deepcopy(plan)
+    expanded_row = expanded['updates'][0]
+    expanded_row['field_mask'] = ['birth_date', 'nationality']
+    expanded_row['values'] = {'birth_date': '1971-09-20', 'nationality': 'SWE'}
+    expanded_row['witness']['values'] = dict(expanded_row['values'])
+    with pytest.raises(ValueError):
+        subject.validate_mask(expanded)

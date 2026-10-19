@@ -1,4 +1,10 @@
+import json
+from pathlib import Path
+
+import pytest
+
 from scripts.season_stoke_kit_evidence_v1 import HFK_PAGE, HFK_ATTRIBUTION, build_matrix, capture_url, parse_hfk_entries
+from scripts.season_stoke_kit_evidence_v1 import StokeKitEvidenceError, canonical_json_bytes, sha256_bytes
 
 
 HFK = b'''<title>Stoke City - Historical Football Kits</title><div class="float"><div class="manufacturer"><!-- x -->Asics<!-- y --></div><img src="/Stoke_City/images/stoke_city_1999-2023.gif"><span class="date"><!-- x -->1999-2023<!-- y --></span><!-- InstanceEndRepeat -->'''
@@ -10,6 +16,63 @@ def test_content_addressed_cache_skips_second_fetch(tmp_path) -> None:
     second = capture_url("https://example.test/evidence", tmp_path, allow_network=False)
     assert first == second
     assert calls == ["https://example.test/evidence"]
+
+
+@pytest.mark.parametrize('payload', [b'', b' \n\t', None, 'not bytes'])
+def test_empty_response_writes_no_cache_blob_or_index(tmp_path, payload) -> None:
+    url = "https://example.test/empty"
+    try:
+        capture_url(url, tmp_path, allow_network=True, fetcher=lambda _: payload)
+    except StokeKitEvidenceError as exc:
+        assert "empty source response" in str(exc)
+    else:
+        raise AssertionError("empty HTTP response must be rejected")
+    assert not (tmp_path / "blobs").exists()
+    assert not (tmp_path / "url-index").exists()
+
+
+def _seed_empty_cache(tmp_path: Path, url: str) -> tuple[Path, Path]:
+    index_path = tmp_path / "url-index" / f"{sha256_bytes(url.encode('utf-8'))}.json"
+    blob_path = tmp_path / "blobs" / "e3" / sha256_bytes(b"")
+    blob_path.parent.mkdir(parents=True)
+    blob_path.write_bytes(b"")
+    index_path.parent.mkdir(parents=True)
+    index_path.write_bytes(canonical_json_bytes({
+        "url": url,
+        "sha256": sha256_bytes(b""),
+        "byte_count": 0,
+        "relative_path": str(blob_path.relative_to(tmp_path)),
+    }))
+    return index_path, blob_path
+
+
+def test_existing_empty_cache_is_offline_miss(tmp_path) -> None:
+    url = "https://example.test/poisoned-offline"
+    index_path, blob_path = _seed_empty_cache(tmp_path, url)
+    try:
+        capture_url(url, tmp_path, allow_network=False)
+    except StokeKitEvidenceError as exc:
+        assert "cache miss with network disabled" in str(exc)
+    else:
+        raise AssertionError("empty cached payload must not be accepted offline")
+    assert index_path.is_file()
+    assert blob_path.read_bytes() == b""
+
+
+def test_existing_empty_cache_retries_online_without_deleting_old_blob(tmp_path) -> None:
+    url = "https://example.test/poisoned-online"
+    index_path, empty_blob_path = _seed_empty_cache(tmp_path, url)
+    fresh = b"fresh reviewed evidence"
+    calls = []
+    receipt = capture_url(url, tmp_path, allow_network=True, fetcher=lambda value: calls.append(value) or fresh)
+    assert calls == [url]
+    assert receipt["sha256"] == sha256_bytes(fresh)
+    assert receipt["byte_count"] == len(fresh)
+    fresh_blob_path = tmp_path / receipt["relative_path"]
+    assert fresh_blob_path.read_bytes() == fresh
+    assert empty_blob_path.exists() and empty_blob_path.read_bytes() == b""
+    assert index_path.is_file()
+    assert json.loads(index_path.read_text(encoding="utf-8")) == receipt
 
 
 def test_hfk_parser_requires_exact_stoke_identity() -> None:

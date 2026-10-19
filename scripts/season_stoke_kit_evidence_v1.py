@@ -54,11 +54,15 @@ def capture_url(url: str, cache_dir: Path, *, allow_network: bool, fetcher: Call
     if index_path.is_file():
         row = json.loads(index_path.read_text(encoding="utf-8"))
         blob = cache_dir / str(row.get("relative_path") or "")
-        if blob.is_file() and sha256_bytes(blob.read_bytes()) == row.get("sha256"):
-            return row
+        if blob.is_file():
+            cached = blob.read_bytes()
+            if cached.strip() and sha256_bytes(cached) == row.get("sha256"):
+                return row
     if not allow_network:
         raise StokeKitEvidenceError(f"evidence cache miss with network disabled: {url}")
     payload = fetcher(url)
+    if not isinstance(payload, bytes) or not payload.strip():
+        raise StokeKitEvidenceError(f"empty source response; no evidence cached: {url}")
     digest = sha256_bytes(payload)
     blob = cache_dir / "blobs" / digest[:2] / digest
     blob.parent.mkdir(parents=True, exist_ok=True)

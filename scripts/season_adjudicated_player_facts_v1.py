@@ -112,7 +112,9 @@ def adjudicate(witness):
             countries.append(country['code'])
     values = witness['values']
     date.fromisoformat(values['birth_date'])
-    if set(values) != set(FIELDS) or set(birthdays) != {values['birth_date']} or set(countries) != {values['nationality']}:
+    if (set(values) not in ({'birth_date'}, set(FIELDS))
+            or set(birthdays) != {values['birth_date']}
+            or ('nationality' in values and set(countries) != {values['nationality']})):
         raise ValueError('independent birthday or explicit nationality claims disagree')
     return copy.deepcopy(values)
 
@@ -133,12 +135,15 @@ def prepare(base, path, request):
     updates, seen = [], set()
     for selection in request['changes']:
         carrier = selection['carrier_id']
-        if type(carrier) is not int or carrier in seen or selection.get('field_mask') != FIELDS:
+        if (type(carrier) is not int or carrier in seen
+                or selection.get('field_mask') not in (['birth_date'], FIELDS)):
             raise ValueError('unique literal actors and explicit birthday/country-only mask required')
         seen.add(carrier)
         actor = actors[carrier]
         witness = selection['witness']
         values = adjudicate(witness)
+        if set(values) != set(selection['field_mask']):
+            raise ValueError('adjudicated values must exactly match the selected field mask')
         observed = native_facts(jug, carrier)
         entry = entries[carrier]
         raw = entry.decode_payload(jug)
@@ -151,13 +156,15 @@ def prepare(base, path, request):
                 or owners.get(carrier) != {clubs[actor['club_id']]['carrier_id']}
                 or old_country != codes[selection['native_before_country']]):
             raise ValueError('adjudicated actor/native/source identity or exact preimage differs')
-        country = compiler._country_code(values['nationality'], codes)
-        if country == codes['XXX']:
+        country = compiler._country_code(values['nationality'], codes) if 'nationality' in values else old_country
+        if 'nationality' in values and country == codes['XXX']:
             raise ValueError('unsupported country is a documented gap, not an invented mapping')
         birthday = date.fromisoformat(values['birth_date'])
         encoded = [birthday.day, birthday.month, *birthday.year.to_bytes(2, 'little')]
         masks = []
-        for offset, after in [(end + 8, country), *[(end + 12 + i, b) for i, b in enumerate(encoded)]]:
+        selected_fields = ([(end + 8, country)] if 'nationality' in values else [])
+        selected_fields += [(end + 12 + i, b) for i, b in enumerate(encoded)]
+        for offset, after in selected_fields:
             absolute = entry.payload_offset + offset
             if jug[absolute] != raw[offset] ^ 0x61:
                 raise ValueError('native physical field boundary differs')
@@ -175,7 +182,7 @@ def prepare(base, path, request):
                 or postpayload[end + 8] ^ 0x61 != country):
             raise ValueError('adjudicated native birthday/country post-readback differs')
         updates.append(dict(carrier_id=carrier, before=copy.deepcopy(actor), values=values,
-                            field_mask=FIELDS[:], native_masks=masks, witness=copy.deepcopy(witness),
+                            field_mask=selection['field_mask'][:], native_masks=masks, witness=copy.deepcopy(witness),
                             expected_owner=clubs[actor['club_id']]['carrier_id']))
     result = dict(schema=changes.SCHEMA, season=base.season, release_id=base.release_id, kind=KIND,
         source_input=changes.binding(path), package_sha256=registry.sha256_file(base.package_path),
@@ -196,14 +203,17 @@ def validate_mask(plan):
     for row in rows:
         if (set(row) != {'carrier_id', 'before', 'values', 'field_mask', 'native_masks', 'witness', 'expected_owner'}
                 or type(row['carrier_id']) is not int or row['carrier_id'] in carriers
-                or row['field_mask'] != FIELDS or set(row['values']) != set(FIELDS)
-                or row['values'] != row['witness']['values'] or len(row['native_masks']) != 5):
+                or row['field_mask'] not in (['birth_date'], FIELDS)
+                or set(row['values']) != set(row['field_mask'])
+                or row['values'] != row['witness']['values']
+                or len(row['native_masks']) != (5 if 'nationality' in row['values'] else 4)):
             raise ValueError('exact unique adjudicated fact rows required')
         carriers.add(row['carrier_id'])
         date.fromisoformat(row['values']['birth_date'])
         masks = row['native_masks']
         origin = masks[0]['record_offset']
-        if [m['record_offset'] - origin for m in masks] != [0, 4, 5, 6, 7]:
+        expected = [0, 4, 5, 6, 7] if 'nationality' in row['values'] else [0, 1, 2, 3]
+        if [m['record_offset'] - origin for m in masks] != expected:
             raise ValueError('only native country and complete four-byte birthday fields permitted')
         for mask in masks:
             if (set(mask) != {'file', 'record_offset', 'file_offset', 'before', 'after'}

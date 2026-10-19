@@ -290,7 +290,9 @@ def new_person(selection, evidence):
     if selection.get('opening_contract'):
         from scripts import season_dated_reserve_membership_v1 as contracts
         contracts.verify(selection, evidence)
-        membership = 'dated-opening-contract-bracket-not-matchday-claim'
+        membership = ('original-published-August-Sky-bench-not-played-appearance-claim'
+                      if selection['opening_contract']['policy'] == contracts.SKY_POLICY
+                      else 'dated-opening-contract-bracket-not-matchday-claim')
     else:
         fixture = evidence[selection['match']]
         if date.fromisoformat(fixture['date']).month != 8:
@@ -469,6 +471,10 @@ def prepare(base, input_path):
     if any(row.get('opening_contract') for row in request['new_people']):
         plan.update(source_title='Dated opening reserve identities and positive ownership brackets',
                     proof_covers=['bounded-reserve-ownership-and-positive-dated-contract-bracket-not-matchday-claims'])
+        from scripts import season_dated_reserve_membership_v1 as contracts
+        if any(row.get('opening_contract', {}).get('policy') == contracts.SKY_POLICY for row in request['new_people']):
+            plan.update(source_title='Dated opening reserve identities and source-specific August membership evidence',
+                        proof_covers=['bounded-reserve-ownership-and-individually-bound-August-membership-no-unsupported-appearance-claims'])
     for row in request.get('orders', []):
         if evidence[row['match']].get('membership_mode') in ('classic-played-substitutes', 'classic-published-starting-XI'):
             raise ValueError('used substitutes are not a complete published bench; cannot authorise bench order')
