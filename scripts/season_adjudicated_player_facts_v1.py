@@ -68,7 +68,8 @@ def verify_historical_identity(witness):
         if not full_names:
             for link in links:
                 target = urlsplit(link['href'])
-                if target.hostname not in (None, 'www.transfermarkt.co.uk', 'www.transfermarkt.com', 'www.transfermarkt.us'):
+                if (target.scheme not in ('', 'https')
+                        or target.hostname not in (None, 'www.transfermarkt.co.uk', 'www.transfermarkt.com', 'www.transfermarkt.us')):
                     continue
                 slug = re.match(r'^/([^/]+)/(?:profil/spieler|leistungsdatendetails/spieler)/'
                     + re.escape(str(historical['provider_player_id'])) + r'(?:/|$)', target.path)

@@ -227,6 +227,13 @@ def test_historical_identity_rejects_nonapproved_match_or_slug_origins(tmp_path,
         subject.verify_historical_identity(synthetic)
 
 
+@pytest.mark.parametrize('origin', ['http://www.transfermarkt.com', 'javascript:', 'file:'])
+def test_title_free_full_name_slug_rejects_non_https_schemes(tmp_path, monkeypatch, witness, origin):
+    synthetic, _ = _title_free_slug_fixture(tmp_path, monkeypatch, witness, origin=origin)
+    with pytest.raises(ValueError):
+        subject.verify_historical_identity(synthetic)
+
+
 def test_historical_identity_rejects_changed_match_source_hash(tmp_path, monkeypatch, witness):
     synthetic, _ = _title_free_slug_fixture(tmp_path, monkeypatch, witness)
     synthetic["historical_identity"]["match"]["sha256"] = "0" * 64
