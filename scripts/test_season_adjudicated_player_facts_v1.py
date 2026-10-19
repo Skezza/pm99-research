@@ -166,6 +166,74 @@ def test_historical_identity_still_rejects_wrong_provider_id_and_source_binding(
         subject.verify_historical_identity(wrong_binding)
 
 
+def _title_free_slug_fixture(tmp_path, monkeypatch, witness, slug='henrik-tokic', *, origin=None):
+    synthetic, _links = _diacritic_identity_fixture(tmp_path, monkeypatch, witness)
+    match_path = tmp_path / "match.html"
+    page = BeautifulSoup(match_path.read_bytes(), "lxml")
+    provider_id = str(synthetic["historical_identity"]["provider_player_id"])
+    links = [a for a in page.select("a[href]")
+             if re.search(r"/spieler/" + re.escape(provider_id) + r"(?:/|$)", a["href"])]
+    assert links
+    for link in links:
+        link.attrs.pop("title", None)
+        suffix = "/profil/spieler/" + provider_id
+        if "/leistungsdatendetails/spieler/" in link["href"]:
+            suffix = "/leistungsdatendetails/spieler/" + provider_id
+        link["href"] = (origin.rstrip("/") if origin else "") + "/" + slug + suffix
+    match_path.write_text(str(page), encoding="utf-8")
+    synthetic["historical_identity"]["match"]["sha256"] = hashlib.sha256(match_path.read_bytes()).hexdigest()
+    return synthetic, match_path
+
+
+def test_historical_identity_accepts_full_name_slug_when_numeric_links_have_no_titles(
+        tmp_path, monkeypatch, witness):
+    synthetic, _ = _title_free_slug_fixture(tmp_path, monkeypatch, witness)
+    assert subject.verify_historical_identity(synthetic) == synthetic["historical_identity"]["provider_player_id"]
+
+
+@pytest.mark.parametrize("slug", ["tokic", "h-tokic", "henri-tokic", "unknown"])
+def test_historical_identity_rejects_missing_surname_initial_or_different_slug(
+        tmp_path, monkeypatch, witness, slug):
+    synthetic, _ = _title_free_slug_fixture(tmp_path, monkeypatch, witness, slug)
+    with pytest.raises(ValueError, match="full identity"):
+        subject.verify_historical_identity(synthetic)
+
+
+def test_historical_identity_does_not_use_good_slug_to_override_contradictory_title(
+        tmp_path, monkeypatch, witness):
+    synthetic, match_path = _title_free_slug_fixture(tmp_path, monkeypatch, witness)
+    page = BeautifulSoup(match_path.read_bytes(), "lxml")
+    provider_id = str(synthetic["historical_identity"]["provider_player_id"])
+    links = [a for a in page.select("a[href]")
+             if re.search(r"/spieler/" + re.escape(provider_id) + r"(?:/|$)", a["href"])]
+    for link in links:
+        link["title"] = "Henri Tokic"
+    match_path.write_text(str(page), encoding="utf-8")
+    synthetic["historical_identity"]["match"]["sha256"] = hashlib.sha256(match_path.read_bytes()).hexdigest()
+    with pytest.raises(ValueError):
+        subject.verify_historical_identity(synthetic)
+
+
+def test_historical_identity_rejects_nonapproved_match_or_slug_origins(tmp_path, monkeypatch, witness):
+    synthetic, match_path = _title_free_slug_fixture(
+        tmp_path, monkeypatch, witness, origin="https://evil.example")
+    with pytest.raises(ValueError):
+        subject.verify_historical_identity(synthetic)
+
+    synthetic, _ = _title_free_slug_fixture(tmp_path, monkeypatch, witness)
+    synthetic["historical_identity"]["match"]["url"] = synthetic["historical_identity"]["match"]["url"].replace(
+        "www.transfermarkt.co.uk", "evil.example")
+    with pytest.raises(ValueError, match="fixture URL/ID"):
+        subject.verify_historical_identity(synthetic)
+
+
+def test_historical_identity_rejects_changed_match_source_hash(tmp_path, monkeypatch, witness):
+    synthetic, _ = _title_free_slug_fixture(tmp_path, monkeypatch, witness)
+    synthetic["historical_identity"]["match"]["sha256"] = "0" * 64
+    with pytest.raises(ValueError, match="hash differs"):
+        subject.verify_historical_identity(synthetic)
+
+
 def test_published_birthdays_must_agree_with_adjudicated_date(witness):
     forged = copy.deepcopy(witness)
     forged["values"]["birth_date"] = "1971-09-10"

@@ -53,14 +53,29 @@ def verify_historical_identity(witness):
     if len(participants) != 1:
         raise ValueError('historical provider person absent or ambiguous in exact club')
     page = BeautifulSoup(checked(match).read_bytes(), 'lxml')
-    full_names = {a.get('title') for a in page.select('a[href]')
-                  if re.search(r'/spieler/' + re.escape(str(historical['provider_player_id'])) + r'(?:/|$)', a['href'])}
+    links = [a for a in page.select('a[href]')
+             if re.search(r'/spieler/' + re.escape(str(historical['provider_player_id'])) + r'(?:/|$)', a['href'])]
+    full_names = {a.get('title') for a in links if a.get('title')}
     # Original providers may omit diacritics (Tokić/Tokic). Keep the complete
     # published name, numeric person, exact source row and dated club fixture
     # requirements; this is not permission to match initials or surnames alone.
-    if exchange.published_name_key(witness['full_name']) not in {
-            exchange.published_name_key(name) for name in full_names if name}:
-        raise ValueError('historical fixture does not independently publish the full identity')
+    wanted = exchange.published_name_key(witness['full_name'])
+    if wanted not in {exchange.published_name_key(name) for name in full_names}:
+        # Some modern match sheets show only surnames, but publish the complete
+        # name in their numeric profile URL. Accept that full slug only when
+        # titles are absent, never as a way around a contradictory full title.
+        slugs = set()
+        if not full_names:
+            for link in links:
+                target = urlsplit(link['href'])
+                if target.hostname not in (None, 'www.transfermarkt.co.uk', 'www.transfermarkt.com', 'www.transfermarkt.us'):
+                    continue
+                slug = re.match(r'^/([^/]+)/(?:profil/spieler|leistungsdatendetails/spieler)/'
+                    + re.escape(str(historical['provider_player_id'])) + r'(?:/|$)', target.path)
+                if slug:
+                    slugs.add(exchange.published_name_key(slug[1].replace('-', ' ')))
+        if wanted not in slugs:
+            raise ValueError('historical fixture does not independently publish the full identity')
     return int(historical['provider_player_id'])
 
 
