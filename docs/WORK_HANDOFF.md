@@ -1,5 +1,69 @@
 # PM99 worker handoff
 
+## v124 complete; next role batch active — 2026-10-19 22:05 UTC
+
+Same Vostro/session below. CURRENT_WORK top entry is current. v124 now
+authoritative: Tokic2004 composed r170a and Plassnegger2005 r163a preferred,
+actual source/native/full-replay/genuine final startup/profile/hash/kit/glyph
+proofs PASS, original2015 preserved, other24 bindings exact. Consolidated all26
+regression PASS26/26, zero regenerated seasons. Three additional factual/role
+bugs repaired; frozen cross-club59 disposed/2750 candidates unchanged.
+26 playable, not26 globally historically approved RCs.
+
+Hoheneder r164 and Margreitter r165 private actual/full SOURCE passed; serial
+runner76840 owns final captures. Piermayr r166 build/replay55537 active over
+current2010 r161a. Do not repeat or claim promoted. No competing builds/runner.
+Next finish those proofs then guarded checkpoint. Evidence under player-named
+roots at `.local/consolidated-audit-20261009/`.
+
+Critical source rejection: Smith/Crainey RSSSF substitutions are March18 2001,
+NOT August2000. Lead independently checked original section, no recipe/native
+edit from false claim. Preserve source v1 and corrected v2 plus supersession;
+do not admit August eligibility from either cup-final appearance. Luna now
+checks prior senior/contract evidence; another worker classifies five untouched
+2000 cross-club cases. No new frozen closure until evidence/integration passes.
+Full details, test results and exact next actions in CURRENT_WORK.
+
+## Restart recovery and private country correction — 2026-10-19 21:58 UTC
+
+Vostro `joe-Vostro-3350`, source session
+`01a0592d-fcd5-7262-a637-743a8253d9b4`. Read CURRENT_WORK restart entries.
+v123 still authoritative; 26 playable, not 26 RCs; frozen59/2809 disposed,
+2750 unclosed candidates, not confirmed bugs. Original2015/unchanged defaults
+preserved. Code commit `50b1bef` pushed to current snapshot branch.
+
+Private Tokic2004 composed r170a fixes Austria->Croatia over role-fixed r162a:
+exactly one actual byte, unrelated data exact, native/idempotent/playable and
+complete SOURCE r170b PASS. Final startup original frame reviewed and bound;
+controller74398 continues final Tokic profile. No competing runner captures.
+Combined r162/r170/r163 source edge/original2015 verification controller39601
+is read-only. Do not promote before original final profile/native/kit/glyph proof.
+Plassnegger2005 r163 original startup/profile/native/kit/digits all now PASS;
+still private. Evidence roots are under `.local/consolidated-audit-20261009/`:
+`Tokic2004-dated-country-v1/`, `Tokic2004-compatible-role-v1/`,
+`Plassnegger2005-compatible-role-v1/`.
+
+Serial build controller50044 completed Hoheneder2007 r164a/b native/full SOURCE;
+Margreitter2009 r165a native PASS, r165b full SOURCE pending. Both private, no
+runtime captures or preferred promotion yet. Preserve existing outputs; inspect
+receipts/locators before resuming, never blindly rerun the loop.
+
+Lead test results: national-country35, adjudicated facts24, existing source/
+compatible/dated-role119, sharing3 PASS. Boundary and diff checks PASS.
+Safe local sharing reclaimed72,253,440 allocated bytes, all paths preserved,
+no Pi transfer/deletion. Ledger in `.local/cleanup-20261019/` and archive ledger.
+8GiB build reserve remains mandatory; headroom is still tight.
+
+Luna `country_tests` now researches missing Douglas/Smith/Crainey Celtic source
+bindings without touching recipes; `disk_audit` completed read-only coupled
+starter review. Do not bypass reserve-only guards. All eleven Celtic original
+July30 starters map to existing actors, but order/ownership/tactics must be
+composed using a separately explicit source-bound complete mode1 order path.
+Douglas dated arrival needs retained raw/hash proof; prior narrative alone is
+not source admission. See worker report and retained mapping. Exact next:
+finish final Tokic profile proof, guarded Tokic/Plass publication/checkpoint,
+then serial captures for newly built compatible-role games and remaining RC work.
+
 ## v123 delivered and verified — 2026-10-18 21:23 UTC
 
 Same Vostro/session below. Read CURRENT_WORK top entry before selecting tasks.

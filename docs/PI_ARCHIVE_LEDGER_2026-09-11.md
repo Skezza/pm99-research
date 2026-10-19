@@ -1,5 +1,17 @@
 # Pi archive ledger
 
+## Identical completed SOURCE copies shared locally — 2026-10-19 21:51 UTC
+
+Vostro `joe-Vostro-3350`; session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+No Pi transfer or deletion: retained every original path and byte, sharing only
+identical recipe/JUG files for nonpreferred completed SOURCE pairs r145 (2013/14),
+r122 (2014/15) and r146 (2017/18). Complete game inventories and recipes passed
+before and after each operation; preferred catalogue remained unchanged.
+Recovered allocated bytes: 72,253,440 (about 68.9 MiB).
+Ledger: `.local/cleanup-20261019/shared-three-completed-SOURCE-copies/`.
+No recovery action required; future artifact edits must continue using atomic
+replacement rather than in-place writes to these immutable shared files.
+
 ## Regenerable Go cache cleared again — 2026-10-18 evening UTC
 
 The compiler cache had rebuilt since the previous cleanup. Verified the exact

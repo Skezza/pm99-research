@@ -1,5 +1,108 @@
 # PM99: current work
 
+## v124 delivered and verified — 2026-10-19 22:05 UTC
+
+Vostro/session as below. Authoritative checklist now
+`.local/consolidated-audit-20261009/release-delivery-checklist-v124.json`.
+Two preferred games updated without rebuilding other releases: 2004/05
+`sourced-dated-tokic-croatia-20261019-r170a` (composes r162 defender role and
+dated Croatia country correction), 2005/06
+`sourced-compatible-plassnegger-midfield-20261018-r163a` (Right Midfield).
+Original final startup/profile frames inspected; exact native/hash/kit,
+independent skill/age glyph checks, source/native/full SOURCE replays PASS.
+Controller35071 terminal0: consolidated all26 regression PASS, 26 bindings
+playable, zero regenerations. Original2015 and other24 preferred bindings exact.
+Proof: `Tokic2004-dated-country-v1/all26-postdelivery-regression.json` under
+the audit root. Three additional confirmed findings repaired in actual games
+(two incompatible role sets and one country); frozen cross-club counts remain
+59/2809 disposed,2750 unclosed candidates, not confirmed bugs. Not26 RCs yet.
+
+Private Hoheneder2007 r164a/b and Margreitter2009 r165a/b actual/native/full
+SOURCE PASS (controller50044 terminal0). Serial runner76840 owns their startup/
+profile captures; no competing runner. Piermayr2010 r166a/b controller55537
+now building serially over current r161a, preserving delivered Mascherano fix;
+do not repeat it or claim it delivered. Evidence roots named after each player
+under the audit root. 8GiB build reserve retained.
+
+Important source rejection: Luna initially misread Smith/Crainey substitutions
+on a full-season RSSSF page as August2000. Lead read the original section:
+they are March18 2001 cup-final substitutions. NO game edit was made from that
+claim. Preserve original report and corrected
+`Celtic2000-opening-review-v1/source/celtic-smith-crainey-profile-and-match-bindings-v2.json`;
+do not use v1 as August eligibility proof. The v2 review timestamp was assumed,
+not observed; worker is producing explicit immutable rejection/correction.
+Douglas October move is separate, contemporary Independent source retained;
+source must be reviewed separately from rejected August inference.
+
+Two Luna assignments: `country_tests` source-binds Celtic positive prior-senior/
+contract evidence and rejection; `disk_audit` classifies five untouched2000
+cross-club cases against current data. Lead alone integrates/publishes/runs.
+Next: finish genuine Hoheneder/Margreitter captures and narrow checkpoint;
+then remaining source-approved role and coupled opening-ownership corrections.
+Code50b1bef pushed; additional HTTPS-slug hardening b3b7838 committed (27 tests
+PASS), pending push. Existing source/compatible/dated-role119, national-country35,
+sharing3 tests PASS. Preserve dirty upstream/viewer and completed evidence.
+
+## Restart continuation: country build delivered privately — 2026-10-19 21:54 UTC
+
+Same Vostro/session below. Private actual `2004-05`
+`sourced-dated-tokic-croatia-20261019-r170a` now built over private r162a,
+preserving its compatible defender role. Actual native/source/idempotence proof
+PASS: exactly one country byte at 2785194 changed 5 -> 17 (Austria -> Croatia),
+all other native bytes and game files exact, recipe equals source-bound edit,
+playable validation PASS. Full SOURCE replay r170b controller87903 running;
+do not compete or repeat it. No preferred publication yet. Final genuine runner
+startup/Tokic-Croatia profile still required after full replay.
+Evidence: `.local/consolidated-audit-20261009/Tokic2004-dated-country-v1/`.
+
+Lead independently reran national-country tests35 PASS, full-name adjudication
+tests24 PASS. Luna found explicit sharing could report empty success for an
+already-shared selection; fixed to fail before mutation, three tests PASS.
+Exact three completed nonpreferred SOURCE pairs safely shared (r145/r122/r146),
+72,253,440 allocated bytes reclaimed, all paths retained, complete inventories
+equal before/after, preferred catalogue unchanged. Ledger:
+`.local/cleanup-20261019/shared-three-completed-SOURCE-copies/completed.json`.
+No Pi transfer/deletion. Available disk around8.7GiB, 8GiB reserve retained.
+
+Plassnegger2005 original startup also reviewed: Stoke City, 2005-08-01;
+startup binding PASS in addition to profile/native/kit/digit proofs below.
+Luna `disk_audit` now read-only reviews minimal coupled Celtic starter/order
+integration; `country_tests` bounded testing complete. Frozen v123 counts and
+all26 preferred bindings unchanged. Next: finish r170 SOURCE, serial final
+runtime capture and proof, then guarded publication/checkpoint. Do not claim
+these private builds installed or the RC milestone closed.
+
+## Restart recovered; private proof resumed — 2026-10-19 21:49 UTC
+
+Machine `joe-Vostro-3350`, source session
+`01a0592d-fcd5-7262-a637-743a8253d9b4`. Command access restored after Codex
+restart. v123 remains authoritative: 26 playable, not 26 historically approved
+RCs; 59/2809 cross-club candidates disposed, 2750 unclosed candidates, not bugs.
+No completed build or capture restarted and no preferred release changed.
+
+Plassnegger2005 private r163a original profile has now been visually inspected;
+native/runtime/kit binding and independent ten-skill/age glyph checks PASS.
+Evidence: `.local/consolidated-audit-20261009/Plassnegger2005-compatible-role-v1/`
+(`plassnegger-profile-visual-review.json`, `plassnegger-native-runtime-proof.json`,
+`plassnegger-original-digit-proof.json`, `plassnegger-original-age-proof.json`).
+Still private, not installed as the preferred game. Tokic2004 private r162a
+role proof passed previously but shows incorrect AUSTRIA nationality: do not
+promote until composed Croatia correction is built and runtime verified.
+Country request: `Tokic2004-dated-country-v1/request-v1.json` under the audit root.
+
+Two Luna workers restarted: `country_tests` owns bounded adversarial tests for
+the pending national-country helper; `disk_audit` is read-only, checking safe
+completed SOURCE-copy sharing. Neither publishes, edits recipes or runs the
+runner. Available space 8.6 GiB; retain the 8 GiB build reserve. Previous role
+batch halted before first publication. No larger cleanup was completed during
+the interruption. Preserve registered paired replays and original 2015 backup.
+
+Next: review country tests and safe disk findings, gain build headroom, compose
+Tokic nationality over r162a, then complete genuine final runtime proofs and
+guarded publication of the private corrections. Continue bounded ownership and
+role work; do not regenerate unaffected releases. Unrelated dirty upstream,
+viewer and source-bundle changes remain untouched.
+
 ## v123 complete; next two games private — 2026-10-18 21:23 UTC
 
 Same Vostro/session below. v123 checkpoint exists and two defaults are now
