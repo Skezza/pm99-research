@@ -2,6 +2,11 @@
 
 ## v127 delivered and verified — 2026-10-20 20:15 UTC
 
+Handoff check20:16UTC: delivery29092dc pushed. Repository-state check still
+FAILS for pre-existing dirty upstream fixture/artifact deletions and untracked
+parked viewer; upstream pointers unchanged, unrelated changes preserved.
+Boundary/diff and game regression PASS do not imply a clean Git checkout.
+
 Machine `joe-Vostro-3350`, source session
 `01a0592d-fcd5-7262-a637-743a8253d9b4`. Authoritative checklist now
 `.local/consolidated-audit-20261009/release-delivery-checklist-v127.json`.

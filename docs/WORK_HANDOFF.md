@@ -2,6 +2,11 @@
 
 ## v127 complete — 2026-10-20 20:15 UTC
 
+Handoff20:16UTC:29092dc pushed. Repo-state check reports the pre-existing dirty
+upstream tracked fixture/artifact deletions and untracked viewer, not a clean
+checkout. Preserved them and all submodule pointers; boundary/diff/game checks
+pass independently. Do not reset these unrelated changes.
+
 Vostro/source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
 CURRENT_WORK top is authoritative. Checklist
 `.local/consolidated-audit-20261009/release-delivery-checklist-v127.json`:
