@@ -1,5 +1,33 @@
 # Pi archive ledger
 
+## Regenerable Go compiler cache cleared — 2026-10-20 20:15 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. Confirmed exact
+`go env GOCACHE` path `/home/joe/.cache/go-build`, nonsymlink target, no active
+Go build/test/run/install/tool process. `go clean -cache` recovered321,318,912
+free bytes. No project source, Go modules, PM99 games or evidence deleted;
+no archive needed because build/test recreates this compiler cache. Preferred
+catalogue unchanged. Receipt `.local/cleanup-20261020/go-compiler-cache/completed.json`
+and before-cleanup receipt. The first attempt refused before cleanup because
+receipt parent directory did not exist; no data removed by that attempt.
+
+## Superseded equal SOURCE files shared locally — 2026-10-20 19:56 UTC
+
+Vostro `joe-Vostro-3350`; session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Recovered298,221,568 allocated bytes (284.40625MiB) by sharing identical
+recipe/JUG storage across eleven explicitly selected nonpreferred completed
+actual/SOURCE pairs r153..r171. Every original path and byte retained; no
+release, source evidence, recovery path or original2015 backup deleted.
+Whole-game inventories and recipes verified before/after each pair, preferred
+catalogue exact throughout. Recovery: none needed; future immutable artifact
+writes must remain atomic replacements, never writes through shared inodes.
+Ledger `.local/cleanup-20261020/shared-completed-pre126-SOURCE-copies/completed.json`
+and per-pair JSON inventories/hashes in the same directory. No Pi transfer:
+Pi was online241GiB free, but byte-sharing avoided removing any local content.
+Builds retained8GiB reserve; source replay resumed only after128MiB additional
+headroom. Free-space delta is not exclusive because runner/build allocations
+continued;284.40625MiB is verified reclaimed allocation, not a claimed disk delta.
+
 ## Identical completed SOURCE copies shared locally — 2026-10-19 21:51 UTC
 
 Vostro `joe-Vostro-3350`; session `01a0592d-fcd5-7262-a637-743a8253d9b4`.

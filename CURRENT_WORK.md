@@ -1,5 +1,153 @@
 # PM99: current work
 
+## v127 delivered and verified — 2026-10-20 20:15 UTC
+
+Machine `joe-Vostro-3350`, source session
+`01a0592d-fcd5-7262-a637-743a8253d9b4`. Authoritative checklist now
+`.local/consolidated-audit-20261009/release-delivery-checklist-v127.json`.
+Preferred games updated (IDs dated20261020): Leovac2011/12 r167a LeftBack,
+Gansterer2008/09 r168a CentreBack(native INS.CENT.LEFT), Baldauf2012/13 r169a
+LeftBack. All3 original source identities/compatible biography roles, actual
+native/idempotence/full SOURCE replays, genuine final Stoke startups/player
+profiles, exact native input/kit pixels/independent10-skill and age glyph checks
+PASS. Exactly2 native role bytes per game; all other records, facts, skills,
+ownership, orders, tactics and assets unchanged. Not exact-edition FIFA or
+whole-club historical approval. Profile fetch timestamps unavailable; dated
+fixture witnesses and original hashes retained.
+
+Controller75826 terminal0: ONE consolidated all26 regression PASS, all26
+preferred bindings playable, zero validation-time generations; other23
+preferred bindings exact and original2015 freshly verified. No affected game
+rebuilt twice; Gansterer resumed missing replay after disk guard, Leovac OCR
+retry repeated ONLY profile capture, preserving rejected original evidence.
+Frozen cross-club60/2809 disposed,2749 unclosed candidates unchanged (not2749
+confirmed bugs). Three additional fine-role bugs delivered. Still NOT26 fully
+approved historical RCs. No active build or runner.
+
+Evidence roots under audit directory: `Leovac2011-compatible-role-v1/`,
+`Gansterer2008-compatible-role-v1/`, `Baldauf2012-compatible-role-v1/`.
+Combined `Leovac2011-compatible-role-v1/prepublication-proof-v127.json` and
+`all26-postdelivery-regression.json`; each root has final-attestation and native/
+SOURCE/startup/profile/kit/digit proofs. Accepted Leovac label `leovac_verified`;
+its rejected LEQVAG OCR transport/summary/original frame remain unmodified.
+
+NEW confirmed open ownership issue, outside frozen2809 denominator:
+Stoke2012 MichaelOwen9241 is a reserve atAug1 but original BBC September2012
+transfer list places Unattached->Stoke at4September. Parent r127a and delivered
+r169a actor/native payload identical: not introduced by this role repair.
+`Owen2012-Stoke-opening-review-v1/confirmed-opening-ownership-review-v1.json`
+binds actual native owner313/order16/fullDOB, runner frame and original BBC
+raw SHA570dd5ff8d15b544c5159c9437b2d4c7e172ddbd6a292178f5061fe0d9204938.
+Explicit open required follow-up in v127; NOT fixed or silently accepted.
+Separate unconfirmed Sorensen2008 Ø display observation retained at
+`Gansterer2008-compatible-role-v1/unconfirmed-sorensen-glyph-observation-v1.json`;
+parent/child carrier payload identical, image alone not a confirmed glyph bug.
+
+Proposed NEXT: opening-ownership delivery, starting Preston2000 lateDerekCollins
+reserve10149 -> positively August-sourced GaryParkinson163589. Add a narrow,
+tested original target-year squad-row biography reader instead of requiring an
+unavailable profile endpoint when exact ID/fullDOB/position/country already
+exist together in retained raw row. Keep independent August membership and
+all current native/identity/reserve/replay guards; no fake profile artifact.
+Compose over CURRENT2000 r172a, not older research parentr160a. Then address
+new Stoke2012 Owen. Horne EQ-only pruning is conditional: could leave an
+incorrect searchable free-agent duplicate. Do not call that fully resolved
+without proof. Coupled Celtic/Hearts/Werder starter work remains open.
+
+Focused tests80, boundary and diff PASS. Capacity recovered:298,221,568
+allocated bytes shared without deleting content, plus321,318,912 free bytes
+from regenerable Go compiler cache (`go clean -cache`, no active Go build).
+Source/games/modules untouched; compiler cache regenerates automatically.
+Ledgers `.local/cleanup-20261020/shared-completed-pre126-SOURCE-copies/` and
+`go-compiler-cache/`, docs/PI_ARCHIVE_LEDGER updated. Local8.3GiB free, Pi241GiB
+available, no Pi transfer. Preserve unrelated dirty upstream checkouts/viewer.
+
+## All3 private SOURCE proofs complete; Leovac runtime PASS — 2026-10-20 20:00 UTC
+
+Same Vostro/session below. Controllers30793 and60259 terminal0: all3 actual
+native/idempotence/full SOURCE checks PASS. Combined source proof
+`Leovac2011-compatible-role-v1/three-role-source-prepublication.json`.
+Leovac corrected final original profile under `runtime/leovac_verified/`
+visually inspected: MarinLEOVAC/AustriaVienna/Austria/DEFENDER/LEFTBACK/age23.
+Exact native/kit pixels and independent10-skill/age glyph checks PASS
+(controller55338 terminal0). Native full name required despite OCR gate using
+Marin; rejected LEQVAG OCR original remains unmodified. No game rebuild.
+All3 remain private; v126 catalogue still current.
+Serial runner61951 now captures Gansterer2008 startup/profile, then Baldauf2012;
+no other runner/build. Next inspect their originals and exact proofs, promote
+only3 affected defaults and run ONE all26 regression. 8.1GiB free; no deletion.
+
+## Headroom restored; profile OCR retry — 2026-10-20 19:56 UTC
+
+Same Vostro/source session below. Sharing55274 terminal0: eleven superseded
+SOURCE recipe/JUG pairs safely shared,298,221,568 allocated bytes reclaimed,
+all paths/bytes retained, catalogue unchanged. Ledger cleanup20261020 as below
+and docs/PI_ARCHIVE_LEDGER updated. No deletion/Pi move. Serial30793 resumed
+only missing Gansterer SOURCE (PASS), then built Baldauf private actual/native
+PASS(two bytes2785472/2785473); its SOURCE active. Leovac full SOURCE PASS.
+
+Runner17788 terminal1 was an OCR-only rejection: original correct MarinLEOVAC/
+AustriaVienna/DEFENDER/LEFTBACK/23 frame was read as LEQVAG, no crash/modal.
+Original failed transport, summary and screenshot retained; explicit
+`Leovac2011-compatible-role-v1/leovac-rejected-OCR-review-v1.json` records it.
+No game rebuild or evidence rewriting. Serial runner61951 retries profile only
+under new label `leovac_verified`, readable first-name tokenMarin, with exact
+full native/visual name and club still required; then Gansterer and Baldauf
+startup/profile captures. Do not restart17788 or overwrite failed evidence.
+Read-only60259 verifies completed actual/native/idempotence/full SOURCE edges,
+then writes combined proof; no publication. All3 remain private.
+Exact next: inspect final successful originals, kit/native/ten-skill/age checks,
+guarded3-season promotion and ONE all26 regression; preserve other23 defaults.
+
+## Disk guard respected; exact resume queued — 2026-10-20 19:53 UTC
+
+Same Vostro/source session below. Build60687 terminal1 only because free disk
+dropped below8GiB BEFORE Gansterer SOURCE launch; no bypass or partial replay.
+Leovac actual/full SOURCE PASS; Gansterer actual/native PASS(two bytes
+2785344/2785345), SOURCE not yet launched; Baldauf not built. No preferred
+changes. Serial runner17788 completed genuine Leovac startup (original frame
+inspected, startup binding PASS) and is capturing Leovac profile; subsequent
+seasons wait for complete SOURCE receipts,1200sec timeout each.
+
+Existing verified-sharing controller55274 retains ALL bytes/paths, sharing
+eleven explicitly selected superseded nonpreferred actual/SOURCE recipe+JUG
+pairs r153..r171. Exact inventories before/after and unchanged catalogue guard
+each pair; ledger `.local/cleanup-20261020/shared-completed-pre126-SOURCE-copies/`.
+No deletion/Pi move. Controller30793 waits for128MiB above8GiB, then completes
+Gansterer's missing SOURCE ONLY and builds/replays Baldauf serially. Do not
+restart60687 or duplicate30793/runner. Focused source/compatible tests80 PASS;
+Luna independently reproduced all3 source transactions, no concrete defect.
+Published biography roles are compatible repairs, not exact-period role claims.
+
+Adversarial next-step caveat: EQ-only Horne prune could leave an unowned JUG
+record searchable as a free agent; existing evidence does NOT settle mode0
+behavior. Do not represent pruning alone as full duplicate resolution. A
+source-row biography adapter for positively August-sourced Preston GaryParkinson
+may instead unblock the already-safe reserve identity replacement writer.
+No new adapter/prune implemented. Finish these3 deliveries before next work.
+
+## Three compatible-role deliveries active — 2026-10-20 19:48 UTC
+
+Vostro/source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+v126 remains authoritative, preferred catalogue unchanged. Serial build/replay
+controller60687 owns Leovac2011 r167a/b, Gansterer2008 r168a/b, Baldauf2012
+r169a/b, IDs dated20261020. Leovac private actual/native proof PASS: only two
+fine-role bytes2785310/2785311 changed; recipe exactly reproduces selected
+source edit and all other game files exact. Its full SOURCE replay active;
+remaining two run serially afterward. No runtime or preferred-delivery claim.
+Evidence roots `Leovac2011-compatible-role-v1/`,
+`Gansterer2008-compatible-role-v1/`, `Baldauf2012-compatible-role-v1/` under
+`.local/consolidated-audit-20261009/`. Do not restart or compete with60687.
+
+Runner SSH tiny-m73 available; lead owns serial final startup/profile captures
+once each full replay passes. Luna role_batch_source_qa independently checks
+all3 original sources; next_ownership_adapter_qa compares smallest safe
+Collins/Parkinson adapter vs Horne mode0 prune for next-step recommendation.
+Workers read-only, no recipes/builds/runner/publication. Focused existing tests
+controller32056 active. 8.2GiB free;8GiB reserve enforced; no cleanup performed.
+Next: complete native/SOURCE, genuine runtime/kit/digits, guarded publication
+and ONE all26 regression; preserve all other releases and original2015.
+
 ## v126 delivered and regression verified — 2026-10-19 22:48 UTC
 
 Machine `joe-Vostro-3350`, source session

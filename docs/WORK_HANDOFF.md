@@ -1,5 +1,60 @@
 # PM99 worker handoff
 
+## v127 complete — 2026-10-20 20:15 UTC
+
+Vostro/source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+CURRENT_WORK top is authoritative. Checklist
+`.local/consolidated-audit-20261009/release-delivery-checklist-v127.json`:
+Leovac2011 r167a, Gansterer2008 r168a, Baldauf2012 r169a (dated20261020)
+preferred, actual/native/full SOURCE/original final startups/profiles/native
+input/kit pixels/independent skill and age digits PASS. Only2 role bytes per
+game; other23 bindings and original2015 preserved. One consolidated all26
+regression PASS, no unaffected rebuilds. No active builds/runner. All earlier
+active-controller entries superseded. Frozen60/2809 disposed,2749 unclosed
+candidates unchanged; not26 fully approved historical RCs.
+
+New independently verified PRE-EXISTING open finding: MichaelOwen on Stoke2012
+opening bench although original BBC4September arrival. Exact native carrier
+9241/order16/owner313 preserved by role delta. See Owen2012 source/native review
+and explicit v127 required follow-up; no claim fixed, no frozen denominator
+change. SorensenØ is separately retained UNCONFIRMED display concern only.
+Next proposal: source-row biography adapter to deliver Preston2000 Collins->
+GaryParkinson using existing reserve replacement writer and currentr172a;
+then new Stoke2012 Owen. Horne prune can leave an unwanted unownedJUG duplicate
+unless runtime semantics proven; don't bypass mode1 guard.
+Exact evidence paths/source hashes/scope limits in CURRENT_WORK.
+
+Disk guard respected; completed superseded equal SOURCE files share storage,
+all paths/bytes retained (284.40625MiB allocated reclaimed). Regenerable Go
+compiler cache cleared (321,318,912 free bytes), recreatable automatically;
+no games/source/modules touched, no Pi move. Ledger cleanup20261020 plus
+PI_ARCHIVE_LEDGER. Local8.3GiB. Focused tests80 and boundary/diff PASS.
+Unrelated dirty upstream checkouts and parked viewer remain untouched.
+
+## Three private role fixes; runtime in progress — 2026-10-20 20:00 UTC
+
+Machine `joe-Vostro-3350`, source session
+`01a0592d-fcd5-7262-a637-743a8253d9b4`. CURRENT_WORK top is authoritative.
+Leovac2011 r167a/b, Gansterer2008 r168a/b, Baldauf2012 r169a/b (IDs dated
+20261020) privately built/native/idempotent/full SOURCE PASS. Exactly2 role
+bytes each; no other game/recipe field changes. v126 remains preferred.
+Leovac startup + accepted leovac_verified profile original/native/kit/digits
+PASS; original OCR-only failure preserved, not approved or overwritten.
+Serial runner61951 owns remaining Gansterer/Baldauf startup/profile captures.
+All earlier build/source controllers completed; no competing builds/captures.
+Evidence in each player/year-named `*-compatible-role-v1/` audit directory.
+Next: original-image reviews, exact native/kit/skill/age proofs, promote3,
+one consolidated regression. Do not rerun completed builds/source checks.
+
+Disk guard halted before replay and was respected. Eleven explicitly selected
+superseded equal SOURCE copies now share storage:298,221,568 allocated bytes
+reclaimed, all bytes/paths retained, no deletion/Pi move; ledger
+`.local/cleanup-20261020/shared-completed-pre126-SOURCE-copies/`.
+Focused tests80 PASS. Frozen60/2809 disposed,2749 unclosed unchanged.
+Next ownership recommendation must consider Horne EQ-only pruning can leave a
+searchable unowned JUG duplicate; not proven safe. Collins/Parkinson original
+squad-row biography adapter is a bounded alternative, not yet implemented.
+
 ## v126 complete — 2026-10-19 22:48 UTC
 
 Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
