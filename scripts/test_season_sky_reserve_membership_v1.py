@@ -168,6 +168,57 @@ def test_synthetic_parser_fixture_positive_and_explicitly_not_retained_evidence(
     assert _sha(paths['fixture'].read_bytes()) == evidence['fixture']['sha256']
 
 
+def test_sky_starting_xi_policy_does_not_claim_bench_or_change_old_policy(tmp_path, monkeypatch):
+    case = _synthetic_case(tmp_path, monkeypatch)
+    selection, evidence, _paths = case
+    selection['opening_contract']['policy'] = subject.SKY_XI_POLICY
+    with pytest.raises(ValueError, match='starting XI'):
+        subject.verify(selection, evidence, season='2000-01', club=MANCHESTER_UNITED)
+    _rewrite(case, 'fixture', lambda page: page.select_one(
+        '.sdc-site-team-lineup__players--subs').__setitem__(
+            'class', ['sdc-site-team-lineup__players']))
+    assert subject.verify(selection, evidence, season='2000-01', club=MANCHESTER_UNITED) == '2000-08-16'
+    selection['opening_contract']['policy'] = subject.SKY_POLICY
+    with pytest.raises(ValueError, match='bench'):
+        subject.verify(selection, evidence, season='2000-01', club=MANCHESTER_UNITED)
+
+
+@pytest.mark.parametrize('fault', ['duplicate', 'opponent', 'wrong_date'])
+def test_sky_starting_xi_policy_retains_exact_person_club_date_guards(tmp_path, monkeypatch, fault):
+    case = _synthetic_case(tmp_path, monkeypatch)
+    selection, evidence, paths = case
+    selection['opening_contract']['policy'] = subject.SKY_XI_POLICY
+    def transform(page):
+        dl = page.select_one('.sdc-site-team-lineup__players--subs')
+        dl['class'] = ['sdc-site-team-lineup__players']
+        if fault == 'duplicate':
+            dl.append(copy.deepcopy(dl.select_one('dd')))
+        elif fault == 'opponent':
+            page.select('.sdc-site-team-lineup__col')[1].append(dl.extract())
+    _rewrite(case, 'fixture', transform)
+    if fault == 'wrong_date':
+        evidence['fixture']['date'] = '2000-09-16'
+    with pytest.raises(ValueError):
+        subject.verify(selection, evidence, season='2000-01', club=MANCHESTER_UNITED)
+
+
+@pytest.mark.parametrize('fault', ['foreign_link', 'conflicting_same_id_name'])
+def test_sky_annual_identity_rejects_foreign_origin_and_conflicting_name(tmp_path, monkeypatch, fault):
+    case = _synthetic_case(tmp_path, monkeypatch)
+    selection, evidence, _paths = case
+    def transform(page):
+        link = page.select_one('table.items a')
+        if fault == 'foreign_link':
+            link['href'] = 'https://attacker.invalid/testgiven-sample/profil/spieler/7654'
+        else:
+            conflicting = copy.deepcopy(link)
+            conflicting.string = 'Different Person'
+            link.parent.append(conflicting)
+    _rewrite(case, 'annual', transform)
+    with pytest.raises(ValueError):
+        subject.verify(selection, evidence, season='2000-01', club=MANCHESTER_UNITED)
+
+
 @pytest.mark.parametrize('fault', [
     'wrong_date_metadata', 'wrong_date_body', 'wrong_club_header',
     'wrong_squad_year', 'wrong_squad_id', 'wrong_squad_full_name',

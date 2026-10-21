@@ -1,0 +1,29 @@
+{
+  "schema": "pm99-season-editorial-exceptions-v1",
+  "season": "2012-13",
+  "exceptions": [
+    {
+      "id": "Stoke2012-MichaelOwen-September4-opening-ownership",
+      "classification": "user-approved-editorial-exception",
+      "player": {"name": "Michael Owen", "birth_date": "1979-12-14", "carrier_id": 9241},
+      "club": {"name": "Stoke City", "carrier_id": 313, "id": "english-club-313"},
+      "decision": "Retain at Stoke City in the opening recipe and playable game.",
+      "historical_join_date": "2012-09-04",
+      "previous_status": "Unattached",
+      "evidence": {
+        "url": "https://www.bbc.co.uk/sport/19466214",
+        "title": "Football transfers - September 2012",
+        "section": "4 SEPTEMBER",
+        "entry": "Michael Owen [Unattached - Stoke]",
+        "raw_sha256": "570dd5ff8d15b544c5159c9437b2d4c7e172ddbd6a292178f5061fe0d9204938"
+      },
+      "authority": {
+        "kind": "explicit-user-decision",
+        "recorded_utc_date": "2026-10-21",
+        "instruction": "For the case of Owen sign him to Stoke. Then proceed to the next data gaps.",
+        "source_session": "01a0592d-fcd5-7262-a637-743a8253d9b4"
+      },
+      "scope": "This player, club and season only. Preserve the historical date; do not infer a general exception for September signings, change other ownership decisions, delete Owen or turn him into a free agent."
+    }
+  ]
+}

@@ -271,28 +271,46 @@ def read_transfermarkt_profile(profile, pid):
 
 
 def new_person(selection, evidence):
-    profile = evidence[selection['profile']]
     pid = selection['provider_player_id']
-    parsed = read_transfermarkt_profile(profile, pid)
+    squad_biography = 'squad_biography' in selection
+    if squad_biography:
+        if 'profile' in selection or 'native_display_name' in selection or not selection.get('opening_contract'):
+            raise ValueError('squad biography needs dated membership, no fabricated profile/family heading')
+        from scripts import season_transfermarkt_squad_biography_v1 as biographies
+        claim = selection['opening_contract']
+        year = date.fromisoformat(claim['opening_date']).year
+        profile = evidence[selection['squad_biography']]
+        parsed = biographies.read(profile, pid, season=f'{year}-{str(year+1)[-2:]}',
+            club_name=claim['club_name'], provider_club_id=claim['provider_club_id'])
+    else:
+        profile = evidence[selection['profile']]
+        parsed = read_transfermarkt_profile(profile, pid)
     birthday = parsed['published_birth_date']
     if (parsed['published_full_name'], birthday) != (selection['name'], selection['birth_date']):
         raise ValueError('new person original name or literal birthday differs')
     if selection['profile_position'] not in (parsed['published_profile_position'] or ''):
         raise ValueError('new person source position differs')
+    if squad_biography and selection['profile_position'] != parsed['published_profile_position']:
+        raise ValueError('squad biography must use the exact published row position')
     key = re.sub(r'[^a-z]', '', selection['profile_position'].casefold())
     if (key not in HTML_ROLES or selection['fine_roles'] != [HTML_ROLES[key]]
             or not compatible(selection['position'], selection['fine_roles'][0])):
         raise ValueError('new person broad/fine role contradicts source profile')
     if selection['nationality_label'] not in (parsed['published_nationality_label'] or ''):
         raise ValueError('new person source nationality differs')
+    if squad_biography and selection['nationality_label'] not in parsed['published_nationality_label'].split(' / '):
+        raise ValueError('squad biography requires an exact published nationality label')
     if SOURCE_COUNTRIES.get(selection['nationality_label']) != selection['nationality']:
         raise ValueError('new person source nationality label/code disagree')
     if selection.get('opening_contract'):
         from scripts import season_dated_reserve_membership_v1 as contracts
         contracts.verify(selection, evidence)
+        policy = selection['opening_contract']['policy']
         membership = ('original-published-August-Sky-bench-not-played-appearance-claim'
-                      if selection['opening_contract']['policy'] == contracts.SKY_POLICY
-                      else 'dated-opening-contract-bracket-not-matchday-claim')
+                      if policy == contracts.SKY_POLICY else
+                      'original-published-August-Sky-starting-XI-not-opening-match-claim'
+                      if policy == contracts.SKY_XI_POLICY else
+                      'dated-opening-contract-bracket-not-matchday-claim')
     else:
         fixture = evidence[selection['match']]
         if date.fromisoformat(fixture['date']).month != 8:
@@ -303,13 +321,18 @@ def new_person(selection, evidence):
             raise ValueError('new person is not in the exact club published bench')
         membership = ('original-published-opening-used-substitute' if
             fixture.get('membership_mode') == 'classic-played-substitutes' else 'original-published-opening-bench')
-    return dict(source_person=dict(name=selection['name'], birth_date=birthday,
-                    source_player_id=pid, source_provider='transfermarkt', source_profile_url=profile['url']),
+    result = dict(source_person=dict(name=selection['name'], birth_date=birthday,
+                    source_player_id=pid, source_provider='transfermarkt',
+                    source_profile_url=parsed['linked_profile_url'] if squad_biography else profile['url']),
                 source_player=dict(name=selection['name'], birth_date=birthday,
                     position=selection['position'], nationality=selection['nationality'],
-                    height_cm=None, weight_kg=None, shirt_number=None),
+                    height_cm=parsed['published_height_cm'] if squad_biography else None,
+                    weight_kg=None, shirt_number=parsed['published_shirt_number'] if squad_biography else None),
                 raw_evidence=dict(status='raw-source-reparsed', local_path=profile['path'], source_sha256=profile['sha256']),
                 membership=membership)
+    if squad_biography:
+        result['raw_evidence'].update(biography_source_kind=parsed['biography_source_kind'], profile_page_captured=False)
+    return result
 
 
 def identity(player):
@@ -472,7 +495,8 @@ def prepare(base, input_path):
         plan.update(source_title='Dated opening reserve identities and positive ownership brackets',
                     proof_covers=['bounded-reserve-ownership-and-positive-dated-contract-bracket-not-matchday-claims'])
         from scripts import season_dated_reserve_membership_v1 as contracts
-        if any(row.get('opening_contract', {}).get('policy') == contracts.SKY_POLICY for row in request['new_people']):
+        if any(row.get('opening_contract', {}).get('policy') in (contracts.SKY_POLICY, contracts.SKY_XI_POLICY)
+               for row in request['new_people']):
             plan.update(source_title='Dated opening reserve identities and source-specific August membership evidence',
                         proof_covers=['bounded-reserve-ownership-and-individually-bound-August-membership-no-unsupported-appearance-claims'])
     for row in request.get('orders', []):

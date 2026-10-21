@@ -1,5 +1,69 @@
 # PM99 worker handoff
 
+## Private Preston fix complete; runtime blocked — 2026-10-21 23:31 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`; CURRENT_WORK top is
+authoritative. Controller58158 TERMINAL0. Actual2000 r173a and SOURCEr173b
+(IDs `*-preston-august-parkinson-20261021-r173a/b`) built/native/idempotence/
+all-unselected/all-unrelated/order checks PASS, whole game inventory and recipe
+replay IDENTICAL. Evidence `Collins2000-opening-review-v1/delivery/` in audit.
+Not preferred, not installed, not runtime-verified. No active build/capture.
+Do NOT rebuild these completed outputs; next runner startup and Parkinson10149
++ retainedHibsCollins19269 profiles, native input/kit/skill/age proofs, guarded
+promotion then consolidated all26 regression/v129. Remote .175 offline even
+after wake, user asked nonblocking to power it on. Local fallback unavailable.
+
+Owen9241 retained atStoke313 in actual current2012 r169a and recipe; explicit
+case-only exception tracked, no2012 rebuild. v128 unchanged current26 bindings
+and frozen60/2809 dispositions; Collins not counted closed before publication.
+113 focused tests and tracked boundary/diff PASS; local boundary extras and
+dirty upstream/viewer preserved. About11GiB free; exact regenerable cache
+cleanup receipts/PIledger, no games/sources/logs/modules/tools removed, no Pi
+transfer. Pi online241GiB on expectedUUID, original2015 untouched.
+
+Luna research returned positive original August Werder bench replacements,
+but lead native readback rejected reserve-only proposal (Garcia16454 order9,
+Lorenzen28184 order8). Recipe list position is NOT native startup order; mode1
+coupled lineup handling must be reconciled. Source/native review retained;
+no approval/delivery or extra baseline count. Both workers idle/completed.
+
+## Owen exception / Preston build resumed — 2026-10-21 23:22 UTC
+
+Vostro `joe-Vostro-3350`; source session
+`01a0592d-fcd5-7262-a637-743a8253d9b4`. CURRENT_WORK top remains authoritative;
+checklist v128. Michael Owen9241 already at Stoke313 in current2012 r169a and
+recipe; verified, explicitly retained by user. Tracked case-only decision
+`seasons/2012-13/editorial-exceptions-v1.json`; do not reopen the September
+date exception, remove him or change every season's signing rules.
+
+Gary Parkinson original squad-row biography / independently dated August-XI
+adapter implemented; 113 tests PASS. Approved source request and retained
+plan transaction ee32b16d7f73802f3d4b6bc0 in audit
+`Collins2000-opening-review-v1/`. Replaces only Preston reserve10149, preserves
+HibsCollins19269 and current2000 r172a changes. Initial controller77352 stopped
+at8GiB guard before registration, receipt `delivery/capacity-stop-v1.json`.
+After safe cache cleanup SAME approved request/output IDs r173a/b resumed in
+controller58158; currently running, not yet installed or runner-verified.
+Do not start a competing build or repeat source investigation.
+
+Remote runner .175 offline even after targeted wake. Existing local runner
+not ready: shared assets absent, old smoke prefix failed permissions, sudo
+overlay mounting unavailable. No capacity/validation guard bypass. Next after
+actual+SOURCE completion: genuine Parkinson and retainedCollins profiles and
+Stoke startup; only then guarded promotion and consolidated all26 regression.
+Luna `parkinson_source_request` researches bounded Bremen2013 Garcia replacement;
+`space_recovery_audit` finished read-only capacity/fallback audit. Horne2000
+ownership finding remains real but no safe whole-actor retirement implemented;
+EQ-only unlink can leave a searchable duplicate. Carter DOB sources conflict.
+
+Regenerable Go cache/old temporary roots removed with precise process/inode
+checks; no source/logs/games/modules/tools removed. See PI_ARCHIVE_LEDGER and
+`.local/cleanup-20261021/` receipts. Latest isolated cache recovered about2.15GiB;
+current free about11GiB (concurrent unrelated jobs change it). Pi online with
+expectedUUID and241GiB free, no transfer. Boundary tracked-path check/diff PASS;
+`--check-local` flags pre-existing `upstream/.local/`. Dirty upstream checkouts
+and parked untracked viewer preserved, not a clean Git checkout.
+
 ## v127 complete — 2026-10-20 20:15 UTC
 
 Handoff20:16UTC:29092dc pushed. Repo-state check reports the pre-existing dirty

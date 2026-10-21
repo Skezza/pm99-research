@@ -1,5 +1,40 @@
 # Pi archive ledger
 
+## Inactive isolated Go build cache removed — 2026-10-21 23:21 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. Removed only
+`/tmp/diynas-ab-build-cache.rmhXDQ`, an isolated compiler cache documented as
+`GOCACHE` in `/home/joe/src/diynas-alpha/docs/QA_CHECKPOINT.md:221`.
+Independent worker audit followed by lead cwd/exe/fd/cmdline/environment checks
+found no active references. Original owner/inode/mtime, >24h age and exact Go
+cache directory layout checked again before deletion. Source and original
+test logs are separate and retained; the active default Go cache was untouched.
+Removed 2,307,776,512 allocated bytes (excluding root directory). Build/test
+recreates the cache; no archive needed, no Pi transfer. Free space afterwards
+10,644,533,248 bytes, subject to concurrent allocations.
+Ledger `.local/cleanup-20261021/inactive-isolated-go-cache/` contains the
+pre-removal inventory summary and completion/recovery receipt.
+
+## Regenerable compiler files cleared — 2026-10-21 23:16 UTC
+
+Vostro `joe-Vostro-3350`; source session
+`01a0592d-fcd5-7262-a637-743a8253d9b4`. No Pi transfer. Cleared the verified
+Go compiler cache while no Go compilation was active: 3,488,546,816 free bytes
+recovered. Subsequently removed 40 individually selected inactive Go temporary
+build directories older than 24 hours, checking process references and original
+inode/mtime before deletion. Ten directories released 1,096,949,760 allocated
+bytes; the remaining thirty released 1,187,807,232 allocated bytes. Active and
+newer temporary directories were excluded. No installed tool, downloaded Go
+module, project source, PM99 release, recipe, source evidence or backup removed.
+These compiler outputs are recreated by builds; no archive is necessary.
+
+Receipts under `.local/cleanup-20261021/`: `go-compiler-cache/`,
+`stale-go-build-temporaries/`, `stale-go-build-temporaries-batch2/`.
+Unrelated ongoing Go work subsequently allocated more space; the recovery
+counts above must not be mistaken for the current free-space delta. The PM99
+8 GiB build reserve remains enforced. Older SOURCE pairs r117..r149 were
+inspected and already share eligible storage: no further action or recovery.
+
 ## Regenerable Go compiler cache cleared — 2026-10-20 20:15 UTC
 
 Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. Confirmed exact

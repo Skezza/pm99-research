@@ -9,6 +9,7 @@ from scripts import season_historical_roster_audit_v1 as roster
 
 POLICY = 'original-joined-row-and-independent-registration-exit-August-bracket-v1'
 SKY_POLICY = 'published-August-Sky-full-name-bench-and-target-season-squad-v1'
+SKY_XI_POLICY = 'published-August-Sky-full-name-starting-XI-and-target-season-squad-v1'
 
 
 def verify_sky(selection, evidence, *, season=None, club=None):
@@ -22,7 +23,7 @@ def verify_sky(selection, evidence, *, season=None, club=None):
     from scripts.capture_transfermarkt_opening_lineups_v1 import _club_key
     claim = selection['opening_contract']
     anchor = date.fromisoformat(claim['opening_date'])
-    if (claim.get('policy') != SKY_POLICY or anchor.month != 8
+    if (claim.get('policy') not in (SKY_POLICY, SKY_XI_POLICY) or anchor.month != 8
             or (season is not None and int(season[:4]) != anchor.year)):
         raise ValueError('explicit target-August Sky team-sheet policy required')
     fixture = evidence[claim['fixture']]
@@ -63,8 +64,15 @@ def verify_sky(selection, evidence, *, season=None, club=None):
     wanted = exchange.published_name_key(selection['name'])
     all_rows = columns[0].select('dd.sdc-site-team-lineup__player-name')
     bench = columns[0].select('.sdc-site-team-lineup__players--subs dd.sdc-site-team-lineup__player-name')
-    if sum(full_name(r) == wanted for r in all_rows) != 1 or sum(full_name(r) == wanted for r in bench) != 1:
-        raise ValueError('exact full-name player must appear once on the target Sky bench')
+    on_bench = sum(full_name(r) == wanted for r in bench)
+    if claim['policy'] == SKY_POLICY:
+        if sum(full_name(r) == wanted for r in all_rows) != 1 or on_bench != 1:
+            raise ValueError('exact full-name player must appear once on the target Sky bench')
+    else:
+        starters = columns[0].select('.sdc-site-team-lineup__players:not(.sdc-site-team-lineup__players--subs) dd.sdc-site-team-lineup__player-name')
+        if (sum(full_name(r) == wanted for r in all_rows) != 1 or on_bench != 0
+                or sum(full_name(r) == wanted for r in starters) != 1):
+            raise ValueError('exact full-name player must appear once in the target Sky starting XI')
     squad = evidence[claim['season_roster']]
     requested = urlsplit(squad['url'])
     cid, pid = claim['provider_club_id'], selection['provider_player_id']
@@ -91,14 +99,18 @@ def verify_sky(selection, evidence, *, season=None, club=None):
     if len(rows) != 1:
         raise ValueError('one exact independent numeric squad identity required')
     links = person_links(rows[0])
-    if not any(exchange.published_name_key(a.get_text(' ', strip=True)) == wanted for a in links):
+    for link in links:
+        target = urlsplit(link['href'])
+        if (target.scheme or target.netloc) and (target.scheme, target.netloc) != (requested.scheme, requested.netloc):
+            raise ValueError('independent squad identity link origin differs')
+    if {exchange.published_name_key(a.get_text(' ', strip=True)) for a in links} != {wanted}:
         raise ValueError('Sky full identity and independent squad numeric identity disagree')
     return anchor.isoformat()
 
 
 def verify(selection, evidence, *, season=None, club=None):
     claim = selection['opening_contract']
-    if claim.get('policy') == SKY_POLICY:
+    if claim.get('policy') in (SKY_POLICY, SKY_XI_POLICY):
         return verify_sky(selection, evidence, season=season, club=club)
     anchor = date.fromisoformat(claim['opening_date'])
     year = anchor.year

@@ -1,5 +1,161 @@
 # PM99: current work
 
+## Owen complete; Preston built and replayed, runner offline — 2026-10-21 23:31 UTC
+
+Machine `joe-Vostro-3350`; source session
+`01a0592d-fcd5-7262-a637-743a8253d9b4`. Controller58158 TERMINAL0:
+2000 r173a actual game and r173b complete SOURCE replay BUILT, immutable
+playable/native/idempotence/all-unselected/all-unrelated/startup-order checks
+PASS; complete game inventory and recipe replay IDENTICAL. Evidence audit
+`Collins2000-opening-review-v1/delivery/`, especially
+`native-and-unchanged-proof.json`, `complete-SOURCE-replay.json`.
+Neither is preferred or runner-verified. Do NOT rebuild them or repeat source
+research. Exact change10149 DerekCollins -> GaryParkinson, same Preston owner
+and reserve18; retained HibsCollins19269 unchanged. Owen9241 already retained
+atStoke313 in current2012 r169a, policy decision recorded; no2012 rebuild.
+
+Checklist v128 remains authoritative; all26 preferred IDs/manifest bindings
+exactly unchanged, frozen60/2809 disposed,2749 unclosed candidates unchanged.
+No claim Collins closed until actual preferred delivery/runtime proof. Runner
+.175 offline after wake; user nonblocking power-on request sent. Local fallback
+not configured (absent source assets/prefix, no passwordless overlay mount).
+Next ONLY for this build: genuine final Stoke startup + Parkinson10149 and
+HibsCollins19269 profiles, exact input/kit/age/skill proofs, guarded r173a
+promotion over currentr172a, one consolidated all26 regression and v129.
+No active build or capture. Do not promote just to clear a queue.
+
+113 focused tests PASS; tracked boundary/diff PASS; local-extra boundary flags
+pre-existing `upstream/.local/`. Dirty upstream/viewer untouched. Current free
+about11GiB after precisely logged regenerable-cache cleanup; Pi online241GiB,
+expectedUUID, no transfer. Original2015 backup and sources untouched.
+Two Luna workers completed bounded research and capacity/adversarial audits.
+Bremen follow-up remains coupled, not approved: dated Aug10 Yildirim/Fullkrug
+bench evidence is retained, but target native orders9/8 fail reserve-only guard.
+Lead native22-person review is in `Werder2013-opening-review-v1/`; reject the
+worker's initial recipe-array-based reserve conclusion. Reconcile actual
+mode1 lineup mechanics before any source-positive identity swaps. Horne2000
+still lacks safe whole-actor retirement and Carter DOB sources conflict.
+
+## Preston actual game built; SOURCE replay running — 2026-10-21 23:28 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. Supersedes active build
+status below: controller58158 has privately BUILT and registered2000 r173a
+`sourced-preston-august-parkinson-20261021-r173a`; `delivery/native-and-unchanged-proof.json`
+under audit `Collins2000-opening-review-v1/` PASS. Native GaryPARKINSON10149,
+DOB1968-01-10, defender, startup_order18. All other actors/native records,
+all startup orders and unrelated game files exact; original HibsCollins19269
+retained, only displaced identity's photo cleared. Immutable playable checks
+PASS, technical status playable-unverified. SOURCEr173b replay CURRENTLY
+RUNNING in SAME controller; do not regenerate actualr173a or start competing
+work. NOT preferred/installed/runner-verified; checklist v128 and all26 current
+preferred bindings unchanged. Frozen60/2809 dispositions unchanged.
+
+Owen exception COMPLETE: current2012 r169a already contains him at Stoke313,
+verified, tracked case-only decision. Runner .175 remains offline after wake;
+nonblocking request sent to user to power it on. Local fallback not configured;
+do not fabricate screenshots/attestation or bypass capacity/runtime gates.
+Next: finish existing SOURCE replay, capture actual Parkinson+retainedCollins
+profiles and Stoke startup when runner online, then guarded promotion and one
+all26 regression. Current free about11GiB; see cleanup receipts/ledger below.
+
+Luna Bremen follow-up found original Aug10 XI/bench including Yildirim83256
+and Fullkrug75489. Lead rejected reserve-only swap: nativeGarcia16454 order9
+and Lorenzen28184 order8 fail existing reserve guard; package array order is
+not native startup order. Native22-person review retained in named Bremen
+audit root. Needs source-bound mode1 lineup/ownership handling, not an English
+mode0 blind order patch. Dated later-arrival tail findings require policy/scope
+review before extra case classification; no new delivery or baseline change.
+Workers completed bounded research/capacity audit; lead owns integration.
+
+## Owen retained; Parkinson approved build resumed — 2026-10-21 23:22 UTC
+
+Machine `joe-Vostro-3350`; source session
+`01a0592d-fcd5-7262-a637-743a8253d9b4`. Checklist v128 remains authoritative:
+Owen9241 retained at Stoke313 in current2012 r169a and recipe, verified natively;
+case-only tracked decision `seasons/2012-13/editorial-exceptions-v1.json`.
+No2012 rebuild or general change to September-signing rules.
+
+New squad-row biography / Sky August-XI admission and adversarial guards:
+113 focused tests PASS, boundary/diff PASS. Approved Parkinson input:
+`.local/consolidated-audit-20261009/Collins2000-opening-review-v1/approved-parkinson-request-v1.json`.
+Source admission passed against CURRENT2000 r172a; retained plan at
+`delivery/opening-identity-exchange-ee32b16d7f73802f3d4b6bc0.json` in that root.
+Raw annual biography + independent literal DOB + August28 XI evidence; no
+fabricated profile fetch or unsupported opening-match appearance claim.
+
+Controller77352 TERMINAL1: publisher refused before child registration because
+reserve assignment would breach8GiB reserve. Neither r173a nor r173b is
+registered, preferred games unchanged. Not built/installed/runtime-verified.
+Do not count Collins case closed or repeat completed source research.
+Remote runner192.168.1.175 unreachable (timeout, then NoRoute). Pi confirms
+recorded MAC00:23:24:6f:7b:f5; one targeted wake packet sent23:16, still offline.
+Local docker image and localhostSSH exist but local runner shared assets are
+not installed; do not bypass capacity gates to create another heavy workspace.
+
+Disk receipts `.local/cleanup-20261021/`: compiler cache3,488,546,816 free
+bytes; forty individually checked inactive >24h Go temporary roots released
+2,284,756,992 allocated bytes. No games/sources/evidence/modules/tools removed.
+Other active Go work reallocated space; these are NOT the current free-space
+delta. Additional inactive isolated `/tmp/diynas-ab-build-cache.rmhXDQ`
+compiler cache removed after independent audit and fresh process/layout/mtime
+checks; 2,307,776,512 allocated bytes released, source/test logs/active cache
+untouched. Ledger `inactive-isolated-go-cache/` under cleanup root. Local now
+about11GiB; Pi online241GiB, correctUUID, no transfer this turn.
+Controller58158 has RESUMED the SAME approved request/output IDs r173a/b,
+currently running; no competing build. `space_recovery_audit` finished read-only
+capacity/fallback audit. `parkinson_source_request` researches bounded Bremen
+2013 Garcia replacement; no shared writes. Lead owns integration and serial
+runner. Next: finish actual build and
+SOURCE replay and exact Parkinson/retainedHibsCollins runner evidence before
+publication; one consolidated all26 regression after actual delivery.
+
+Bremen research review23:25UTC: retained Aug10 bench evidence identifies
+Ozkan Yildirim83256 positively, but worker's reserve-only proposal REJECTED.
+Actual currentr155a carrier16454 Garcia has native startup_order9, despite
+recipe declaredXI/list placement suggesting a reserve. Native22-person
+readback retained at audit `Werder2013-opening-review-v1/lead-native-startup-order-review-v1.json`.
+Do not replace a starter with a bench midfielder or bypass reserve-only guard.
+This remains the existing coupled lineup/ownership follow-up, not a new
+delivered repair. Worker now extracts exact datedXI/bench/native mapping only.
+
+## v128 Owen exception; next ownership adapter — 2026-10-21 23:07 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. User explicitly:
+"For the case of Owen sign him to Stoke. Then proceed to the next data gaps."
+Owen9241 already belongs to Stoke313 in actual preferred2012 r169a and recipe.
+Verified native name/fullDOB/exclusive owner. No rebuild, deletion, free-agent
+conversion or factual signing-date rewrite. New tracked case-only decision:
+`seasons/2012-13/editorial-exceptions-v1.json`; original4September2012 date
+preserved. Authoritative checklist now audit `release-delivery-checklist-v128.json`:
+Owen required follow-up CLOSED as user-approved editorial exception, NOT a
+historical bug repair and NOT a generalSeptember exemption. All26 preferred
+bindings unchanged from v127; frozen60/2809 disposed,2749 unclosed unchanged.
+Evidence `Owen2012-Stoke-opening-review-v1/user-approved-retain-Stoke-v1.json`.
+
+Lead implementing explicit same-row TM squad biography adapter for Preston2000
+GaryParkinson163589 to replace lateDerekCollins10149 (reserve18, owner339),
+retaining HibsCollins19269 and CURRENT2000 r172a baseline. Missing profile
+endpoint is not fabricated; raw squad row+independentSoccerbase literal DOB
+and genuine August28 Sky STARTING XI provide source evidence. New XI policy
+does not weaken existing bench-only policy or claimAug12 opening appearance.
+New helper `scripts/season_transfermarkt_squad_biography_v1.py`; source-only
+tests105 PASS before final label/role hardening; no game build/publish yet.
+Luna parkinson_source_request owns proposed JSON input only; space_recovery_audit
+now performs read-only adversarial code review. Lead owns integration/runner.
+No concurrent shared writes. Preserve unrelated changes and dirty upstream.
+
+Disk fell4.3GiB before work. Cleared regenerated Go compiler cache
+3,488,546,816 free bytes, and10 exact inactive >24h Go temporary build folders
+1,096,949,760 allocated bytes after process-reference/inode/mtime rechecks.
+No game/source/evidence/modules/installedtools touched; these are regenerable.
+Ledgers `.local/cleanup-20261021/go-compiler-cache/` and
+`stale-go-build-temporaries/`. Active/new temp roots excluded. Local8.2GiB now;
+8GiB reserve still enforced. Revisions117..149 SOURCE sharing audited: all
+eligible pairs already shared, zero further recovery; no pointless repeat.
+Next: source request admission and adversarial tests, serial actual/SOURCE
+delta, genuine Parkinson+retainedCollins runtime proof, guarded publication
+and ONE consolidated all26 regression. Do not reopen Owen or rebuild2012.
+
 ## v127 delivered and verified — 2026-10-20 20:15 UTC
 
 Handoff check20:16UTC: delivery29092dc pushed. Repository-state check still
