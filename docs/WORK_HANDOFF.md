@@ -1,5 +1,32 @@
 # PM99 worker handoff
 
+## Active lead integration — 2026-10-22 23:32 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`;
+CURRENT_WORK top authoritative. v130 remains the delivered baseline. Active
+private Celtic r176a/SOURCEr176b builder31410: native and unchanged-data proof
+already saved; full SOURCE replay pending. Do not regenerate existing outputs.
+Lead stage2 source/native preflight16684 against registered private r176a;
+no stage2 build/promotion/runtime claim. Focused root regression127 PASS;
+independent Luna focused36 PASS. Upstream native tests49557 running.
+No active PM99 runner capture; build and runner work remain lead-serialized.
+
+Workers repeatedly reassigned with original-source QA, not left waiting:
+Celtic first-stage safety/source identity review; Horne Plymouth full bench
+mapping (rejected incorrect two-byte swap, actual five-byte candidate only);
+reconcile complete FTC first-XI source package after readback proves current
+XI has no goalkeeper. A direct Hajnal-to-keeper swap was rejected. FTC issue
+is a concrete newly confirmed lineup blocker, not exhaustive optional research.
+Evidence under `.local/consolidated-audit-20261009/parallel-rc-20261023/`.
+Frozen61/2809 dispositions unchanged; no candidate silently closed.
+
+Inactive disposable Preston/Werder local game copies removed only after sealed
+source/input checks and no active PM99 containers; recovered725434368bytes
+combined. Wine prefixes, current registered games, sources/evidence and original
+2015 backup preserved. Receipts `.local/cleanup-20261023/verified-inactive-*-runtime/`.
+Free~8.6GiB; guard stays8GiB. Next finish r176 SOURCE proof, stage2 reviewed
+preflight/build, genuine same-release runtime, then guarded publication/counts.
+
 ## v130 complete: Bremen ownership and native XI — 2026-10-22 22:43 UTC
 
 Vostro `joe-Vostro-3350`; source session

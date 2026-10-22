@@ -427,7 +427,8 @@ def prepare(base, input_path):
         complete_mode1 = complete.prepare(base, request, package, jug, eq)
     moves = request['moves']
     targets = [row['destination'] for row in moves] + [row['carrier_id'] for row in request['new_people']]
-    if not targets or len(set(targets)) != len(targets):
+    order_only = complete_mode1 is not None and complete_mode1['policy'] == complete.ORDER_ONLY_POLICY
+    if (not targets and not order_only) or len(set(targets)) != len(targets):
         raise ValueError('opening exchange needs unique complete destinations')
     sources = [row['source'] for row in moves]
     if len(set(sources)) != len(sources) or not set(sources) <= set(targets):
@@ -517,6 +518,9 @@ def prepare(base, input_path):
         plan['complete_mode1_opening'] = complete_mode1
         plan['scope'] = 'Selected dated identity replacements plus complete original-XI mode1 startup orders; other actors/facts, roster links, managers, opaque tactics, kits and assets preserved except displaced photos.'
         plan['proof_covers'] = ['original-first-league-XI-and-positive-bench-identities', 'all-other-player-facts-and-opaque-tactics-preserved']
+        if order_only:
+            plan['scope'] = 'Only complete source-bound mode1 startup orders and recipe roster ordering; every identity, fact, skill, EQ link, tactic, manager, kit and portrait preserved.'
+            plan['proof_covers'] = ['original-first-league-XI-order-only', 'all-player-facts-and-EQ-assets-preserved']
     if any(row.get('opening_contract') for row in request['new_people']):
         plan.update(source_title='Dated opening reserve identities and positive ownership brackets',
                     proof_covers=['bounded-reserve-ownership-and-positive-dated-contract-bracket-not-matchday-claims'])
@@ -610,11 +614,12 @@ def bind(package, plan):
         club = next(c for c in result['clubs'] if c['carrier_id'] == complete['club_carrier_id'])
         club['roster_player_ids'] = [players[r['carrier_id']]['id'] for r in complete['orders']]
     selected = {players[c]['id'] for c in selected_carriers(plan)}
-    portraits = result['assets']['portraits']
-    portraits[:] = [p for p in portraits if p['player_id'] not in selected]
-    portraits.extend(dict(player_id=pid, status='native-no-photo', proof=dict(artifact_id=aid, grade='source-receipt'),
-        review_reason='Identity moved or replaced; old slot portrait cleared.') for pid in sorted(selected))
-    portraits.sort(key=lambda p: p['player_id'])
+    if selected:
+        portraits = result['assets']['portraits']
+        portraits[:] = [p for p in portraits if p['player_id'] not in selected]
+        portraits.extend(dict(player_id=pid, status='native-no-photo', proof=dict(artifact_id=aid, grade='source-receipt'),
+            review_reason='Identity moved or replaced; old slot portrait cleared.') for pid in sorted(selected))
+        portraits.sort(key=lambda p: p['player_id'])
     keys = [identity(p) for p in result['players'] if p['carrier_id'] in selected_carriers(plan)]
     if len(set(keys)) != len(keys) or any(identity(p) in keys for p in result['players'] if p['carrier_id'] not in selected_carriers(plan)):
         raise ValueError('opening exchange leaves an outside identity copy')
@@ -639,7 +644,14 @@ def apply(jug, eq, plan):
             prepared, recovery = capacity.recover_slot(prepared, row['carrier_id'], plan['request']['same_carrier_name_capacity'])
             if recovery != row['same_carrier_capacity_claim']:
                 raise ValueError('opening exchange same-carrier name recovery differs')
-    candidate = delta.compile_players(prepared, package, {players[c]['id'] for c in selected_carriers(plan)}, codes)
+    selected = selected_carriers(plan)
+    if not selected:
+        from scripts.season_complete_mode1_opening_v1 import ORDER_ONLY_POLICY
+        if plan.get('complete_mode1_opening', {}).get('policy') != ORDER_ONLY_POLICY:
+            raise ValueError('empty compilation only allowed for explicit source-bound order-only plan')
+        candidate = prepared
+    else:
+        candidate = delta.compile_players(prepared, package, {players[c]['id'] for c in selected}, codes)
     patched_eq = original_eq
     order_carriers = set()
     if plan.get('complete_mode1_opening') is not None:

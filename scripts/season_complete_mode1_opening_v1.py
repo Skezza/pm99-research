@@ -9,12 +9,53 @@ from app.player_initial_order import OrderReplacement, read_initial_order, patch
 from scripts import season_opening_identity_exchange_v1 as exchange
 
 POLICY = 'original-first-league-mode1-XI-and-positive-bench-replacements-v1'
+ORDER_ONLY_POLICY = 'original-first-league-mode1-XI-order-only-v1'
+
+
+def retained_field_matches(declared, actual):
+    # A native-preserve reserve is not a historical fact claim. Its bytes are
+    # still protected by the exact record diff, and no new default is written.
+    return declared == actual or declared == {'policy': 'preserve-existing-mode1'}
+
+
+def corrected_birthday(base, request, source, actor):
+    """Replay an existing official adjudication, never waive identity checks."""
+    from scripts import season_adjudicated_player_facts_v1 as adjudicated
+    from scripts import season_source_verified_player_changes_v1 as changes
+    claims = request['complete_mode1_opening'].get('retained_fact_adjudications', [])
+    found = [c for c in claims if c['carrier_id'] == actor['carrier_id']]
+    if len(found) != 1:
+        raise ValueError('changed original XI birthday needs one exact prior adjudication')
+    document = exchange.pipeline.read_json_file(exchange.original(request['evidence'][found[0]['evidence']]))
+    if (document.get('schema') != changes.INPUT_SCHEMA or document.get('kind') != changes.ADJUDICATED_KIND
+            or document.get('season') != base.season):
+        raise ValueError('retained XI adjudication schema/season differs')
+    rows = [r for r in document['changes'] if r['carrier_id'] == actor['carrier_id']]
+    if len(rows) != 1:
+        raise ValueError('retained XI adjudication actor differs')
+    row = rows[0]; witness = row['witness']; historical = witness['historical_identity']
+    if ('birth_date' not in row['field_mask'] or row['before']['person_id'] != actor['person_id']
+            or row['before']['facts']['birth_date'] != source['facts']['birth_date']
+            or witness['person_id'] != actor['person_id']
+            or historical['source_row_sha256'] != source['source_row_sha256']
+            or str(historical['provider_player_id']) != str(source['opening_source_player_id'])
+            or exchange.published_name_key(witness['full_name']) != exchange.published_name_key(actor['source_name'])):
+        raise ValueError('retained XI adjudication historical identity/preimage differs')
+    values = adjudicated.adjudicate(witness)
+    if values['birth_date'] != actor['facts']['birth_date']:
+        raise ValueError('retained XI birthday differs from official adjudicated fact')
+    return actor['carrier_id']
 
 
 def prepare(base, request, package, jug, eq):
     claim = request['complete_mode1_opening']
-    if claim.get('policy') != POLICY or request.get('orders') or request.get('moves'):
+    order_only = claim.get('policy') == ORDER_ONLY_POLICY
+    if claim.get('policy') not in (POLICY, ORDER_ONLY_POLICY) or request.get('orders') or request.get('moves'):
         raise ValueError('explicit complete mode1 policy without unrelated moves/orders required')
+    if order_only and (request.get('new_people') or request.get('retirements')
+            or set(request) - {'schema', 'season', 'release_id', 'evidence', 'moves', 'new_people',
+                               'orders', 'retirements', 'complete_mode1_opening'}):
+        raise ValueError('explicit order-only policy cannot contain identity or unrelated transactions')
     clubs = [c for c in package['clubs'] if c['carrier_id'] == claim['club_carrier_id']]
     if len(clubs) != 1 or clubs[0]['opening'].get('policy') != 'preserve-existing-mode1':
         raise ValueError('complete mode1 opening needs one retained native club')
@@ -46,6 +87,12 @@ def prepare(base, request, package, jug, eq):
         raise ValueError('complete mode1 recipe ownership differs')
     owners = exchange.roster  # source normalisation, not inferred membership
     facts = {pid: exchange.facts.native_facts(jug, pid) for pid in players}
+    if order_only and any(
+            owners.normalise(facts[pid]['name']) != owners.normalise(actor['name'])
+            or not retained_field_matches(actor['facts']['birth_date'], facts[pid]['birth_date'])
+            or not retained_field_matches(actor['facts']['primary_position'], facts[pid]['position'])
+            for pid, actor in players.items()):
+        raise ValueError('order-only requires all retained native names/DOBs/positions to match')
     entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(eq).entries}
     entry = entries[club['carrier_id']]
     roster = exchange.delta.compiler.parse_eq_external_team_roster_payload(
@@ -62,19 +109,24 @@ def prepare(base, request, package, jug, eq):
     if any(read_initial_order(native_index[pid].decode_payload(jug)).family != 'dd6360' for pid in players):
         raise ValueError('complete mode1 opening is compact-only')
     starting = []
+    adjudicated = []
     for source in projected:
         matches = [p for p in actors if p['person_id'] == 'person-source-' + source['source_row_sha256']]
         if len(matches) != 1:
             raise ValueError('original XI assignment does not identify one retained actor')
         actor = matches[0]; actual = facts[actor['carrier_id']]
+        if actor['facts']['birth_date'] != source['facts']['birth_date']:
+            adjudicated.append(corrected_birthday(base, request, source, actor))
         if (owners.normalise(actor.get('source_name') or actor['name']) != owners.normalise(source['facts']['name'])
-                or actor['facts']['birth_date'] != source['facts']['birth_date']
                 or actual['birth_date'] != actor['facts']['birth_date']
                 or owners.normalise(actual['name']) != owners.normalise(actor['name'])):
             raise ValueError('retained original XI name/DOB/native identity differs')
         starting.append(actor['carrier_id'])
+    claims = claim.get('retained_fact_adjudications', [])
+    if len(claims) != len(adjudicated) or {c['carrier_id'] for c in claims} != set(adjudicated):
+        raise ValueError('unused or duplicate retained XI adjudication claims')
     selected = {p['carrier_id'] for p in request['new_people']}
-    if (not selected or not selected <= set(players) or selected & set(starting)
+    if ((not selected and not order_only) or not selected <= set(players) or selected & set(starting)
             or any(p.get('match') != claim['match'] or p.get('opening_contract') for p in request['new_people'])
             or any(str(p['provider_player_id']) not in {b['source_player_id'] for b in bench} for p in request['new_people'])):
         raise ValueError('mode1 replacements must be independent positive bench identities, never sourced XI')
@@ -84,7 +136,7 @@ def prepare(base, request, package, jug, eq):
               for n, pid in enumerate(ordered, 1)]
     # Reuse the proven native writer NOW as preflight, not after publication.
     apply(jug, eq, dict(club_carrier_id=club['carrier_id'], orders=orders))
-    return dict(policy=POLICY, club_carrier_id=club['carrier_id'], club_id=club['id'],
+    return dict(policy=claim['policy'], club_carrier_id=club['carrier_id'], club_id=club['id'],
                 orders=orders, starting_xi=starting, fixture_date=fixture['date'],
                 published_bench_ids=[p['source_player_id'] for p in bench],
                 reserve_policy='preserve-relative-native-order-not-published-bench-order',

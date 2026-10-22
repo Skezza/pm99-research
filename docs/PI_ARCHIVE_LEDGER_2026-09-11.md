@@ -1,5 +1,25 @@
 # Pi archive ledger
 
+## Disposable local runner copy — 2026-10-22 23:16 UTC
+
+Vostro; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+No Pi transfer: removed only inactive regenerable game copy
+`.local/local-runner-v1/2000-01/sourced-preston-august-parkinson-20261021-r173a/game`.
+Verified sealed registered r173a source preserved; shared initialized Wine
+prefix preserved. Recovery: existing local capture helper recreates this copy
+from the immutable registered game. Recovered362168320 free bytes. Exact before
+and completion receipts:
+`.local/cleanup-20261023/verified-inactive-preston-runtime/`.
+No recipes, original evidence, current release or original2015 backup deleted.
+
+Second local-only cleanup23:30UTC: same verification for inactive disposable
+`.local/local-runner-v1/2013-14/sourced-werder-opening-yildirim-20261022-r175a/game`.
+Sealed registered source and every original copied input SHA checked, no active
+PM99 containers. Recovered363266048bytes; prefix/source/evidence preserved.
+Receipt `.local/cleanup-20261023/verified-inactive-werder-runtime/`.
+Recovery is automatic local helper copy from the immutable registered release;
+no Pi archive needed for this disposable runtime duplicate.
+
 ## Regenerable Go compiler cache cleared — 2026-10-22
 
 Vostro `joe-Vostro-3350`; source session

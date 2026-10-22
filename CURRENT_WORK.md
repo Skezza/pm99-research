@@ -1,5 +1,52 @@
 # PM99: current work
 
+## Active Celtic integration / worker QA — 2026-10-22 23:28 UTC
+
+Machine `joe-Vostro-3350`; source session
+`01a0592d-fcd5-7262-a637-743a8253d9b4`. v130/current26 remain authoritative;
+no new preferred release or case closure claimed. Lead controller31410 builds
+private Celtic order-only r176a plus full SOURCE replay r176b using the existing
+identity-exchange pipeline. Controller86590 finished:127 focused tests PASS;
+upstream native order/ownership lane49557 finished:15 PASS; Luna focused36 PASS.
+Do not start a competing build or regenerate these outputs if already present.
+Source/native preflight passed: original30July XI,23 exclusively owned mode1
+records, corrected Larsson DOB replayed against retained official adjudication.
+Only startup orders may change; all identities/facts/ratings/EQ/assets retained.
+Uncommitted generic order-only extension and tests are under lead integration,
+not final published engineering. Worker static adversarial review found no
+concrete bypass; actual build/readback/replay/runtime are still pending.
+
+Three Luna workers continuously reassigned, isolated research only:
+
+- Celtic: first-XI/native mapping and stage2 positive Mjallby/Moravcik/Kerr
+  proposal returned; now independently checks code/tests and future reserve
+  preflight. Lead verified exact linked Kerr136079 and original October Douglas
+  report. Stage2 is NOT approved/published; targets must be reserves after r176.
+- Horne: original alias overclaim rejected; disputed Carter DOB remains open.
+  Kit route proposal retained, lead owns local lease/capacity. Now checks actual
+  native Plymouth Evers/Adams order swap and incomplete five-vs-seven bench
+  limitation; no ownership closure may follow a mere bench swap.
+- Reconcile: three dated ownership findings (Hajnal/Simpson/Evers), no automatic
+  closure. Hajnal positive keeper Vamos proposal needs complete source XI/native
+  mapping: cannot replace a starting midfielder with a second keeper blindly.
+
+Evidence `.local/consolidated-audit-20261009/parallel-rc-20261023/`.
+Disk~8.3GiB; preserve8GiB guard. Removed only inactive disposable Preston local
+runner game copy, recovered362168320bytes; sealed r173a game and reusable Wine
+prefix retained. Receipts `.local/cleanup-20261023/verified-inactive-preston-runtime/`.
+Next: finish r176 tests/build/full SOURCE proof, review stage2 exact source and
+native preflight, then deliver source-approved correction/runtime serially.
+
+23:34UTC: controller31410 TERMINAL0: private r176a built and complete SOURCE
+r176b game inventory/recipe identical. Not preferred/runtime-verified yet.
+Stage2v1 source/native ownership preflight passed but in-memory compilation
+safely refused Mjallby's full name exceeding carrier19260's window by2bytes;
+no stage2 game written. Controller19811 tests v2 with exact original profiles'
+entire marked surnames as native displays, full source identities retained.
+Both family declarations passed; never weaken native capacity guards.
+Second disposable Werder runtime game copy cleanup recovered363266048bytes;
+source/prefix retained, receipt `verified-inactive-werder-runtime/` beside first.
+
 ## Parallel RC closeout campaign — 2026-10-22 23:08 UTC
 
 Machine `joe-Vostro-3350`; source session
