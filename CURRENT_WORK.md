@@ -1,5 +1,63 @@
 # PM99: current work
 
+## Parallel RC closeout campaign — 2026-10-22 23:08 UTC
+
+Machine `joe-Vostro-3350`; source session
+`01a0592d-fcd5-7262-a637-743a8253d9b4`. User asks for a tracked checklist,
+multiple Luna workers and a distant milestone. TARGET: all26 reproducible RCs
+ready for gameplay spot-checking, NOT another isolated-player stopping point.
+Keep v130/current26 release bindings and original2015 intact; no new delivery
+or count change claimed by this planning/research handoff.
+
+Fixed checklist, authoritative starting evidence v130:
+
+| Workstream | Remaining acceptance / current position | Owner |
+| --- | --- | --- |
+| Cross-club ownership | 2748 unclosed candidates of2809;61 disposed. Classify with evidence; deliver confirmed wrong owners, distinguish loans/namesakes/unavailable evidence. | Lead + bounded Luna batches |
+| Within-club duplicates | All82 disposed:34 repaired,22 namesakes,26 explicit factory exceptions. Preserve, do not restart. | Lead regression only |
+| Opening XI/positions | Horne2000, CelticCanero/Douglas first; other source-backed contradictions from existing checklist, not wholesale reauthoring. Bremen v130 complete. | Lead integrates; Luna sources |
+| Birthdays |246/247 recorded disagreements reconciled. Current Onoh27080 native1979-07-01 vs recipe2000-07-01 confirmed by lead on r123a; recipe date is explicitly a fallback, NOT historical truth. Find source or correctly classify allowed uncertainty; do not silently call either DOB verified. | Luna Horne worker, lead approval |
+| Managers |5720 frozen source gaps are NOT5720 proven wrong names. Reconcile existing deliveries, source remaining serious candidates, fix confirmed errors. | Lead + evidence batches |
+| Ratings/tactics | Existing all-season corrections delivered; preserve them and verify targeted regressions. | Lead |
+| Kits | Palermo2005/Atalanta2006 artwork/source/profile proofs delivered; actual target selection/TEAM RATING screenshots pending. Broader coverage not certified. | Lead local runner |
+| Other facts/images | Correct known wrong facts/person photos; missing secondary facts/unsupported XXX explicit. Photo expansion user-deferred, measured log preserved. | Lead; no enrichment batch |
+| Final release handoff | Approved corrections in recipes AND games; native/source/unchanged-data/replay proofs; genuine targeted runtime; one consolidated26 regression;26 commands and explicit residuals. No global RC claim with genuine blockers. | Lead |
+
+Execution sequence: (1) source-ready ownership batches and exact residue
+reconciliation; (2) integrate and validate affected games serially while workers
+continue independent research; (3) close kit/runtime and remaining confirmed
+data gaps; (4) consolidated RC assessment/handoff, then1990 generation test.
+No invented percentage/date promise before outstanding cases are reconciled.
+Keep fixed IDs/counts; newly confirmed issues are explicit additions. A failed
+search is not closure. Do not expand into exhaustive optional fact checking.
+
+Three Luna workers spawned with isolated evidence roots under
+`.local/consolidated-audit-20261009/parallel-rc-20261023/`:
+
+- `horne_opening_evidence`: Horne/Carter first batch; lead rejected v2's false
+  attribution of Alfonso alias to FGR (raw has zero Alfonso mentions). v3
+  correction retained; DOB13August remains disputed, not approved. Worker now
+  researches Grimsby Onoh27080 original DOB/age evidence.
+- `celtic_opening_evidence`: Lennon19261 already Burchill in actualr173a;
+  reconcile stale follow-up without rebuilding. Canero19260/Douglas19262
+  ownership findings source-backed. Lead rejects calling Canero->Mjallby a
+  reserve-only ready transaction: native order3 is a starter. Worker continues
+  exact first-XI/coupled-capacity route and positive replacement evidence.
+- `rc_checklist_reconcile`: first report saved `reconcile/rc-checklist-reconciliation.md`;
+  lead confirmed current Onoh discrepancy. Worker now reviews deterministic
+  first10 unclosed stable IDs, excluding61 dispositions/accepted exceptions and
+  Horne already assigned. Evidence-backed dispositions only, not model voting.
+
+Workers must not touch shared recipes/code/checklist, publish/build or operate
+the runner. Lead reviews original evidence before approval, owns all shared
+integration and serial runtime. First-batch review has already caught stale
+work, wrong source attribution and an unsafe starter-slot proposal. Preserve
+rejected proposals explicitly; do not rebrand them as approved corrections.
+Lead next action: local foreign-kit selection capture route using retained
+Italy flag145,259 / carrier223 shirt-body166,410 selector evidence, current
+immutable2005/2006 games, reused initialized prefix and8GiB reserve. No game
+regeneration. All milestone counts remain v130 until actual verified delivery.
+
 ## v130 delivered: Bremen opening ownership/XI — 2026-10-22 22:43 UTC
 
 Machine `joe-Vostro-3350`; source session
