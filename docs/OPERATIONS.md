@@ -59,6 +59,38 @@ Examples:
 - `./scripts/run_pm99_experiment.sh smoke --worker lane-a --dry-run`
 - `./scripts/run_pm99_experiment.sh season-experiment --worker lane-a -- --ai-manager --chatgpt-oauth-store /path/to/oauth.json --openai-model gpt-5.4-mini`
 
+## Local runner fallback
+
+The local `pm99-runner:latest` Docker runtime can validate an already-built
+registered release when tiny-m73 is unavailable. Use the current canonical
+drivers through the local worker lease; do not rebuild the database, require
+the original ZIP, or mount a sealed release writable. The complete registered
+game already includes its required MFC42 DLL.
+
+```bash
+PYTHONPATH=upstream/pm99-skezmod-db-editor .local/venvs/season-pipeline/bin/python \
+  -m scripts.capture_registered_season_local_v1 2000-01 \
+  --release-id sourced-preston-august-parkinson-20261021-r173a \
+  --tag local_preston_startup_unique
+```
+
+For a player profile, add `--carrier 10149 --label parkinson --token Parkinson`
+and use a different unique tag. Evidence is written under
+`.local/runlogs/pm99_runner/<tag>/`. Existing evidence is never overwritten.
+The wrapper uses an independently copied game, an owned Wine prefix and a
+freshly compiled current native input helper; runner/editor source mounts
+are read-only. It checks the complete input inventory and the sealed original
+after execution. Original-image review and the normal native/kit/digit gates
+are still required before publication; container exit alone is not approval.
+
+Workspace: `.local/local-runner-v1/<season>/<release-id>/`. Captures are serial
+under the `local-vostro` worker lease. Initial runtime budget is 2 GiB with an
+additional protected 8 GiB reserve; later captures reuse the same prefix.
+Do not accumulate per-release runtime workspaces without checking capacity.
+They are disposable copies, not source releases, but must not be cleared while
+a capture is active. The wrapper stops on low capacity rather than disabling
+disk checks. Local validation does not need remote SSH or privileged overlays.
+
 ## Standard Single-Record Workflow
 
 1. Copy the target `DBDAT/` directory to a disposable working folder.

@@ -1,5 +1,35 @@
 # PM99 worker handoff
 
+## v129 complete: LOCAL runner proof — 2026-10-22 05:50 UTC
+
+Vostro `joe-Vostro-3350`, source session
+`01a0592d-fcd5-7262-a637-743a8253d9b4`. CURRENT_WORK top authoritative.
+Controller84881 TERMINAL0: preferred2000 r173a Collins10149->GaryParkinson
+actual correction delivered, retainedHibsCollins19269 unchanged. Existing
+SOURCEr173b byte-identical. Genuine local Stoke startup/two original profiles,
+native input/kit pixels/independent skill and age glyph proofs PASS. All26
+regression PASS, zero regeneration, other25 exact bindings/original2015 backup
+preserved. Owen2012 retained atStoke, no2012 rebuild. Checklist v129:
+frozen61/2809 disposed,2748 unreviewed/unclosed candidates, not confirmed bugs.
+Still26 playable, not global historical RC approval.
+
+Evidence audit `Collins2000-opening-review-v1/`, especially final summary,
+prepublication proof, final attestation and consolidated regression named v129;
+all original local frames under `local_preston_2000_01_r173a_20261022_*` runlogs.
+No active builds/captures. 133 tests/boundary/diff PASS. Local8.9GiB, no cleanup
+or Pi transfer this turn; original sources/releases preserved. Dirty upstream
+fixture/artifact deletions and parked untracked viewer untouched.
+
+Earlier remote-unavailable conclusion was wrong and superseded. New wrapper
+`scripts/capture_registered_season_local_v1.py` uses current canonical drivers
+and rebuilt input helper with existing Docker runtime, owned Wine prefix and
+independent copy of an already-built release. Exact inventory checked before,
+sealed source checked after; 8GiB reserve protected. No original ZIP/MFC42
+download, passwordless sudo/overlay or SSH required. See OPERATIONS local
+fallback. Keep the reusable local runtime for follow-up; avoid accumulating
+26 per-release prefixes. Next: existing Bremen2013 mode1 coupled source/native
+lineup review, not blind native reorder or another broad source queue.
+
 ## Private Preston fix complete; runtime blocked — 2026-10-21 23:31 UTC
 
 Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`; CURRENT_WORK top is

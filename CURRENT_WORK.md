@@ -1,5 +1,70 @@
 # PM99: current work
 
+## v129 delivered and locally verified — 2026-10-22 05:50 UTC
+
+Machine `joe-Vostro-3350`; source session
+`01a0592d-fcd5-7262-a637-743a8253d9b4`. User correctly challenged local runner
+availability. Remote-offline blocker was WRONG: existing Docker runtime plus
+CURRENT canonical drivers/current rebuilt input helper can validate the sealed
+release through a disposable copy. No ZIP, sudo overlay or remote SSH needed.
+New research wrapper `scripts/capture_registered_season_local_v1.py` documents
+this route in OPERATIONS. Owned Wine prefix fixes the old smoke's permission
+problem. Canonical local worker lease; read-only source-code mounts; complete
+input inventory/sealed-source checks; 8GiB reserve and initial2GiB budget.
+
+Controller84881 TERMINAL0. Preferred2000 now
+`sourced-preston-august-parkinson-20261021-r173a`: one actual reserve10149
+Collins->Parkinson correction delivered. Source/native/idempotence/full SOURCE
+r173b exact replay, genuine LOCAL Stoke startup and both profile original-image
+reviews, native input hashes, kit pixels and independent skill/age glyph proofs
+PASS. Retained HibernianCollins19269 unchanged; no historical fine-role approval
+implied for that preserved record. No release rebuilt this turn. Other25 exact
+preferred bindings and original2015 backup preserved. Owen2012 remains atStoke
+under accepted case-only exception, no2012 rebuild.
+
+Authoritative checklist `.local/consolidated-audit-20261009/release-delivery-checklist-v129.json`.
+Frozen61/2809 disposed,2748 unclosed review candidates (NOT2748 confirmed bugs).
+ONE consolidated all26 regression PASS; zero validation-time regenerations.
+Still26 playable, not26 globally certified historical RCs. Evidence audit
+`Collins2000-opening-review-v1/`: `prepublication-proof-v129.json`,
+`final-attestation-v129.json`, `all26-postdelivery-regression-v129.json`,
+`final-delivery-summary-v129.json`, both profile native/kit/digit proofs and
+original-image reviews. Original frames under `.local/runlogs/pm99_runner/`
+tags `local_preston_2000_01_r173a_20261022_{startup,parkinson,collins}`.
+
+133 focused tests PASS; boundary/diff PASS. No active build/capture/controller.
+Local8.9GiB; reusable local runtime under `.local/local-runner-v1/2000-01/`
+uses a disposable game/prefix, NOT another source release. Keep it for the next
+capture or explicitly retire while inactive if capacity requires; do not build
+26 prefixes blindly. Dirty upstream fixtures/artifacts and parked viewer remain
+untouched. Next bounded work: reconcile Bremen2013 mode1 lineup mechanics with
+retained source-positive replacements before any swap; preserve native startup
+guards and don't infer native order from recipe array position. Horne safe
+whole-actor retirement still unresolved. Earlier controllers/blockers below
+are historical, superseded by this completed handoff.
+
+## Local runner recovered; Preston runtime capture active — 2026-10-22 05:41 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. User correctly
+challenged the remote-runner dependency. Local Docker runtime is usable with
+CURRENT canonical runner drivers and freshly compiled input helper, disposable
+345MiB release copy and owned Wine prefix. No missing ZIP/MFC42 dependency:
+the sealed release already includes MFC42. No sudo/overlay needed. New bounded
+PM99RE launcher `scripts/capture_registered_season_local_v1.py`; local worker
+lease via canonical launcher, exact input inventory and sealed source checks,
+8GiB reserve + initial2GiB budget. No release regeneration or source mutation.
+
+Actualr173a local Stoke startup PASS; original022 screenshot visually reviewed
+StokeCity /1August2000. Evidence `.local/runlogs/pm99_runner/local_preston_2000_01_r173a_20261022_startup/`;
+auditCollins root now has startup transport/visual review. Canonical native
+summary carries exact final manifest/inventory bindings. Controller53786 done0.
+Controller48525 ACTIVE serial Parkinson profile capture. Next retained Hibs
+Collins profile, original image/native/kit/independent digit proofs, guarded
+promotion and consolidated regression. Stillv128/current2000 r172a preferred;
+private actual/SOURCEr173a/b already complete, MUST NOT rebuild them.
+About8.9GiB free; no competing local capture. Earlier remote-offline blocker
+is superseded: do not ask user to power on tiny-m73 for this validation.
+
 ## Owen complete; Preston built and replayed, runner offline — 2026-10-21 23:31 UTC
 
 Machine `joe-Vostro-3350`; source session
