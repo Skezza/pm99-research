@@ -32,7 +32,9 @@ def summary_matches(summary, release, *, profile=False):
             and 'stoke' in team.get('observed_normalized', '').split())
 
 
-def driver_args(release, *, carrier=None, label=None, token=None):
+def driver_args(release, *, carrier=None, label=None, token=None, search_result_row=1):
+    if type(search_result_row) is not int or not 1 <= search_result_row <= 10:
+        raise ValueError('explicit visible search result row must be 1..10')
     if carrier is None:
         s = _selector(release.season)
         args = ['python3', '/workspace/repo/scripts/pm99_runner/stoke_season_driver.py',
@@ -67,7 +69,7 @@ def driver_args(release, *, carrier=None, label=None, token=None):
                else 'CP1252:' + char.encode('cp1252').hex().upper())
         steps.append(f'name_{label}_{i:02d}|native_key|{key}|0.1')
     steps += [f'submit_{label}_search|native_double_click|486,142,1|3.5',
-              f'select_{label}_row|native_input_click|120,166,1|1.0',
+              f'select_{label}_row|native_input_click|120,{166 + 16 * (search_result_row - 1)},1|1.0',
               f'open_{label}_row|native_input_key|Return|5.0',
               f'inspect_{label}_profile|native_inspect|ignored|0.5',
               f'profile_only_{label}_done|native_inspect|ignored|0.5']
@@ -76,11 +78,11 @@ def driver_args(release, *, carrier=None, label=None, token=None):
     return args
 
 
-def capture(season, release_id, tag, *, carrier=None, label=None, token=None):
+def capture(season, release_id, tag, *, carrier=None, label=None, token=None, search_result_row=1):
     if not re.fullmatch(r'[a-z][a-z0-9_]{0,95}', tag):
         raise ValueError('safe unique capture tag required')
     release = registry.load_registered_release(season, release_id)
-    driver = driver_args(release, carrier=carrier, label=label, token=token)
+    driver = driver_args(release, carrier=carrier, label=label, token=token, search_result_row=search_result_row)
     inventory = pipeline.read_json_file(release.inventory_path)
     pipeline.assert_tree_matches_inventory(release.game_path, inventory)
     workspace = registry.ROOT / '.local/local-runner-v1' / season / release_id
@@ -155,6 +157,7 @@ if __name__ == '__main__':
     parser.add_argument('--carrier', type=int)
     parser.add_argument('--label')
     parser.add_argument('--token')
+    parser.add_argument('--search-result-row', type=int, default=1)
     args = parser.parse_args()
     print(capture(args.season, args.release_id, args.tag,
-                  carrier=args.carrier, label=args.label, token=args.token), flush=True)
+                  carrier=args.carrier, label=args.label, token=args.token, search_result_row=args.search_result_row), flush=True)

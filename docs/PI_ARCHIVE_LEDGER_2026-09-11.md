@@ -1,5 +1,19 @@
 # Pi archive ledger
 
+## Regenerable Go compiler cache cleared — 2026-10-22
+
+Vostro `joe-Vostro-3350`; source session
+`01a0592d-fcd5-7262-a637-743a8253d9b4`. The first attempt refused while a Go
+process was observed; nothing was removed by that attempt. A fresh process
+check found no active Go compiler/linker/vet work, then `go clean -cache`
+cleared only `/home/joe/.cache/go-build`. Recovered 3,143,409,664 free bytes;
+free space afterwards 10,020,634,624 bytes. Compiler outputs are regenerable;
+source, installed tools, module downloads, PM99 games, evidence and backups
+were untouched. No Pi transfer or archive needed. Receipts:
+`.local/cleanup-20261022/inactive-go-compiler-cache/{before,completed}.json`.
+The 8GiB PM99 reserve remains enforced; concurrent allocations can change
+current free space independently.
+
 ## Inactive isolated Go build cache removed — 2026-10-21 23:21 UTC
 
 Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. Removed only

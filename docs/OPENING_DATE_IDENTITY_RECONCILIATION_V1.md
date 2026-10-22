@@ -7,6 +7,23 @@ native season package.
 
 ## What the check does
 
+### Evidence interpretation: competition dates are not transfer dates
+
+A DFB Bundesliga roster's `ab` date can describe promotion into that
+competition's squad, not arrival at the club. Do not classify it alone as
+wrong August club ownership or use absence from one match to prove departure.
+Check reserves, loans and an independently dated transfer announcement before
+replacing an identity. In the Bremen2013 review, Lorenzen's October DFB date
+did not prove a late club arrival; his proposed replacement was rejected.
+García's September signing was independently corroborated. Keep a rejected
+proposal separate from an approved correction and from a published game.
+
+For a complete non-playable mode1 XI repair, bind the original competition,
+first fixture and numeric player IDs to existing source identities. Reuse the
+canonical complete-owned-roster order writer; recipe array position is not
+native starting order. Preserve retained actors' other bytes, EQ links and
+opaque tactics. Reserve-only transactions must retain their starter guard.
+
 `scripts/reconcile_opening_date_identities_v1.py` compares a candidate package
 with every club's certified first-fixture XI and bench.
 

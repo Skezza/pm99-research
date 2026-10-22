@@ -1,5 +1,44 @@
 # PM99 worker handoff
 
+## v130 complete: Bremen ownership and native XI — 2026-10-22 22:43 UTC
+
+Vostro `joe-Vostro-3350`; source session
+`01a0592d-fcd5-7262-a637-743a8253d9b4`. CURRENT_WORK top authoritative.
+Controller33996 TERMINAL0. Preferred2013 r175a
+`sourced-werder-opening-yildirim-20261022-r175a`: Garcia16454 -> original
+August10 bench Yildirim; source-complete first XI native startup order repaired
+through existing canonical mode1 writer. Full SOURCEr175b identical, all21
+retained actors exact except startup byte, all EQ/tactics/managers/kits and
+unrelated files unchanged. Genuine corrected profile and Stoke startup original
+frames reviewed; independent skill/age digits, native inputs and kit pixels
+PASS. One all26 regression PASS; other25/original2015 preserved; no regeneration
+of unaffected seasons. Checklist v130: frozen61/2809 disposed,2748 unclosed
+review candidates unchanged; one additional ownership correction delivered.
+Not global historical RC approval.
+
+Evidence `.local/consolidated-audit-20261009/Werder2013-opening-review-v1/delivery-r175/`;
+accepted runlogs `local_werder_2013_14_r175a_20261022_{startup_verified,yildirim_verified}`.
+Failed startup OCR and wrong Turkish namesake at Antalyaspor retained/rejected,
+not success evidence. Canonical runner recognizes both dedicated list headings,
+wrong-team rejection retained; commit01607d2 pushed.4 new tests/11 focused old
+route-identity tests PASS; pre-existing stale navigation-coordinate assertion
+and unrelated deleted atlas fixtures remain. Root/editor-native180 tests,
+boundary/diff PASS. No active build/capture/controller.
+
+Do NOT resume rejected two-person r174 proposal: DFB competition `ab` dates
+are not automatically transfer dates. Lorenzen retained; Rehfeldt wrong-club
+claim not established. Original full source identity retained; native surname
+display follows explicit published family component, not guessed splitting.
+User defers portraits; measured counts/caveats in tracked
+`data/portrait-coverage-deferred-v129.json`. No new photo sourcing; displaced
+photo cleared, body facts remain declared unverified fallbacks.
+
+Free~8.9GiB; initialized local prefix reused. Safe inactive Go cache cleanup
+recovered3,143,409,664 free bytes, receipts/PI ledger; no source/game/archive
+deleted and no Pi transfer. Dirty unrelated upstream/viewer preserved.
+Next: existing confirmed ownership checklist/Horne safe whole-actor retirement
+or positive replacement; do not redo v130 or expand into optional imagery.
+
 ## v129 complete: LOCAL runner proof — 2026-10-22 05:50 UTC
 
 Vostro `joe-Vostro-3350`, source session

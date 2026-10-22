@@ -61,7 +61,16 @@ def deliver(request_path, release_id, replay_id, evidence_dir):
     if source.apply(before, eq, plan) != (after, after_eq) or source.apply(after, after_eq, plan) != (after, after_eq):
         raise ValueError('actual native correction or idempotence differs')
     selected = source.selected_carriers(plan)
-    preserve_other_records(before, after, selected)
+    complete = plan.get('complete_mode1_opening')
+    ordered = {r['carrier_id']: r for r in complete['orders']} if complete else {}
+    preserve_other_records(before, after, selected | set(ordered))
+    if ordered:
+        from app.fdi_indexed import IndexedFDIFile
+        old_entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(before).entries}
+        new_entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(after).entries}
+        for carrier in set(ordered) - selected:
+            source.verify_order_only_record(old_entries[carrier].decode_payload(before),
+                                            new_entries[carrier].decode_payload(after))
     old = pipeline.read_json_file(base.package_path)
     new = pipeline.read_json_file(child.package_path)
     if source.bind(old, plan) != new:
@@ -77,7 +86,8 @@ def deliver(request_path, release_id, replay_id, evidence_dir):
         if (facts['name'].casefold() != actor['name'].casefold()
                 or facts['birth_date'] != actor['facts']['birth_date']
                 or facts['position'] != actor['facts']['primary_position']
-                or facts['startup_order'] != native_facts(before, carrier)['startup_order']):
+                or facts['startup_order'] != (ordered[carrier]['after'] if carrier in ordered
+                                               else native_facts(before, carrier)['startup_order'])):
             raise ValueError('actual selected identity or preserved order differs')
         observed.append(dict(carrier_id=carrier, **facts))
     expected_photos, _ = delta.no_photo_archive((base.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes(), selected)
@@ -100,6 +110,10 @@ def deliver(request_path, release_id, replay_id, evidence_dir):
         all_unselected_actors_exact=True, all_unselected_native_records_exact=True,
         all_original_startup_orders_preserved=True, all_unrelated_game_files_identical=True,
         selected_portrait_clearing_exact=True, actual_native_idempotent=True, playable_validation=valid)
+    if ordered:
+        proof.update(all_unselected_native_records_exact=False,
+            all_unselected_native_bytes_except_explicit_order_exact=True,
+            all_original_startup_orders_preserved=False, explicit_original_XI_orders=complete)
     retained(evidence_dir / 'native-and-unchanged-proof.json', proof)
     replay_path = evidence_dir / 'complete-SOURCE-replay.json'
     if not replay_path.exists():

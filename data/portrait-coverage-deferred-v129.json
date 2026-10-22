@@ -1,0 +1,29 @@
+{
+  "schema": "pm99-deferred-portrait-coverage-v1",
+  "recorded_utc": "2026-10-22T22:05:00Z",
+  "source_session": "01a0592d-fcd5-7262-a637-743a8253d9b4",
+  "machine": "joe-Vostro-3350",
+  "baseline_checklist": "release-delivery-checklist-v129.json",
+  "evidence": ".local/consolidated-audit-20261009/portrait-coverage-v129-20261022.json",
+  "measurement": "Installed valid portrait bitmaps on native rostered player-season entries, not unique people or verified identities/photographic dates.",
+  "groups": {
+    "playable": {"present": 3619, "total": 58306},
+    "non_playable_overseas": {"present": 8017, "total": 225799},
+    "non_playable_english": {"present": 90, "total": 14560},
+    "non_playable_unclassified": {"present": 0, "total": 2650}
+  },
+  "playable_concentration": {
+    "2014-15": {"present": 1453, "total": 2203},
+    "2015-16": {"present": 2153, "total": 2300},
+    "other_24_seasons": {"present": 13, "total": 53803}
+  },
+  "disposition": "Deferred by explicit user instruction while confirmed data corrections continue.",
+  "user_instruction": "Proceed with the next confirmed data errors. Log the state of the images as we'll fix that later.",
+  "boundaries": [
+    "Missing portraits are a permitted documented release gap, not proof that imagery is complete.",
+    "Counts include FIFA and inherited images, not exclusively real period photographs.",
+    "Existing images positively confirmed to depict the wrong person must still be corrected or removed with identity repairs.",
+    "Preserve existing source originals, credits, review decisions and usable installed portraits.",
+    "Future expansion should reuse the existing photographic/FIFA pipelines and place bulky originals and caches on the Pi when available."
+  ]
+}

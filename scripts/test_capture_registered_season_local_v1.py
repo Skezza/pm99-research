@@ -35,6 +35,20 @@ def test_profile_uses_exact_native_recipe_identity_and_search_token(release, mon
     assert steps[-1] == 'profile_only_parkinson_done|native_inspect|ignored|0.5'
 
 
+def test_explicit_second_namesake_search_row_is_not_silently_first(release, monkeypatch):
+    monkeypatch.setattr(subject.pipeline, 'read_json_file', lambda _: {
+        'players': [dict(carrier_id=16454, name='Yildirim')]})
+    args = subject.driver_args(release, carrier=16454, label='yildirim', token='Yildirim', search_result_row=2)
+    assert 'select_yildirim_row|native_input_click|120,182,1|1.0' in args
+
+
+@pytest.mark.parametrize('row', [0, 11, -1, 1.5, True])
+def test_invalid_search_row_refuses_before_recipe_access(release, monkeypatch, row):
+    monkeypatch.setattr(subject.pipeline, 'read_json_file', lambda _: pytest.fail('recipe accessed'))
+    with pytest.raises(ValueError, match='visible search result row'):
+        subject.driver_args(release, carrier=1, label='player', token='Player', search_result_row=row)
+
+
 @pytest.mark.parametrize('label,token', [('../escape', 'Parkinson'), ('PARK', 'Parkinson'),
                                        ('parkinson', None), (None, 'Parkinson')])
 def test_profile_requires_safe_label_and_explicit_token(release, label, token):

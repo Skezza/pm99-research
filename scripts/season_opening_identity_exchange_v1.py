@@ -92,6 +92,17 @@ def dated_source(value):
             if len(cells) != 3:
                 continue
             name = ' '.join(' '.join(cells[1].find_all(string=True, recursive=False)).split())
+            links = cells[1].find_all('a')
+            if links:
+                # DFB renders some names as profile links and others as text.
+                # Admit only one same-origin person link, never a sidebar or
+                # mixed-name cell. Registration dates remain row-bound below.
+                link_origin = urlsplit(links[0].get('href', ''))
+                if (name or len(links) != 1 or link_origin.scheme != 'https'
+                        or link_origin.netloc != 'datencenter.dfb.de'
+                        or not re.fullmatch(r'/profil/[0-9]+', link_origin.path)):
+                    continue
+                name = ' '.join(links[0].get_text(' ', strip=True).split())
             if (name == claim['full_name'] and cells[2].get_text(' ', strip=True) == claim['birthday_literal']):
                 rows.append(cells[1])
         kind = claim.get('date_kind', 'ab')
@@ -346,13 +357,16 @@ def published_profile_family_display(selection, evidence):
     parsed = read_transfermarkt_profile(profile, selection['provider_player_id'])
     page = BeautifulSoup(original(profile).read_bytes(), 'html.parser')
     header = page.select_one('h1.data-header__headline-wrapper')
+    if header:
+        for number in header.select('.data-header__shirt-number'):
+            number.decompose()
     family = header.select('strong') if header else []
     if ((parsed['published_full_name'], parsed['published_birth_date']) != (selection['name'], selection['birth_date'])
             or len(family) != 1 or header.get_text(' ', strip=True) != parsed['published_full_name']
             or family[0].get_text(' ', strip=True) != target
             or not isinstance(target, str) or len(target.split()) != 1):
         raise ValueError('native short display needs the exact published complete single-component family heading')
-    return target
+    return delta.compiler._pm99_text(target, label='published entire family display')
 
 
 def published_name_key(name):
@@ -407,6 +421,10 @@ def prepare(base, input_path):
             source_text(value)
     if any('date' in value and value['date'][:4] != base.season[:4] for value in evidence.values()):
         raise ValueError('opening exchange fixture is not in the target starting year')
+    complete_mode1 = None
+    if 'complete_mode1_opening' in request:
+        from scripts import season_complete_mode1_opening_v1 as complete
+        complete_mode1 = complete.prepare(base, request, package, jug, eq)
     moves = request['moves']
     targets = [row['destination'] for row in moves] + [row['carrier_id'] for row in request['new_people']]
     if not targets or len(set(targets)) != len(targets):
@@ -417,7 +435,7 @@ def prepare(base, input_path):
     for carrier in set(targets):
         actor = players[carrier]
         native = facts.native_facts(jug, carrier)
-        if (native['startup_order'] <= 11 or native['birth_date'] != actor['facts']['birth_date']
+        if ((native['startup_order'] <= 11 and complete_mode1 is None) or native['birth_date'] != actor['facts']['birth_date']
                 or roster.normalise(native['name']) != roster.normalise(actor['name'])
                 or owners.get(carrier) != {clubs[actor['club_id']]['carrier_id']}
                 or skills(jug, carrier) != actor['ratings']['values']):
@@ -470,6 +488,10 @@ def prepare(base, input_path):
         if row.get('opening_contract'):
             from scripts import season_dated_reserve_membership_v1 as contracts
             opening_date = contracts.verify(row, evidence, season=base.season, club=clubs[actor['club_id']])
+        elif complete_mode1 is not None:
+            # Complete original-club/numeric-XI proof above already establishes
+            # the explicit native/published club-name bridge.
+            opening_date = evidence[row['match']]['date']
         else:
             verify_match_club(evidence[row['match']], clubs[actor['club_id']]['name'])
             opening_date = evidence[row['match']]['date']
@@ -491,6 +513,10 @@ def prepare(base, input_path):
         bindings=dict(snapshot=dict(project_url='https://www.transfermarkt.com/')),
         source_title='Dated opening bench identities and August ownership exchanges',
         proof_covers=['bounded-reserve-ownership-and-original-bench-only'], scope=SCOPE)
+    if complete_mode1 is not None:
+        plan['complete_mode1_opening'] = complete_mode1
+        plan['scope'] = 'Selected dated identity replacements plus complete original-XI mode1 startup orders; other actors/facts, roster links, managers, opaque tactics, kits and assets preserved except displaced photos.'
+        plan['proof_covers'] = ['original-first-league-XI-and-positive-bench-identities', 'all-other-player-facts-and-opaque-tactics-preserved']
     if any(row.get('opening_contract') for row in request['new_people']):
         plan.update(source_title='Dated opening reserve identities and positive ownership brackets',
                     proof_covers=['bounded-reserve-ownership-and-positive-dated-contract-bracket-not-matchday-claims'])
@@ -579,6 +605,10 @@ def bind(package, plan):
         club['roster_player_ids'] = [players[c]['id'] for c in row['full_order']]
         club['opening']['substitute_player_ids'] = [players[p['carrier_id']]['id'] for p in row['bench_mapping']]
         club['opening']['proof'] = dict(artifact_id=aid, grade='source-receipt')
+    if plan.get('complete_mode1_opening') is not None:
+        complete = plan['complete_mode1_opening']
+        club = next(c for c in result['clubs'] if c['carrier_id'] == complete['club_carrier_id'])
+        club['roster_player_ids'] = [players[r['carrier_id']]['id'] for r in complete['orders']]
     selected = {players[c]['id'] for c in selected_carriers(plan)}
     portraits = result['assets']['portraits']
     portraits[:] = [p for p in portraits if p['player_id'] not in selected]
@@ -612,6 +642,10 @@ def apply(jug, eq, plan):
     candidate = delta.compile_players(prepared, package, {players[c]['id'] for c in selected_carriers(plan)}, codes)
     patched_eq = original_eq
     order_carriers = set()
+    if plan.get('complete_mode1_opening') is not None:
+        from scripts import season_complete_mode1_opening_v1 as complete
+        candidate = complete.apply(candidate, original_eq, plan['complete_mode1_opening'])
+        order_carriers.update(r['carrier_id'] for r in plan['complete_mode1_opening']['orders'])
     from scripts import season_opening_order_repair_v1 as ordering
     for row in plan['request'].get('orders', []):
         ix = IndexedFDIFile.from_bytes(candidate)

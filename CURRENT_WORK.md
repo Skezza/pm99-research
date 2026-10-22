@@ -1,5 +1,150 @@
 # PM99: current work
 
+## v130 delivered: Bremen opening ownership/XI — 2026-10-22 22:43 UTC
+
+Machine `joe-Vostro-3350`; source session
+`01a0592d-fcd5-7262-a637-743a8253d9b4`. Controller33996 TERMINAL0.
+Preferred2013 now `sourced-werder-opening-yildirim-20261022-r175a`;
+full SOURCEr175b replay byte-identical. Garcia16454's independently corroborated
+September arrival replaced with original10August bench player Özkan Yıldırım;
+native display `Yildirim` uses the original profile's entire marked family
+component to fit the existing slot. Full Unicode source identity retained.
+Original first-league XI restored with canonical complete-owned-mode1 writer:
+22 explicit startup bytes, all21 retained actors' other native bytes and recipe
+facts/skills unchanged; EQ links/capacity/flags, opaque tactics, managers, kits
+and unrelated game files exact. No full22 historical approval claimed.
+
+Genuine local corrected-target profile: WerderBremen/Germany/age20/attacking
+midfield. Original frame visually inspected; all ten independently decoded
+skill digits, native inputs, exact displayed kit pixels and age PASS. Corrected
+same-release Stoke1August2013 startup PASS. Rejected first-profile namesake at
+Antalyaspor retained and NOT counted; explicit search row2 captured correct
+person. First startup failure retained: route classifier ignored accurate
+dedicated list headings. Narrow canonical runner fix requires BOTH exact
+headings and retains wrong-team guard, no skipped classification. Runner commit
+`01607d2` pushed;4 new tests and11 focused existing route/identity tests PASS.
+Pre-existing generic route-coordinate test remains stale (HEAD140 vs
+assert126/172); unrelated deleted atlas fixtures remain untouched.
+
+Authoritative checklist
+`.local/consolidated-audit-20261009/release-delivery-checklist-v130.json`.
+ONE all26 playable/runtime-attestation/inventory-binding regression PASS;
+other25 exact bindings and original2015 preserved, zero unaffected rebuilds.
+Existing Garcia and Kroos opening-XI follow-ups updated; frozen cross-club
+61/2809 dispositions and2748 unclosed REVIEW CANDIDATES unchanged. This is one
+actual ownership correction outside that denominator, not new duplicate-case
+closures. Still26 playable, NOT26 globally historically certified RCs.
+Evidence: `Werder2013-opening-review-v1/delivery-r175/` under the audit root,
+especially final summary, native/unchanged proof, full SOURCE replay, original
+profile/age/skill/kit proofs, prepublication, attestation and all26 regression.
+Original accepted runlogs: `local_werder_2013_14_r175a_20261022_{startup_verified,yildirim_verified}`.
+
+IMPORTANT: rejected Lorenzen replacement must NOT resume. DFB Bundesliga `ab`
+dates alone do not prove late club arrival (reserves/promotion distinction).
+Lorenzen retained; Rehfeldt wrong-club claim likewise not established by that
+date alone. r174a is an unregistered interrupted proposal, NOT playable current
+release; r174b was never registered. Body measurements remain declared native
+fallbacks, not period verification. No new portrait sourcing: user explicitly
+defers imagery. Tracked `data/portrait-coverage-deferred-v129.json` logs physical
+coverage11726/301315 player-season entries (3.9%), NOT identity/era approval;
+only displaced identity's photo cleared as required.
+
+180 focused root/editor-native tests PASS; boundary/diff PASS. No active build,
+capture or controller. Free~8.9GiB; reusable local prefix shared with earlier
+2000 runtime, not26 new prefixes. Go-cache cleanup receipts and PI ledger
+record3,143,409,664 free bytes recovered; no source/game/archive deletion or Pi
+transfer. Dirty editor/runner fixtures and parked viewer preserved.
+Next exact action: continue existing confirmed ownership checklist, including
+Horne2000 safe whole-actor retirement/source-positive alternative. Do not redo
+this delivery or interpret unreviewed candidates as confirmed bugs. Images
+remain deferred; no unrelated editor work.
+
+## Bremen actual and SOURCE built; final runtime checks — 2026-10-22 22:35 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. Controller93462
+TERMINAL0: actual2013 r175a and complete SOURCEr175b built/exact replay PASS.
+IDs `*-werder-opening-yildirim-20261022-r175a/b`; evidence Werder audit
+`delivery-r175/native-and-unchanged-proof.json`, `complete-SOURCE-replay.json`.
+Exactly Garcia16454 -> source-positive Yildirim, native surname-only display;
+full Unicode source name retained. Native first11 match original10August XI;
+all21 retained actor facts/skills exact, only explicit startup bytes change.
+All EQ links/tactics/managers/kits/unrelated files unchanged. Lorenzen retained.
+DO NOT rebuild; current preferred/checklist remain v129/r155a pending runtime.
+
+Startup `local_werder_2013_14_r175a_20261022_startup` reached genuine Stoke
+1August2013 frame but route OCR wrongly failed: accurate dedicated list
+headings were ignored. Original failure retained; narrow canonical runner
+fix uses BOTH exact headings, wrong-team guard unchanged;4 new tests PASS.
+Existing focused route/identity11 PASS; pre-existing generic navigation test
+asserts obsolete coordinates (HEAD140 vs test126/172), not changed here.
+
+First Yildirim profile token matched the WRONG Turkish namesake at Antalyaspor,
+age22. Original screenshot inspected and explicitly REJECTED in
+`delivery-r175/rejected-first-yildirim-profile-v1.json`; not target evidence.
+Added explicit bounded search-result row to local launcher. Controller59614
+ACTIVE serial capture `..._yildirim_verified`, row2. Next inspect original:
+must be WerderBremen/Germany/age20 and exact native skills; then fresh startup
+with fixed classifier, genuine original-image/native/kit/digit proofs,
+guarded promotion, ONE all26 regression and v130. No other build/capture.
+8GiB reserve respected, free~9GiB; shared initialized prefix reused.
+
+## Narrowed Bremen source correction — 2026-10-22 22:21 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. Supersedes the
+Lorenzen/Rehfeldt historical classification immediately below: DFB Bundesliga
+`ab` dates are NOT by themselves club-arrival dates. Official Werder U23 summer
+list search result includes Lorenzen; raw official page currently429, so this
+is a reason to reject unsupported retirement, not an invented capture.
+Stopped controller72606 with SIGINT BEFORE registration; r174a unregistered
+partial workspace retained, neither output preferred. No actual current-game
+mutation. `delivery/stopped-v2-DFB-scope-review.json` records rejection.
+
+Retain Lorenzen and Rehfeldt; don't count either as confirmed wrong ownership
+from those dates. APPROVED v4 request has ONLY Garcia16454 -> Yildirim83256,
+plus original complete XI startup ordering. Independent retained Sky report
+dated1September2013 confirms Garcia signing, alongside exact DFB person row.
+No Fullkrug replacement. Controller93462 now building newr175a/b in
+`delivery-r175/`, not preferred or runtime-verified. Exact next action: finish
+actual/SOURCE, original local startup/Yildirim profile, native readback and
+retained actor order-only checks, then guarded promotion/all26 regression.
+Do not resume the rejected two-person request or rebuild unaffected seasons.
+
+## Bremen coupled correction in progress; images deferred — 2026-10-22 22:19 UTC
+
+Vostro `joe-Vostro-3350`; source session
+`01a0592d-fcd5-7262-a637-743a8253d9b4`. User explicitly defers photo enrichment.
+Tracked `data/portrait-coverage-deferred-v129.json`: physical coverage
+11,726/301,315 player-season entries (3.9%); availability is NOT verified
+identity/era. No new image sourcing. Wrong displaced images still cleared.
+
+Confirmed Werder2013 Garcia16454 (DFB1September) and Lorenzen28184
+(DFB1October) absent from August ownership; original10August bench positively
+names Yildirim83256 and Fullkrug75489. Native orders9/8 require a complete
+source-bound mode1 XI correction, not a reserve-only guard bypass. Reusing
+canonical `patch_owned_mode1_complete_orders`; native retained facts, skills,
+opaque tactics and all EQ links unchanged. Source request v2 under
+`.local/consolidated-audit-20261009/Werder2013-opening-review-v1/`.
+Full Yildirim name exceeded the original slot by1byte: first attempt refused
+BEFORE registration; receipt `delivery/stopped-v1-capacity-proof.json`.
+Existing exact published entire-family display policy used, full source name
+retained. Narrow source-reader fixes accept DFB same-origin profile-wrapped
+names and ignore a separately marked profile shirt number for family headings;
+no loose name matching. 174 focused/adversarial/native tests PASS.
+
+Controller72606 building actualr174a/SOURCEr174b SERIAL; not yet preferred,
+installed or runner-verified. Do not rebuild or start competing captures.
+Current preferred/checklist v129 remains authoritative. Frozen61/2809 disposed,
+2748 unclosed candidates unchanged. Next finish build/replay, inspect native
+XI, reuse initialized local runner prefix for startup and two exact profiles,
+review originals and native/kit/digit proofs before guarded promotion and ONE
+all26 regression. Rehfeldt2013 tail ownership remains a separate confirmed
+finding needing source-positive replacement; no full22 historical clearance.
+
+Cleared only inactive regenerable Go cache after process checks; recovered
+3,143,409,664 bytes. Receipts `.local/cleanup-20261022/inactive-go-compiler-cache/`;
+PI ledger updated. About9.4GiB free before build; 8GiB reserve retained.
+Original2015 and unrelated dirty upstream/viewer work untouched.
+
 ## v129 delivered and locally verified — 2026-10-22 05:50 UTC
 
 Machine `joe-Vostro-3350`; source session
