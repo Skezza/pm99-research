@@ -1,5 +1,102 @@
 # PM99: current work
 
+## v131 DELIVERED: Celtic source XI and August roster — 2026-10-23 00:04 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. Preferred2000 now
+`sourced-celtic-august-roster-20261023-r177a`; original30July XI restored by
+order-only r176a, then Canero/Douglas replaced by source-positive August
+Mjallby/Moravcik, with exact entire published native surnames and full source
+names retained. No Kerr move. All21 retained Celtic actors exact stage2;
+EQ23 rows/flags/ownership, ratings/tactics/managers/kits unrelated data retained.
+Both complete SOURCEr176b/r177b recipes and game inventories IDENTICAL.
+Genuine local two corrected profiles + Stoke1Aug2000 startup visually reviewed;
+independent ages/ten skill digits/native inputs/kit pixels and country/broad/fine
+readbacks PASS. First full-token Moravcik OCR failure retained/rejected;
+successful suffix-token capture independently inspected, not an override.
+Guarded chain promotion + runtime attestation PASS. ONE all26 regression PASS,
+other25 exact/original2015 preserved, zero unaffected regeneration.
+Checklist `.local/consolidated-audit-20261009/release-delivery-checklist-v131.json`;
+evidence `parallel-rc-20261023/celtic/delivery-roster-r177/` under same audit root.
+Frozen61/2809 dispositions and2748 review candidates unchanged: these two
+corrections close an additional grouped followup, NOT invented frozen closures.
+Still26 playable, NOT globally historically certified RCs.
+
+Next delivery batch: existing source-backed goalkeeper-role planner checked
+all26 current releases, nine proposals in three seasons (2000:7,2001:1,2003:1),
+other23 zero, no owner/native conflicts. Lead original-base readback proves
+Celtic keepers inherited original outfield carrier roles: Brattbakk/Riseth/
+Hannah became Gould/Kerr/Kharine without replacing fine codes. Existing
+literal-target-G→role0 writer is correct; no new byte writer needed.
+Luna QA found exact source-bound replay missing for this role-only policy;
+lead next implements/tests narrow explicit-parent SOURCE dispatch, then actual
+three-season corrections/native/replay/targeted runtime. Do not broadly recompile
+or touch unaffected23. Planning evidence `celtic/keeper-role-preferred-all26-research-v1.json`.
+
+Luna source work continues independently: Hayes source18 selection can replace
+promoted duplicate-club shadow only after coherent source/native integration;
+user capacity-fitting rule permits omission of unresolved unused Adams, not
+unbounded19>18 deadlock. Seven DOBs/one role need declared treatment, manager
+TerryBrown original dated tenure captured. Chester already3318; cannot duplicate
+it at3310. Reading/Plymouth Evers first/opening and CuretonAugust scope held
+for precise evidence, not automatic late-August removal. All rejected worker
+findings preserved; use numeric club IDs, not equal display names.
+Disk~8.3GiB; guard8GiB. Current r177 runtime copy is disposable AFTER captures;
+initialized shared prefix must remain. No Pi transfer or source deletion.
+
+## Celtic built / runtime active, Luna findings challenged — 2026-10-22 23:49 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Both private stages BUILT with complete SOURCE game/recipe replay identical:
+r176a/b order-only original firstXI; r177a/b source-positive Mjallby19260 and
+Moravcik19262 replace wrong Celtic August Canero/Douglas. No Kerr move;
+21 retained native actors byte-exact stage2, EQ23 rows/flags/owners unchanged.
+Controllers31410/51461 TERMINAL0; do not regenerate. Current preferred still
+r173a and checklist v130: no new published delivery or frozen closure claimed.
+Source-bound order-only extension committed/pushed rootc3d6b84;127 root tests,
+15 upstream native tests, independent Luna36 PASS. Unrelated dirty upstream
+deletions and untracked viewer remain untouched.
+
+Controller87051 serial LOCAL runner profiles Moravcik/Mjallby then Stoke
+startup against sealed r177a, reused initialized prefix. First Moravcik frame
+visually correct Celtic/Slovakia/35/M/CENTRAL MID; full token OCR read
+Mioravcik, so capture REJECTED (not success). Original retained and suffix-token
+rerun active; full-frame independent review still required. Evidence
+`parallel-rc-20261023/celtic/delivery-roster-r177/` under audit root. Native
+source/window preflight failuresv1/v2 retained; v3 no-move transaction passed.
+No pipeline role-materialization patch was made. Kerr22027 broadG/fine roles
+[7,15,6] anomaly is a new review candidate, not silently copied or repaired.
+
+Continuous Luna assignments, lead original-source QA:
+
+- Celtic: first-batch static/native/source review passed with concrete limits;
+  full no-move r177a21-actor preservation proof retained. Captured Aug24 cup
+  original/profile positives Healy/Lynch starters, Miller used sub; do not treat
+  starters as bench or used subs as full bench. Thompson/Blinker still open,
+  Blinker retirement has native-preserve DOB binding issue. Lennon already
+  Burchill; stale followup proposed reconciliation is NOT a new repair/count.
+- Reconcile: lead REJECTED seven same-club/no-fault findings in v2. Numeric
+  native proof shows TWO Kidderminster club records3310(mode1) and374(mode0),
+  not one. Promoted English club duplicated by stale non-league world source;
+  seven frozen cases remain OPEN. v3 preserves correction; worker researches
+  coherent historical Chester shadow-slot/source policy, not emptying a club.
+  FTC current XI has no keeper: source package11 starters retained, no unsafe
+  Hajnal-to-GK swap approved. Lead corrected same-publisher/first-career-match
+  overclaims in packagev1; use v2 corrections, not unqualified assertions.
+- Horne: independently tested Plymouth bench/source links; v1 two-byte-swap
+  claim rejected, actual source5 includes absent MartinPhillips, so no false
+  complete bench clearance. Positive Soccerbase/Sky historical sources exist;
+  strict TM-only new-person API is a tooling limitation, not absent history.
+  Evers needs Reading/first-opening ownership treatment; MarchPlymouth is not
+  permission to keep wrong August owner. Cureton21August candidate on HOLD:
+  first-match date vs agreed broader August roster scope must not be conflated.
+  Worker continues bounded positive late-arrival evidence, not absence guesses.
+
+Next lead: inspect successful original r177 profiles, independent age/skills/
+native-input/kit-pixel proofs and Stoke startup; guard-promote r176+r177 chain,
+attest final game, one all26 regression, precise grouped-followup updates and
+v131. Frozen cross-club61/2809 and2748 unclosed candidates unchanged so far.
+Free~8.3GiB after disposable runner copy;8GiB guard unchanged. No Pi transfer.
+
 ## Active Celtic integration / worker QA — 2026-10-22 23:28 UTC
 
 Machine `joe-Vostro-3350`; source session

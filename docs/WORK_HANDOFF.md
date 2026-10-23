@@ -1,5 +1,29 @@
 # PM99 worker handoff
 
+## v131 DELIVERED / keeper batch next — 2026-10-23 00:04 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`;
+CURRENT_WORK top authoritative. Controllers31410/51461/87051/78402 TERMINAL0:
+Celtic r176a originalXI +r177a two Augustwrong-owner replacements now preferred,
+both complete SOURCEreplays identical. Mjallby/Moravcik actual original profiles
+and Stoke startup inspected; independent digits/ages/native inputs/countries/
+fine roles/kit pixels PASS; guarded promotion/attestation/all26 PASS. Other25
+bindings and original2015 untouched; no unaffected rebuild. Checklistv131,
+evidence `parallel-rc-20261023/celtic/delivery-roster-r177/` under audit root.
+Frozen61disposed/2748unclosed candidates unchanged; grouped extra followup
+closed, not full historical RC or full Celtic squad clearance.
+
+Luna workers repeatedly tasked and original-source QA corrected unsafe reports:
+no Kerr move, no direct Hajnal-to-GK swap, no equal-name-club dismissal,
+no first-match-versus-August conflation or invented facts for sparse profiles.
+All26 existing source-backed keeper planner yields9 rows, only3 affectedyears;
+next narrow explicit-parent SOURCE replay support then actual corrections.
+Existing goalkeeper byte writer/readback already present; do not invent another.
+No active runner/build. Rootc3d6b84 code/tests pushed; v131 documentation update
+pending commit. Unrelated upstream deletions and untracked viewer preserved.
+Free~8.3GiB, shared local prefix preserved; dispose only validated inactive
+runtime copies if next batch needs capacity. All source/release evidence retained.
+
 ## Active lead integration — 2026-10-22 23:32 UTC
 
 Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`;
