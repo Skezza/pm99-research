@@ -1,5 +1,35 @@
 # PM99 worker handoff
 
+## v132 DELIVERED / Luna followups active — 2026-10-23 00:49 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`;
+CURRENT_WORK top authoritative. Controller10516 TERMINAL0. Preferred2000
+r178a,2001r179a,2003r180a sourced-original-keeper-roles-20261023 children:
+nine keeper labels,17 native bytes, all unrelated data preserved. Complete
+SOURCE game/recipe identical in all3; genuine3profiles/3Stoke startups reviewed,
+independent digits/ages/native inputs/kit pixels PASS, guarded promotion and
+runtime attestation PASS. One all26 regression PASS; other23 exact and original
+2015 backup verified. Checklistv132/evidence keeper-role-delivery-v1 under
+parallel-rc-20261023 audit. Frozen61disposed/2748review candidates unchanged;
+these are additional role repairs, not full historical RC or nationality proof.
+
+All3 Luna workers continuously reassigned and challenged: Horne actual country
+code/tests (design note insufficient); reconcile Hayes original3307 actual
+source-to-native input (full club join, factory art/ChurchRoad/TerryBrown);
+Celtic retained positive Pandiani replacement. Lead rejected equal-name native
+club mergers,7 invalid evidence paths, blanket inherited fine roles and wrong
+SB Flynn birthday. Correct source paths/raw evidence retained, no findings
+closed merely on worker agreement. Country13-row potential scope includes
+Kharine alias holds; Fiedler2007/2008 already correct. Do not revert new roles
+when rebasing country edits. No new native-format retirement research.
+
+No active build/capture. Source support fc2e876 and prior handoff14f6862 pushed;
+new preferred catalogue/docs pending commit. Free9.1GiB after verified inactive
+runtime-copy cleanup; all actual games/sources/screenshots/shared prefix kept.
+No Pi transfer; unrelated dirty upstream deletions/untracked viewer untouched.
+Next review/test/integrate actual worker deliverables; deliver bounded approved
+corrections, not another research-only checkpoint or unaffected regeneration.
+
 ## v131 DELIVERED / keeper batch next — 2026-10-23 00:04 UTC
 
 Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`;

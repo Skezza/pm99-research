@@ -1,5 +1,61 @@
 # PM99: current work
 
+## v132 DELIVERED: nine keeper labels / three seasons — 2026-10-23 00:49 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. Controller10516
+TERMINAL0: preferred2000 r178a,2001 r179a,2003 r180a, IDs
+`sourced-original-keeper-roles-20261023-r178a` (respectively r179a/r180a).
+Nine sourced keeper fine-role labels corrected,17 actual native bytes changed;
+all other native bytes/recipe facts/abilities/ownership/managers/tactics/assets
+unchanged. Complete SOURCEr178b/r179b/r180b game/recipe IDENTICAL. Genuine
+local Gould/Fiedler/Fiedler originals and three same-release Stoke startups
+inspected; independent ten skill/age digits/native-input/kit-pixel proofs PASS.
+Explicit fine-role observations GOALKEEPER/KEEPER PASS. Gould overall59→62
+is derived from role change, NOT a ten-ability rewrite. Known wrong countries
+visibly remain and are not approved by this narrowly scoped role correction.
+Guarded three-season promotion + runtime attestations PASS; ONE all26
+regression PASS, other23 exact, original2015 inventory verified, zero unaffected
+regeneration. Still26 playable, NOT globally historically certified RCs.
+
+Checklist `.local/consolidated-audit-20261009/release-delivery-checklist-v132.json`;
+evidence `parallel-rc-20261023/keeper-role-delivery-v1/` under same audit root,
+especially `final-delivery-summary-v132.json` and all26 regression. Frozen
+61/2809 dispositions /2748 unclosed REVIEW CANDIDATES unchanged; role repairs
+close additional confirmed keeper followup, not invented cross-club closures.
+Source code/support fc2e876 already pushed; preceding handoff14f6862 pushed.
+Current three-season catalogue and this documentation await final commit.
+
+All three Luna workers reassigned after lead QA, not left waiting:
+
+- Horne: actual isolated known-wrong nationality implementation/tests, not
+  another design-only note. All26 exact-person scope found13 potential wrong
+  rows (Gould4,Kharine2,Fiedler7); Germany2007/08+2008/09 already correct.
+  Native ownership exclusive for13; Kharin/Kharine alias remains unresolved.
+  SB-only XXX route and forced Euro2000 route rejected. Country-only changes
+  must not certify historical club ownership or revert current keeper roles.
+- Reconcile: actual Hayes input preflight on ORIGINAL3307, not assumed3310.
+  Full numeric543-club join finds21/22 Conference identities; ONLY Hayes absent.
+  Original3307 has Hayes/ChurchRoad, manager804TerryBrown and all3 seed kit
+  entries; source-dated Brown matches. Current3307 saysCheltenham but retains
+  that ground/manager; mode0Cheltenham361 exists. Restore coherent3307 first;
+  duplicateKidder3310/374 stays separate unresolved. No new retirement-format
+  investigation. Proposed schema/provider tests8PASS in isolation, not applied.
+- Celtic: actual retained Pandiani replacement evidence/input (Riera only if
+  not already represented). Lead caught7 invalid report paths; hashes match
+  genuine rawHTML elsewhere, but v1 report is unapproved and corrected report
+  required. No Kidder opening-lineup witness exists in retained2005 lineup file.
+
+Lead QA also caught wrong Hayes draft Flynn DOB1962: original11v11 and Barnet
+archive support1973. Do not compile wrong original SB date or invent unknown
+facts. Known source gaps remain explicit. No photo expansion; user defers it.
+Controller23552 TERMINAL0; no runner/build active. Completed three disposable
+runtime copies removed after exact sealed input checks; originals/screenshots/
+shared prefix preserved. Cleanup receipts `verified-inactive-keeper-*` under
+`.local/cleanup-20261023/`; free~9.1GiB, reserve8GiB. No Pi transfer.
+Next lead: review actual worker code/tests and original evidence; integrate
+narrow country corrections or source-ready ownership transaction, then native/
+SOURCE/targeted runtime delivery. Do not rerun v132 or rebuild unaffected games.
+
 ## Keeper batch BUILT / serial local runtime active — 2026-10-23 00:31 UTC
 
 Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. Delivered baseline
