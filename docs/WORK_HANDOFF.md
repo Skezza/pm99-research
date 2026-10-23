@@ -1,5 +1,27 @@
 # PM99 worker handoff
 
+## Six updated defaults installed; final runtime in progress — 2026-10-23 20:26 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. CURRENT_WORK top and
+actual catalog/terminal receipts govern. Controller77930 TERMINAL0: 2004r193
+and 2005r194 now preferred and runtime-attested, alongside previously promoted
+2000r188/2001r182/2002r183/2003r184. No unaffected release rebuilt.
+2006r195 Kevin original shows Hertha Berlin, age23, DENMARK, GOALKEEPER/KEEPER;
+controller92664 verifies original digits/native inputs/kit. Controller56085 is
+the sole active runner, same-release 2006 Stoke startup. All private children
+and complete SOURCE replays already built; source proofs under
+`.local/consolidated-audit-20261009/parallel-rc-20261023/`.
+
+Flynn r196a/b DOB correction built/SOURCE identical, not installed. Hayes
+order adapter integrated with exact proposal-kind dispatch; worker canonical
+tests and old Holt canary pending. Amavisca adapter being rebased to actual
+r194, not yet integrated or delivered. Do not conflate prototypes with fixes.
+Final v133 checklist and consolidated all26 regression still outstanding.
+Frozen61/2809 dispositions and2748 review candidates preserved, not2748 bugs.
+Original2015 and deferred portraits remain untouched. Next finish 2006 runtime,
+deliver Hayes order/Flynn final runtime, consolidate evidence, then continue
+positive ownership corrections. No permission/proceed prompt needed.
+
 ## Resumed finite delivery batch — 2026-10-23 19:26 UTC
 
 Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`; CURRENT_WORK top

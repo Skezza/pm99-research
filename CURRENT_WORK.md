@@ -1,5 +1,95 @@
 # PM99: current work
 
+## Final private releases checked / ownership integration continuing — 2026-10-23 20:24 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. Resume from v133 partial
+publication below; no completed build was rerun. All three Kevin country children
+r193/r194/r195 and their complete SOURCE replays are built and identical.
+Flynn DOB-only r196a/b also built/SOURCE identical: 1962-11-07 → 1973-09-04,
+three actual native bytes; every unrelated field preserved. Still private.
+
+ROOT inspected the actual final 2004r193 and 2005r194 Stoke startup originals;
+visual receipts saved in `parallel-rc-20261023/kevin-country-delivery-v1/<season>`
+under `.local/consolidated-audit-20261009/`. 2004 Tremmel original profile also
+reviewed, independent digits/native inputs/kit PASS. Its startup host exited143
+but actual native container completed0; recovery proof retained, no rerun and
+no proven cause. 2005 startup host/native completed0. Controller77930 currently
+checking/promoting exact chains; consult catalog and terminal receipts before
+describing them as installed. First attempt used abbreviated release names and
+failed before publication; retry uses actual registered identifiers.
+
+Only active runner: controller97958, 2006r195 Kevin profile, tag
+`local_hertha_2006_07_r195a_20261023_kevin_verified`. Shared prefix preserved.
+2005 disposable runtime game retired only after inventory and no-active-mount
+checks: `.local/cleanup-20261023/verified-inactive-final-country-2005-r194-runtime/`.
+Actual games, sources, screenshots and recovery information retained.
+
+Three Luna workers supervised and reassigned: Hayes worker rebases order-only
+request to corrected Flynn r196 and tests canonical adapter; release worker
+rebases Amavisca unlink/order proposal to actual r194 preserving Danish Kevin;
+disk worker checks legacy Holt exchange compatibility before/after the new
+strict dispatch. Canonical Hayes adapter plus three-line proposal-kind dispatch
+integrated; actual Hayes order build is NOT yet delivered. Old request canary
+passed before dispatch; after-dispatch canary active. No direct exchange file
+hash/path pin found in current26 top-level release artifacts. Frozen61 disposed /
+2748 unclosed review candidates unchanged; photos deferred, original2015 kept.
+
+Next: finish 2006 profile/startup and remaining guarded publication, integrate
+tested Hayes order into actual child + SOURCE, then one consolidated all26
+regression. Continue Amavisca/Riera/Croft/deLaRed ownership fixes afterward;
+worker prototypes are not actual-game corrections. Do not claim global RC done.
+
+## v133 partial publication / final three seasons validating — 2026-10-23 19:58 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. Source38057f4 pushed.
+Actual preferred/default games NOW advanced and runtime-attested for2000r188a
+(r178→r181country→r188Hayes),2001r182a,2002r183a,2003r184a. Controller34519
+TERMINAL0; source/native/wholeSOURCE/originalUI proofs saved as
+`promotion-v133-partial.json` / `final-attestation-v133-partial.json` under
+`hayes-label-delivery-v2` or `keeper-country-delivery-v1/<season>` in
+`.local/consolidated-audit-20261009/parallel-rc-20261023/`.
+Previous v132 checksum/binding list is historical, NOT current preferred truth.
+Do not claim a final all26 regression or globalRC yet; remaining3 are still old
+defaults while private chains finish. Frozen61disposed/2748review unchanged.
+
+Four keeper-role repairs actually BUILT+wholeSOURCE exact r191a/b(2004),
+r192a/b(2006), six native bytes total, all countries/otherdata preserved.
+Official exactDFB/DBU identity evidence independently found KevinStuhr-Ellegaard
+country wrong in THREE seasons:2004carrier9184ENGLAND,2005carrier28340ICELAND,
+2006carrier18955GERMANY→DEN. Six other exact-fullname/native-DOB matches already
+Danish, excluded. Production GermanDFBparser +explicitreceiptbinding tested
+21PASS (incl3actualwriterpairs and all13legacyplansfreshverify). Additional
+source-backed country count13→16 disclosed; do not hide these3 additions or
+count them as original frozen duplicate closures. Controller60046 ACTIVE
+three serial private country builds/SOURCE r193(2004),r194(2005),r195(2006);
+FIRSTr193a/b complete. Exactparents r191/r186/r192 preserve all earlier fixes.
+
+Hayes/Gothard original49profile visually saysHayes; independent10digits/native
+inputs/kitpixels PASS. Declared preserved-DOBdict required explicit validation
+option using nativeDOB1974-07-12/age26, NOT historicalbirthday approval. Default
+remainsstrict; truthynon-bool opt-in bug foundbyLuna andfixed literalTrue;
+17portableage/digit testsPASS. No birthday fact invented. Profileblockedfirst
+by oldcompleted2006container lease; ownedexited0 cleanup throughcanonicalrunner
+freedlane, failedprelaunch evidence kept. Retriedonlynever-startedHayesprofile,
+not any completedcapture. Actual r188startup inspected/attested; disposablecopy
+retired receipt `.local/cleanup-20261023/verified-inactive-hayes-r188-runtime/`.
+Controller40811 ACTIVE onlyrunner: final2004r193Tremmelprofile; all newcaptures
+serial with sharedprefix preserved. Free~8.6GiB, reserve8; noPi needed.
+
+Luna workers continuously reassigned: `hayes_resume_adversarial` canonical-ready
+Flynn commonDOB-only bundle QA2PASS, now completeHayes18orders API/source/post-
+image tests; `release_batch_resume_qa` exactr186Espanyol19unlink/22order adapter
+QA2PASS, canonicalpublication/SOURCE stillnotdelivered; `disk_resume_candidates`
+officialKevinparser/nativecrosswalk13PASS plusproduction/ageQA. Isolated
+adapters/new_personRiera-Croft-deLaRed source shapes are NOT actualgame fixes.
+Asaba2003/Eustace2005 observation reinspection AGREES with native/source:FOR/MID,
+no bug or newcase. Other session/upstream work preserved.
+
+Next: finish final3country SOURCE andsame-release profiles/startups, guarded
+remaining3preferred chains, ONEall26 finalregression/checklist retaining original
+2015. Then integrate actualFlynnDOB/HayesXI/Espanyolownership source-ready work,
+not another research-only handoff. No request for user to sayproceed is needed.
+
 ## Resume: private fixes ready; disk reserve blocks new captures — 2026-10-23 19:20 UTC
 
 Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. Preferred baseline

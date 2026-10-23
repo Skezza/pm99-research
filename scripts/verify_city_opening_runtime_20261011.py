@@ -13,7 +13,7 @@ def same_native_display_name(observed,expected):
     return isinstance(observed,str) and isinstance(expected,str) and observed.casefold()==expected.casefold()
 
 
-def verify_profiles(root=ROOT,season=SEASON,release_id=RELEASE,profiles=PROFILES):
+def verify_profiles(root=ROOT,season=SEASON,release_id=RELEASE,profiles=PROFILES,*,allow_preserved_native_birthdate=False):
     release=registry.load_registered_release(season,release_id)
     from scripts.season_duplicate_ownership_plan_v1 import package_layers
     players={};player_clubs={}
@@ -41,6 +41,9 @@ def verify_profiles(root=ROOT,season=SEASON,release_id=RELEASE,profiles=PROFILES
         profile=summary['player_profile'];player=players[carrier];club=player_clubs[carrier]
         visual_path=root/(label+'-profile-visual-review.json');visual=pipeline.read_json_file(visual_path)
         check_visual(visual)
+        from scripts.verify_profile_skill_digits_v1 import expected_profile_age
+        age_basis=expected_profile_age(release,player,
+            allow_preserved_native_birthdate=allow_preserved_native_birthdate)
         screenshot=evidence/'screens'/Path(profile['screenshot']).name
         if (transport['exit_code']!=0 or transport['release_manifest_sha256']!=release.manifest_sha256
                 or summary.get('success') is not True or summary.get('wine_debugger_detected')
@@ -51,7 +54,7 @@ def verify_profiles(root=ROOT,season=SEASON,release_id=RELEASE,profiles=PROFILES
                 or visual['observed_skills']!=player['ratings']['values']
                 or not visual.get('all_ten_visible_skills_inspected')
                 or visual['observed_age']!=visual['expected_age']
-                or visual['expected_age']!=int(season[:4])-int(player['facts']['birth_date'][:4])):
+                or visual['expected_age']!=age_basis['expected_age']):
             raise ValueError('actual player/club/ten skills/year-based native age visual proof differs')
         if transport.get('recovered_remote_native_child'):
             from scripts.recover_completed_profile_transport_v1 import verify_mirrored_native_child
@@ -75,6 +78,8 @@ def verify_profiles(root=ROOT,season=SEASON,release_id=RELEASE,profiles=PROFILES
             summary_sha256=registry.sha256_file(summaries[0]),native_inputs_hash_verified=True,
             ten_visible_skills_verified=True,kit_pixels=pixels,palette_source=palette_source,
             name_method=profile_name_method(player['name'],profile['player_name_ocr_normalized'],visual))
+        if age_basis['basis'] != 'recipe-birthday':
+            result['age_comparison_basis']=age_basis
         if output.exists():
             if pipeline.read_json_file(output)!=result:
                 raise ValueError('cached runtime proof differs from freshly verified original inputs/pixels')

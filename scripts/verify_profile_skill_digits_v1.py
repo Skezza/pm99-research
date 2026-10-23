@@ -7,7 +7,30 @@ from scripts import read_profile_age_digits_v1 as age_digits
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
 
 
-def verify_profiles(root,season,release_id,profiles):
+def expected_profile_age(release, player, *, allow_preserved_native_birthdate=False):
+    """Use a sourced DOB, or an explicitly permitted native-preserve preimage.
+
+    The latter checks runtime rendering only, not historical birthday accuracy.
+    Never treat an arbitrary malformed/missing recipe value as that permission.
+    """
+    from datetime import date
+    birthday = player['facts'].get('birth_date')
+    if isinstance(birthday, str):
+        parsed = date.fromisoformat(birthday)
+        return dict(expected_age=int(release.season[:4])-parsed.year,
+                    basis='recipe-birthday')
+    if (allow_preserved_native_birthdate is not True
+            or birthday != {'policy': 'preserve-existing-mode1'}):
+        raise ValueError('profile needs a recipe DOB or explicit native-preserve age validation')
+    from scripts.season_within_club_reserve_repair_v1 import native_facts
+    raw = (release.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    observed = native_facts(raw, player['carrier_id'])['birth_date']
+    return dict(expected_age=int(release.season[:4])-date.fromisoformat(observed).year,
+                basis='declared-preserved-native-birthday-not-independent-historical-proof',
+                native_birth_date=observed, historical_birthday_certified=False)
+
+
+def verify_profiles(root,season,release_id,profiles,*,allow_preserved_native_birthdate=False):
     release=registry.load_registered_release(season,release_id)
     players={p['carrier_id']:p for _,pkg,_ in layers.package_layers(release) for p in pkg['players']}
     for carrier,label,_,_ in profiles:
@@ -27,8 +50,12 @@ def verify_profiles(root,season,release_id,profiles):
             raise ValueError('actual bitmap-font skill digits differ from visual review or native recipe: '+label)
         retained(root/(label+'-original-digit-proof.json'),result)
         age=age_digits.read(screenshot)
+        age_basis=expected_profile_age(release,players[carrier],
+            allow_preserved_native_birthdate=allow_preserved_native_birthdate)
         if (age['observed_age']!=visual['observed_age']
-                or age['observed_age']!=int(season[:4])-int(players[carrier]['facts']['birth_date'][:4])):
+                or age['observed_age']!=age_basis['expected_age']):
             raise ValueError('actual bitmap-font age differs from visual review or native year: '+label)
+        if age_basis['basis'] != 'recipe-birthday':
+            age['age_comparison_basis']=age_basis
         retained(root/(label+'-original-age-proof.json'),age)
     print(dict(original_digit_profiles_verified=len(profiles),season=season,recipe_used_to_decode=False),flush=True)

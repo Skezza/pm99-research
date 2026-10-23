@@ -27,7 +27,8 @@ ADJUDICATED_KIND='adjudicated-source-player-facts'
 DATED_ROLE_KIND='dated-roster-compatible-profile-roles'
 PRIMARY_ROLE_KIND='compatible-biography-conflicting-role-set-repair'
 NATIONAL_TEAM_KIND='dated-national-squad-single-game-country'
-MULTI_FIELD_KINDS=(ADJUDICATED_KIND,DATED_ROLE_KIND,PRIMARY_ROLE_KIND,NATIONAL_TEAM_KIND)
+DOB_DISAGREEMENT_KIND='source-backed-known-dob-disagreement'
+MULTI_FIELD_KINDS=(ADJUDICATED_KIND,DATED_ROLE_KIND,PRIMARY_ROLE_KIND,NATIONAL_TEAM_KIND,DOB_DISAGREEMENT_KIND)
 HEIGHT_SCOPE='Only selected adult published-height recipe fields and one height byte per changed native player; names, DOBs, countries, roles, ratings, orders, clubs, managers, photos, kits, EXE and opaque bytes unchanged. Published adult biography height is not a dated target-season measurement claim.'
 SCOPE='Only selected explicit missing nationality recipe fields and one country byte per selected native player; all names, DOBs, roles, ratings, orders, ownership, tactics, managers, photos, kits, EXE and opaque data unchanged.'
 digest=native.digest
@@ -63,6 +64,9 @@ def prepare(base,input_path):
     if request.get('kind') == KNOWN_WRONG_KIND:
         from scripts import season_known_wrong_profile_nationality_v1 as known_wrong
         return known_wrong.prepare(base, path, request)
+    if request.get('kind') == DOB_DISAGREEMENT_KIND:
+        from scripts import season_soccerbase_birthday_disagreement_v1 as dob_disagreement
+        return dob_disagreement.prepare(base, path)
     if (request.get('schema')!=INPUT_SCHEMA or request.get('season')!=base.season
             or request.get('release_id')!=base.release_id or request.get('kind')!=KIND
             or not request.get('changes')):
@@ -188,6 +192,9 @@ def validate_mask(plan):
     if plan.get('kind') == KNOWN_WRONG_KIND:
         from scripts import season_known_wrong_profile_nationality_v1 as known_wrong
         return known_wrong.validate_plan(plan)
+    if plan.get('kind') == DOB_DISAGREEMENT_KIND:
+        from scripts import season_soccerbase_birthday_disagreement_v1 as dob_disagreement
+        return dob_disagreement.validate_mask(plan)
     rows=plan.get('updates',[])
     height = plan.get('kind') == HEIGHT_KIND
     field = 'height_cm' if height else 'nationality'

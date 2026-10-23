@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -33,6 +34,9 @@ WIKIDATA_URL = "https://www.wikidata.org/wiki/Special:EntityData/Q552710.json"
 WIKIDATA_LABEL = "Dmitri Kharine"
 WIKIDATA_ALIAS = "Dmitri Kharin"
 SOCCERBASE_KHARIN_ID = 4177
+KEVIN_DFB_URL = "https://datencenter.dfb.de/datencenter/personen/kevin-stuhr-ellegaard/spieler"
+KEVIN_DFB_NAME = "Kevin Stuhr-Ellegaard"
+KEVIN_DFB_DOB = "1983-05-23"
 
 
 def sha256(raw: bytes) -> str:
@@ -85,6 +89,9 @@ def parse_profile_country(raw: bytes, source: dict, *, actor_name: str,
                           birth_date: str) -> dict:
     """Dispatch to exact Soccerbase parser or the one admitted DFB parser."""
     provider = source.get("provider")
+    if provider == "dfb-kevin-stuhr-ellegaard-canonical":
+        return parse_dfb_kevin(raw, url=source["url"], name=actor_name,
+                               birth_date=birth_date)
     if provider == "soccerbase":
         bridge_ref = source.get("identity_bridge")
         if bridge_ref is not None:
@@ -104,6 +111,39 @@ def parse_profile_country(raw: bytes, source: dict, *, actor_name: str,
         return parse_dfb_fiedler(raw, url=source["url"], name=actor_name,
                                  birth_date=birth_date)
     raise ValueError("unsupported known-wrong nationality source provider")
+
+
+def parse_dfb_kevin(raw: bytes, *, url: str, name: str, birth_date: str) -> dict:
+    """Read one exact German DFB identity/Nation claim, not birthplace or club."""
+    if (url != KEVIN_DFB_URL or name != KEVIN_DFB_NAME or birth_date != KEVIN_DFB_DOB):
+        raise ValueError("DFB Kevin profile requires the exact canonical URL/full name/DOB")
+    page = BeautifulSoup(raw, "lxml")
+    if [link.get("href") for link in page.select("link[rel~=canonical]")] != [KEVIN_DFB_URL]:
+        raise ValueError("DFB Kevin body must publish exactly one matching canonical URL")
+    values = tuple(_one_table_value(raw, label) for label in ("Name", "Geburtstag", "Nation"))
+    if values != (KEVIN_DFB_NAME, "23.05.1983", "Dänemark"):
+        raise ValueError("DFB Kevin literal name, Geburtstag or Nation differs")
+    return dict(name=values[0], birth_date=birth_date, published_country=values[2],
+        nationality="DEN", provider="dfb-canonical-kevin-stuhr-ellegaard-v1",
+        url=url, target_season_ownership_claimed=False)
+
+
+def profile_receipt(body_path: Path, source: dict) -> tuple[Path, dict]:
+    """Permit a hash-bound explicit capture receipt; preserve legacy lookup."""
+    relative, expected = source.get("receipt_path"), source.get("receipt_sha256")
+    if (relative is None) != (expected is None):
+        raise ValueError("receipt_path and receipt_sha256 must be supplied together")
+    from scripts.season_source_verified_player_changes_v1 import original_path
+    if relative is None:
+        path = body_path.with_suffix(body_path.suffix + ".source.json")
+    else:
+        if (type(relative) is not str or not relative or type(expected) is not str
+                or re.fullmatch(r"[0-9a-f]{64}", expected) is None):
+            raise ValueError("typed receipt requires a relative path and lowercase SHA256")
+        path = original_path(relative)
+        if path.is_symlink() or registry.sha256_file(path) != expected:
+            raise ValueError("typed receipt file/hash differs")
+    return path, pipeline.read_json_file(path)
 
 
 def _unique_claim_value(entity: dict, property_id: str):
@@ -319,8 +359,7 @@ def prepare(base, input_path, request=None) -> dict:
         from scripts.season_source_verified_player_changes_v1 import original_path
         body_path = original_path(original["path"])
         body = body_path.read_bytes()
-        receipt_path = body_path.with_suffix(body_path.suffix + ".source.json")
-        receipt = pipeline.read_json_file(receipt_path)
+        receipt_path, receipt = profile_receipt(body_path, original)
         if (original.get("sha256") != sha256(body)
                 or receipt.get("url") != original.get("url")
                 or receipt.get("sha256") != original.get("sha256")):
