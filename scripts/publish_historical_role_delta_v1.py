@@ -37,6 +37,24 @@ from scripts.audit_2015_world_release_semantics_v1 import _manager_graph
 DATABASES = ('DBDAT/JUG98030.FDI', 'DBDAT/EQ98030.FDI', 'DBDAT/ENT98030.FDI')
 
 
+def _write_amavisca_source_artifact(workspace, assignment_plan):
+    """Write the exact recipe artifact encoding, including its final newline."""
+    from scripts import season_amavisca_retirement_xi_r194_v4 as amavisca_tx
+    source_artifact = assignment_plan['source_plan_artifact']
+    if (assignment_plan.get('schema') != amavisca_tx.SCHEMA
+            or source_artifact['filename'] != amavisca_tx.SOURCE_PLAN_FILENAME
+            or source_artifact['artifact_id'] != amavisca_tx.artifact_id(assignment_plan)
+            or hashlib.sha256(package_v2.canonical_json_bytes(source_artifact['document'])).hexdigest() != source_artifact['sha256']):
+        raise ValueError('Amavisca SOURCE artifact binding differs')
+    target = workspace / source_artifact['filename']
+    if target.exists():
+        raise ValueError('existing Amavisca SOURCE artifact must not be overwritten')
+    pipeline.write_canonical_json(target, source_artifact['document'])
+    if registry.sha256_file(target) != source_artifact['sha256']:
+        raise ValueError('Amavisca written SOURCE artifact hash differs')
+    return target
+
+
 def _verify_completed_delta_ancestry(season, current, release_id, release_ids):
     """An explicit chain must pass the existing three-hash guard on EVERY edge.
 
@@ -495,6 +513,9 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         from scripts import season_source_verified_player_changes_v1 as source_changes
         if assignment_plan.get('schema') == source_changes.SCHEMA:
             assignments = source_changes
+        from scripts import season_amavisca_retirement_xi_r194_v4 as amavisca_tx
+        if assignment_plan.get('schema') == amavisca_tx.SCHEMA:
+            assignments = amavisca_tx
         from scripts import season_verified_owned_roster_transaction_v1 as owned_roster
         if assignment_plan.get('schema') == owned_roster.SCHEMA:
             assignments = owned_roster
@@ -793,6 +814,8 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         pipeline.write_canonical_json(workspace / names.FILENAME, name_plan)
     if assignment_plan is not None and not prepared:
         pipeline.write_canonical_json(workspace / assignments.filename(assignment_plan), assignment_plan)
+        if assignment_plan.get('schema') == amavisca_tx.SCHEMA:
+            _write_amavisca_source_artifact(workspace, assignment_plan)
     saved_ownership_plan = None
     if ownership_plan is not None:
         saved_ownership_plan = workspace / ownership.plan_filename(ownership_plan)
@@ -928,6 +951,12 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
             removed_target_roster_links=[],fixed_duplicate_case_ids=[],
             players_written=len(assignment_plan['updates']),allowed_write=assignment_plan['scope'])
+    elif assignment_plan is not None and assignment_plan.get('schema') == amavisca_tx.SCHEMA:
+        receipt.update(compilation_mode=amavisca_tx.MODE,
+            original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
+            removed_target_roster_links=[dict(club_carrier_id=8, player_carrier_id=19)],
+            fixed_duplicate_case_ids=[], players_written=len(assignment_plan['order_replacements']),
+            allowed_write=assignment_plan['native_scope'])
     elif assignment_plan is not None and assignment_plan.get('schema') == opening_exchange.SCHEMA:
         receipt.update(compilation_mode=opening_exchange.MODE,
             original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
@@ -1044,6 +1073,8 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         artifacts.append(pipeline.external_artifact_descriptor(artifact_id='original-player-name-only-plan', path=workspace / names.FILENAME, role='input'))
     if assignment_plan is not None:
         artifacts.append(pipeline.external_artifact_descriptor(artifact_id='original-profile-assignment-pruning-plan', path=workspace / assignments.filename(assignment_plan), role='input'))
+        if assignment_plan.get('schema') == amavisca_tx.SCHEMA:
+            artifacts.append(pipeline.external_artifact_descriptor(artifact_id=amavisca_tx.artifact_id(assignment_plan), path=workspace / amavisca_tx.SOURCE_PLAN_FILENAME, role='input'))
     if saved_ownership_plan is not None:
         artifacts.append(pipeline.external_artifact_descriptor(artifact_id='duplicate-ownership-plan', path=saved_ownership_plan, role='input'))
     if keeper_plan is not None:

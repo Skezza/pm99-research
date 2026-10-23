@@ -19,12 +19,25 @@ RESERVE = 8 * 1024 ** 3
 INITIAL_BUDGET = 2 * 1024 ** 3
 
 
-def summary_matches(summary, release, *, profile=False):
+def summary_matches(summary, release, *, profile=False, selector=None):
     if summary.get('success') is not True:
         return False
     if profile:
         return summary.get('player_profile', {}).get('expected_name_token_satisfied') is True
     team = summary.get('route_summaries', {}).get('line_up', {}).get('team_identity', {})
+    if selector is not None:
+        coordinates = {key: selector[key] for key in (
+            'team_select_x', 'team_select_y', 'division_select_x', 'division_select_y')}
+        return (summary.get('release_manifest_sha256') == release.manifest_sha256
+                and summary.get('output_inventory_fingerprint') == release.locator['game_inventory_fingerprint']
+                and summary.get('phase_reached') == 'return_from_line_up'
+                and summary.get('mode') == 'generic-club-route-capture'
+                and summary.get('team_name') == selector['team_name']
+                and summary.get('team_selection') == coordinates
+                and team.get('expected') == selector['team_name']
+                and team.get('matched') is True
+                and bool(team.get('expected_normalized'))
+                and team.get('observed_normalized') == team.get('expected_normalized'))
     return (summary.get('release_manifest_sha256') == release.manifest_sha256
             and summary.get('output_inventory_fingerprint') == release.locator['game_inventory_fingerprint']
             and summary.get('phase_reached') == 'return_from_line_up'
@@ -32,11 +45,33 @@ def summary_matches(summary, release, *, profile=False):
             and 'stoke' in team.get('observed_normalized', '').split())
 
 
-def driver_args(release, *, carrier=None, label=None, token=None, search_result_row=1):
+def validate_selector(release, selector):
+    keys = {'club_carrier_id', 'team_name', 'team_select_x', 'team_select_y',
+            'division_select_x', 'division_select_y'}
+    if not isinstance(selector, dict) or set(selector) != keys:
+        raise ValueError('explicit club selector fields required')
+    if type(selector['club_carrier_id']) is not int or not isinstance(selector['team_name'], str):
+        raise ValueError('exact club selector identity required')
+    for key in keys - {'club_carrier_id', 'team_name'}:
+        maximum = 640 if key.endswith('_x') else 480
+        if type(selector[key]) is not int or not 0 <= selector[key] < maximum:
+            raise ValueError('club selector coordinate outside native screen')
+    from scripts.season_duplicate_ownership_plan_v1 import package_layers
+    clubs = [club for _, package, _ in package_layers(release) for club in package['clubs']
+             if club['carrier_id'] == selector['club_carrier_id']]
+    if len(clubs) != 1 or clubs[0]['name'] != selector['team_name']:
+        raise ValueError('club selector must match one exact registered recipe club')
+
+
+def driver_args(release, *, carrier=None, label=None, token=None, search_result_row=1, selector=None):
     if type(search_result_row) is not int or not 1 <= search_result_row <= 10:
         raise ValueError('explicit visible search result row must be 1..10')
+    if selector is not None:
+        if carrier is not None:
+            raise ValueError('club selector cannot be combined with a player profile')
+        validate_selector(release, selector)
     if carrier is None:
-        s = _selector(release.season)
+        s = _selector(release.season) if selector is None else selector
         args = ['python3', '/workspace/repo/scripts/pm99_runner/stoke_season_driver.py',
                 '--game-dir', '/workspace/game', '--artifacts-dir', '/workspace/artifacts',
                 '--release-manifest-sha256', release.manifest_sha256,
@@ -46,6 +81,8 @@ def driver_args(release, *, carrier=None, label=None, token=None, search_result_
         for flag, key in (('team-select-x', 'team_select_x'), ('team-select-y', 'team_select_y'),
                           ('division-select-x', 'division_select_x'), ('division-select-y', 'division_select_y')):
             args += ['--' + flag, str(s[key])]
+        if selector is not None:
+            args += ['--proof-mode', 'generic_club_route_capture']
         return args
     if not label or not re.fullmatch(r'[a-z][a-z0-9_]*', label) or not token:
         raise ValueError('explicit safe profile label and identity token required')
@@ -78,11 +115,11 @@ def driver_args(release, *, carrier=None, label=None, token=None, search_result_
     return args
 
 
-def capture(season, release_id, tag, *, carrier=None, label=None, token=None, search_result_row=1):
+def capture(season, release_id, tag, *, carrier=None, label=None, token=None, search_result_row=1, selector=None):
     if not re.fullmatch(r'[a-z][a-z0-9_]{0,95}', tag):
         raise ValueError('safe unique capture tag required')
     release = registry.load_registered_release(season, release_id)
-    driver = driver_args(release, carrier=carrier, label=label, token=token, search_result_row=search_result_row)
+    driver = driver_args(release, carrier=carrier, label=label, token=token, search_result_row=search_result_row, selector=selector)
     inventory = pipeline.read_json_file(release.inventory_path)
     pipeline.assert_tree_matches_inventory(release.game_path, inventory)
     workspace = registry.ROOT / '.local/local-runner-v1' / season / release_id
@@ -140,10 +177,11 @@ def capture(season, release_id, tag, *, carrier=None, label=None, token=None, se
     pipeline.assert_tree_matches_inventory(release.game_path, inventory)
     summary_path = evidence / 'summary.json'
     summary = pipeline.read_json_file(summary_path) if summary_path.exists() else {}
-    passed = completed.returncode == 0 and summary_matches(summary, release, profile=carrier is not None)
+    passed = completed.returncode == 0 and summary_matches(summary, release, profile=carrier is not None, selector=selector)
     retained(evidence / 'local-transport.json', dict(**marker, exit_code=completed.returncode,
         evidence=registry.relative_workspace_path(evidence), source_inventory_preserved=True,
-        summary_validation_passed=passed, visually_approved=False))
+        summary_validation_passed=passed, visually_approved=False,
+        **({'team_selector': selector} if selector is not None else {})))
     if not passed:
         raise ValueError('local runner failed; original evidence preserved at ' + str(evidence))
     return str(evidence)
@@ -158,6 +196,8 @@ if __name__ == '__main__':
     parser.add_argument('--label')
     parser.add_argument('--token')
     parser.add_argument('--search-result-row', type=int, default=1)
+    parser.add_argument('--selector-json', type=Path)
     args = parser.parse_args()
     print(capture(args.season, args.release_id, args.tag,
-                  carrier=args.carrier, label=args.label, token=args.token, search_result_row=args.search_result_row), flush=True)
+                  carrier=args.carrier, label=args.label, token=args.token, search_result_row=args.search_result_row,
+                  selector=pipeline.read_json_file(args.selector_json) if args.selector_json else None), flush=True)

@@ -1,5 +1,57 @@
 # PM99: current work
 
+## Hayes installed; Plymouth built/SOURCE exact; Espanyol building — 2026-10-23 21:01 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. HEAD744b915 pushed;
+new focused integration changes below still uncommitted. Preferred2000 now
+`sourced-hayes-opening-order-20261023-r197a`: Flynn DOB r196 +14 Hayes order
+bytes delivered, complete SOURCE exact, genuine Flynn original age27/Hayes
+reviewed, independent ten digits/native inputs/kit PASS, genuine Stoke startup
+reviewed, exact r188→r196→r197 promotion/runtime attestation PASS. Seven-season
+country batch installed as below; no other seasons regenerated.
+
+Plymouth partial selection r198a/b actually built and whole SOURCE identical:
+Adams selected instead of Evers, five native order bytes only, every player fact,
+ownership/EQ/tactic/asset and other club preserved. Six other selection
+discrepancies remain open; no complete-bench or position approval. Canonical
+exchange prepare/bind/apply tests5PASS101.21s. Adapter/tests promoted; source
+request pins r197, no parent hash hardcoded into implementation. Not preferred.
+Only active runner controller51461: Plymouth target line_up on r198, tag
+`local_plymouth_2000_01_r198a_20261023_lineup_verified`. Local capture helper
+now accepts optional exact registered club/coordinates via existing generic
+driver; legacy Stoke default preserved.40 relevant testsPASS1.38s. Correct
+Plymouth division is ThirdDivision(562,337), grid(209,360); rejected worker's
+wrong Stoke-panel(562,302) before launch. Shared Wine prefix preserved.
+
+Espanyol/Amavisca v4 adapter +publisher/SOURCE mode integrated; isolated
+canonical API tests2PASS199.34s; real artifact writer regression5PASS1.27s.
+Independent Luna caught newline hash bug before build; fixed and on-disk hash
+checked. Lead stopped initial own orchestration with exactPID SIGINT BEFORE
+native workspace/registration existed: trailing quality.build would select
+preferred parent. No completed build repeated. Receipt
+`espanyol-retirement-order-delivery-v4/prewrite-orchestration-correction.json`.
+Corrected controller43470 ACTIVE initial actualr199a build, then explicit
+tx.reconstruction(actual,r199b); no installed/default change. Madrid Amavisca
+and Riera/Croft/deLaRed followup still unresolved; do not claim full ownership fix.
+
+All evidence under `.local/consolidated-audit-20261009/parallel-rc-20261023/`.
+Lunas supervised: disk→canonical Evers QA/publisher adversary/target selector;
+Hayes→source-bound FTC21 provider admission (positive opening cohort+countries,
+newspaper scan/root review;20 inherited2015 slots, protectGera30027/Schalke14706);
+release→canonical-ready Riera/Croft/deLaRed bridge. Use pipeline VENV for ALL
+probes: system Python lacks existing jsonschema_rs accelerator. No extra code
+optimization required. Missing portraits remain deferred; selected new-identity
+carrier photos must be blanked by existing no-photo layer.
+
+Disk~8.6GiB; only verified inactive disposable r188/r193/r194/r195/r197 runtime
+copies retired, each ledger under `.local/cleanup-20261023/`. Releases, raw
+sources, all original screenshots, shared prefix and original2015 retained.
+Frozen61/2809 disposed /2748 REVIEW unchanged, not2748 confirmed bugs. No final
+v133/current26 regression yet. Next validate Plymouth actualscreen, same-release
+Stoke startup and promote r198, consolidate current26 proof/checklist; finish
+r199 and actual coupled ownership fixes, then FTC admission. Continue without
+requiring another proceed; never describe prototypes as delivered game fixes.
+
 ## Seven-season country batch installed; Hayes order built — 2026-10-23 20:36 UTC
 
 Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. Source4aa3941 pushed;

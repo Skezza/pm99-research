@@ -362,6 +362,10 @@ def build(season: str, *, release_id: str, resume: bool = False) -> dict[str, An
     # the latest typed receipt before asking inherited player reconstructors
     # to compare their older whole recipe (which correctly rejects later edits).
     from scripts import season_opening_identity_exchange_v1 as opening_exchange
+    from scripts import season_amavisca_retirement_xi_r194_v4 as amavisca_tx
+    reconstructed = amavisca_tx.reconstruction(previous, release_id)
+    if reconstructed is not None:
+        return reconstructed
     reconstructed = opening_exchange.reconstruction(previous, release_id)
     if reconstructed is not None:
         return reconstructed

@@ -404,6 +404,9 @@ def filename(plan):
 
 def prepare(base, input_path):
     request = pipeline.read_json_file(input_path)
+    if request.get('proposal_kind') == 'typed-soccerbase-mode0-partial-substitute-order-only-v1':
+        from scripts import season_soccerbase_mode0_partial_order_v1 as partial_order
+        return partial_order.prepare(base, input_path, request)
     if request.get('proposal_kind') == 'typed-soccerbase-mode1-opening-xi-order-only-v2':
         from scripts import season_soccerbase_mode1_order_only_v2 as hayes_xi_order
         return hayes_xi_order.prepare(base, input_path, request)
@@ -563,6 +566,9 @@ def verify(base, plan):
 
 
 def bind(package, plan):
+    if plan.get('request', {}).get('proposal_kind') == 'typed-soccerbase-mode0-partial-substitute-order-only-v1':
+        from scripts import season_soccerbase_mode0_partial_order_v1 as partial_order
+        return partial_order.bind(package, plan)
     base = registry.load_registered_release(plan['season'], plan['release_id'])
     if (registry.sha256_file(base.package_path) != plan['package_sha256']
             or pipeline.read_json_file(base.package_path) != package):
@@ -632,6 +638,9 @@ def bind(package, plan):
 
 
 def apply(jug, eq, plan):
+    if plan.get('request', {}).get('proposal_kind') == 'typed-soccerbase-mode0-partial-substitute-order-only-v1':
+        from scripts import season_soccerbase_mode0_partial_order_v1 as partial_order
+        return partial_order.apply(jug, eq, plan)
     base = registry.load_registered_release(plan['season'], plan['release_id'])
     original_jug = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
     original_eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()

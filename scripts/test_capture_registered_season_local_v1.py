@@ -23,6 +23,47 @@ def test_startup_uses_current_driver_and_exact_release_binding(release):
     assert '--capture-route' in args and args[-1] == '302'
 
 
+def plymouth_selector():
+    return dict(club_carrier_id=385, team_name='Plymouth Argyle',
+                division_select_x=562, division_select_y=302,
+                team_select_x=209, team_select_y=360)
+
+
+def test_explicit_club_route_binds_native_carrier_and_generic_driver(release, monkeypatch):
+    from scripts import season_duplicate_ownership_plan_v1 as layers
+    monkeypatch.setattr(layers, 'package_layers', lambda _: [
+        ('main', {'clubs': [dict(carrier_id=385, name='Plymouth Argyle')]}, None)])
+    args = subject.driver_args(release, selector=plymouth_selector())
+    assert args[args.index('--team-name') + 1] == 'Plymouth Argyle'
+    assert args[args.index('--team-select-x') + 1] == '209'
+    assert args[args.index('--proof-mode') + 1] == 'generic_club_route_capture'
+    with pytest.raises(ValueError, match='exact registered recipe club'):
+        subject.driver_args(release, selector=dict(plymouth_selector(), team_name='Stoke City'))
+
+
+@pytest.mark.parametrize('field,value', [('team_select_x', True),
+    ('team_select_y', 480), ('division_select_x', -1)])
+def test_explicit_club_selector_refuses_bad_coordinates_before_recipe(release, field, value):
+    with pytest.raises(ValueError, match='coordinate'):
+        subject.driver_args(release, selector=dict(plymouth_selector(), **{field: value}))
+
+
+@pytest.mark.parametrize('fault', [None, 'name', 'coordinates', 'observed', 'mode'])
+def test_explicit_club_summary_cannot_accept_stoke_or_wrong_grid(release, fault):
+    selector = plymouth_selector()
+    summary = dict(success=True, release_manifest_sha256='manifest',
+        output_inventory_fingerprint='inventory', phase_reached='return_from_line_up',
+        mode='generic-club-route-capture', team_name='Plymouth Argyle',
+        team_selection={k: selector[k] for k in ('division_select_x', 'division_select_y', 'team_select_x', 'team_select_y')},
+        route_summaries={'line_up': {'team_identity': dict(expected='Plymouth Argyle',
+            expected_normalized='plymouth argyle', observed_normalized='plymouth argyle', matched=True)}})
+    if fault == 'name': summary['team_name'] = 'Stoke City'
+    if fault == 'coordinates': summary['team_selection']['team_select_x'] = 306
+    if fault == 'observed': summary['route_summaries']['line_up']['team_identity']['observed_normalized'] = 'stoke city'
+    if fault == 'mode': summary['mode'] = 'stoke-route-capture'
+    assert subject.summary_matches(summary, release, selector=selector) is (fault is None)
+
+
 def test_profile_uses_exact_native_recipe_identity_and_search_token(release, monkeypatch):
     monkeypatch.setattr(subject.pipeline, 'read_json_file', lambda _: {
         'players': [dict(carrier_id=10149, name='Gary Parkinson')]})
