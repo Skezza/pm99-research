@@ -404,6 +404,9 @@ def filename(plan):
 
 def prepare(base, input_path):
     request = pipeline.read_json_file(input_path)
+    if request.get('proposal_kind') == 'typed-soccerbase-mode1-opening-xi-order-only-v2':
+        from scripts import season_soccerbase_mode1_order_only_v2 as hayes_xi_order
+        return hayes_xi_order.prepare(base, input_path, request)
     if (request.get('schema') != INPUT_SCHEMA or request.get('season') != base.season
             or request.get('release_id') != base.release_id):
         raise ValueError('opening exchange needs an explicit exact-parent request')
