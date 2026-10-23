@@ -222,4 +222,3 @@ def reconstruction(previous, release_id):
         raise ValueError('Maccabi SOURCE replay changed the complete recipe')
     return dict(season='2015-16', release_id=release_id,
                 complete_game_inventory_identical=True, complete_recipe_identical=True)
-

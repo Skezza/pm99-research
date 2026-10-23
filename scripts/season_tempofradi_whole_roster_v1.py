@@ -446,4 +446,3 @@ def bind(package, plan):
 
 def apply(jug,eq,plan):
     return exchange.apply(jug,eq,plan)
-

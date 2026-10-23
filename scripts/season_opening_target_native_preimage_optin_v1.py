@@ -241,4 +241,3 @@ def verify_target_native_preimage(base, request: dict, package: dict, jug: bytes
         'native_name':OLD_NAME,'native_birth_date':OLD_DOB,
         'source_bound':True,'payload_sha256':sha(raw),'native_skills':dict(native_skills),
         'scope':'bypass only package-vs-native fallback DOB/position and package-vs-native rating preimages for carrier19, which is fully replaced by validated Rubén; owner/name/order/whole-parent and all other actor guards remain strict'}
-
