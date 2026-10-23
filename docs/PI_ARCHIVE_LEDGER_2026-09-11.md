@@ -1,5 +1,20 @@
 # Pi archive ledger
 
+## Local regenerable cache/runtime cleanup — 2026-10-23 00:31 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. No Pi transfer.
+Inactive Go build cache cleared with `go clean -cache` after exact path and
+no-active-compiler checks; recovered842289152bytes. Source/module downloads
+untouched. Receipt `.local/cleanup-20261023/inactive-go-build-cache-002/`.
+Completed Celtic r177 disposable local runner game copy removed only after
+sealed-source/input SHA and no-active-container checks; recovered361451520bytes.
+Receipt `.local/cleanup-20261023/verified-inactive-celtic-r177-runtime/`.
+Keeper controller23552 uses the same checked per-season disposable-copy cleanup;
+receipts `.local/cleanup-20261023/verified-inactive-keeper-*-runtime/`.
+These copies are recreated by the canonical local capture helper. Actual sealed
+releases, source evidence, screenshots, original2015 and initialized shared
+Wine prefix preserved. Never remove the shared prefix as disposable game data.
+
 ## Disposable local runner copy — 2026-10-22 23:16 UTC
 
 Vostro; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.

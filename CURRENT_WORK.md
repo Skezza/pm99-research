@@ -1,5 +1,39 @@
 # PM99: current work
 
+## Keeper batch BUILT / serial local runtime active — 2026-10-23 00:31 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. Delivered baseline
+remains v131/r177a. Controller26331 TERMINAL0: all THREE private keeper-role
+children r178a(2000,7),r179a(2001,1),r180a(2003,1) BUILT; independent native
+scope/readback and full SOURCEr178b/r179b/r180b game/recipe identical PASS.
+Not preferred yet. Narrow SOURCE support/tests committed/pushed fc2e876;
+previous 00:18 statement that these changes were uncommitted is superseded.
+
+Controller23552 ACTIVE serial local three profiles/three Stoke startups.
+2000 Gould after-frame and Stoke1Aug2000 originals inspected: fine label
+KEEPER replaces CENTRE FORWARD; ten skills unchanged, derived overall59→62.
+Independent age/skill digits/native inputs/kit pixels PASS (controller8163
+TERMINAL0). NORWAY remains a separate confirmed source contradiction, NOT
+historically approved by role batch. 2001 capture active; no concurrent runner.
+Per-season completed disposable game copies retired after source SHA checks;
+shared initialized prefix and all actual releases/screenshots retained.
+Evidence `parallel-rc-20261023/keeper-role-delivery-v1/` under audit root.
+
+All three Luna workers ACTIVE/reassigned: Celtic bounded next5 cross-club
+2005 plus independent real keeper SOURCE evidence QA; Horne nine keeper
+nationalities with retained raw originals; reconcile Hayes source18 admission
+fallback contract. Lead rejected seven equal-name Kidderminster dismissals:
+EQ374 and3310 are distinct native owners, not one club. Gould Scotland,
+Kharine Russia and Fiedler Germany have original-source contradictions;
+Eckhard indexed-country evidence alone remains unapproved. No new frozen
+case closures claimed (61 disposed/2748 unclosed review candidates).
+
+Additional inactive Go build-cache cleanup recovered842289152bytes; receipt
+`.local/cleanup-20261023/inactive-go-build-cache-002/`. Current free~8.8GiB,
+reserve8GiB. No Pi transfer. Next finish/review remaining runtime originals,
+guarded three-season publication and v132 one all26 regression, then separate
+source-bound nationality correction. Do not rebuild completed private outputs.
+
 ## Keeper batch private / SOURCE integration proven — 2026-10-23 00:18 UTC
 
 Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. Authoritative delivered
