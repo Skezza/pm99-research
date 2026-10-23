@@ -236,6 +236,19 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         raise ValueError('invalid release ID')
     release = (registry.load_registered_release(season, source_release_id)
                if source_release_id is not None else registry.load_preferred_release(season))
+    plan = json.loads(plan_path.read_text())
+    explicit_keeper_role_replay = (
+        plan.get('policy') == 'original-target-squad-full-name-DOB-literal-G-to-PM99-role-zero-v1'
+        and bool(plan.get('updates')) and not plan.get('unresolved')
+        and not any((register, modern_birth_dates, nationality_plan_path, manager_plan_path,
+            club_plan_path, ownership_plan_path, visibility_plan_path, mode1_keeper_plan_path,
+            birth_year_plan_path, mode1_opening_plan_path, italian_opening_plan_path,
+            trabzon_opening_plan_path, name_only_plan_path, profile_assignment_plan_path,
+            resume_unregistered_assignment)))
+    if (source_release_id is not None
+            and plan.get('policy') == 'original-target-squad-full-name-DOB-literal-G-to-PM99-role-zero-v1'
+            and not explicit_keeper_role_replay):
+        raise ValueError('explicit keeper SOURCE requires a nonempty resolved role-only plan without mixed options')
     explicit_manager_replay = (manager_plan_path is not None and not any((
         register, modern_birth_dates, nationality_plan_path, club_plan_path,
         ownership_plan_path, visibility_plan_path, mode1_keeper_plan_path,
@@ -266,9 +279,8 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             club_plan_path, ownership_plan_path, visibility_plan_path, mode1_keeper_plan_path,
             birth_year_plan_path, mode1_opening_plan_path, italian_opening_plan_path, trabzon_opening_plan_path, name_only_plan_path)):
         raise ValueError('reserve assignment pruning cannot mix unrelated repairs')
-    if source_release_id is not None and (register or (italian_opening_plan_path is None and trabzon_opening_plan_path is None and name_only_plan_path is None and profile_assignment_plan_path is None and not explicit_manager_replay and not explicit_label_replay and not explicit_birth_replay and not explicit_ownership_replay)):
+    if source_release_id is not None and (register or (italian_opening_plan_path is None and trabzon_opening_plan_path is None and name_only_plan_path is None and profile_assignment_plan_path is None and not explicit_manager_replay and not explicit_label_replay and not explicit_birth_replay and not explicit_ownership_replay and not explicit_keeper_role_replay)):
         raise ValueError('explicit source reconstruction is unregistered Italian or manager-only replay')
-    plan = json.loads(plan_path.read_text())
     if profile_assignment_plan_path is not None and plan.get('updates'):
         raise ValueError('reserve assignment pruning requires an inert player descriptor')
     if explicit_ownership_replay and plan.get('updates'):

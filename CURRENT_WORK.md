@@ -1,5 +1,41 @@
 # PM99: current work
 
+## Keeper batch private / SOURCE integration proven — 2026-10-23 00:18 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. Authoritative delivered
+baseline remains v131/r177a; catalogue committed/pushed b8d824d.
+Controller26331 ACTIVE serial private role-only builds/replays for nine source-
+verified keeper labels:2000(7)r178a/b,2001(1)r179a/b,2003(1)r180a/b.
+FIRST2000 r178a/b BUILT independent six-byte scope/readback + complete SOURCE
+recipe/game exact PASS; NOT preferred or runner-verified. Source9 originals
+independently inspected by lead/Luna. Other23zero proposals, do not rebuild.
+
+Generic narrow SOURCE extension in three existing scripts + new synthetic
+tests is uncommitted under lead integration.68 tests PASS/2 expected paired-
+coach-invalid combinations skipped; Luna independently38newtests PASS.
+Actual first private replay supplies real integration proof missing in mocks.
+Adversarial QA caught keeper dispatch ahead of later artwork; corrected order
+composition→artwork→coupled→keeper→older roster/coach. Guard exact policy,
+nonempty/resolved plan/no mixed options, parent package/compiler/build-chain
+hashes, recipe/native/unrelated files before writes. Existing byte writer only.
+
+Before-fix genuine Gould profile captured r177a: GOALKEEPER / CENTRE FORWARD,
+showing inherited Brattbakk role. Also visible NORWAY is a separate nationality
+review candidate, NOT fixed or certified by role-only batch. Horne worker checks
+original target-row nationality for these nine, not a guessed nationality edit.
+Hayes18user-permitted capacity selection progressed: no19>18 blocker, omit
+unidentified unused Adams explicitly; seven missing DOBs and Bryson unknown
+role expose generic-input fallback limitations, research continues, no invented
+facts or unsafe whole-club assignment. Reconcile worker owns source/adapter QA.
+
+No active runner. Controller68896 before-Gould TERMINAL0. Completed r177 local
+copy only removed after full source/input SHA and no-container checks; recovered
+361451520bytes, prefix/screenshots/sealed source retained. Ledger/receipts
+`.local/cleanup-20261023/verified-inactive-celtic-r177-runtime/`. Free~8.5GiB,
+reserve8GiB. Next finish3private builds; true after-Gould and two Fiedler profiles
++same-game startups with reused prefix, serial captures/copy cleanup as needed;
+guarded3season publication, one all26 regression/v132 and explicit residuals.
+
 ## v131 DELIVERED: Celtic source XI and August roster — 2026-10-23 00:04 UTC
 
 Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. Preferred2000 now

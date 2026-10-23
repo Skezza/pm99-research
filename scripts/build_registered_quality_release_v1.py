@@ -351,6 +351,13 @@ def build(season: str, *, release_id: str, resume: bool = False) -> dict[str, An
     reconstructed = coupled.reconstruction(previous, release_id)
     if reconstructed is not None:
         return reconstructed
+    # Artwork above can deliberately inherit a compiler receipt. Only after
+    # handling its last-stage guard may this direct keeper receipt supersede
+    # inherited older roster/coach locators.
+    from scripts import season_sourced_goalkeeper_roles_v1 as keeper_roles
+    reconstructed = keeper_roles.reconstruction(previous, release_id)
+    if reconstructed is not None:
+        return reconstructed
     # A newer coach-only layer retains the older player-layer locator. Select
     # the latest typed receipt before asking inherited player reconstructors
     # to compare their older whole recipe (which correctly rejects later edits).

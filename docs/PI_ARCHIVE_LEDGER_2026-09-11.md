@@ -20,6 +20,15 @@ Receipt `.local/cleanup-20261023/verified-inactive-werder-runtime/`.
 Recovery is automatic local helper copy from the immutable registered release;
 no Pi archive needed for this disposable runtime duplicate.
 
+Third local-only cleanup2026-10-23 00:16UTC: inactive disposable
+`.local/local-runner-v1/2000-01/sourced-celtic-august-roster-20261023-r177a/game`
+removed after all captures completed, every original copied input SHA and sealed
+registered source checked, no active PM99 containers. Recovered361451520bytes.
+All original screenshots, source/release games and shared Wine prefix retained.
+Receipt `.local/cleanup-20261023/verified-inactive-celtic-r177-runtime/`.
+Restore automatically from registered r177a with the existing local helper;
+no Pi archive is necessary for this temporary runtime duplicate.
+
 ## Regenerable Go compiler cache cleared — 2026-10-22
 
 Vostro `joe-Vostro-3350`; source session

@@ -116,3 +116,60 @@ def verify(release, plan):
     registry.relative_workspace_path(path)
     if registry.sha256_file(path) != binding['sha256'] or prepare(release, path) != plan:
         raise ValueError('sourced goalkeeper role plan does not independently reproduce')
+
+
+def reconstruction(previous, release_id):
+    """Replay this exact role-only child, never an inherited keeper ancestor."""
+    from scripts import season_pipeline_v2 as pipeline
+    from scripts import publish_historical_role_delta_v1 as publisher
+    from app.indexed_jug_roles import rewrite_indexed_native_roles
+
+    receipt_path = getattr(previous, 'compiler_receipt_path', None)
+    if receipt_path is None:
+        return None
+    receipt = pipeline.read_json_file(receipt_path)
+    if receipt.get('compilation_mode') != 'known-good-baseline-role-only-delta':
+        return None
+    relative = previous.locator.get('historical_role_plan_path')
+    if not relative:
+        raise ValueError('role-only SOURCE requires its saved plan')
+    path = registry.ROOT / relative
+    registry.relative_workspace_path(path)
+    plan = pipeline.read_json_file(path)
+    if plan.get('policy') != POLICY:
+        return None
+    if (not plan.get('updates') or plan.get('unresolved')
+            or receipt.get('plan_sha256') != registry.sha256_file(path)):
+        raise ValueError('keeper SOURCE plan is changed, empty or unresolved')
+    base = registry.load_registered_release(previous.season, plan['release_id'])
+    expected_parent = (registry.canonical_document_sha256(base.package_path),
+        registry.sha256_file(base.compiler_receipt_path), registry.sha256_file(base.build_chain_path))
+    actual_parent = tuple(receipt.get(key) for key in ('source_season_package_sha256',
+        'source_compiler_receipt_sha256', 'source_build_chain_sha256'))
+    if actual_parent != expected_parent:
+        raise ValueError('keeper SOURCE receipt does not bind the exact immutable parent')
+    verify(base, plan)
+    if publisher.updated_package(pipeline.read_json_file(base.package_path), plan) != pipeline.read_json_file(previous.package_path):
+        raise ValueError('edited keeper recipe cannot be silently reconstructed')
+    before = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    expected, _ = rewrite_indexed_native_roles(before,
+        {row['carrier_id']: row['fine_roles'] for row in plan['updates']})
+    if expected != (previous.game_path / 'DBDAT/JUG98030.FDI').read_bytes():
+        raise ValueError('keeper SOURCE current native bytes differ from its exact plan')
+    inventories = [pipeline.read_json_file(item.inventory_path) for item in (base, previous)]
+    left, right = [{row['path']: row['sha256'] for row in inv['files']} for inv in inventories]
+    if set(left) != set(right) or any(left[key] != right[key] for key in left if key != 'DBDAT/JUG98030.FDI'):
+        raise ValueError('keeper SOURCE changed another game file')
+    pipeline.assert_tree_matches_inventory(previous.game_path, inventories[1])
+    publisher.publish(previous.season, path, release_id=release_id,
+                      source_release_id=base.release_id)
+    rebuilt = registry.load_registered_release(previous.season, release_id)
+    pipeline.assert_tree_matches_inventory(rebuilt.game_path, inventories[1])
+    if rebuilt.package_path.read_bytes() != previous.package_path.read_bytes():
+        raise ValueError('keeper SOURCE complete recipe replay differs')
+    if not registry.validate_preferred_release(previous.season, release_id=release_id, level='playable')['valid']:
+        raise ValueError('keeper SOURCE output failed playable validation')
+    return dict(season=previous.season, release_id=release_id,
+        complete_game_inventory_identical=True, complete_recipe_identical=True,
+        clean_machine_parent_reconstruction=False,
+        compilation_mode='source-bound-keeper-role-only-reconstruction')
