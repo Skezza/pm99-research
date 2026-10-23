@@ -376,6 +376,10 @@ def build(season: str, *, release_id: str, resume: bool = False) -> dict[str, An
     reconstructed = birthday_disagreements.reconstruction(previous, release_id)
     if reconstructed is not None:
         return reconstructed
+    from scripts import season_source_bound_maccabi_role_r129_v1 as maccabi_roles
+    reconstructed = maccabi_roles.reconstruction(previous, release_id)
+    if reconstructed is not None:
+        return reconstructed
     # Select the current typed opening transaction before inherited older
     # player-layer locators. The receipt guard leaves later coach edits intact.
     from scripts import season_original_alias_countries_v1 as alias_countries

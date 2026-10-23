@@ -171,7 +171,8 @@ def updated_package(package, plan, nationality_plan=None, manager_plan=None, clu
                 proof={'artifact_id': artifact_id, 'grade': 'source-receipt'})
             # Name edits must not retain an alias derived from the old person.
             # The bound plan names the exact native display replacement too.
-            if 'native_names' in manager or manager_plan.get('source_method')=='dated-closed-manager-tenure-v1':
+            if ('native_names' in manager or manager_plan.get('source_method')=='dated-closed-manager-tenure-v1'
+                    or manager_plan.get('native_name_projection')=='explicit-published-family-name-v1'):
                 manager['native_names'] = {'surname': row['native_after'],
                                            'display_name': row['native_after']}
         result['artifacts'] = sorted([a for a in result['artifacts'] if a['id'] != artifact_id] + [{
@@ -181,7 +182,9 @@ def updated_package(package, plan, nationality_plan=None, manager_plan=None, clu
         proof_id = 'proof-historical-managers-' + plan['season'] + '-' + manager_sha[:16]
         result['proofs'] = sorted([p for p in result['proofs'] if p['id'] != proof_id] + [{
             'id': proof_id, 'grade': 'source-receipt', 'artifact_id': artifact_id,
-            'covers': (['raw-reparsed-dated-closed-manager-tenure']
+            'covers': (['visually-transcribed-contemporary-first-fixture-manager-name', 'original-source-and-native-owner-bound']
+                if manager_plan.get('source_method')=='dated-original-newspaper-first-fixture-manager-v1'
+                else ['raw-reparsed-dated-closed-manager-tenure']
                 if manager_plan.get('source_method')=='dated-closed-manager-tenure-v1'
                 else ['raw-reparsed-first-fixture-manager-names'])}], key=lambda p: p['id'])
     if club_plan is not None:
@@ -579,6 +582,9 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         from scripts import season_exact_fifa_role_delta_v2 as conservative_roles
         if assignment_plan.get('schema') == conservative_roles.SCHEMA:
             assignments = conservative_roles
+        from scripts import season_source_bound_maccabi_role_r129_v1 as maccabi_roles
+        if assignment_plan.get('schema') == maccabi_roles.SCHEMA:
+            assignments = maccabi_roles
         from scripts import season_2015_english_fifa_roles_v1 as english_roles
         if assignment_plan.get('schema') == english_roles.SCHEMA:
             assignments = english_roles
@@ -946,7 +952,7 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             fixed_duplicate_case_ids=(['2c01311314826e92f838732f4049bdbb8a1f3f3dab539de196dd43de8bfed553']
                 if assignment_plan['schema'] == stevenage.SCHEMA else assignment_plan['fixed_duplicate_case_ids']),
             players_written=len(assignment_plan['orders']), allowed_write=assignment_plan['scope'])
-    elif assignment_plan is not None and assignment_plan.get('schema') in (owned_roster.SCHEMA, source_changes.SCHEMA, quality_only.SCHEMA, exact_roles.SCHEMA, conservative_roles.SCHEMA, english_roles.SCHEMA, donor_roles.SCHEMA, primary_positions.SCHEMA, alias_primary_positions.SCHEMA, country_policy.SCHEMA, resolved_country.SCHEMA, shirt_numbers.SCHEMA, commons_number.SCHEMA, alias_countries.SCHEMA, birthday_disagreements.SCHEMA):
+    elif assignment_plan is not None and assignment_plan.get('schema') in (owned_roster.SCHEMA, source_changes.SCHEMA, quality_only.SCHEMA, exact_roles.SCHEMA, conservative_roles.SCHEMA, english_roles.SCHEMA, donor_roles.SCHEMA, primary_positions.SCHEMA, alias_primary_positions.SCHEMA, country_policy.SCHEMA, resolved_country.SCHEMA, shirt_numbers.SCHEMA, commons_number.SCHEMA, alias_countries.SCHEMA, birthday_disagreements.SCHEMA, maccabi_roles.SCHEMA):
         receipt.update(compilation_mode=assignments.MODE,
             original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
             removed_target_roster_links=[],fixed_duplicate_case_ids=[],

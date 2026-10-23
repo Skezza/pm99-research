@@ -281,7 +281,7 @@ def read_transfermarkt_profile(profile, pid):
     return parsed
 
 
-def new_person(selection, evidence):
+def _canonical_new_person(selection, evidence):
     pid = selection['provider_player_id']
     squad_biography = 'squad_biography' in selection
     if squad_biography:
@@ -346,6 +346,37 @@ def new_person(selection, evidence):
     return result
 
 
+def _uses_reviewed_new_person_provider(selection):
+    return (isinstance(selection, dict)
+            and ('editorial_role_policy' in selection or 'official_biography' in selection
+                 or ('squad_context' in selection and 'opening_contract' not in selection)))
+
+
+def new_person(selection, evidence):
+    """Keep ordinary admissions; route only explicit reviewed provider shapes."""
+    if _uses_reviewed_new_person_provider(selection) and isinstance(evidence, dict):
+        from scripts import season_opening_new_person_dispatch_v1 as dispatch
+        provider_evidence = selection.get('_provider_evidence', evidence)
+        if not isinstance(provider_evidence, dict):
+            raise ValueError('typed new-person provider evidence must be a map')
+        if 'editorial_role_policy' in selection:
+            expected = {'city_annual', 'tm_entity', 'soccerbase', 'city_role',
+                        'uefa_country', 'city_august_match'}
+        elif 'official_biography' in selection:
+            expected = {'rm_annual', 'rm_official', 'rm_august_bench'}
+        else:
+            expected = {'espanyol_annual', 'espanyol_august_match'}
+        if set(provider_evidence) != expected:
+            raise ValueError('typed new-person provider source map differs')
+        source_selection = {key: value for key, value in selection.items()
+                            if key not in ('carrier_id', 'club_id', 'native_display_name',
+                                           '_provider_evidence')}
+        return dispatch.new_person(source_selection, provider_evidence)
+    if isinstance(selection, dict) and '_provider_evidence' in selection:
+        raise ValueError('provider evidence override requires a reviewed typed admission')
+    return _canonical_new_person(selection, evidence)
+
+
 def identity(player):
     return roster.normalise(player.get('source_name') or player['name']), player['facts']['birth_date']
 
@@ -404,6 +435,9 @@ def filename(plan):
 
 def prepare(base, input_path):
     request = pipeline.read_json_file(input_path)
+    if request.get('schema') == 'pm99re.hajnal-ftc-whole-roster-admission.v3':
+        from scripts import season_tempofradi_whole_roster_v1 as tempofradi_roster
+        return tempofradi_roster.prepare(base, input_path)
     if request.get('proposal_kind') == 'typed-soccerbase-mode0-partial-substitute-order-only-v1':
         from scripts import season_soccerbase_mode0_partial_order_v1 as partial_order
         return partial_order.prepare(base, input_path, request)
@@ -439,13 +473,28 @@ def prepare(base, input_path):
     sources = [row['source'] for row in moves]
     if len(set(sources)) != len(sources) or not set(sources) <= set(targets):
         raise ValueError('every moved original copy must be consumed exactly once')
+    preimage_claims = request.get('target_native_preimage_opt_ins', [])
+    if 'target_native_preimage_opt_ins' in request and (not isinstance(preimage_claims, list) or len(preimage_claims) != 1
+            or not isinstance(preimage_claims[0], dict)
+            or preimage_claims[0].get('carrier_id') != 19 or 19 not in targets):
+        raise ValueError('only one exact carrier-19 target-native-preimage opt-in is supported')
+    target_native_preimages = {}
     for carrier in set(targets):
         actor = players[carrier]
         native = facts.native_facts(jug, carrier)
-        if ((native['startup_order'] <= 11 and complete_mode1 is None) or native['birth_date'] != actor['facts']['birth_date']
+        target_preimage_optin = None
+        if carrier == 19 and preimage_claims:
+            from scripts import season_opening_target_native_preimage_optin_v1 as preimage
+            target_preimage_optin = preimage.verify_target_native_preimage(
+                base, request, package, jug, eq, actor, native, skills(jug, carrier), owners)
+            target_native_preimages[carrier] = target_preimage_optin
+        if ((native['startup_order'] <= 11 and complete_mode1 is None)
                 or roster.normalise(native['name']) != roster.normalise(actor['name'])
-                or owners.get(carrier) != {clubs[actor['club_id']]['carrier_id']}
-                or skills(jug, carrier) != actor['ratings']['values']):
+                or owners.get(carrier) != {clubs[actor['club_id']]['carrier_id']}):
+            raise ValueError('opening exchange requires exact exclusively owned native reserves and matching skills')
+        if (target_preimage_optin is None
+                and (native['birth_date'] != actor['facts']['birth_date']
+                     or skills(jug, carrier) != actor['ratings']['values'])):
             raise ValueError('opening exchange requires exact exclusively owned native reserves and matching skills')
     decisions = []
     for row in moves:
@@ -482,7 +531,10 @@ def prepare(base, input_path):
         raise ValueError('every omitted old identity needs an explicit dated retirement decision')
     for row in retirements:
         actor = players[row['carrier_id']]
-        if ((actor.get('source_name') or actor['name'], actor['facts']['birth_date']) != (row['name'], row['birth_date'])
+        birthday = actor['facts']['birth_date']
+        if row['carrier_id'] == 19 and row['carrier_id'] in target_native_preimages:
+            birthday = target_native_preimages[row['carrier_id']]['native_birth_date']
+        if ((actor.get('source_name') or actor['name'], birthday) != (row['name'], row['birth_date'])
                 or not row.get('evidence') or any(not evidence[key].get('anchors') for key in row['evidence'])):
             raise ValueError('retirement identity or dated evidence differs')
         for key in row['evidence']:
@@ -492,6 +544,8 @@ def prepare(base, input_path):
         actor = players[row['carrier_id']]
         if actor['club_id'] != row['club_id']:
             raise ValueError('new person destination club differs')
+        if _uses_reviewed_new_person_provider(row) and base.season != '2005-06':
+            raise ValueError('reviewed new-person source provider belongs only to 2005-06')
         if row.get('opening_contract'):
             from scripts import season_dated_reserve_membership_v1 as contracts
             opening_date = contracts.verify(row, evidence, season=base.season, club=clubs[actor['club_id']])
@@ -508,8 +562,17 @@ def prepare(base, input_path):
             raise ValueError('new person already represented; use a retained move')
         updates.append(dict(layer='main', player_id=actor['id'], carrier_id=row['carrier_id'],
             before=actor, replacement=replacement, replacement_opening_evidence=dict(date=opening_date)))
+        if 'editorial_role_policy' in row:
+            role_proof = replacement['raw_evidence']['editorial_fine_role']
+            if (role_proof['policy'] != row['editorial_role_policy']
+                    or role_proof['value'] != row['editorial_fine_role']
+                    or role_proof['role_is_historical_fact'] is not False):
+                raise ValueError('editorial role differs from the admitted source projection')
+            fine_roles = [role_proof['value']]
+        else:
+            fine_roles = row['fine_roles']
         decision = dict(carrier_id=row['carrier_id'], preserved_source_carrier=None, before=actor,
-                        fine_roles=row['fine_roles'])
+                        fine_roles=fine_roles)
         if 'native_display_name' in row:
             decision.update(display_name=published_profile_family_display(row, evidence),
                             display_policy='original-profile-explicit-entire-family-heading-v1')

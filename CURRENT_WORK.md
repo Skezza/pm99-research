@@ -1,5 +1,159 @@
 # PM99: current work
 
+## v134 FTC installed and runner verified; Maccabi building — 2026-10-23 22:35 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. Controller39019
+TERMINAL0: current2000 is `sourced-ftc-csank-manager-20261023-r201a` via
+exact r198→r200 roster→r201 manager chain. Both layers have whole recipe/game
+SOURCE-identical r200b/r201b; actual native readbacks pass. All20 source-country
+bytes/compatible editorial fine roles checked in the final game; 11630 actors
+outside FTC byte-exact, Gera only order18→9, SchalkeHajnal exact. Manager2062
+nativeCsank/fullrecipeJánosCsank, all other ENT records/files preserved.
+Evidence `parallel-rc-20261023/{ftc-whole-roster-delivery-v3,ftc-manager-delivery-v1}/`.
+
+ROOT inspected actual Vámos profile: Hungary/GK/Keeper/age28; independent
+ten skill and age font digits, native input hashes and kit pixels PASS.
+Original `local_ftc_2000_01_r201a_20261023_vamos_ascii_profile/screens/44_profile_only_vamos_done.png`.
+Earlier accented expected token produced false OCR failure (v mos vs vamos),
+preserved as negative; ASCII retry succeeded, no build repeated. Same final
+Stoke startup original `local_ftc_2000_01_r201a_20261023_stoke_startup/screens/022_line_up_inspect.png`
+visually inspected Aug1 2000; attestation/promotion v134 retained. Other25
+bindings unchanged and original2015 actual backup verified.
+
+`release-delivery-checklist-v134.json`: frozen baseline2809 unchanged,
+62disposed/2747REVIEW after exact frozen Hajnal case source repair toGyepes.
+Keeper-absence/Csank defects delivered. Not2747confirmedbugs. GlobalRC FALSE;
+all26 consolidated regression waits until next affected release promotion.
+No unaffected releases rebuilt.
+
+Controller37522 now builds private2015 r202a/b Maccabi two fine-role corrections
+from currentr129, using canonical unique-mode adapter. Not yet runtime/installed.
+Controller11788 retires ONLY completed r201 disposable runtime game copy with
+source/no-active-mount/fullcopy ledger; shared initialized r173 prefix and all
+screenshots retained. Need two genuine Maccabi profiles + same-release Stoke,
+guarded promotion, preserve original2015 backup and then consolidated26 check.
+
+Canonical2005 ownership request now passes actual prepare/verify/bind/apply
+on private r199. Frozen ready plan at `resume-qa/new-person-canonical-v1/target-preimage-optin/opening-exchange-r199-celtic-plan-canonical-v1.json`.
+No native build yet; reserve next r203a/b. Exact native preimage opt-in handles
+ONLY wholly replaced Amavisca19 fallback facts/ratings, validates original
+retirement source and preserved BirminghamPandiani. All other strict guards
+unchanged. Provider source maps isolated, 19portable guard testsPASS3.54s.
+Worker now prepares Riera8928 country/fine-role follow-up for afterr203; do not
+promote with known ENG/CM9 left behind. Preserve Riera skills.
+
+Lunas: Hayes prepares two existing Walsall-slot replacements Carter21064 and
+Eyjolfsson21065 (positiveAug22cup) onr201, not newcarriers; Carter source DOB
+conflict declared secondary uncertainty. Disk worker prepares Kilkenny/O'Hara
+role corrections from dated annual evidence using existing writers; exact
+FIFA edition is not a user requirement for declared editorial compatible
+projection. Barrow/Parker dual-role variation must be adjudicated, not forced.
+Release worker owns Riera source-fact proposal only. Workers never publish or
+operate runner. Lead serialises integrations/builds/captures. Next close the
+active delivery batches, then bounded Kidder/Walsall and foreign-kit views.
+
+## FTC roster built and SOURCE exact; Csank manager building — 2026-10-23 22:22 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. Preferred26 remain
+v133; 2000 r198. New private2000 roster r200a/b BUILT and complete recipe/game
+SOURCE identical, controller8220 TERMINAL0. Evidence
+`parallel-rc-20261023/ftc-whole-roster-delivery-v3/` under consolidated audit.
+20 source-backed FTC replacements, original21-slot capacity/XI, retained Gera
+facts (startup order18→9 intentionally), SchalkeHajnal untouched. Two existing
+guarded factory-capacity recoveries1924/1930; old selected photos cleared.
+Canonical prepare-only adapter `season_tempofradi_whole_roster_v1.py`; worker
+canonical prepare/bind/apply/native aliases regression1PASS63.08s, receipt
+`reconcile/hajnal-ftc-canonical-exchange-dispatch-v1-qa-receipt.json`.
+No claim of final runtime/installation yet. Actual readback check running.
+
+Csank full recipe/native surname manager2062 plan prepared from original
+July23 newspaper report of July22 fixture. Private r201a/b build/SOURCE now
+controller77638; exact immutable parentr200. New primary-source projection
+guards/old-plan regression plus namespace tests15PASS2.37s. Final chain must
+have actual Vámos profile and same-release Stoke startup before promotion.
+Shared initialized prefix remains r173; no competing runner/build.
+
+Maccabi two-player fine-role adapter promoted, canonical dispatch QA4PASS
+60.92s; UNIQUE receipt mode and wrong-mode inherited-locator guard. NOT BUILT
+or installed. Next private2015 r202a/b; preserve original2015 fun backup.
+Riera/Croft/Rubén provider evidence slicing integrated; worker confirms all
+three direct source admissions pass. Actual2005 request still fails strict
+Amavisca19 native-vs-recipe fallback DOB/skills preimage; worker proposes
+narrow explicit source-bound replacement preimage, no generic guard waiver.
+
+Luna ownership research: existing Walsall Horne/Simpson cases confirmed late
+March arrivals, positive opening bench Carter DOB disputed. User permits
+unavailable secondary facts, so worker now prepares source-prioritised annual
+Carter DOB with uncertainty declared plus another positive opening replacement;
+do not repeat already established ownership searches. Disk worker checks next
+bounded v133 cases. All workers read/propose only, lead owns integrations.
+Free~8.8GiB; six disposable inactive runtime game copies retired with complete
+source/no-active-mount receipts; all raw evidence/releases/prefix retained.
+Next finish current native/runtime chain, deliver Maccabi, paired2005 exchange,
+then remaining bounded Kidder/Walsall and foreign-kit runtime checks. Global
+RC not complete; baseline61disposed/2748REVIEW unchanged pending dispositions.
+
+## v133 published and all26 verified; next native batches active — 2026-10-23 21:52 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. Source5742d5c pushed.
+Preferred2000 NOW `sourced-plymouth-opening-selection-20261023-r198a`;
+controller99583 TERMINAL0, promotion/runtime attestation saved. ROOT original
+Plymouth frame `local_plymouth_2000_01_r198a_20261023_direct_lineup/screens/022_line_up_inspect.png`
+visibly shows Adams substitute15 and Evers reserve19; exact native orders and
+actual TeamRating kit pixels PASS. Same-release Stoke startup also inspected.
+Plymouth source/coarse position and the other six selection discrepancies are
+not certified; this is one bounded selection fix, not a complete bench.
+
+Controller67621 TERMINAL0: `release-delivery-checklist-v133.json` under
+`.local/consolidated-audit-20261009/`; `parallel-rc-20261023/plymouth-partial-selection-delivery-v1/all26-v133-regression.json`
+checks every actual current preferred binding/playable contract. Other19
+bindings exact vs v132, no unaffected regeneration; actual original2015 retained
+game inventory freshly verified. Frozen61disposed/2748REVIEW unchanged. Batch
+delivered16 nationality fields (13original+3Kevin),4 keeper roles,3 labels,
+2Götz managers, FlynnDOB, Hayes14orderbytes and Plymouth5orderbytes. Global
+historical RC still FALSE; continue remaining critical cases.
+
+Navigation failures were honestly rejected: original generic attempt selected
+Leyton; query highlightedPlymouth but registeredBarnet first. Negative receipts
+retained. Actual picker established correct Plymouth(307,360), ThirdDivision
+(562,337); final direct route succeeded. No database build rerun for navigation.
+Do not count filenames ending_verified as approvals without their receipts.
+
+Espanyol r199a/b actually BUILT and whole SOURCE identical, controller43470
+TERMINAL0. Evidence `parallel-rc-20261023/espanyol-retirement-order-delivery-v4/`:
+20JUGorderbytes, only Espanyol8→Amavisca19 link removed; Frédson flagged row,
+Denmark byte and all other files preserved. PRIVATE; current2005 stillr194.
+Madrid Amavisca +Riera/Croft/deLaRed remain for the coupled next transaction.
+
+Lunas supervised: release worker prepares actual canonical new-person exchange
+request on r199; three provider modules promoted but UNCOMMITTED and not yet
+claimed integrated/tested end-to-end. Lead added slot-metadata stripping and
+actual-season2005 guard, old default reader preserved. Hayes worker FTC21
+whole-roster provider: direct bind/compiler/orders/photos passed, two guarded
+factory-capacity recoveries1924/1930; lead then required given-first/family-last
+native aliases (raw Hungarian source names retained), final re-QA pending.
+Strict Tempó/HLSZ person namespace integrated;12portabletestsPASS. ROOT found
+additional confirmed manager defect: FTC1701/ENT2062 nativeNyilasi, contemporary
+July22 reportCsankJános. Source proof `ftc-manager-source-v1/confirmed-manager-finding.json`;
+not delivered yet, manager correction follows roster. New manager-plan opt-in
+preserves full recipe name/native family display without altering old plans.
+Disk worker prepares Maccabi2027/32232 fine-role-only plan/replay seam: native
+SW/ICL andRB/ICR/MR contradict published profiles. Winger LM projection is
+declared compatible/editorial, not exact FIFA15/16. Original namesake identities
+and skills must remain; no second duplicate disposal.
+
+No active runner now. Only one actual build/capture at a time; use pipeline
+venv (system Python lacks fast schema validator). Four worker-owned whole.local
+rg scans were stopped by exactPID; NONE may be restarted. Use exact registry
+locator/API, never broad .local searches. No Pi transfer, free~8.5GiB. Retire
+only completed disposable runtime copies after source/no-active-mount proofs;
+retain shared prefix, actual releases, raw sources and every original image.
+Current uncommitted root work is the reviewed new-source seams/manager opt-in,
+namespace tests, catalogue r198 and cleanup ledger; preserve unrelated dirty
+upstream repos/untracked viewer. Next finish FTC canonical alias/provider QA,
+build roster+Csank chain/SOURCE; deliver paired 2005 identities; Maccabi roles;
+then remaining Kidder/Horne/kit checks. Do not ask for another proceed.
+
 ## Hayes installed; Plymouth built/SOURCE exact; Espanyol building — 2026-10-23 21:01 UTC
 
 Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. HEAD744b915 pushed;

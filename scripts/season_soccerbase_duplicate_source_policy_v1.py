@@ -199,6 +199,35 @@ def extend_original_people(people, document):
 
 def person_id(person):
     id=person['source_player_id']
+    if person.get('identity_policy') == 'tempofradi-profile-plus-dated-match-archive-identity-v1':
+        from datetime import date
+        from urllib.parse import urlsplit
+        import hashlib
+        provider=person.get('source_provider')
+        url=person.get('source_profile_url')
+        dob=person.get('birth_date')
+        profile_sha=person.get('source_profile_sha256')
+        if (provider not in ('tempofradi','hlsz') or not isinstance(url,str)
+                or not isinstance(person.get('name'),str) or not person['name'].strip()
+                or not isinstance(dob,str) or not re.fullmatch(r'\d{4}-\d{2}-\d{2}',dob)
+                or not isinstance(profile_sha,str) or not re.fullmatch(r'[0-9a-f]{64}',profile_sha)):
+            raise ValueError('Tempó/HLSZ identity needs exact provider, URL, name, ISO DOB and profile SHA')
+        date.fromisoformat(dob)
+        parsed=urlsplit(url)
+        if parsed.query or parsed.fragment or parsed.username or parsed.password or parsed.port not in (None,443):
+            raise ValueError('Tempó/HLSZ profile URL must be a canonical HTTPS URL without extras')
+        if provider == 'tempofradi':
+            slug=parsed.path.removeprefix('/').removesuffix('/')
+            if (parsed.scheme!='https' or parsed.netloc!='tempofradi.hu' or parsed.path!='/'+slug
+                    or not re.fullmatch(r'[a-z0-9-]+',slug)
+                    or id!='tempofradi:'+slug):
+                raise ValueError('Tempó ID must match exact retained profile URL slug')
+        else:
+            if (parsed.scheme!='https' or parsed.netloc!='hlsz.wsg.hu'
+                    or not parsed.path.startswith('/')
+                    or id!='hlsz:'+hashlib.sha256(url.encode()).hexdigest()[:24]):
+                raise ValueError('HLSZ ID must be the deterministic hash of its exact profile URL')
+        return 'person-tempofradi-'+hashlib.sha256((url+'|'+dob).encode()).hexdigest()[:24]
     if person.get('identity_policy')=='original-City2024-August-primary-member-literal-Wikipedia-DOB-v1':
         from scripts import season_city_2024_opening_exchange_v1 as city
         return city.verify_person(person)
