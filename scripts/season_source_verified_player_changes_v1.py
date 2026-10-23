@@ -21,6 +21,7 @@ INPUT_SCHEMA='pm99-explicit-source-backed-player-change-input-v1'
 PREFIX='source-backed-player-changes-'
 MODE='known-good-baseline-explicit-source-backed-player-changes-v1'
 KIND='missing-profile-nationality'
+KNOWN_WRONG_KIND='known-wrong-profile-nationality'
 HEIGHT_KIND='published-adult-profile-height'
 ADJUDICATED_KIND='adjudicated-source-player-facts'
 DATED_ROLE_KIND='dated-roster-compatible-profile-roles'
@@ -59,6 +60,9 @@ def prepare(base,input_path):
         return adjudicated.prepare(base, path, request)
     if request.get('kind') == HEIGHT_KIND:
         return prepare_height(base, path, request)
+    if request.get('kind') == KNOWN_WRONG_KIND:
+        from scripts import season_known_wrong_profile_nationality_v1 as known_wrong
+        return known_wrong.prepare(base, path, request)
     if (request.get('schema')!=INPUT_SCHEMA or request.get('season')!=base.season
             or request.get('release_id')!=base.release_id or request.get('kind')!=KIND
             or not request.get('changes')):
@@ -181,6 +185,9 @@ def validate_mask(plan):
     if plan.get('kind') == ADJUDICATED_KIND:
         from scripts import season_adjudicated_player_facts_v1 as adjudicated
         return adjudicated.validate_mask(plan)
+    if plan.get('kind') == KNOWN_WRONG_KIND:
+        from scripts import season_known_wrong_profile_nationality_v1 as known_wrong
+        return known_wrong.validate_plan(plan)
     rows=plan.get('updates',[])
     height = plan.get('kind') == HEIGHT_KIND
     field = 'height_cm' if height else 'nationality'
@@ -232,7 +239,7 @@ def apply(jug,eq,plan):
     before=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
     masks = [m for row in plan['updates'] for m in (
         row['native_masks'] if plan['kind'] in MULTI_FIELD_KINDS else [row['native_mask']])]
-    if plan['kind'] in (HEIGHT_KIND, *MULTI_FIELD_KINDS):
+    if plan['kind'] in (HEIGHT_KIND, KNOWN_WRONG_KIND, *MULTI_FIELD_KINDS):
         candidate = bytearray(before)
         for mask in masks:
             candidate[mask['file_offset']] = mask['after']
@@ -243,7 +250,7 @@ def apply(jug,eq,plan):
         after,after_eq=native.apply(jug,eq,plan)
     allowed={m['file_offset'] for m in masks if m['before'] != m['after']}
     changed={i for i,(a,b) in enumerate(zip(before,after)) if a!=b}
-    if len(before)!=len(after) or changed!=allowed or (plan['kind'] == KIND and len(allowed)!=len(plan['updates'])):
+    if len(before)!=len(after) or changed!=allowed or (plan['kind'] in (KIND, KNOWN_WRONG_KIND) and len(allowed)!=len(plan['updates'])):
         raise ValueError('source-backed change altered bytes outside the exact native field mask')
     for mask in masks:
         if before[mask['file_offset']]!=mask['before'] or after[mask['file_offset']]!=mask['after']:

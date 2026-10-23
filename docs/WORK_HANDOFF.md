@@ -1,5 +1,27 @@
 # PM99 worker handoff
 
+## Supervised worker QA / narrow country integration — 2026-10-23 01:31 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`; CURRENT_WORK top
+authoritative. v132/e9d3470 pushed; no nationality build/publication yet.
+Canonical country admission and exact Wikidata name/DOB/provider-ID bridge
+integrated but uncommitted; portable42PASS/8local skips before new13-row test;
+full controller29763 TERMINAL0:144PASS in301.06s, actual13 native masks included.
+Serial builder `scripts/build_known_wrong_keeper_countries_20261023.py` ready
+for reviewed private builds, no preferred/publication change. Sources/inputs at
+`.local/consolidated-audit-20261009/parallel-rc-20261023/horne/`.
+Lead rejected Hayes process-global reader monkeypatch after Celtic reproduced
+a concrete race; reconcile removing it in isolated proposal, not frozenV1.
+Celtic now independently adversarially tests13-country batch; Horne researches
+Hertha4212004/2006 exact source cohorts for two additional Fiedler fine-role
+bugs. Workers may not publish/build/operate runner or edit shared recipes.
+Actual delivery next: canonical13-row guard test, exact country-only7-season
+build/SOURCE replay, serial genuine runtime and guarded publication. Keep
+v132 fixes, unrelated bytes and original2015 backup. Free9.1GiB/reserve8GiB;
+no active build/runner. Frozen61disposed/2748unreviewed unchanged. Photos
+remain explicitly deferred. Continue tasks between worker batches without
+asking user to repeat proceed; independently inspect originals before approval.
+
 ## v132 DELIVERED / Luna followups active — 2026-10-23 00:49 UTC
 
 Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`;

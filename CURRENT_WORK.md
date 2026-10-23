@@ -1,5 +1,52 @@
 # PM99: current work
 
+## Supervised nationality delivery preparation — 2026-10-23 01:31 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. Delivered baseline
+remains v132 (nine keeper fine-role corrections / three seasons); e9d3470
+committed and pushed, superseding the older pending-commit statement below.
+No new nationality game has yet been built, installed or runner-verified.
+
+Lead independently reviewed original SB/DFB evidence and integrated narrow
+known-wrong-country admission into the existing fresh-verifying writer. No
+separate native writer; reject arbitrary preimages, adjacent-byte edits and
+source/receipt tampering. Canonical portable tests initially42PASS/8optional
+local skips. Full updated tests controller29763 TERMINAL0:144PASS in301.06s,
+including all13 actual native prepare/bind/apply/postimage checks. This does
+not imply nationality delivery into games.
+Earlier pre-alias canonical129PASS is retained evidence, not delivery count.
+Thirteen country rows over seven seasons have exact-parent inputs under
+`parallel-rc-20261023/horne/known-wrong-input-*-v2.json` in the audit root.
+Kharine/Kharin bridge uses retained Wikidata Q552710 exact English alias,
+1968-08-16 DOB and Soccerbase4177 link ONLY; Russia comes from the original
+Soccerbase profile, not Wikidata citizenship. Country-only changes must keep
+roles, skills, ownership and all unrelated bytes exact.
+
+Three Luna workers continue with bounded non-overlapping tasks:
+
+- Celtic: independent adversarial QA of nationality v2 / original sources /
+  exact13 native masks. Previously proved Hayes shared-function mutation race;
+  that proposal is NOT approved for integration despite four serial tests PASS.
+- Reconcile: remove Hayes process-global monkeypatch, add source/owner/year
+  and concurrency tests; preserve five old hash-bound plan reproductions.
+- Horne: original-source cohort/manager proof for Hertha421 in2004/05 and
+  2006/07. Lead found Fiedler remains broadG/fine5 there, blocked by wrong club
+  label1.FC Koln in strict role admission. Separate confirmed followup, not
+  silently bundled into a country-only correction or claimed fixed.
+
+Evidence root `.local/consolidated-audit-20261009/parallel-rc-20261023/`;
+Horne report `horne/kharine-alias-review-v2.json`, canonical code/tests
+`scripts/season_known_wrong_profile_nationality_v1.py` and corresponding
+`scripts/test_known_wrong_profile_nationality_v1.py` currently uncommitted.
+Hayes label-only3307 correction, Riera/Croft ownership graph and Flynn DOB
+remain undelivered. Frozen61/2809 disposed /2748 unclosed REVIEW candidates
+unchanged; do not equate unreviewed candidates with confirmed bugs. Photos
+deferred. Free9.1GiB, reserve8GiB; no competing runner/build active, no Pi move.
+Exact next action: review worker adversarial findings and actual canonical
+all13 in-memory test, then narrowly build/replay seven affected country-only
+games; native readback, genuine serial runtime and guarded publication before
+claiming delivery. Keep reassigning completed Luna workers without asking user.
+
 ## v132 DELIVERED: nine keeper labels / three seasons — 2026-10-23 00:49 UTC
 
 Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. Controller10516
