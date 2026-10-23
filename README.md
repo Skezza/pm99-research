@@ -63,6 +63,11 @@ missing retired-player identities and dated moves; immutable local receipts
 retain original URLs and hashes. Current club/position fields and contemporary
 profile portraits are not historical season evidence.
 
+The [DFB Datencenter](https://datencenter.dfb.de/) also supplies explicit
+player and target-season team facts. [Wikidata](https://www.wikidata.org/) is
+credited for a narrowly checked Kharine/Kharin spelling, birth-date and
+Soccerbase-ID link; that link is not used to infer nationality or club ownership.
+
 [100 бомбардиров](https://100bombardirov.ru/ru/2002/squad/shn.htm) is credited
 for the 2002 Shinnik registration facts; that page attributes its squad details
 to the Russian Premier League (RFPL). Its target-year facts are cross-checked

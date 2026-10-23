@@ -1,5 +1,24 @@
 # Pi archive ledger
 
+## Local regenerable compiler cache — 2026-10-23 19:22 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`; no Pi transfer.
+Rechecked `go env GOCACHE` = `/home/joe/.cache/go-build`, no symlink/redirect
+and no active Go compiler/tool processes. Standard `go clean -cache` removed
+2841001984 allocated cache bytes (net free-space gain2840969216bytes), restoring
+about9.01GiB free. Source/module downloads and all PM99 releases, evidence,
+portraits, original2015 and shared Wine prefix untouched. This cache had regrown
+since the earlier cleanup; it is not another copy of the earlier claimed gain.
+Receipts `.local/cleanup-20261023/inactive-go-build-cache-1922/{before,after}.json`.
+Recovery: Go recompiles cached outputs from unchanged source/modules as needed.
+
+Completed country-batch disposable game copies were also retired only after
+sealed input/no-active-container checks; all7 receipts are under
+`.local/cleanup-20261023/verified-inactive-country-*-runtime/`. Actual private
+r181a–r187a releases and all original captures remain. Last2006 native run
+completed0 after its host controller143; original success summary/input bindings
+and honest recovered-transport receipt retained. No capture was rerun.
+
 ## Local regenerable cache/runtime cleanup — 2026-10-23 00:31 UTC
 
 Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. No Pi transfer.

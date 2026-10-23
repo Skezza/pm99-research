@@ -339,16 +339,19 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
     patched_eq, club_plan, club_changes = original_eq, None, []
     if club_plan_path is not None:
         from scripts import season_original_carrier_label_restoration_v1 as original_labels
+        from scripts import season_original_carrier_label_restoration_v2 as exact_page_labels
         from scripts import season_period_squad_carrier_label_v2 as annual_labels
         from scripts import season_period_cohort_coach_v3 as cohort_coaches
+        from scripts import season_period_cohort_coach_v4 as extended_cohort_coaches
         candidate_club_plan = json.loads(club_plan_path.read_text())
-        if candidate_club_plan.get('schema_version') in (original_labels.SCHEMA, annual_labels.SCHEMA, cohort_coaches.SCHEMA):
+        if candidate_club_plan.get('schema_version') in (original_labels.SCHEMA, exact_page_labels.SCHEMA, annual_labels.SCHEMA, cohort_coaches.SCHEMA, extended_cohort_coaches.SCHEMA):
             label_policy = {original_labels.SCHEMA:original_labels,annual_labels.SCHEMA:annual_labels,
-                cohort_coaches.SCHEMA:cohort_coaches}[candidate_club_plan['schema_version']]
+                exact_page_labels.SCHEMA:exact_page_labels,
+                cohort_coaches.SCHEMA:cohort_coaches, extended_cohort_coaches.SCHEMA:extended_cohort_coaches}[candidate_club_plan['schema_version']]
             label_policy.verify(release, candidate_club_plan)
-            if label_policy is cohort_coaches:
+            if label_policy in (cohort_coaches, extended_cohort_coaches):
                 if manager_plan_path is None:raise ValueError('coupled cohort/coach correction requires manager plan')
-                cohort_coaches.verify_manager_pair(candidate_club_plan,json.loads(manager_plan_path.read_text()))
+                label_policy.verify_manager_pair(candidate_club_plan,json.loads(manager_plan_path.read_text()))
             from scripts.season_historical_club_label_plan_v1 import rewrite_club_labels
             club_plan = candidate_club_plan
             patched_eq, club_changes = rewrite_club_labels(original_eq, club_plan['updates'])

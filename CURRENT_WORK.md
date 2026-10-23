@@ -1,5 +1,52 @@
 # PM99: current work
 
+## Resume: private fixes ready; disk reserve blocks new captures — 2026-10-23 19:20 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. Preferred baseline
+still v132; do NOT describe private children as installed or globally RC-ready.
+Source admission58e400a pushed. Later canonical Hayes/V4 code and tests remain
+uncommitted, alongside unrelated user/other-session changes: preserve those.
+
+Under `.local/consolidated-audit-20261009/parallel-rc-20261023/`:
+
+- `keeper-country-delivery-v1`: all SEVEN private r181a–r187a games and whole
+  SOURCE buddies built;13 country bytes only. All7 startup captures completed;
+  ROOT inspected every original on this resume (first3 previously, last4 now).
+  Three2000 profiles visually show Scotland/Russia/Germany; independent digits,
+  native input and kit proofs PASS. Last2006 host controller3024 exited143 but
+  actual native container completed0 with original success summary; recovery
+  receipt and full input bindings retained, NO rerun. Disposable7 copies removed.
+- `hayes-label-delivery-v2`: r188a/b actual label3307 Hayes and completeSOURCE
+  PASS; all players/managers/ground/assets unchanged. Needs same-release runner.
+- `hertha-dated-cohort-v4-delivery`:2004r189a/b +2006r190a/b actual Hertha421 /
+  dated Falko Götz (nativeGötz) and completeSOURCE PASS; every player byte exact.
+- `hertha-keeper-role-delivery-v1`: plans ONLY, not built. Four positive literal
+  G corrections: Fiedler13196 both years, Tremmel2211 in2004 and KevinStuhr-
+  Ellegaard18955 in2006. Additional2 beyond original2 became visible to strict
+  source matching after club-label repair; disclose additions, no baseline reset.
+  Tremmel nativeGermany already correct; Kevin nativeGermany needs a separately
+  sourced country decision, not an inference from birthplace or name.
+
+Canonical tests: country144PASS; Hayes/publisher/keeper69PASS2expectedskips;
+V4/current-countryparents +oldV3/publisher43PASS2expectedskips. Worker prototypes
+are NOT equivalent to canonical integration or actual publication.
+
+No active game runner/build at resume. Disk now6.4GiB (<8GiBreserve), so no
+new build/capture until safe capacity recovered. Other CLI session is active;
+do not kill or delete its work. New Luna workers: `release_batch_resume_qa`
+checks saved finitebatch/evidence; `disk_resume_candidates` read-only space /
+Pi candidates; `hayes_resume_adversarial` pending DOB/order typed source code.
+They must not touch shared recipes, publish or operate runner. Lead integrates.
+
+Frozen61/2809 dispositions /2748 unclosed REVIEW candidates unchanged; not
+2748 proven bugs. Country13 +labels/managers +four role repairs remain pending
+final integration/runtime/default promotion. Original2015 and deferred photos
+preserved. Next: safe disk cleanup, finish4 keeper roles without rebuilding
+completed parents, capture Hayes/finalHertha profiles/startups serially, guarded
+preferred chains and ONE consolidated all26 regression/checklist handoff. Keep
+FlynnDOB/HayesXI/Amavisca-Riera-Croft-deLaRed proposals clearly undelivered until
+actual canonical/source/game proofs. Never silently claim all RC work complete.
+
 ## Supervised nationality delivery preparation — 2026-10-23 01:31 UTC
 
 Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. Delivered baseline
@@ -46,6 +93,46 @@ Exact next action: review worker adversarial findings and actual canonical
 all13 in-memory test, then narrowly build/replay seven affected country-only
 games; native readback, genuine serial runtime and guarded publication before
 claiming delivery. Keep reassigning completed Luna workers without asking user.
+
+01:38 UTC continuation:58e400a committed/pushed source admission/tests and
+serial country builder. Celtic independently confirms actual rawidentity /
+country claims and no buildscript correctness blocker. SB/DFB legacy receipts
+onlybindURL/bodySHA; do not claim full HTTP-capture metadata. Plan additionally
+binds each receiptfileSHA and fresh writer verify rejects post-plan drift.
+Controller11989 ACTIVE first2000 country-onlyr181a/SOURCEr181b, no promotion.
+Hayes race fixed privately with scoped function globals;10testsPASS, but lead
+also requires relative-path/raw-page canonical identity guard before integration.
+Reconcile implementing safe delivery dispatch; Horne now executable2004/2006
+Hertha cohort+datedGötz v4 proposal (oldV3two-year guard correctly refused);
+Celtic coupledRiera/Croft executable admission proposal. No worker left waiting.
+Unidentified orphanPython604426 has no openfiles at inspection; ownership is
+not established, so not terminated or claimed to be ours. All new builds serial.
+
+01:51 UTC continuation: controller11989 TERMINAL0 first2000r181a/b country
+game+completeSOURCE exact, three native bytes only. Controller70845 ACTIVE
+remaining six serial builds;2001r182a/b and2002r183a/b completeSOURCE exact
+(three/one country bytes).2003r184a native proof saved; replay pending. All
+remain PRIVATE, not installed/preferred. Country delivered count still0/13;
+seven corrections BUILT+SOURCE in firstthree, two more native-verified only.
+Controller31178 Gould runtime TERMINAL0: genuineoriginal shows SCOTLAND /
+KEEPER; leadinspected and originaldigits/nativeinputs/kitpixels PASS. Country
+acceptance via actual IndexedFDI decodedfield PASS; initial standalone QA
+assertion incorrectly XORed file-level byte, not a gamebug, corrected using
+native indexed decoder. Controller64494 Kharine runtime TERMINAL0, original
+RUSSIA/KEEPER inspected and visual receipt saved; digit/native proof pending.
+Controller7598 Fiedler runtime ACTIVE; ONE runner only. Currentfree8.6GiB.
+
+Horne v4 source packagehash attribution challenged and corrected: d231...was
+2004r141a, NOT currentr170a ca698...; no observed immutableparentmutation.
+Two-year Hertha label/Götz proposal private7testsPASS; revision2must use actual
+closed-tenure managercontract fornative_names materialisation, canonicalraw
+source checks and exactcountrychildparentrebasing. Reconcile independentQA.
+Celtic now resolving Espanyol2005 shared-preserveAmavisca19owners{4,8}, native
+order24: completeXI preflight correctly rejects24listedvs23ownedrecipeactors.
+Pandiani8928isactuallynativeSTARTER2, not reservefromrecipeindex18; fullsource
+XI proves he shouldnotstart. JanuaryofficialUEFAHTML move/retirement source
+guards nowPASS, but ownership/orderparentneededbeforeRiera/Croft exchange.
+Do not bypass guard or claim these proposals delivered.
 
 ## v132 DELIVERED: nine keeper labels / three seasons — 2026-10-23 00:49 UTC
 

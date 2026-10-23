@@ -5,7 +5,11 @@ from scripts import publish_historical_role_delta_v1 as publisher
 
 
 def verify(base, actual, plan):
-    source.verify(base, plan)
+    policy = source
+    from scripts import season_original_carrier_label_restoration_v2 as exact_page
+    if plan.get('schema_version') == exact_page.SCHEMA:
+        policy = exact_page
+    policy.verify(base, plan)
     before = (base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
     after = (actual.game_path/'DBDAT/EQ98030.FDI').read_bytes()
     expected, changes = source.labels.rewrite_club_labels(before, plan['updates'])

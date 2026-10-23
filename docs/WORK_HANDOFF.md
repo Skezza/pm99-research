@@ -1,5 +1,38 @@
 # PM99 worker handoff
 
+## Resumed finite delivery batch — 2026-10-23 19:26 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`; CURRENT_WORK top
+authoritative. Preferred baseline remains v132. Private13-country7-season
+r181–r187 games/SOURCE/startup proofs are complete and originals inspected.
+Last2006 host143/nativecontainer0 honestly recovered, no repeat capture. All
+seven disposable country copies retired; releases and original evidence kept.
+Private Hayesr188a/b +Hertha/Götzr189a/b,r190a/b built/SOURCE complete, not
+preferred. Four literal-G roles (not originaltwo) source-positive after labels:
+Fiedler2,Tremmel2004,Stuhr-Ellegaard2006. Controller70821 ACTIVE exact role-only
+builds/SOURCE r191/r192; never regenerate completed role stages on resume.
+Controller59691 ACTIVE sole local runner, Hayes/Gothard r188 profile. No worker
+may build/publish/operate runner; lead serialises capture and integration.
+
+Disk at resume6.4GiB; standardgo clean-cache reclaimed2841001984allocatedbytes,
+free9.01GiB, source/module downloads and every PM99 release/evidence untouched.
+Receipt `.local/cleanup-20261023/inactive-go-build-cache-1922/`, archiveledger
+updated. AnotherCLI session has unrelated changes; preserve them and its work.
+Current newLunas: release_batch_resume_qa→Espanyol transaction/new_person QA;
+disk_resume_candidates→officialStuhr-Ellegaard nationality evidence (not birth-
+place inference); hayes_resume_adversarial→Flynn common-writer canonical-ready
+bundle and correct failed HayesXI test assertions. Existing isolated prototypes
+are not published game fixes. All batches require fresh verify/JSON replay.
+
+Actual sourcecode tests before this resume: country144PASS; Hayes/publisher /
+keeper69PASS2skips; V4/currentcountryparents +oldV3/publisher43PASS2skips.
+Saved finitebatch independently rehashed in
+`.local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/`.
+Asaba2003/Eustace2005 visual concerns disproved by exactoriginals/native/source;
+do not open false cases. Frozen61disposed/2748unreviewed unchanged, original2015
+protected, photos deferred. Next finish4roles, targeted Hayes/finalHertha
+runtime, guarded7-season preferred chains, ONE all26 regression/checklist.
+
 ## Supervised worker QA / narrow country integration — 2026-10-23 01:31 UTC
 
 Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`; CURRENT_WORK top
