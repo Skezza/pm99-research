@@ -1,5 +1,43 @@
 # PM99: current work
 
+## Seven-season country batch installed; Hayes order built — 2026-10-23 20:36 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. Source4aa3941 pushed;
+0491d7b committed. All seven country-batch defaults are now installed and
+runtime-attested: 2000r188,2001r182,2002r183,2003r184,2004r193,2005r194,
+2006r195. Last controller21472 TERMINAL0. Genuine final2006 Kevin profile:
+Hertha Berlin / DENMARK / GOALKEEPER / KEEPER / age23; independently verified
+ten ability digits, native input hashes and kit pixels. Final2006 Stoke startup
+also inspected. Evidence in `kevin-country-delivery-v1/2006-07` under the audit
+root below. Original2015 untouched. Consolidated all26 regression still pending.
+
+Hayes order r197a actually BUILT, parent private Flynn r196a: exactly14 startup
+order bytes; EQ, every identity/DOB/skill/role/manager/tactic/asset exact. SOURCE
+controller68708 ACTIVE, not yet claimed reproducible. Sole runner41198 ACTIVE:
+`local_hayes_2000_01_r197a_20261023_flynn_verified`. Runtime workspace uses the
+existing shared prefix. 2006 disposable runtime copy retired after source and
+active-mount checks, receipt `verified-inactive-final-hertha-2006-r195-runtime`
+under `.local/cleanup-20261023/`; actual games and evidence preserved.
+
+Canonical Hayes direct-dispatch tests3PASS227.15s; old Holt before/after canary
+exact. Promoted tests collected3 (only source-input path relocation). All source
+XI profiles independently reread by ROOT; no source DOB used for order changes.
+Audit root `.local/consolidated-audit-20261009/parallel-rc-20261023/`, Hayes
+stage `hayes-opening-order-delivery-v2`; source input/plan in `horne/`.
+
+Lunas continue supervised: release worker fixes Amavisca proposal's impure
+binder/invalid replay artifact/canonical API gaps (NOT delivered); Hayes worker
+extracts complete FTC XI and original scan provenance (2016 admin comment is
+not independent primary evidence); disk worker prepares partial Evers/Adams
+source admission and withdraws stale Kidder3310→Hayes suggestion. Kidder3310
+is still duplicate Kidderminster; Hayes3307 is separate and corrected. No case
+closed because of stale reports or source searches failing. Frozen61/2809
+dispositions,2748 review candidates unchanged; photos deferred.
+
+Next finish r197 SOURCE and Flynn profile +same-release Stoke startup, promote
+exact r188→r196→r197 chain, consolidate v133/current26 regression, then deliver
+the reviewed ownership/selection corrections. No claim that global RC is done.
+
 ## Final private releases checked / ownership integration continuing — 2026-10-23 20:24 UTC
 
 Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. Resume from v133 partial
