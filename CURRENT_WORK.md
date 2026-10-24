@@ -1,5 +1,77 @@
 # PM99: current work
 
+## v164 installed: Alverca identity/manager delivered; next3 fact pairs building — 2026-10-24 20:38 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Authoritative checklist `release-delivery-checklist-v164.json` SHA256
+`18e2599185ba89312ee1295460f3c5eec954533fa0bfa1d19a4f8799df491d08`;
+critical ledger `confirmed-critical-batch-20261024-v16.json`.
+
+DELIVERED/INSTALLED/VERIFIED:2000/01 r276a, FC Porto623→FC Alverca and unique
+ENT2032 Lopetegui→Ferreira; recipe manager Jesualdo Ferreira, explicit native
+family display. All players/JUG, roster rows/order/flags, stadium/control tails,
+other clubs/managers/ratings/tactics/photos/kits/assets/calendar preserved.
+Only EQ623 and ENT2032 decoded records differ. Full A/B SOURCE recipe/game
+inventories identical. ROOT inspected Paviot29775 actual profile showing
+FC Alverca; native/bitmap skill/age checks passed; ROOT inspected fresh
+Stoke2000 startup. Paviot DOB remains explicit native-preserve fallback:
+age23 is runtime validation, NOT historical birthday approval. His unchanged
+DEFENDER/RIGHT MID display is a review candidate, not a newly confirmed bug.
+No dedicated manager-screen screenshot is claimed: actual ENT/EQ readback and
+runner native hashes prove corrected linked manager record.
+
+Install90698 succeeded after ROOT fixed private receipt-schema/hash/attestor
+contract mismatches; negative preflight logs retained and original QA/source
+bytes unchanged. Other25 preferred releases and original2015 preserved; actual
+recipe viewer selects FC Alverca/Jesualdo Ferreira. Play `./pm99-season play 2000-01`.
+Evidence `resume-qa/source-club-label-scan-v1/alverca-r276-candidate-v1/`.
+Disposable runtime copy retirement40613 is running after exact inventory/mount
+checks; actual source A/B games, screenshots and shared Wine prefix retained.
+
+COUNTS: frozen2809 /109disposed /2700review-or-confirmed-open unchanged.
+Stock327 /58installed /269notinstalled;3installed mappings separately need
+club-identity review (not unqualified historic approval). Critical groups now
+16total /12delivered /4open: original8baseline groups preserved, added groups
+7→8 explicitly for source-cohort stale club labels. New group has8confirmed
+cases /1delivered(Alverca) /7pending. Remaining26distinct-provider candidates
+and12likely aliases remain review, not auto-confirmed bugs. No percentage
+completion inferred from unweighted groups. Calendar/stock/identity-fact groups
+remain open; r245 remains HOLD and r248 uninstalled.
+
+NEXT FACT BATCH25276 is BUILDING, NOT INSTALLED: reviewed canonical inputs via
+existing adjudicator/publisher/SOURCE APIs, serial A/B pairs:2002Zanetti4158→ARG
+(r274),2003Seedorf20953→NED(r275),2012Seedorf16905→1976-04-01/NED(r273).
+Expected changed JUG bytes1/1/3; all unselected data must remain exact.
+Evidence `resume-qa/adjudicated-three-season-facts-batch-v1/`. Do not rerun
+already-built pairs; inspect logs/registered locators before resuming.
+
+Irish2017source packet now resolves frozen30owner cases:28datedclub projections,
+Cregg outside represented clubs after14AugForfar transfer, Gavin accepted as a
+clearly documented continuity exception from dated2018press/2017entry evidence;
+no direct August observation claimed and contradictory aggregator date retained.
+Forfar/Cregg ACTUALLY absent in current543club/11650nativeactor scan; don't claim
+a preserved Forfar actor or create an unrequested freeagent. Augfixture packetv2
+covers12clubs/212participants/132starters,198literal joins+14explicit sourcealiases,
+0unmatched/ambiguous; v1 erroneous bench attribution superseded. Manager source
+packet includes all12Febguide and dated Lyttle/McDonald appointments; other10
+continuity not independently observed exactlyAug31. Country game repair is NOT
+built or delivered. Source manifestv2/overlayv2 under
+`calendar-2017-source-correction-input-v1/irish-slice-readiness-v1/irish-first-ten-transfer-ownership-v1/`.
+
+Luna: disk hardens private generic full-cohort label admission (native-owner,
+source-person, selector, ambiguity and SOURCE immutable-parent guards); Hayes
+private annual+fixture identity bridge for2000/01 Seedorf disputedDOB source
+rows; release private12Irishclub package-only composer with all non-Irish rows
+exact. No worker publication/runner. Important: disk overwrote UNAPPROVED v1
+prototype outputs after reporting hashes; `V1_EVIDENCE_INVALIDATED.json` records
+that limitation. No shared code, raw sources, actual games or completed fixes
+were affected. Use only additivev2/fresh QA when returned; don't trust oldv1
+prototype hash claims. Root owns all integration and approval.
+
+Next: inspect fact batch and preserve completed outputs; review hardened label
+patch/source-country candidate; install only corrections with exact native,
+SOURCE and runtime proof. Preserve completed research/2015backup/unaffected RCs.
+
 ## v163 installed: 2006 Seedorf role verified; next Alverca correction building — 2026-10-24 20:09 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
