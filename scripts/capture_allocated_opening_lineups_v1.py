@@ -24,6 +24,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts import capture_transfermarkt_opening_lineups_v1 as opening  # noqa: E402
+from scripts import transfermarkt_calendar_year_policy_v1 as calendar_year_policy  # noqa: E402
 from scripts import capture_opening_manager_history_supplements_v1 as history  # noqa: E402
 from scripts import capture_allocated_manager_history_v1 as managers  # noqa: E402
 
@@ -64,10 +65,30 @@ def _selector(value: Mapping[str, Any]) -> tuple[str, str, str]:
 def _identity(source: Mapping[str, Any], *, season_start_year: int) -> tuple[str, opening.TeamRef] | None:
     path = str(source.get("source_path") or "").strip()
     match = re.fullmatch(r"squad/(\d{4})/([A-Z0-9]+)/([1-9]\d*)\.html", path)
-    if match is None or int(match.group(1)) != season_start_year:
-        return None
     selector = _selector(source)
-    code, club_id = match.group(2), int(match.group(3))
+    route_doc = source.get("calendar_year_routing")
+    if route_doc is None:
+        if match is None or int(match.group(1)) != season_start_year:
+            return None
+        code, club_id = match.group(2), int(match.group(3))
+    else:
+        routed = re.fullmatch(
+            r"squad-calendar-route-v1/(\d{4})/(\d{4})/([A-Z0-9]+)/([1-9]\d*)\.html", path
+        )
+        if not isinstance(route_doc, Mapping) or routed is None:
+            raise AllocatedLineupError("calendar-routed squad has malformed route metadata or source path")
+        target_year, provider_year = int(routed.group(1)), int(routed.group(2))
+        code, club_id = routed.group(3), int(routed.group(4))
+        try:
+            expected_route = calendar_year_policy.route_provider_year(target_year, code, selector[0]).document()
+        except calendar_year_policy.RoutingError as exc:
+            raise AllocatedLineupError(f"calendar-routed squad has no reviewed route: {exc}") from exc
+        if (target_year != season_start_year or provider_year != season_start_year - 1
+                or int(route_doc.get("target_calendar_year", -1)) != target_year
+                or int(route_doc.get("provider_season_id", -1)) != provider_year
+                or route_doc.get("source_competition_code") != code
+                or dict(route_doc) != expected_route):
+            raise AllocatedLineupError("calendar-routed squad path and metadata do not match reviewed target/provider/country")
     return code, opening.TeamRef(
         source_club_name=selector[2], transfermarkt_name=selector[2], club_id=club_id,
         club_path=f"/-/startseite/verein/{club_id}", identity_match_method="frozen-historic-source-path",
@@ -99,6 +120,10 @@ def capture(
     known_reconciliation: Mapping[str, Any], known_reconciliation_sha256: str,
     cache: opening.SnapshotCache,
 ) -> dict[str, Any]:
+    audit_binding = None
+    if any(isinstance(row, Mapping) and row.get("calendar_year_routing") is not None
+           for row in source_capture.get("clubs", [])):
+        audit_binding = calendar_year_policy.verify_audit(ROOT)
     if allocation.get("schema_version") != ALLOCATION_SCHEMA:
         raise AllocatedLineupError("unsupported carrier allocation")
     year = managers._season_start_year(allocation)
@@ -135,8 +160,13 @@ def capture(
     failures: list[dict[str, str]] = []
     for selector, (code, ref) in sorted(candidates.items()):
         try:
-            fixture = opening._first_fixture(ref, season_start_year=year, competition_code=code, cache=cache)
+            fixture = opening._first_fixture(ref, season_start_year=year, competition_code=code,
+                                             country_catalog=selector[0], cache=cache)
             row = opening._lineup_from_report(ref, fixture, cache)
+            if "calendar_year_routing" in fixture:
+                row["calendar_year_routing"] = fixture["calendar_year_routing"]
+                row["provider_season_id"] = fixture["provider_season_id"]
+                row["target_calendar_year"] = fixture["target_calendar_year"]
             row["source_selector"].update({"country_catalog": selector[0], "competition_catalog": selector[1]})
             row["source_competition_code"] = code
             rows.append(row)
@@ -155,6 +185,7 @@ def capture(
             "carrier_allocation_sha256": allocation_sha256,
             "known_opening_reconciliation_sha256": known_reconciliation_sha256,
             "cache_files": [cache.used[key] for key in sorted(cache.used)],
+            **({"calendar_year_routing_audit": audit_binding} if audit_binding is not None else {}),
         },
         "summary": {
             "allocated_carrier_count": len(allocated),

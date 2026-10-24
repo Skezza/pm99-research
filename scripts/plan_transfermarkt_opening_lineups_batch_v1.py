@@ -17,12 +17,18 @@ import argparse
 import hashlib
 import json
 import shlex
+import sys
 from collections import Counter
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 
+
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from scripts import transfermarkt_calendar_year_policy_v1 as calendar_year_policy  # noqa: E402
 PLAN_SCHEMA = "pm99-transfermarkt-opening-lineup-batch-plan-v1"
 SELECTOR_SCHEMA = "pm99-transfermarkt-opening-lineup-selector-capture-v1"
 MAP_SCHEMA = "pm99-transfermarkt-opening-lineup-competition-map-v1"
@@ -169,12 +175,30 @@ def plan_season(
     pair_counts = Counter((row["country_catalog"], row["competition_catalog"]) for row in selectors)
     supported: list[dict[str, Any]] = []
     unsupported: list[dict[str, Any]] = []
+    quarantined: list[dict[str, Any]] = []
+    routed_pairs: list[dict[str, Any]] = []
+    audit_binding = None
+    if any(codes.get(pair) in {*calendar_year_policy.CALENDAR_CODE_COUNTRY, "RU1"} for pair in pair_counts):
+        audit_binding = calendar_year_policy.verify_audit(repo_root)
     for pair, club_count in sorted(pair_counts.items()):
         if pair in codes:
+            code = codes[pair]
+            try:
+                route = calendar_year_policy.route_provider_year(season_start_year, code, pair[0])
+            except calendar_year_policy.RoutingError as exc:
+                quarantined.append({
+                    "club_count": club_count, "competition_catalog": pair[1],
+                    "country_catalog": pair[0], "source_competition_code": code,
+                    "reason": str(exc),
+                })
+                continue
             supported.append({
                 "club_count": club_count, "competition_catalog": pair[1],
-                "country_catalog": pair[0], "source_competition_code": codes[pair],
+                "country_catalog": pair[0], "source_competition_code": code,
             })
+            if route.provider_season_id != route.target_year:
+                routed_pairs.append({**route.document(), "club_count": club_count,
+                    "competition_catalog": pair[1]})
         else:
             unsupported.append({
                 "club_count": club_count, "competition_catalog": pair[1], "country_catalog": pair[0],
@@ -240,6 +264,14 @@ def plan_season(
         "supported_competitions": supported,
         "unsupported_competitions": unsupported,
     }
+    if audit_binding is not None:
+        plan["summary"].update(calendar_quarantined_club_count=sum(row["club_count"] for row in quarantined),
+                               calendar_quarantined_competition_count=len(quarantined))
+        plan["calendar_quarantined_competitions"] = quarantined
+        plan["calendar_year_routing"] = {
+            "audit": audit_binding, "policy_schema": calendar_year_policy.POLICY_SCHEMA,
+            "routed_competitions": routed_pairs, "quarantined_competitions": quarantined,
+        }
     plan_path.write_bytes(_canonical_bytes(plan))
     return plan
 

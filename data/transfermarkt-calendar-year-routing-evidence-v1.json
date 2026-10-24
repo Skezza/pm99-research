@@ -1,0 +1,3045 @@
+{
+  "calendar_target_2017_native_scope": {
+    "availability": {
+      "all_calendar_schedule_and_report_bodies_present": true,
+      "all_calendar_squad_preallocation_records_present": true,
+      "all_current_squad_preallocation_records_present": true,
+      "calendar_target_only_ids": 14,
+      "changed_carrier_candidate_rows": 25,
+      "current_plan_clubs": 39,
+      "current_plan_only_ids": 12,
+      "same_tm_club_ids": 27,
+      "target_calendar_2017_clubs": 41
+    },
+    "by_country": [
+      {
+        "calendar_target": {
+          "clubs": [
+            {
+              "club": "Botafogo de Futebol e Regatas",
+              "date": "2017-05-14",
+              "match_id": "2846995",
+              "preallocated_roster_rows": 51,
+              "provider_season_id": 2016,
+              "report_html_sha256": "95ef193e639e5baa5bfd3042bf1af7a2e804d11c1d5eb8509e16cbecf2545287",
+              "schedule_html_sha256": "4b57067c089466ed3ed520881c335c92cf444407e8c38a17533b3f6d0ab96550",
+              "schedule_url": "https://www.transfermarkt.co.uk/botafogo-rio-de-janeiro/spielplan/verein/537/saison_id/2016",
+              "squad_source_path": "squad/2016/BRA1/537.html",
+              "squad_source_sha256": "3d1cc54d801a40cb25d0078751ac49f35cdd2983d3ace9fc9c570f1ada0c7de9",
+              "squad_source_url": "https://www.transfermarkt.co.uk/botafogo-rio-de-janeiro/kader/verein/537/saison_id/2016",
+              "sub_count": 9,
+              "tm_club_id": 537,
+              "xi_count": 11
+            },
+            {
+              "club": "CR Flamengo",
+              "date": "2017-05-13",
+              "match_id": "2846987",
+              "preallocated_roster_rows": 30,
+              "provider_season_id": 2016,
+              "report_html_sha256": "7df9d4554ef7789b00d33de8fcb5f3098b9c973f7152ef6f7118b484d0bf350a",
+              "schedule_html_sha256": "3b8b7f8bbaf1ea406cec262ddb99edf2986b0ae52bbb8a855c6d753e0a685a0c",
+              "schedule_url": "https://www.transfermarkt.co.uk/flamengo-rio-de-janeiro/spielplan/verein/614/saison_id/2016",
+              "squad_source_path": "squad/2016/BRA1/614.html",
+              "squad_source_sha256": "74d9ce6488839d1a11a544f1287709f0166a33ec782844ba33b5cb15e8acc0fc",
+              "squad_source_url": "https://www.transfermarkt.co.uk/flamengo-rio-de-janeiro/kader/verein/614/saison_id/2016",
+              "sub_count": 12,
+              "tm_club_id": 614,
+              "xi_count": 11
+            },
+            {
+              "club": "Coritiba Foot Ball Club",
+              "date": "2017-05-16",
+              "match_id": "2846996",
+              "preallocated_roster_rows": 43,
+              "provider_season_id": 2016,
+              "report_html_sha256": "ece1a923536cc2393338717bea1457d650c4eda11ec5c18e5114ac3f35da9165",
+              "schedule_html_sha256": "1e151251e529d27682c9f9fb505f043f9f58c6be2b8a4bbcd5e3db0137ea4c97",
+              "schedule_url": "https://www.transfermarkt.co.uk/coritiba-fc/spielplan/verein/776/saison_id/2016",
+              "squad_source_path": "squad/2016/BRA1/776.html",
+              "squad_source_sha256": "9b451b5f114eebd3074ded984a538bef9f536ab460202ff3e8e7a267783dc59e",
+              "squad_source_url": "https://www.transfermarkt.co.uk/coritiba-fc/kader/verein/776/saison_id/2016",
+              "sub_count": 11,
+              "tm_club_id": 776,
+              "xi_count": 11
+            },
+            {
+              "club": "Cruzeiro Esporte Clube",
+              "date": "2017-05-14",
+              "match_id": "2846992",
+              "preallocated_roster_rows": 50,
+              "provider_season_id": 2016,
+              "report_html_sha256": "ccd30239fd07c71361cea40f7a822a50234b6bde599379ba4a7df0328467d36b",
+              "schedule_html_sha256": "4df7ea1ba5b36e8910f5f2936eb4a9d33ff017b1fb6a3f09665a6682bbad24cc",
+              "schedule_url": "https://www.transfermarkt.co.uk/ec-cruzeiro-belo-horizonte/spielplan/verein/609/saison_id/2016",
+              "squad_source_path": "squad/2016/BRA1/609.html",
+              "squad_source_sha256": "9419f8192f646f598d00afafa567084f2818d82c24bb51d62e6c5ce3abf4288e",
+              "squad_source_url": "https://www.transfermarkt.co.uk/ec-cruzeiro-belo-horizonte/kader/verein/609/saison_id/2016",
+              "sub_count": 10,
+              "tm_club_id": 609,
+              "xi_count": 11
+            },
+            {
+              "club": "Esporte Clube Vitória",
+              "date": "2017-05-14",
+              "match_id": "2846994",
+              "preallocated_roster_rows": 46,
+              "provider_season_id": 2016,
+              "report_html_sha256": "7863d68cc9f3dcbdaacc0b0d65601ed13f690d7a905f19bb24b2a3853f7daccb",
+              "schedule_html_sha256": "0d455c67c55af95c071e10eef83650a7df7935b92b31f8a962f677b8cc18266f",
+              "schedule_url": "https://www.transfermarkt.co.uk/esporte-clube-vitoria/spielplan/verein/2125/saison_id/2016",
+              "squad_source_path": "squad/2016/BRA1/2125.html",
+              "squad_source_sha256": "5d1c0ca1d048db3a205bf544ff4eb0f10df496ef0f1ef49227c9b7c96b7e4526",
+              "squad_source_url": "https://www.transfermarkt.co.uk/esporte-clube-vitoria/kader/verein/2125/saison_id/2016",
+              "sub_count": 9,
+              "tm_club_id": 2125,
+              "xi_count": 11
+            },
+            {
+              "club": "Grêmio Foot-Ball Porto Alegrense",
+              "date": "2017-05-14",
+              "match_id": "2846995",
+              "preallocated_roster_rows": 76,
+              "provider_season_id": 2016,
+              "report_html_sha256": "95ef193e639e5baa5bfd3042bf1af7a2e804d11c1d5eb8509e16cbecf2545287",
+              "schedule_html_sha256": "340e346d2b3b84d9f81cd15afea2f3474490c7fcf91904373bba34374efb7454",
+              "schedule_url": "https://www.transfermarkt.co.uk/gremio-porto-alegre/spielplan/verein/210/saison_id/2016",
+              "squad_source_path": "squad/2016/BRA1/210.html",
+              "squad_source_sha256": "96dd9127a9c9b02298b9e454a3eb02a859238861078c161af6a48fd575b0a7da",
+              "squad_source_url": "https://www.transfermarkt.co.uk/gremio-porto-alegre/kader/verein/210/saison_id/2016",
+              "sub_count": 12,
+              "tm_club_id": 210,
+              "xi_count": 11
+            },
+            {
+              "club": "Sport Club Corinthians Paulista",
+              "date": "2017-05-13",
+              "match_id": "2846988",
+              "preallocated_roster_rows": 43,
+              "provider_season_id": 2016,
+              "report_html_sha256": "43ca309d2a58492334b8b282303d41a85cb3034aa807a7b9c917cc832368c2fc",
+              "schedule_html_sha256": "0e8b9d489738d70d5de0a45c02b436eda61dcca140043a11c3b85c67a2e3bbe0",
+              "schedule_url": "https://www.transfermarkt.co.uk/corinthians-sao-paulo/spielplan/verein/199/saison_id/2016",
+              "squad_source_path": "squad/2016/BRA1/199.html",
+              "squad_source_sha256": "ae2d089c4070a5ab8eac541d23688d82939d0d8f002cd742f7a650eab1452d51",
+              "squad_source_url": "https://www.transfermarkt.co.uk/corinthians-sao-paulo/kader/verein/199/saison_id/2016",
+              "sub_count": 12,
+              "tm_club_id": 199,
+              "xi_count": 11
+            },
+            {
+              "club": "Sport Club do Recife",
+              "date": "2017-05-14",
+              "match_id": "2865898",
+              "preallocated_roster_rows": 31,
+              "provider_season_id": 2016,
+              "report_html_sha256": "20798aeaeac20d4c397f22d8a6c0056c7e9aba75f2d1826ae93f172cbfce2dc7",
+              "schedule_html_sha256": "f65482842f306943209161a0d4bab796315ede73d264fd8a5176f5d77ffb97a6",
+              "schedule_url": "https://www.transfermarkt.co.uk/sport-club-do-recife/spielplan/verein/8718/saison_id/2016",
+              "squad_source_path": "squad/2016/BRA1/8718.html",
+              "squad_source_sha256": "06ca004958fde2f7146af31e3fe532f3f0dcfb73ce225fc289424d8ff4a5838d",
+              "squad_source_url": "https://www.transfermarkt.co.uk/sport-club-do-recife/kader/verein/8718/saison_id/2016",
+              "sub_count": 9,
+              "tm_club_id": 8718,
+              "xi_count": 11
+            },
+            {
+              "club": "São Paulo Futebol Clube",
+              "date": "2017-05-14",
+              "match_id": "2846992",
+              "preallocated_roster_rows": 29,
+              "provider_season_id": 2016,
+              "report_html_sha256": "ccd30239fd07c71361cea40f7a822a50234b6bde599379ba4a7df0328467d36b",
+              "schedule_html_sha256": "ae18b6892e920daa028d8935bf3320e7954c314224ab6dca221f2c4ea59d12e4",
+              "schedule_url": "https://www.transfermarkt.co.uk/fc-sao-paulo/spielplan/verein/585/saison_id/2016",
+              "squad_source_path": "squad/2016/BRA1/585.html",
+              "squad_source_sha256": "5aa4369ed40ee5f9827488efb3ad19ca789d3cdafccfb738f9ed90c2eb93cd0d",
+              "squad_source_url": "https://www.transfermarkt.co.uk/fc-sao-paulo/kader/verein/585/saison_id/2016",
+              "sub_count": 11,
+              "tm_club_id": 585,
+              "xi_count": 11
+            }
+          ],
+          "game_label": "2017-18",
+          "provider_season_id": 2016,
+          "target_calendar_year": 2017
+        },
+        "changed_native_carrier_candidates": [
+          {
+            "calendar_2017_assignment": "Esporte Clube Vitória",
+            "carrier_id": 2801,
+            "current_package_native_label": "América Futebol Clube (MG)",
+            "current_provider_2017_assignment": "América Futebol Clube (MG)",
+            "roster_player_count": 26
+          },
+          {
+            "calendar_2017_assignment": "Coritiba Foot Ball Club",
+            "carrier_id": 2802,
+            "current_package_native_label": "Esporte Clube Bahia",
+            "current_provider_2017_assignment": "Esporte Clube Bahia",
+            "roster_player_count": 21
+          },
+          {
+            "calendar_2017_assignment": "Grêmio Foot-Ball Porto Alegrense",
+            "carrier_id": 2805,
+            "current_package_native_label": "Sport Club Corinthians Paulista",
+            "current_provider_2017_assignment": "Sport Club Corinthians Paulista",
+            "roster_player_count": 22
+          },
+          {
+            "calendar_2017_assignment": "Sport Club Corinthians Paulista",
+            "carrier_id": 2807,
+            "current_package_native_label": "Sport Club Internacional",
+            "current_provider_2017_assignment": "Sport Club Internacional",
+            "roster_player_count": 22
+          }
+        ],
+        "club_set": {
+          "calendar_only": [
+            210,
+            776,
+            2125
+          ],
+          "calendar_target_ids": [
+            199,
+            210,
+            537,
+            585,
+            609,
+            614,
+            776,
+            2125,
+            8718
+          ],
+          "current_only": [
+            2863,
+            6600,
+            10010
+          ],
+          "current_plan_ids": [
+            199,
+            537,
+            585,
+            609,
+            614,
+            2863,
+            6600,
+            8718,
+            10010
+          ],
+          "shared_ids": [
+            199,
+            537,
+            585,
+            609,
+            614,
+            8718
+          ]
+        },
+        "country": "brazil",
+        "current_plan_comparison": {
+          "clubs": [
+            {
+              "club": "América Futebol Clube (MG)",
+              "date": "2018-04-15",
+              "match_id": "3011397",
+              "preallocated_roster_rows": 58,
+              "provider_season_id": 2017,
+              "report_html_sha256": "4ab0724a3ccf1e778903903bda20967144da8d08df9edd63adca3b262d2fd196",
+              "schedule_html_sha256": "7b683f9d7a15b49a84c2db778250f33a371a0a347ffcd38b40941b0c0f4b6a98",
+              "schedule_url": "https://www.transfermarkt.co.uk/america-futebol-clube-mg-/spielplan/verein/2863/saison_id/2017",
+              "squad_source_path": "squad/2017/BRA1/2863.html",
+              "squad_source_sha256": "9877c8fb0c61b5597ea1784c1f715d99eda48efe1b6ac89993d397e39b3d89fa",
+              "squad_source_url": "https://www.transfermarkt.co.uk/america-futebol-clube-mg-/kader/verein/2863/saison_id/2017",
+              "sub_count": 12,
+              "tm_club_id": 2863,
+              "xi_count": 11
+            },
+            {
+              "club": "Botafogo de Futebol e Regatas",
+              "date": "2018-04-17",
+              "match_id": "3011399",
+              "preallocated_roster_rows": 46,
+              "provider_season_id": 2017,
+              "report_html_sha256": "0f029e0962efc23e0743c581e2931355e9bbc2fc891e8e0d0192a7dba3c9548c",
+              "schedule_html_sha256": "b1e8ccf19cacb8419e16b7f896b2f39ba08c64ab5373f5579bae1c1fc2fd9850",
+              "schedule_url": "https://www.transfermarkt.co.uk/botafogo-rio-de-janeiro/spielplan/verein/537/saison_id/2017",
+              "squad_source_path": "squad/2017/BRA1/537.html",
+              "squad_source_sha256": "061879bd48a68798de6dd923816cb950f628145c24967eef0cfcd78c0e6ff96f",
+              "squad_source_url": "https://www.transfermarkt.co.uk/botafogo-rio-de-janeiro/kader/verein/537/saison_id/2017",
+              "sub_count": 12,
+              "tm_club_id": 537,
+              "xi_count": 11
+            },
+            {
+              "club": "CR Flamengo",
+              "date": "2018-04-14",
+              "match_id": "3011406",
+              "preallocated_roster_rows": 39,
+              "provider_season_id": 2017,
+              "report_html_sha256": "596f723bc4b7d3901729e38d8e6a214f0de32d2aa323a24c46ceebb5cb7e9d9b",
+              "schedule_html_sha256": "b8ad3954465923425bd51f35a4a46744ddb5f706c9250bb892bacd862330794f",
+              "schedule_url": "https://www.transfermarkt.co.uk/flamengo-rio-de-janeiro/spielplan/verein/614/saison_id/2017",
+              "squad_source_path": "squad/2017/BRA1/614.html",
+              "squad_source_sha256": "df1141d6506ba618d760583a41df5a407fe43c084bd58fc55c00aaeb8d69cb3a",
+              "squad_source_url": "https://www.transfermarkt.co.uk/flamengo-rio-de-janeiro/kader/verein/614/saison_id/2017",
+              "sub_count": 12,
+              "tm_club_id": 614,
+              "xi_count": 11
+            },
+            {
+              "club": "Cruzeiro Esporte Clube",
+              "date": "2018-04-14",
+              "match_id": "3011401",
+              "preallocated_roster_rows": 54,
+              "provider_season_id": 2017,
+              "report_html_sha256": "2a53c851196dcdf64fbcf22132009893650c95d1e10c00984555d0cb5fe19cf9",
+              "schedule_html_sha256": "146a32d46df71dfeb7c41c2c66de5d354de1d93e519cd23c88f01eeff223ba72",
+              "schedule_url": "https://www.transfermarkt.co.uk/ec-cruzeiro-belo-horizonte/spielplan/verein/609/saison_id/2017",
+              "squad_source_path": "squad/2017/BRA1/609.html",
+              "squad_source_sha256": "e46cf88844d676e565d0674d217c2f2805b0f49e22e4b198739f2b315d096e43",
+              "squad_source_url": "https://www.transfermarkt.co.uk/ec-cruzeiro-belo-horizonte/kader/verein/609/saison_id/2017",
+              "sub_count": 11,
+              "tm_club_id": 609,
+              "xi_count": 11
+            },
+            {
+              "club": "Esporte Clube Bahia",
+              "date": "2018-04-15",
+              "match_id": "3011402",
+              "preallocated_roster_rows": 52,
+              "provider_season_id": 2017,
+              "report_html_sha256": "f04f90b8f00f98597727db82b8ed831a44b14ab2399526897a2e1eeaa243db7b",
+              "schedule_html_sha256": "201c8f7017e9e16aae5a5de46826151792c7e865077e50ab3dd30ea000cfad2e",
+              "schedule_url": "https://www.transfermarkt.co.uk/esporte-clube-bahia/spielplan/verein/10010/saison_id/2017",
+              "squad_source_path": "squad/2017/BRA1/10010.html",
+              "squad_source_sha256": "e3a818c6b8f837965e1a162c64ba62c856d120cec3167cafcf7f68b68e30522e",
+              "squad_source_url": "https://www.transfermarkt.co.uk/esporte-clube-bahia/kader/verein/10010/saison_id/2017",
+              "sub_count": 12,
+              "tm_club_id": 10010,
+              "xi_count": 11
+            },
+            {
+              "club": "Sport Club Corinthians Paulista",
+              "date": "2018-04-15",
+              "match_id": "3011400",
+              "preallocated_roster_rows": 58,
+              "provider_season_id": 2017,
+              "report_html_sha256": "f0e7d6b2e78a6ca7b4e9fef435a309a0c8cd470358215d8c3614ac5517fa1a07",
+              "schedule_html_sha256": "a9c675ef906f33bf35c3b5d6915e845370ddece7ab5a528018e31c2acb9dbf6b",
+              "schedule_url": "https://www.transfermarkt.co.uk/corinthians-sao-paulo/spielplan/verein/199/saison_id/2017",
+              "squad_source_path": "squad/2017/BRA1/199.html",
+              "squad_source_sha256": "1c0c6a90342a8fc9305089463c7788f9d03672e809299bcd0149f189b71eafcf",
+              "squad_source_url": "https://www.transfermarkt.co.uk/corinthians-sao-paulo/kader/verein/199/saison_id/2017",
+              "sub_count": 12,
+              "tm_club_id": 199,
+              "xi_count": 11
+            },
+            {
+              "club": "Sport Club Internacional",
+              "date": "2018-04-15",
+              "match_id": "3011402",
+              "preallocated_roster_rows": 53,
+              "provider_season_id": 2017,
+              "report_html_sha256": "f04f90b8f00f98597727db82b8ed831a44b14ab2399526897a2e1eeaa243db7b",
+              "schedule_html_sha256": "7ab7187221fa9b8524c36ef146246379c71f15921b82371102745f1e7fa55c32",
+              "schedule_url": "https://www.transfermarkt.co.uk/sc-internacional-porto-alegre/spielplan/verein/6600/saison_id/2017",
+              "squad_source_path": "squad/2017/BRA1/6600.html",
+              "squad_source_sha256": "9e3f3bcab51670f5740b4864b69142db4e365ce9e6888073757204bfc80f1594",
+              "squad_source_url": "https://www.transfermarkt.co.uk/sc-internacional-porto-alegre/kader/verein/6600/saison_id/2017",
+              "sub_count": 11,
+              "tm_club_id": 6600,
+              "xi_count": 11
+            },
+            {
+              "club": "Sport Club do Recife",
+              "date": "2018-04-15",
+              "match_id": "3011397",
+              "preallocated_roster_rows": 30,
+              "provider_season_id": 2017,
+              "report_html_sha256": "4ab0724a3ccf1e778903903bda20967144da8d08df9edd63adca3b262d2fd196",
+              "schedule_html_sha256": "b39c7f62ba52bd2dc85e3cdf3caa9330b6ccecbe8f00085d28e4a5d9179b8241",
+              "schedule_url": "https://www.transfermarkt.co.uk/sport-club-do-recife/spielplan/verein/8718/saison_id/2017",
+              "squad_source_path": "squad/2017/BRA1/8718.html",
+              "squad_source_sha256": "3f7164845dd0cca958a389385d7ef3e72b6596dc4466bb7384a5a6bf2c1b14b5",
+              "squad_source_url": "https://www.transfermarkt.co.uk/sport-club-do-recife/kader/verein/8718/saison_id/2017",
+              "sub_count": 9,
+              "tm_club_id": 8718,
+              "xi_count": 11
+            },
+            {
+              "club": "São Paulo Futebol Clube",
+              "date": "2018-04-17",
+              "match_id": "3011404",
+              "preallocated_roster_rows": 57,
+              "provider_season_id": 2017,
+              "report_html_sha256": "e2f795fdf9e8de212ddfe53edb0f9884fa34cb251ed9b3d44a96765e6ef5708f",
+              "schedule_html_sha256": "7f847b3b5fbfc3e350f255fcca056aea1b20f681bac965d487e5c8550c33b76c",
+              "schedule_url": "https://www.transfermarkt.co.uk/fc-sao-paulo/spielplan/verein/585/saison_id/2017",
+              "squad_source_path": "squad/2017/BRA1/585.html",
+              "squad_source_sha256": "a875fb0f5316b1c072f28d46c8b8d145f24a350e1c38c4cd0fa72cc00a9d7467",
+              "squad_source_url": "https://www.transfermarkt.co.uk/fc-sao-paulo/kader/verein/585/saison_id/2017",
+              "sub_count": 12,
+              "tm_club_id": 585,
+              "xi_count": 11
+            }
+          ],
+          "game_label": "2017-18",
+          "provider_season_id": 2017
+        },
+        "source_competition_code": "BRA1"
+      },
+      {
+        "calendar_target": {
+          "clubs": [
+            {
+              "club": "Bohemian Football Club",
+              "date": "2017-02-24",
+              "match_id": "2818095",
+              "preallocated_roster_rows": 42,
+              "provider_season_id": 2016,
+              "report_html_sha256": "cd3beb2e31228fc572d093e5cf2a5aa1186d3fb62c6eec69fb49b029e46f5e55",
+              "schedule_html_sha256": "9cffe91bfff97e9921c139b8793bf728876bde57f95d59c2505bbe44c91cf609",
+              "schedule_url": "https://www.transfermarkt.co.uk/bohemian-football-club-dublin/spielplan/verein/9211/saison_id/2016",
+              "squad_source_path": "squad/2016/IR1/9211.html",
+              "squad_source_sha256": "0e80cc6bea2f52f52476eb20363c46009d8835d273fbdde111be33efc1c2e737",
+              "squad_source_url": "https://www.transfermarkt.co.uk/bohemian-football-club-dublin/kader/verein/9211/saison_id/2016",
+              "sub_count": 7,
+              "tm_club_id": 9211,
+              "xi_count": 11
+            },
+            {
+              "club": "Bray Wanderers",
+              "date": "2017-02-24",
+              "match_id": "2818098",
+              "preallocated_roster_rows": 31,
+              "provider_season_id": 2016,
+              "report_html_sha256": "fec706cb2ee84d18b217cb762b49c231f8810b7a10e7dbb7deeb4b9a6f78ab3a",
+              "schedule_html_sha256": "d2738ca50a449af1931260e4a78383928ba61040ef3be4c9a186377b3880a872",
+              "schedule_url": "https://www.transfermarkt.co.uk/bray-wanderers/spielplan/verein/3930/saison_id/2016",
+              "squad_source_path": "squad/2016/IR1/3930.html",
+              "squad_source_sha256": "a295bf1e18f1db8daeb4518d559fb118403c74ff15326e875447e48c1e7c5ccd",
+              "squad_source_url": "https://www.transfermarkt.co.uk/bray-wanderers/kader/verein/3930/saison_id/2016",
+              "sub_count": 7,
+              "tm_club_id": 3930,
+              "xi_count": 11
+            },
+            {
+              "club": "Cork City FC",
+              "date": "2017-02-24",
+              "match_id": "2818099",
+              "preallocated_roster_rows": 40,
+              "provider_season_id": 2016,
+              "report_html_sha256": "bed4aae5312d5c70863d79c7bc7f13ea5c3cc5d0321ff1610a73baae1d858c6c",
+              "schedule_html_sha256": "93b6d522c51fb554bcee62559c973395af6dbd1a2abfbdb8506cf2d6c19792fc",
+              "schedule_url": "https://www.transfermarkt.co.uk/cork-city-fc/spielplan/verein/27774/saison_id/2016",
+              "squad_source_path": "squad/2016/IR1/27774.html",
+              "squad_source_sha256": "fed748245826052fe6bbd98e032ad427bc800eeb80a527593137a0d2bd6a63c6",
+              "squad_source_url": "https://www.transfermarkt.co.uk/cork-city-fc/kader/verein/27774/saison_id/2016",
+              "sub_count": 7,
+              "tm_club_id": 27774,
+              "xi_count": 11
+            },
+            {
+              "club": "Derry City",
+              "date": "2017-02-24",
+              "match_id": "2818095",
+              "preallocated_roster_rows": 33,
+              "provider_season_id": 2016,
+              "report_html_sha256": "cd3beb2e31228fc572d093e5cf2a5aa1186d3fb62c6eec69fb49b029e46f5e55",
+              "schedule_html_sha256": "634196b246d8f81ad1be8821ec0510e6c79153a7af7255b0ea3ec0c0bbf688ee",
+              "schedule_url": "https://www.transfermarkt.co.uk/derry-city/spielplan/verein/920/saison_id/2016",
+              "squad_source_path": "squad/2016/IR1/920.html",
+              "squad_source_sha256": "3f3895d3bcfab7272db6122cc29b4c77ae9a8036217d2c40466201918769b002",
+              "squad_source_url": "https://www.transfermarkt.co.uk/derry-city/kader/verein/920/saison_id/2016",
+              "sub_count": 7,
+              "tm_club_id": 920,
+              "xi_count": 11
+            },
+            {
+              "club": "Drogheda United FC",
+              "date": "2017-02-24",
+              "match_id": "2818097",
+              "preallocated_roster_rows": 33,
+              "provider_season_id": 2016,
+              "report_html_sha256": "002b5e5f7ed790b2a25ffea9d7952d85ba2bda01192bb12d0d10225738fc77ba",
+              "schedule_html_sha256": "d80eadeff45db7910fa61df594e2540a4bd9e0e488e9e90386595d8c22c86f88",
+              "schedule_url": "https://www.transfermarkt.co.uk/drogheda-united-fc/spielplan/verein/4277/saison_id/2016",
+              "squad_source_path": "squad/2016/IR1/4277.html",
+              "squad_source_sha256": "fc8a3563705b8f9445f6cb6fb1c5308fa75d177d1842d580cb3f8e2863143f7b",
+              "squad_source_url": "https://www.transfermarkt.co.uk/drogheda-united-fc/kader/verein/4277/saison_id/2016",
+              "sub_count": 7,
+              "tm_club_id": 4277,
+              "xi_count": 11
+            },
+            {
+              "club": "Dundalk FC",
+              "date": "2017-02-24",
+              "match_id": "2818096",
+              "preallocated_roster_rows": 48,
+              "provider_season_id": 2016,
+              "report_html_sha256": "8e377cbf9a54ffb04e4f36ab57eaa5d12e38487e0172b44849648b9a5f2ff090",
+              "schedule_html_sha256": "ea1c75b44f8777fc158e1427ef4c7ea1c9a1329cc181e2c10e25f9f28d471776",
+              "schedule_url": "https://www.transfermarkt.co.uk/dundalk-fc/spielplan/verein/6066/saison_id/2016",
+              "squad_source_path": "squad/2016/IR1/6066.html",
+              "squad_source_sha256": "8ee99e0b8cb7c5d15bed8289e5b1761307ed1768c307c845ffe7bfc6620ba5f6",
+              "squad_source_url": "https://www.transfermarkt.co.uk/dundalk-fc/kader/verein/6066/saison_id/2016",
+              "sub_count": 7,
+              "tm_club_id": 6066,
+              "xi_count": 11
+            },
+            {
+              "club": "Finn Harps",
+              "date": "2017-02-24",
+              "match_id": "2818099",
+              "preallocated_roster_rows": 37,
+              "provider_season_id": 2016,
+              "report_html_sha256": "bed4aae5312d5c70863d79c7bc7f13ea5c3cc5d0321ff1610a73baae1d858c6c",
+              "schedule_html_sha256": "60a112f4a3fa4006bf0da993b586207c4fe0889ac65316485691ae4bbd0b29d3",
+              "schedule_url": "https://www.transfermarkt.co.uk/finn-harps/spielplan/verein/5568/saison_id/2016",
+              "squad_source_path": "squad/2016/IR1/5568.html",
+              "squad_source_sha256": "ea03199f07905d82fb7d3f0d33d7d1817496c0a2fcf0eb447edc0294a9329533",
+              "squad_source_url": "https://www.transfermarkt.co.uk/finn-harps/kader/verein/5568/saison_id/2016",
+              "sub_count": 7,
+              "tm_club_id": 5568,
+              "xi_count": 11
+            },
+            {
+              "club": "Galway United FC",
+              "date": "2017-02-24",
+              "match_id": "2818097",
+              "preallocated_roster_rows": 39,
+              "provider_season_id": 2016,
+              "report_html_sha256": "002b5e5f7ed790b2a25ffea9d7952d85ba2bda01192bb12d0d10225738fc77ba",
+              "schedule_html_sha256": "96a537a1bf1a94c8ac26a9c5baea0fc2061013523e425bf43c9644b9ff52d2a9",
+              "schedule_url": "https://www.transfermarkt.co.uk/fc-galway-united/spielplan/verein/42394/saison_id/2016",
+              "squad_source_path": "squad/2016/IR1/42394.html",
+              "squad_source_sha256": "304bf1b055928cfbf013a1316ee17c17d2f2a7537044d7db48a9b8bd03b0e1ad",
+              "squad_source_url": "https://www.transfermarkt.co.uk/fc-galway-united/kader/verein/42394/saison_id/2016",
+              "sub_count": 7,
+              "tm_club_id": 42394,
+              "xi_count": 11
+            },
+            {
+              "club": "Limerick FC",
+              "date": "2017-02-24",
+              "match_id": "2818100",
+              "preallocated_roster_rows": 35,
+              "provider_season_id": 2016,
+              "report_html_sha256": "c9fcb914c8a9a91ca603dcd5066426266d50adc70952bb285d74cfdb28ce92b4",
+              "schedule_html_sha256": "0c87c428f53f366063dc34c8ebc40fe84457ead98d6442677c2d02e83f656b8d",
+              "schedule_url": "https://www.transfermarkt.co.uk/limerick-fc/spielplan/verein/4286/saison_id/2016",
+              "squad_source_path": "squad/2016/IR1/4286.html",
+              "squad_source_sha256": "7ce241e1259c351a44ef205a3bf4fe2c55167de0afda366011bc5c910232cad1",
+              "squad_source_url": "https://www.transfermarkt.co.uk/limerick-fc/kader/verein/4286/saison_id/2016",
+              "sub_count": 7,
+              "tm_club_id": 4286,
+              "xi_count": 11
+            },
+            {
+              "club": "Shamrock Rovers",
+              "date": "2017-02-24",
+              "match_id": "2818096",
+              "preallocated_roster_rows": 55,
+              "provider_season_id": 2016,
+              "report_html_sha256": "8e377cbf9a54ffb04e4f36ab57eaa5d12e38487e0172b44849648b9a5f2ff090",
+              "schedule_html_sha256": "dc766c38288181160e4200f57cb3b9967933e02f7210c3b223546d8fbf98234a",
+              "schedule_url": "https://www.transfermarkt.co.uk/shamrock-rovers/spielplan/verein/3258/saison_id/2016",
+              "squad_source_path": "squad/2016/IR1/3258.html",
+              "squad_source_sha256": "d4c9c02748aedf63b38b2e804ae4a848529f743f789ec9cf52187406250ec645",
+              "squad_source_url": "https://www.transfermarkt.co.uk/shamrock-rovers/kader/verein/3258/saison_id/2016",
+              "sub_count": 7,
+              "tm_club_id": 3258,
+              "xi_count": 11
+            },
+            {
+              "club": "Sligo Rovers",
+              "date": "2017-02-24",
+              "match_id": "2818100",
+              "preallocated_roster_rows": 31,
+              "provider_season_id": 2016,
+              "report_html_sha256": "c9fcb914c8a9a91ca603dcd5066426266d50adc70952bb285d74cfdb28ce92b4",
+              "schedule_html_sha256": "f9c682cd8fb0d07d57bc5cd8724dfa00430fd8a366dd6ba3dce85f3ebaa4aab2",
+              "schedule_url": "https://www.transfermarkt.co.uk/sligo-rovers/spielplan/verein/8780/saison_id/2016",
+              "squad_source_path": "squad/2016/IR1/8780.html",
+              "squad_source_sha256": "d9aee8de39be93d1f9d8dc4bcf61c677bce71a6f54a662c4b02af747489820f0",
+              "squad_source_url": "https://www.transfermarkt.co.uk/sligo-rovers/kader/verein/8780/saison_id/2016",
+              "sub_count": 7,
+              "tm_club_id": 8780,
+              "xi_count": 11
+            },
+            {
+              "club": "St. Patrick's Athletic",
+              "date": "2017-02-24",
+              "match_id": "2818098",
+              "preallocated_roster_rows": 46,
+              "provider_season_id": 2016,
+              "report_html_sha256": "fec706cb2ee84d18b217cb762b49c231f8810b7a10e7dbb7deeb4b9a6f78ab3a",
+              "schedule_html_sha256": "18b007631babee6c0c2209beaad97c35b977c5322c74617a0f2881e62dd23673",
+              "schedule_url": "https://www.transfermarkt.co.uk/st-patricks-athletic/spielplan/verein/1189/saison_id/2016",
+              "squad_source_path": "squad/2016/IR1/1189.html",
+              "squad_source_sha256": "75596c6b802a34820e08a3f6bb69af383c1f5d53801cae7b21a268e9b9de8e76",
+              "squad_source_url": "https://www.transfermarkt.co.uk/st-patricks-athletic/kader/verein/1189/saison_id/2016",
+              "sub_count": 7,
+              "tm_club_id": 1189,
+              "xi_count": 11
+            }
+          ],
+          "game_label": "2017-18",
+          "provider_season_id": 2016,
+          "target_calendar_year": 2017
+        },
+        "changed_native_carrier_candidates": [
+          {
+            "calendar_2017_assignment": "Bohemian Football Club",
+            "carrier_id": 1853,
+            "current_package_native_label": "Bray Wanderers",
+            "current_provider_2017_assignment": "Bray Wanderers",
+            "roster_player_count": 20
+          },
+          {
+            "calendar_2017_assignment": "Limerick FC",
+            "carrier_id": 1855,
+            "current_package_native_label": "Waterford FC",
+            "current_provider_2017_assignment": "Waterford FC",
+            "roster_player_count": 18
+          },
+          {
+            "calendar_2017_assignment": "Finn Harps",
+            "carrier_id": 1858,
+            "current_package_native_label": "Bohemian Football Club",
+            "current_provider_2017_assignment": "Bohemian Football Club",
+            "roster_player_count": 20
+          },
+          {
+            "calendar_2017_assignment": "Bray Wanderers",
+            "carrier_id": 1860,
+            "current_package_native_label": "Limerick FC",
+            "current_provider_2017_assignment": "Limerick FC",
+            "roster_player_count": 18
+          },
+          {
+            "calendar_2017_assignment": "Drogheda United FC",
+            "carrier_id": 1861,
+            "current_package_native_label": "Bray Wanderers",
+            "current_provider_2017_assignment": null,
+            "roster_player_count": 18
+          },
+          {
+            "calendar_2017_assignment": "Galway United FC",
+            "carrier_id": 1862,
+            "current_package_native_label": "St Patrick's Athletic",
+            "current_provider_2017_assignment": null,
+            "roster_player_count": 18
+          }
+        ],
+        "club_set": {
+          "calendar_only": [
+            4277,
+            5568,
+            42394
+          ],
+          "calendar_target_ids": [
+            920,
+            1189,
+            3258,
+            3930,
+            4277,
+            4286,
+            5568,
+            6066,
+            8780,
+            9211,
+            27774,
+            42394
+          ],
+          "current_only": [
+            7609
+          ],
+          "current_plan_ids": [
+            920,
+            1189,
+            3258,
+            3930,
+            4286,
+            6066,
+            7609,
+            8780,
+            9211,
+            27774
+          ],
+          "shared_ids": [
+            920,
+            1189,
+            3258,
+            3930,
+            4286,
+            6066,
+            8780,
+            9211,
+            27774
+          ]
+        },
+        "country": "ireland",
+        "current_plan_comparison": {
+          "clubs": [
+            {
+              "club": "Bohemian Football Club",
+              "date": "2018-02-16",
+              "match_id": "2984936",
+              "preallocated_roster_rows": 44,
+              "provider_season_id": 2017,
+              "report_html_sha256": "8168c0a8634305139b508cfa79ebc0c268ee6a16d8704b209cba6c28a40c0ab5",
+              "schedule_html_sha256": "d663deea4ed15caf5082db972b386990e838df9f9e06d8e162a415d87be6798d",
+              "schedule_url": "https://www.transfermarkt.co.uk/bohemian-football-club-dublin/spielplan/verein/9211/saison_id/2017",
+              "squad_source_path": "squad/2017/IR1/9211.html",
+              "squad_source_sha256": "069b8196515c531376570044e6f20f38ee310bf13d0ce95c4f7e97dccd000d37",
+              "squad_source_url": "https://www.transfermarkt.co.uk/bohemian-football-club-dublin/kader/verein/9211/saison_id/2017",
+              "sub_count": 7,
+              "tm_club_id": 9211,
+              "xi_count": 11
+            },
+            {
+              "club": "Bray Wanderers",
+              "date": "2018-02-16",
+              "match_id": "2984937",
+              "preallocated_roster_rows": 47,
+              "provider_season_id": 2017,
+              "report_html_sha256": "09309a57c60fc19e046099903f0467d037a6bf4ed2cb7ab3bba01ac7ed9363f2",
+              "schedule_html_sha256": "86bc107142bed8360663bc3c7cefe97eafc2770af60997357899ba141dfb6470",
+              "schedule_url": "https://www.transfermarkt.co.uk/bray-wanderers/spielplan/verein/3930/saison_id/2017",
+              "squad_source_path": "squad/2017/IR1/3930.html",
+              "squad_source_sha256": "094e3307bed5aef124fca93c8fe22294f9934ccdcd98ea32ba6bbe6fc4f3d86f",
+              "squad_source_url": "https://www.transfermarkt.co.uk/bray-wanderers/kader/verein/3930/saison_id/2017",
+              "sub_count": 7,
+              "tm_club_id": 3930,
+              "xi_count": 11
+            },
+            {
+              "club": "Cork City FC",
+              "date": "2018-02-16",
+              "match_id": "2984938",
+              "preallocated_roster_rows": 45,
+              "provider_season_id": 2017,
+              "report_html_sha256": "529e38efd54f71bdfc0c51f1db9dfb88a48d4ea95cce4a7cfc097d784e18ede3",
+              "schedule_html_sha256": "065b1a83223918e7211c95fe57e99775da15afcc6b858e08bea6ccdecaab58e4",
+              "schedule_url": "https://www.transfermarkt.co.uk/cork-city-fc/spielplan/verein/27774/saison_id/2017",
+              "squad_source_path": "squad/2017/IR1/27774.html",
+              "squad_source_sha256": "09dc2576e292522d77755dc65687e2265ad6d3a6fcd6ffa714c33403fddfa845",
+              "squad_source_url": "https://www.transfermarkt.co.uk/cork-city-fc/kader/verein/27774/saison_id/2017",
+              "sub_count": 7,
+              "tm_club_id": 27774,
+              "xi_count": 11
+            },
+            {
+              "club": "Derry City",
+              "date": "2018-02-16",
+              "match_id": "2984939",
+              "preallocated_roster_rows": 46,
+              "provider_season_id": 2017,
+              "report_html_sha256": "2fd07a1d947afcea60b50f2e810091f59b75806ca4965a555c94617017e7458d",
+              "schedule_html_sha256": "5f253d1ace584da624a44293bffa81a400b3d1723b7730f4193094739ee233af",
+              "schedule_url": "https://www.transfermarkt.co.uk/derry-city/spielplan/verein/920/saison_id/2017",
+              "squad_source_path": "squad/2017/IR1/920.html",
+              "squad_source_sha256": "56e4648b26d57ec1cdc49898fcc3019d9c976bacfbd720148caf98d703899937",
+              "squad_source_url": "https://www.transfermarkt.co.uk/derry-city/kader/verein/920/saison_id/2017",
+              "sub_count": 7,
+              "tm_club_id": 920,
+              "xi_count": 11
+            },
+            {
+              "club": "Dundalk FC",
+              "date": "2018-02-16",
+              "match_id": "2984937",
+              "preallocated_roster_rows": 44,
+              "provider_season_id": 2017,
+              "report_html_sha256": "09309a57c60fc19e046099903f0467d037a6bf4ed2cb7ab3bba01ac7ed9363f2",
+              "schedule_html_sha256": "af9800d44272f723d71d816521cc94fa35b285d5a762399ceef42d5369ea2b3d",
+              "schedule_url": "https://www.transfermarkt.co.uk/dundalk-fc/spielplan/verein/6066/saison_id/2017",
+              "squad_source_path": "squad/2017/IR1/6066.html",
+              "squad_source_sha256": "ad3d4fea73ea3fda2613a230b0dd0cf1031e5015868f0b0b95826b34ae62bf15",
+              "squad_source_url": "https://www.transfermarkt.co.uk/dundalk-fc/kader/verein/6066/saison_id/2017",
+              "sub_count": 7,
+              "tm_club_id": 6066,
+              "xi_count": 11
+            },
+            {
+              "club": "Limerick FC",
+              "date": "2018-02-17",
+              "match_id": "2984940",
+              "preallocated_roster_rows": 34,
+              "provider_season_id": 2017,
+              "report_html_sha256": "40a0dadff097847094aa34949429fd7b3b30cafebe9f216cfe6650684117ee8c",
+              "schedule_html_sha256": "eb0101e03b7c301b4ee54f233f74314bd656e6aaced89518639210c171f435aa",
+              "schedule_url": "https://www.transfermarkt.co.uk/limerick-fc/spielplan/verein/4286/saison_id/2017",
+              "squad_source_path": "squad/2017/IR1/4286.html",
+              "squad_source_sha256": "cac67e97894275d7d3b5f2134d608ab20897179d209dd8ec359cf3eb0d643bb3",
+              "squad_source_url": "https://www.transfermarkt.co.uk/limerick-fc/kader/verein/4286/saison_id/2017",
+              "sub_count": 7,
+              "tm_club_id": 4286,
+              "xi_count": 11
+            },
+            {
+              "club": "Shamrock Rovers",
+              "date": "2018-02-16",
+              "match_id": "2984936",
+              "preallocated_roster_rows": 50,
+              "provider_season_id": 2017,
+              "report_html_sha256": "8168c0a8634305139b508cfa79ebc0c268ee6a16d8704b209cba6c28a40c0ab5",
+              "schedule_html_sha256": "3ba3f4fa9b06242d17e4b3739f80fa8ec3e4e5a300f68a488bec87c8931d2821",
+              "schedule_url": "https://www.transfermarkt.co.uk/shamrock-rovers/spielplan/verein/3258/saison_id/2017",
+              "squad_source_path": "squad/2017/IR1/3258.html",
+              "squad_source_sha256": "655e9bf8815ff15e80c9dc625ccf18205816bb90392c52e5dfee03d5875806f9",
+              "squad_source_url": "https://www.transfermarkt.co.uk/shamrock-rovers/kader/verein/3258/saison_id/2017",
+              "sub_count": 7,
+              "tm_club_id": 3258,
+              "xi_count": 11
+            },
+            {
+              "club": "Sligo Rovers",
+              "date": "2018-02-17",
+              "match_id": "2984940",
+              "preallocated_roster_rows": 36,
+              "provider_season_id": 2017,
+              "report_html_sha256": "40a0dadff097847094aa34949429fd7b3b30cafebe9f216cfe6650684117ee8c",
+              "schedule_html_sha256": "c56d7c6650ccf99cc79fd2c5cbe2437560c25098dce01e47f5f0fcc0d5902b08",
+              "schedule_url": "https://www.transfermarkt.co.uk/sligo-rovers/spielplan/verein/8780/saison_id/2017",
+              "squad_source_path": "squad/2017/IR1/8780.html",
+              "squad_source_sha256": "fa062940f23b19f47f77ec9dd4334b8a50bdfc7cbe60b9bad662c5c97b166adf",
+              "squad_source_url": "https://www.transfermarkt.co.uk/sligo-rovers/kader/verein/8780/saison_id/2017",
+              "sub_count": 6,
+              "tm_club_id": 8780,
+              "xi_count": 11
+            },
+            {
+              "club": "St. Patrick's Athletic",
+              "date": "2018-02-16",
+              "match_id": "2984938",
+              "preallocated_roster_rows": 31,
+              "provider_season_id": 2017,
+              "report_html_sha256": "529e38efd54f71bdfc0c51f1db9dfb88a48d4ea95cce4a7cfc097d784e18ede3",
+              "schedule_html_sha256": "0adfe6a7739e8c0c08ab4207b3d96943aa4b94d026663c8f82c5e1f06dfc401a",
+              "schedule_url": "https://www.transfermarkt.co.uk/st-patricks-athletic/spielplan/verein/1189/saison_id/2017",
+              "squad_source_path": "squad/2017/IR1/1189.html",
+              "squad_source_sha256": "886435e474393a6cfabf254daa9453a9fe3fa291647f3b03150841e07b19fca1",
+              "squad_source_url": "https://www.transfermarkt.co.uk/st-patricks-athletic/kader/verein/1189/saison_id/2017",
+              "sub_count": 7,
+              "tm_club_id": 1189,
+              "xi_count": 11
+            },
+            {
+              "club": "Waterford FC",
+              "date": "2018-02-16",
+              "match_id": "2984939",
+              "preallocated_roster_rows": 44,
+              "provider_season_id": 2017,
+              "report_html_sha256": "2fd07a1d947afcea60b50f2e810091f59b75806ca4965a555c94617017e7458d",
+              "schedule_html_sha256": "0aa4eadd93e5760b8e5e784adcd57ca8e79af69648abacb5ec23eee7b5647df1",
+              "schedule_url": "https://www.transfermarkt.co.uk/fc-waterford/spielplan/verein/7609/saison_id/2017",
+              "squad_source_path": "squad/2017/IR1/7609.html",
+              "squad_source_sha256": "ce9dbc595abe61f71ea1a4eb097de2684a40b7c1ab58107200313f30cac44703",
+              "squad_source_url": "https://www.transfermarkt.co.uk/fc-waterford/kader/verein/7609/saison_id/2017",
+              "sub_count": 7,
+              "tm_club_id": 7609,
+              "xi_count": 11
+            }
+          ],
+          "game_label": "2017-18",
+          "provider_season_id": 2017
+        },
+        "source_competition_code": "IR1"
+      },
+      {
+        "calendar_target": {
+          "clubs": [
+            {
+              "club": "Aalesunds FK",
+              "date": "2017-04-02",
+              "match_id": "2808984",
+              "preallocated_roster_rows": 27,
+              "provider_season_id": 2016,
+              "report_html_sha256": "5295e2e74f3dffdeb34555ba7a18c0b9b9e090e2d7c0ad0f22d8d5fb1d229cf9",
+              "schedule_html_sha256": "60ebc9a0d761fc554822b375419f057ad1f67b8b71d205911359d251f4770de5",
+              "schedule_url": "https://www.transfermarkt.co.uk/aalesunds-fk/spielplan/verein/5619/saison_id/2016",
+              "squad_source_path": "squad/2016/NO1/5619.html",
+              "squad_source_sha256": "c9657574756132f4344bd3651943ff8422af037b43101d35ddac2b92386b6fbe",
+              "squad_source_url": "https://www.transfermarkt.co.uk/aalesunds-fk/kader/verein/5619/saison_id/2016",
+              "sub_count": 7,
+              "tm_club_id": 5619,
+              "xi_count": 11
+            },
+            {
+              "club": "FK Haugesund",
+              "date": "2017-04-02",
+              "match_id": "2808982",
+              "preallocated_roster_rows": 25,
+              "provider_season_id": 2016,
+              "report_html_sha256": "26ccccbbc26082f0495f78195bebe11485f9dcea95b0010790d9c98be04898cf",
+              "schedule_html_sha256": "1808b7d276a50f6f29fbfe2f8132441d6fea620ba5ccdc48420df18680a3ebfa",
+              "schedule_url": "https://www.transfermarkt.co.uk/fk-haugesund/spielplan/verein/2761/saison_id/2016",
+              "squad_source_path": "squad/2016/NO1/2761.html",
+              "squad_source_sha256": "6025a2b7ffcf36013592dd323bc00c1795c38af62d8a4635f323f97fd84eb523",
+              "squad_source_url": "https://www.transfermarkt.co.uk/fk-haugesund/kader/verein/2761/saison_id/2016",
+              "sub_count": 7,
+              "tm_club_id": 2761,
+              "xi_count": 11
+            },
+            {
+              "club": "Kristiansund BK",
+              "date": "2017-04-01",
+              "match_id": "2808980",
+              "preallocated_roster_rows": 29,
+              "provider_season_id": 2016,
+              "report_html_sha256": "ac2ab674cc0ced87e10afaffd2939942e1464f3e9b377bc00e1722bc59281482",
+              "schedule_html_sha256": "56bd2c85ef615c6369b89bc71e15403532db2873b1ba40f37021114f8ea9bf45",
+              "schedule_url": "https://www.transfermarkt.co.uk/kristiansund-bk/spielplan/verein/21101/saison_id/2016",
+              "squad_source_path": "squad/2016/NO1/21101.html",
+              "squad_source_sha256": "dc66db64a901093372b88b22e57143b556d49c610ee6ba9d510ceea18e1f2a1f",
+              "squad_source_url": "https://www.transfermarkt.co.uk/kristiansund-bk/kader/verein/21101/saison_id/2016",
+              "sub_count": 7,
+              "tm_club_id": 21101,
+              "xi_count": 11
+            },
+            {
+              "club": "Lillestrøm SK",
+              "date": "2017-04-02",
+              "match_id": "2808981",
+              "preallocated_roster_rows": 30,
+              "provider_season_id": 2016,
+              "report_html_sha256": "e29c1ed177d89884ab70d931e366bcd8cbfb194885455dcf65e987c68f765ccb",
+              "schedule_html_sha256": "1b11a1fcca3bc581cbb23d6f565a2038b9e50a460e0e16aa1ab135b7872605e6",
+              "schedule_url": "https://www.transfermarkt.co.uk/lillestrom-sk/spielplan/verein/353/saison_id/2016",
+              "squad_source_path": "squad/2016/NO1/353.html",
+              "squad_source_sha256": "2d075fbde61aea5236daad74e4b0b438e44fea2e52180ad7443e7d79e1fa0e43",
+              "squad_source_url": "https://www.transfermarkt.co.uk/lillestrom-sk/kader/verein/353/saison_id/2016",
+              "sub_count": 7,
+              "tm_club_id": 353,
+              "xi_count": 11
+            },
+            {
+              "club": "Molde FK",
+              "date": "2017-04-01",
+              "match_id": "2808980",
+              "preallocated_roster_rows": 36,
+              "provider_season_id": 2016,
+              "report_html_sha256": "ac2ab674cc0ced87e10afaffd2939942e1464f3e9b377bc00e1722bc59281482",
+              "schedule_html_sha256": "c41c741ad5d08b5a360f58b375f2dac0317a6d40ac6398487ee554a5c736fb43",
+              "schedule_url": "https://www.transfermarkt.co.uk/molde-fk/spielplan/verein/687/saison_id/2016",
+              "squad_source_path": "squad/2016/NO1/687.html",
+              "squad_source_sha256": "bf2c7299e77b0b1889d793bf4a01c6cf9b50093e78866ce593436ee2d025d100",
+              "squad_source_url": "https://www.transfermarkt.co.uk/molde-fk/kader/verein/687/saison_id/2016",
+              "sub_count": 7,
+              "tm_club_id": 687,
+              "xi_count": 11
+            },
+            {
+              "club": "SK Brann",
+              "date": "2017-04-02",
+              "match_id": "2808985",
+              "preallocated_roster_rows": 27,
+              "provider_season_id": 2016,
+              "report_html_sha256": "79ee7b8c91e55d251fae71b3153c10883823fc6bf1be9a79fd1f8decb8be16ce",
+              "schedule_html_sha256": "4a28453dbe6f58b3c4c8096c31b8a46c505918b27faf9960a3e03c880224f8bb",
+              "schedule_url": "https://www.transfermarkt.co.uk/sk-brann/spielplan/verein/1100/saison_id/2016",
+              "squad_source_path": "squad/2016/NO1/1100.html",
+              "squad_source_sha256": "f2e3142ceedc75db3ed0b7d678ad04820403a40d45c26040749e8c011ce4b71f",
+              "squad_source_url": "https://www.transfermarkt.co.uk/sk-brann/kader/verein/1100/saison_id/2016",
+              "sub_count": 7,
+              "tm_club_id": 1100,
+              "xi_count": 11
+            },
+            {
+              "club": "Sarpsborg 08 FF",
+              "date": "2017-04-02",
+              "match_id": "2808983",
+              "preallocated_roster_rows": 30,
+              "provider_season_id": 2016,
+              "report_html_sha256": "e6c03e11e161ebe4b35358181f6a237d87cc0bb6254df3856220e6bf9b15bff5",
+              "schedule_html_sha256": "5a692a64bec7fb02feddcaab3898df1223079100533adaacf1c5807cc412d225",
+              "schedule_url": "https://www.transfermarkt.co.uk/sarpsborg-08-ff/spielplan/verein/10217/saison_id/2016",
+              "squad_source_path": "squad/2016/NO1/10217.html",
+              "squad_source_sha256": "1f46428b05a85b830071ecf3734c5dfb1900bd87e9ef9470f5397c58e877a04d",
+              "squad_source_url": "https://www.transfermarkt.co.uk/sarpsborg-08-ff/kader/verein/10217/saison_id/2016",
+              "sub_count": 7,
+              "tm_club_id": 10217,
+              "xi_count": 11
+            },
+            {
+              "club": "Strømsgodset IF",
+              "date": "2017-04-02",
+              "match_id": "2808982",
+              "preallocated_roster_rows": 25,
+              "provider_season_id": 2016,
+              "report_html_sha256": "26ccccbbc26082f0495f78195bebe11485f9dcea95b0010790d9c98be04898cf",
+              "schedule_html_sha256": "d5573356ff3303ff304f4e5fd8df9cbad2cd2b2f48212204c0f30e45e2ddb3da",
+              "schedule_url": "https://www.transfermarkt.co.uk/stromsgodset-if/spielplan/verein/2817/saison_id/2016",
+              "squad_source_path": "squad/2016/NO1/2817.html",
+              "squad_source_sha256": "bbeceaa5453a4aed8bf719f5ae7e728cb5e696cbb10642f4b2c8b078b70159e0",
+              "squad_source_url": "https://www.transfermarkt.co.uk/stromsgodset-if/kader/verein/2817/saison_id/2016",
+              "sub_count": 7,
+              "tm_club_id": 2817,
+              "xi_count": 11
+            },
+            {
+              "club": "Viking FK",
+              "date": "2017-04-03",
+              "match_id": "2808987",
+              "preallocated_roster_rows": 36,
+              "provider_season_id": 2016,
+              "report_html_sha256": "be68d2734aa95fdeae8241178cb4a6e6c5b2ac7e0373cc0927ea6c255911a734",
+              "schedule_html_sha256": "f67cb88725b7dc0e2ee797c830546177ea43408d0ce43dd0e4df70ab286c1827",
+              "schedule_url": "https://www.transfermarkt.co.uk/viking-stavanger/spielplan/verein/239/saison_id/2016",
+              "squad_source_path": "squad/2016/NO1/239.html",
+              "squad_source_sha256": "8272bf8d5112d7633acbd176abb2ae3bab7af669ec633e63268caa1f008fcefd",
+              "squad_source_url": "https://www.transfermarkt.co.uk/viking-stavanger/kader/verein/239/saison_id/2016",
+              "sub_count": 7,
+              "tm_club_id": 239,
+              "xi_count": 11
+            }
+          ],
+          "game_label": "2017-18",
+          "provider_season_id": 2016,
+          "target_calendar_year": 2017
+        },
+        "changed_native_carrier_candidates": [
+          {
+            "calendar_2017_assignment": "SK Brann",
+            "carrier_id": 1351,
+            "current_package_native_label": "Sarpsborg 08 FF",
+            "current_provider_2017_assignment": "Sarpsborg 08 FF",
+            "roster_player_count": 19
+          },
+          {
+            "calendar_2017_assignment": "Viking FK",
+            "carrier_id": 1354,
+            "current_package_native_label": "Lillestrøm SK",
+            "current_provider_2017_assignment": "Lillestrøm SK",
+            "roster_player_count": 19
+          },
+          {
+            "calendar_2017_assignment": "Strømsgodset IF",
+            "carrier_id": 1355,
+            "current_package_native_label": "Tromsø IL",
+            "current_provider_2017_assignment": "Tromsø IL",
+            "roster_player_count": 19
+          },
+          {
+            "calendar_2017_assignment": "Sarpsborg 08 FF",
+            "carrier_id": 1356,
+            "current_package_native_label": "Odds BK",
+            "current_provider_2017_assignment": "Odds BK",
+            "roster_player_count": 21
+          },
+          {
+            "calendar_2017_assignment": "Lillestrøm SK",
+            "carrier_id": 1357,
+            "current_package_native_label": "IK Start",
+            "current_provider_2017_assignment": "IK Start",
+            "roster_player_count": 22
+          },
+          {
+            "calendar_2017_assignment": "Aalesunds FK",
+            "carrier_id": 1358,
+            "current_package_native_label": "Kristiansund BK",
+            "current_provider_2017_assignment": "Kristiansund BK",
+            "roster_player_count": 20
+          },
+          {
+            "calendar_2017_assignment": "Kristiansund BK",
+            "carrier_id": 1359,
+            "current_package_native_label": "Ranheim IL",
+            "current_provider_2017_assignment": "Ranheim IL",
+            "roster_player_count": 21
+          }
+        ],
+        "club_set": {
+          "calendar_only": [
+            239,
+            1100,
+            2817,
+            5619
+          ],
+          "calendar_target_ids": [
+            239,
+            353,
+            687,
+            1100,
+            2761,
+            2817,
+            5619,
+            10217,
+            21101
+          ],
+          "current_only": [
+            267,
+            1058,
+            1293,
+            13519
+          ],
+          "current_plan_ids": [
+            267,
+            353,
+            687,
+            1058,
+            1293,
+            2761,
+            10217,
+            13519,
+            21101
+          ],
+          "shared_ids": [
+            353,
+            687,
+            2761,
+            10217,
+            21101
+          ]
+        },
+        "country": "norway",
+        "current_plan_comparison": {
+          "clubs": [
+            {
+              "club": "FK Haugesund",
+              "date": "2018-03-11",
+              "match_id": "2985176",
+              "preallocated_roster_rows": 24,
+              "provider_season_id": 2017,
+              "report_html_sha256": "b20ac89ec9a4e8b39833e8df04e7338fd56acf339708cb7f33b5f6d44d78dfab",
+              "schedule_html_sha256": "8c8a263759bef545f6b1cb8639cc0d463572358ccb0be634bbbc8da0460df8e7",
+              "schedule_url": "https://www.transfermarkt.co.uk/fk-haugesund/spielplan/verein/2761/saison_id/2017",
+              "squad_source_path": "squad/2017/NO1/2761.html",
+              "squad_source_sha256": "252e1213f9d65cbf6db4743c0c2b598bd3f407375e06af635754d3564e40a2e9",
+              "squad_source_url": "https://www.transfermarkt.co.uk/fk-haugesund/kader/verein/2761/saison_id/2017",
+              "sub_count": 7,
+              "tm_club_id": 2761,
+              "xi_count": 11
+            },
+            {
+              "club": "IK Start",
+              "date": "2018-03-11",
+              "match_id": "2985179",
+              "preallocated_roster_rows": 35,
+              "provider_season_id": 2017,
+              "report_html_sha256": "d57082c9c50f97682676fa7d40f5fa3b0720f2326a41376c6fa8438191a23e84",
+              "schedule_html_sha256": "ab0059b58c313d0e93d37443a839761dec324b0879019378d45397f44cef2204",
+              "schedule_url": "https://www.transfermarkt.co.uk/ik-start/spielplan/verein/267/saison_id/2017",
+              "squad_source_path": "squad/2017/NO1/267.html",
+              "squad_source_sha256": "6dcc59ee84fba2769b6d8448ac8be15e60cf5de51f03920ce927ed80a9da2a35",
+              "squad_source_url": "https://www.transfermarkt.co.uk/ik-start/kader/verein/267/saison_id/2017",
+              "sub_count": 7,
+              "tm_club_id": 267,
+              "xi_count": 11
+            },
+            {
+              "club": "Kristiansund BK",
+              "date": "2018-03-12",
+              "match_id": "2985181",
+              "preallocated_roster_rows": 31,
+              "provider_season_id": 2017,
+              "report_html_sha256": "28d62c424ddb3e618fd6ce71052b5858c1bf74ec858e71d27adecb3adaa9ace0",
+              "schedule_html_sha256": "f21790880720e7c564845e08219b7988d378348af82d1c42be5692962fcef111",
+              "schedule_url": "https://www.transfermarkt.co.uk/kristiansund-bk/spielplan/verein/21101/saison_id/2017",
+              "squad_source_path": "squad/2017/NO1/21101.html",
+              "squad_source_sha256": "15e00c4c0824d5d517fe6ee3ef98c89e8dbbe78d5bb3f55c51618c1f401cc9bc",
+              "squad_source_url": "https://www.transfermarkt.co.uk/kristiansund-bk/kader/verein/21101/saison_id/2017",
+              "sub_count": 7,
+              "tm_club_id": 21101,
+              "xi_count": 11
+            },
+            {
+              "club": "Lillestrøm SK",
+              "date": "2018-03-11",
+              "match_id": "2985178",
+              "preallocated_roster_rows": 28,
+              "provider_season_id": 2017,
+              "report_html_sha256": "151c64bcc3a870bc54fac695646c91eee3246aac95904eb1c91c4b5e3aa44160",
+              "schedule_html_sha256": "88b92af30f4f9cbcd81cdb8e306eb8c11ecabeec62a46f430fa0c0bd2efd029f",
+              "schedule_url": "https://www.transfermarkt.co.uk/lillestrom-sk/spielplan/verein/353/saison_id/2017",
+              "squad_source_path": "squad/2017/NO1/353.html",
+              "squad_source_sha256": "95ea8ef0ac9beadfbc0b99d7e8b1afe54a4fced7fffa92ea9f9242c483b7606a",
+              "squad_source_url": "https://www.transfermarkt.co.uk/lillestrom-sk/kader/verein/353/saison_id/2017",
+              "sub_count": 6,
+              "tm_club_id": 353,
+              "xi_count": 11
+            },
+            {
+              "club": "Molde FK",
+              "date": "2018-03-11",
+              "match_id": "2985175",
+              "preallocated_roster_rows": 33,
+              "provider_season_id": 2017,
+              "report_html_sha256": "9823b3bb846793ac6f90a44989bbfd90c612e910f5a48470861316bedf7ad814",
+              "schedule_html_sha256": "81675698b0eae0c58c2f7cb89edf4ce45e41841edac37c3ca18e8610ae5971e3",
+              "schedule_url": "https://www.transfermarkt.co.uk/molde-fk/spielplan/verein/687/saison_id/2017",
+              "squad_source_path": "squad/2017/NO1/687.html",
+              "squad_source_sha256": "967d2e77e4854ff6bea19051fd64b5812ec16fc9118960d3a129250ec0850366",
+              "squad_source_url": "https://www.transfermarkt.co.uk/molde-fk/kader/verein/687/saison_id/2017",
+              "sub_count": 7,
+              "tm_club_id": 687,
+              "xi_count": 11
+            },
+            {
+              "club": "Odds BK",
+              "date": "2018-03-11",
+              "match_id": "2985176",
+              "preallocated_roster_rows": 34,
+              "provider_season_id": 2017,
+              "report_html_sha256": "b20ac89ec9a4e8b39833e8df04e7338fd56acf339708cb7f33b5f6d44d78dfab",
+              "schedule_html_sha256": "78eb91bf77c58388497bb3269ec299d47b8b1d8a1badc392f34caa42602fbbb4",
+              "schedule_url": "https://www.transfermarkt.co.uk/odds-bk/spielplan/verein/1058/saison_id/2017",
+              "squad_source_path": "squad/2017/NO1/1058.html",
+              "squad_source_sha256": "05a6213f6e26ebb4db2745c935a5e710355f76ddd127ed00aaa4e4e371626e22",
+              "squad_source_url": "https://www.transfermarkt.co.uk/odds-bk/kader/verein/1058/saison_id/2017",
+              "sub_count": 7,
+              "tm_club_id": 1058,
+              "xi_count": 11
+            },
+            {
+              "club": "Ranheim IL",
+              "date": "2018-04-02",
+              "match_id": "3021523",
+              "preallocated_roster_rows": 32,
+              "provider_season_id": 2017,
+              "report_html_sha256": "4ce126986d56f49982d96b35aaec1dd380d7a3d7c3978bc9f708ba4c24f076a8",
+              "schedule_html_sha256": "bff4a61962df25acb92a90d0ee48ff1f9167d2f8734f94b2fbeee412782dc041",
+              "schedule_url": "https://www.transfermarkt.co.uk/ranheim-il/spielplan/verein/13519/saison_id/2017",
+              "squad_source_path": "squad/2017/NO1/13519.html",
+              "squad_source_sha256": "133f9b9a0b2bc23eff5215c3e8f1987ed918dfe6f182004257903545045ec32f",
+              "squad_source_url": "https://www.transfermarkt.co.uk/ranheim-il/kader/verein/13519/saison_id/2017",
+              "sub_count": 7,
+              "tm_club_id": 13519,
+              "xi_count": 11
+            },
+            {
+              "club": "Sarpsborg 08 FF",
+              "date": "2018-03-11",
+              "match_id": "2985180",
+              "preallocated_roster_rows": 30,
+              "provider_season_id": 2017,
+              "report_html_sha256": "60203f0a20c9b55ff009d44f9b7cfa87d7f92f977833a05fdd52b126888138ad",
+              "schedule_html_sha256": "779fc4497702a990ce95b8143677327405405752995a39458284face8335e364",
+              "schedule_url": "https://www.transfermarkt.co.uk/sarpsborg-08-ff/spielplan/verein/10217/saison_id/2017",
+              "squad_source_path": "squad/2017/NO1/10217.html",
+              "squad_source_sha256": "ed7247e301b01a898334d52bfde9916dd076aa15a031b1e7c395ec4cb0be2a70",
+              "squad_source_url": "https://www.transfermarkt.co.uk/sarpsborg-08-ff/kader/verein/10217/saison_id/2017",
+              "sub_count": 7,
+              "tm_club_id": 10217,
+              "xi_count": 11
+            },
+            {
+              "club": "Tromsø IL",
+              "date": "2018-03-11",
+              "match_id": "2985179",
+              "preallocated_roster_rows": 27,
+              "provider_season_id": 2017,
+              "report_html_sha256": "d57082c9c50f97682676fa7d40f5fa3b0720f2326a41376c6fa8438191a23e84",
+              "schedule_html_sha256": "95cf5de42ef5203b1b1eda08ec32acb492469b115458452d23c0fdff1b917e6e",
+              "schedule_url": "https://www.transfermarkt.co.uk/tromso-il/spielplan/verein/1293/saison_id/2017",
+              "squad_source_path": "squad/2017/NO1/1293.html",
+              "squad_source_sha256": "d5e3c6ce454053300d85bc952f0e9d9e10c3c623a91a43f8ed2adad489f6cc51",
+              "squad_source_url": "https://www.transfermarkt.co.uk/tromso-il/kader/verein/1293/saison_id/2017",
+              "sub_count": 6,
+              "tm_club_id": 1293,
+              "xi_count": 11
+            }
+          ],
+          "game_label": "2017-18",
+          "provider_season_id": 2017
+        },
+        "source_competition_code": "NO1"
+      },
+      {
+        "calendar_target": {
+          "clubs": [
+            {
+              "club": "Djurgårdens IF",
+              "date": "2017-04-03",
+              "match_id": "2831007",
+              "preallocated_roster_rows": 34,
+              "provider_season_id": 2016,
+              "report_html_sha256": "4f8634638b6520c680b2d07544de55c7bcf1fd44d842b38ebcf6687264c150cb",
+              "schedule_html_sha256": "cdebbaa0a54c77e603c0be541dd9559083de8dc18ebd5f001d155db27feac245",
+              "schedule_url": "https://www.transfermarkt.co.uk/djurgardens-if/spielplan/verein/1044/saison_id/2016",
+              "squad_source_path": "squad/2016/SE1/1044.html",
+              "squad_source_sha256": "7dd068de38297ff00ac47a8eca09e9edb683f018e863db091df9b065f874eae7",
+              "squad_source_url": "https://www.transfermarkt.co.uk/djurgardens-if/kader/verein/1044/saison_id/2016",
+              "sub_count": 7,
+              "tm_club_id": 1044,
+              "xi_count": 11
+            },
+            {
+              "club": "GIF Sundsvall",
+              "date": "2017-04-02",
+              "match_id": "2831008",
+              "preallocated_roster_rows": 35,
+              "provider_season_id": 2016,
+              "report_html_sha256": "dee3e4a85f7981264a8ca5226d360f9ecb6d2a9eb3189eb4e1c8453aba1ff254",
+              "schedule_html_sha256": "d27f45d01e520537e231a88c4f3173089a9b124da0a5f4427bae9bcb95899ddd",
+              "schedule_url": "https://www.transfermarkt.co.uk/gif-sundsvall/spielplan/verein/2843/saison_id/2016",
+              "squad_source_path": "squad/2016/SE1/2843.html",
+              "squad_source_sha256": "84b9b51bceacb6c1e333348cf6219a4018b1b05d498de0a393a7d0d92567e9f8",
+              "squad_source_url": "https://www.transfermarkt.co.uk/gif-sundsvall/kader/verein/2843/saison_id/2016",
+              "sub_count": 7,
+              "tm_club_id": 2843,
+              "xi_count": 11
+            },
+            {
+              "club": "Halmstads BK",
+              "date": "2017-04-01",
+              "match_id": "2831002",
+              "preallocated_roster_rows": 22,
+              "provider_season_id": 2016,
+              "report_html_sha256": "f24da592faa670de333945bda2933b3d5f15f82a7517d203a13537bf29f3b7a0",
+              "schedule_html_sha256": "6f4cc047118134d142d0871bc67ef9f1fd7c9e6fc1d3ec1647621da912bcc094",
+              "schedule_url": "https://www.transfermarkt.co.uk/halmstads-bk/spielplan/verein/1011/saison_id/2016",
+              "squad_source_path": "squad/2016/SE1/1011.html",
+              "squad_source_sha256": "2e6f4b15803585578d0adb760c408bdacaca0ba6582794b192431cca5a83e7a5",
+              "squad_source_url": "https://www.transfermarkt.co.uk/halmstads-bk/kader/verein/1011/saison_id/2016",
+              "sub_count": 7,
+              "tm_club_id": 1011,
+              "xi_count": 11
+            },
+            {
+              "club": "Hammarby IF",
+              "date": "2017-04-02",
+              "match_id": "2831006",
+              "preallocated_roster_rows": 38,
+              "provider_season_id": 2016,
+              "report_html_sha256": "91392345f1869f1020cce552205997e188c44f700c57974e40d61cd8ab44de16",
+              "schedule_html_sha256": "24195188264ee0ff068b28aa6d3945ebb374d44187b69bc67d008e1414c3100e",
+              "schedule_url": "https://www.transfermarkt.co.uk/hammarby-if/spielplan/verein/1059/saison_id/2016",
+              "squad_source_path": "squad/2016/SE1/1059.html",
+              "squad_source_sha256": "745234af1e3e6ea41d7905a2490c2c163e8178af73caff13ac1bfd03b3a18d75",
+              "squad_source_url": "https://www.transfermarkt.co.uk/hammarby-if/kader/verein/1059/saison_id/2016",
+              "sub_count": 7,
+              "tm_club_id": 1059,
+              "xi_count": 11
+            },
+            {
+              "club": "IF Elfsborg",
+              "date": "2017-04-03",
+              "match_id": "2831004",
+              "preallocated_roster_rows": 30,
+              "provider_season_id": 2016,
+              "report_html_sha256": "ad3fe5c435d1e9f63afc60eed6529d8b02d3a4d2ac079ce625ee8f9c0060bd54",
+              "schedule_html_sha256": "3cfbe6cfd37107a724dfa5f9d05074d15fce08be54505d8aee727baa8c475050",
+              "schedule_url": "https://www.transfermarkt.co.uk/if-elfsborg-boras/spielplan/verein/1101/saison_id/2016",
+              "squad_source_path": "squad/2016/SE1/1101.html",
+              "squad_source_sha256": "2e27d9208689d5a3d76dc295219795ad3cb53756fc0392c63ee2860c90189b1b",
+              "squad_source_url": "https://www.transfermarkt.co.uk/if-elfsborg-boras/kader/verein/1101/saison_id/2016",
+              "sub_count": 7,
+              "tm_club_id": 1101,
+              "xi_count": 11
+            },
+            {
+              "club": "IFK Norrköping",
+              "date": "2017-04-02",
+              "match_id": "2831006",
+              "preallocated_roster_rows": 37,
+              "provider_season_id": 2016,
+              "report_html_sha256": "91392345f1869f1020cce552205997e188c44f700c57974e40d61cd8ab44de16",
+              "schedule_html_sha256": "309ad074d85b1a212b4bc72d649e2d234e0e272609b38fd9be0ed9079029ee15",
+              "schedule_url": "https://www.transfermarkt.co.uk/ifk-norrkoping/spielplan/verein/2844/saison_id/2016",
+              "squad_source_path": "squad/2016/SE1/2844.html",
+              "squad_source_sha256": "b64226764ca0696abf467f9526fc615df0a8adfc1f2f410720cf5ede980e9d6e",
+              "squad_source_url": "https://www.transfermarkt.co.uk/ifk-norrkoping/kader/verein/2844/saison_id/2016",
+              "sub_count": 7,
+              "tm_club_id": 2844,
+              "xi_count": 11
+            },
+            {
+              "club": "IK Sirius",
+              "date": "2017-04-03",
+              "match_id": "2831007",
+              "preallocated_roster_rows": 36,
+              "provider_season_id": 2016,
+              "report_html_sha256": "4f8634638b6520c680b2d07544de55c7bcf1fd44d842b38ebcf6687264c150cb",
+              "schedule_html_sha256": "783d60e46ee57dd996be43ca3cd38f82c126bd628562bb9f359a38edbecfc06f",
+              "schedule_url": "https://www.transfermarkt.co.uk/ik-sirius/spielplan/verein/7945/saison_id/2016",
+              "squad_source_path": "squad/2016/SE1/7945.html",
+              "squad_source_sha256": "fdb882d3573fa977d19f63ea66081fc774b2b123783a8e6a5b1bff2dd9133654",
+              "squad_source_url": "https://www.transfermarkt.co.uk/ik-sirius/kader/verein/7945/saison_id/2016",
+              "sub_count": 7,
+              "tm_club_id": 7945,
+              "xi_count": 11
+            },
+            {
+              "club": "Jönköpings Södra IF",
+              "date": "2017-04-03",
+              "match_id": "2831009",
+              "preallocated_roster_rows": 36,
+              "provider_season_id": 2016,
+              "report_html_sha256": "0e3b585ce6ccb4201a8ccb46f5ef92f202382a5ed51acef676b226c2b578bdf2",
+              "schedule_html_sha256": "948719415543dfa271c3d5c78b3f38aa1ea70b69bd9ce86927e2c91bda2ef46e",
+              "schedule_url": "https://www.transfermarkt.co.uk/jonkopings-sodra-if/spielplan/verein/7411/saison_id/2016",
+              "squad_source_path": "squad/2016/SE1/7411.html",
+              "squad_source_sha256": "e821ae17e2458f3a9d586c6e05d211d59b14ef84b1490dd39cb801f19b5b2d3f",
+              "squad_source_url": "https://www.transfermarkt.co.uk/jonkopings-sodra-if/kader/verein/7411/saison_id/2016",
+              "sub_count": 7,
+              "tm_club_id": 7411,
+              "xi_count": 11
+            },
+            {
+              "club": "Malmö FF",
+              "date": "2017-04-01",
+              "match_id": "2831003",
+              "preallocated_roster_rows": 37,
+              "provider_season_id": 2016,
+              "report_html_sha256": "b27f7147c9de2df7adf35aa57ae174fa6a35ad95652fb0f585ffc2cbcf4b1407",
+              "schedule_html_sha256": "bc7569f329049b08e0fea65c17619594de22c0b486830c69969fd4db6bec71fb",
+              "schedule_url": "https://www.transfermarkt.co.uk/malmo-ff/spielplan/verein/496/saison_id/2016",
+              "squad_source_path": "squad/2016/SE1/496.html",
+              "squad_source_sha256": "8bb2f195c7c76e2a85175aabdd0f6c2e4485d0a6c1d03acce465c7afa9706e1b",
+              "squad_source_url": "https://www.transfermarkt.co.uk/malmo-ff/kader/verein/496/saison_id/2016",
+              "sub_count": 7,
+              "tm_club_id": 496,
+              "xi_count": 11
+            },
+            {
+              "club": "Örebro SK",
+              "date": "2017-04-03",
+              "match_id": "2831009",
+              "preallocated_roster_rows": 33,
+              "provider_season_id": 2016,
+              "report_html_sha256": "0e3b585ce6ccb4201a8ccb46f5ef92f202382a5ed51acef676b226c2b578bdf2",
+              "schedule_html_sha256": "47618710bb108833322b16aae0734e2df2c5088417928e4b4797223c877e36bb",
+              "schedule_url": "https://www.transfermarkt.co.uk/orebro-sk/spielplan/verein/1056/saison_id/2016",
+              "squad_source_path": "squad/2016/SE1/1056.html",
+              "squad_source_sha256": "2bb3f3107f0e106ec977b42e6f2a05f4303f4321e7227670e3a82c5c4d38f420",
+              "squad_source_url": "https://www.transfermarkt.co.uk/orebro-sk/kader/verein/1056/saison_id/2016",
+              "sub_count": 7,
+              "tm_club_id": 1056,
+              "xi_count": 11
+            },
+            {
+              "club": "Östersunds FK",
+              "date": "2017-04-01",
+              "match_id": "2831002",
+              "preallocated_roster_rows": 32,
+              "provider_season_id": 2016,
+              "report_html_sha256": "f24da592faa670de333945bda2933b3d5f15f82a7517d203a13537bf29f3b7a0",
+              "schedule_html_sha256": "14486a472a33c56d889150fcb0f377c5791966867a279d70d4921db8cb3e36c3",
+              "schedule_url": "https://www.transfermarkt.co.uk/ostersunds-fk/spielplan/verein/9614/saison_id/2016",
+              "squad_source_path": "squad/2016/SE1/9614.html",
+              "squad_source_sha256": "ed5c9561f6c582eb469d8f93e0d0316099fb19650df9137e9697f725ba9e05b2",
+              "squad_source_url": "https://www.transfermarkt.co.uk/ostersunds-fk/kader/verein/9614/saison_id/2016",
+              "sub_count": 7,
+              "tm_club_id": 9614,
+              "xi_count": 11
+            }
+          ],
+          "game_label": "2017-18",
+          "provider_season_id": 2016,
+          "target_calendar_year": 2017
+        },
+        "changed_native_carrier_candidates": [
+          {
+            "calendar_2017_assignment": "Hammarby IF",
+            "carrier_id": 951,
+            "current_package_native_label": "IF Brommapojkarna",
+            "current_provider_2017_assignment": "IF Brommapojkarna",
+            "roster_player_count": 26
+          },
+          {
+            "calendar_2017_assignment": "Östersunds FK",
+            "carrier_id": 952,
+            "current_package_native_label": "GIF Sundsvall",
+            "current_provider_2017_assignment": "GIF Sundsvall",
+            "roster_player_count": 20
+          },
+          {
+            "calendar_2017_assignment": "IK Sirius",
+            "carrier_id": 954,
+            "current_package_native_label": "Östersunds FK",
+            "current_provider_2017_assignment": "Östersunds FK",
+            "roster_player_count": 23
+          },
+          {
+            "calendar_2017_assignment": "IF Elfsborg",
+            "carrier_id": 955,
+            "current_package_native_label": "Hammarby IF",
+            "current_provider_2017_assignment": "Hammarby IF",
+            "roster_player_count": 19
+          },
+          {
+            "calendar_2017_assignment": "Jönköpings Södra IF",
+            "carrier_id": 956,
+            "current_package_native_label": "Kalmar FF",
+            "current_provider_2017_assignment": "Kalmar FF",
+            "roster_player_count": 23
+          },
+          {
+            "calendar_2017_assignment": "GIF Sundsvall",
+            "carrier_id": 958,
+            "current_package_native_label": "Dalkurd FF",
+            "current_provider_2017_assignment": "Dalkurd FF",
+            "roster_player_count": 22
+          },
+          {
+            "calendar_2017_assignment": "Halmstads BK",
+            "carrier_id": 959,
+            "current_package_native_label": "IF Elfsborg",
+            "current_provider_2017_assignment": "IF Elfsborg",
+            "roster_player_count": 18
+          },
+          {
+            "calendar_2017_assignment": "Malmö FF",
+            "carrier_id": 960,
+            "current_package_native_label": "Trelleborgs FF",
+            "current_provider_2017_assignment": "Trelleborgs FF",
+            "roster_player_count": 25
+          }
+        ],
+        "club_set": {
+          "calendar_only": [
+            496,
+            1011,
+            7411,
+            7945
+          ],
+          "calendar_target_ids": [
+            496,
+            1011,
+            1044,
+            1056,
+            1059,
+            1101,
+            2843,
+            2844,
+            7411,
+            7945,
+            9614
+          ],
+          "current_only": [
+            701,
+            1092,
+            3654,
+            23302
+          ],
+          "current_plan_ids": [
+            701,
+            1044,
+            1056,
+            1059,
+            1092,
+            1101,
+            2843,
+            2844,
+            3654,
+            9614,
+            23302
+          ],
+          "shared_ids": [
+            1044,
+            1056,
+            1059,
+            1101,
+            2843,
+            2844,
+            9614
+          ]
+        },
+        "country": "sweden",
+        "current_plan_comparison": {
+          "clubs": [
+            {
+              "club": "Dalkurd FF",
+              "date": "2018-04-02",
+              "match_id": "3026047",
+              "preallocated_roster_rows": 38,
+              "provider_season_id": 2017,
+              "report_html_sha256": "add9e45dd2be4f5041e693aec6643594ad63d330fbc1573d8b2e2dad496b1872",
+              "schedule_html_sha256": "5ffdaeaff01ff55fa891feaa3f6be655ac4bbfff2417cac19b7332ab41f924d9",
+              "schedule_url": "https://www.transfermarkt.co.uk/dalkurd-ff/spielplan/verein/23302/saison_id/2017",
+              "squad_source_path": "squad/2017/SE1/23302.html",
+              "squad_source_sha256": "b2a4b713f7ca1cadfa99d3bd7d56f5251bd2a13cf21b9dad18b14e81dc87764c",
+              "squad_source_url": "https://www.transfermarkt.co.uk/dalkurd-ff/kader/verein/23302/saison_id/2017",
+              "sub_count": 7,
+              "tm_club_id": 23302,
+              "xi_count": 11
+            },
+            {
+              "club": "Djurgårdens IF",
+              "date": "2018-04-01",
+              "match_id": "3026046",
+              "preallocated_roster_rows": 38,
+              "provider_season_id": 2017,
+              "report_html_sha256": "28e4709e00c9c660554cb886fe4a29cd83cd92fc951c4259332562620f5338bc",
+              "schedule_html_sha256": "51b929697328f7341f7d0593bf973b6c118c3c5ca4ef1e99e0e658e80486d7bf",
+              "schedule_url": "https://www.transfermarkt.co.uk/djurgardens-if/spielplan/verein/1044/saison_id/2017",
+              "squad_source_path": "squad/2017/SE1/1044.html",
+              "squad_source_sha256": "99070bd5a5453cb28c015d015045ac6f30b0b033e735173394110e13cc913546",
+              "squad_source_url": "https://www.transfermarkt.co.uk/djurgardens-if/kader/verein/1044/saison_id/2017",
+              "sub_count": 7,
+              "tm_club_id": 1044,
+              "xi_count": 11
+            },
+            {
+              "club": "GIF Sundsvall",
+              "date": "2018-04-02",
+              "match_id": "3026050",
+              "preallocated_roster_rows": 35,
+              "provider_season_id": 2017,
+              "report_html_sha256": "ba311a91e64e7e1ce28769fe09c555d99a61a9c98a30aa5a45c864494549c7d5",
+              "schedule_html_sha256": "ebaa452cde5b7ba3fe9f482bb178ca51ce2f7e21f2eda4dc50c463c6d1995e40",
+              "schedule_url": "https://www.transfermarkt.co.uk/gif-sundsvall/spielplan/verein/2843/saison_id/2017",
+              "squad_source_path": "squad/2017/SE1/2843.html",
+              "squad_source_sha256": "5646610f5679d3fe45dddef3c0b1a00a3a90f613fc61408227d4d6abcdc6321f",
+              "squad_source_url": "https://www.transfermarkt.co.uk/gif-sundsvall/kader/verein/2843/saison_id/2017",
+              "sub_count": 7,
+              "tm_club_id": 2843,
+              "xi_count": 11
+            },
+            {
+              "club": "Hammarby IF",
+              "date": "2018-04-01",
+              "match_id": "3026044",
+              "preallocated_roster_rows": 34,
+              "provider_season_id": 2017,
+              "report_html_sha256": "672f544d86b29d4af4c2f086eda965e3f81cfea98e6b5aba0fa1c557e6d12640",
+              "schedule_html_sha256": "397e666d622f02853366e9410055897765eb6e3c78caf58a798a61fae21dfb0c",
+              "schedule_url": "https://www.transfermarkt.co.uk/hammarby-if/spielplan/verein/1059/saison_id/2017",
+              "squad_source_path": "squad/2017/SE1/1059.html",
+              "squad_source_sha256": "68204083995930e1c5baa4df716dcbb6ee3e259fc181b35cf5c62bbe83e51375",
+              "squad_source_url": "https://www.transfermarkt.co.uk/hammarby-if/kader/verein/1059/saison_id/2017",
+              "sub_count": 7,
+              "tm_club_id": 1059,
+              "xi_count": 11
+            },
+            {
+              "club": "IF Brommapojkarna",
+              "date": "2018-04-02",
+              "match_id": "3026048",
+              "preallocated_roster_rows": 39,
+              "provider_season_id": 2017,
+              "report_html_sha256": "41c3cfdbdd3f92798c35bda9d279e18a077c678f37b492494a2f1f21a85282a9",
+              "schedule_html_sha256": "1f63c05bb96b1f1d9ffe4896656afed8882f540d06bfa975cc31629435a1e1ee",
+              "schedule_url": "https://www.transfermarkt.co.uk/if-brommapojkarna/spielplan/verein/1092/saison_id/2017",
+              "squad_source_path": "squad/2017/SE1/1092.html",
+              "squad_source_sha256": "8e5212dbf6caa019f3139024ba05024337c460b002154251d6e2390d61e59125",
+              "squad_source_url": "https://www.transfermarkt.co.uk/if-brommapojkarna/kader/verein/1092/saison_id/2017",
+              "sub_count": 7,
+              "tm_club_id": 1092,
+              "xi_count": 11
+            },
+            {
+              "club": "IF Elfsborg",
+              "date": "2018-04-02",
+              "match_id": "3026049",
+              "preallocated_roster_rows": 32,
+              "provider_season_id": 2017,
+              "report_html_sha256": "8e42bcb8213acf1eaee2ca2f92e3635e64922818dbdece6059019c83f77e9371",
+              "schedule_html_sha256": "a116cb6bc5088f5bb284719926c8916596ee05e3f16b27b1ebfcdea1f8b2d58e",
+              "schedule_url": "https://www.transfermarkt.co.uk/if-elfsborg-boras/spielplan/verein/1101/saison_id/2017",
+              "squad_source_path": "squad/2017/SE1/1101.html",
+              "squad_source_sha256": "e126c95467b9c627e13f37f536a35e4e3f10a90ad579cce59ddd55bd80f8922e",
+              "squad_source_url": "https://www.transfermarkt.co.uk/if-elfsborg-boras/kader/verein/1101/saison_id/2017",
+              "sub_count": 7,
+              "tm_club_id": 1101,
+              "xi_count": 11
+            },
+            {
+              "club": "IFK Norrköping",
+              "date": "2018-04-02",
+              "match_id": "3026048",
+              "preallocated_roster_rows": 41,
+              "provider_season_id": 2017,
+              "report_html_sha256": "41c3cfdbdd3f92798c35bda9d279e18a077c678f37b492494a2f1f21a85282a9",
+              "schedule_html_sha256": "1b3edb8d8d6a3e1925dbf98826bb4af0ece7545cd253ebb3e21e9f56a61f6585",
+              "schedule_url": "https://www.transfermarkt.co.uk/ifk-norrkoping/spielplan/verein/2844/saison_id/2017",
+              "squad_source_path": "squad/2017/SE1/2844.html",
+              "squad_source_sha256": "082ae5bd6f5e6274cc84d283464e0c07a81af11a735423aea0a241a7ec32f770",
+              "squad_source_url": "https://www.transfermarkt.co.uk/ifk-norrkoping/kader/verein/2844/saison_id/2017",
+              "sub_count": 7,
+              "tm_club_id": 2844,
+              "xi_count": 11
+            },
+            {
+              "club": "Kalmar FF",
+              "date": "2018-04-01",
+              "match_id": "3026043",
+              "preallocated_roster_rows": 38,
+              "provider_season_id": 2017,
+              "report_html_sha256": "f1500f2826fbe42bcabfdf322b1ddfe016400465016a0c70d262da7b4302e3b6",
+              "schedule_html_sha256": "c825e972b500891442c9e0ccfb883f82037503b584ee07ea508b912087a3cf0a",
+              "schedule_url": "https://www.transfermarkt.co.uk/kalmar-ff/spielplan/verein/3654/saison_id/2017",
+              "squad_source_path": "squad/2017/SE1/3654.html",
+              "squad_source_sha256": "b5ad33a8707668e2ec01a33ce6d8149ca04a51b5056e9ad6d7b61d5c4a521f0f",
+              "squad_source_url": "https://www.transfermarkt.co.uk/kalmar-ff/kader/verein/3654/saison_id/2017",
+              "sub_count": 6,
+              "tm_club_id": 3654,
+              "xi_count": 11
+            },
+            {
+              "club": "Trelleborgs FF",
+              "date": "2018-04-01",
+              "match_id": "3026045",
+              "preallocated_roster_rows": 39,
+              "provider_season_id": 2017,
+              "report_html_sha256": "26b0403b548690bd508229f33a3b487703db3ffef92a017d8446a58a36b1d95b",
+              "schedule_html_sha256": "4650ffac7045843a00b49d153cb2c8efba7cf2ba1cba4bab9a20f8fa0da5adfd",
+              "schedule_url": "https://www.transfermarkt.co.uk/trelleborgs-ff/spielplan/verein/701/saison_id/2017",
+              "squad_source_path": "squad/2017/SE1/701.html",
+              "squad_source_sha256": "9389659ac71c6f333e1b0fce94f79edcef4d1f507f6e2a732ebf3b3fcd473472",
+              "squad_source_url": "https://www.transfermarkt.co.uk/trelleborgs-ff/kader/verein/701/saison_id/2017",
+              "sub_count": 7,
+              "tm_club_id": 701,
+              "xi_count": 11
+            },
+            {
+              "club": "Örebro SK",
+              "date": "2018-04-02",
+              "match_id": "3026050",
+              "preallocated_roster_rows": 36,
+              "provider_season_id": 2017,
+              "report_html_sha256": "ba311a91e64e7e1ce28769fe09c555d99a61a9c98a30aa5a45c864494549c7d5",
+              "schedule_html_sha256": "ad0070cecd63a6a269c381a81819f9d72ca1529fcd1816090180e754072f0b0b",
+              "schedule_url": "https://www.transfermarkt.co.uk/orebro-sk/spielplan/verein/1056/saison_id/2017",
+              "squad_source_path": "squad/2017/SE1/1056.html",
+              "squad_source_sha256": "9167b13c4c682448864bc72d8cfb131f182aea6b6779e6088275aa5a46b627cb",
+              "squad_source_url": "https://www.transfermarkt.co.uk/orebro-sk/kader/verein/1056/saison_id/2017",
+              "sub_count": 7,
+              "tm_club_id": 1056,
+              "xi_count": 11
+            },
+            {
+              "club": "Östersunds FK",
+              "date": "2018-04-01",
+              "match_id": "3026046",
+              "preallocated_roster_rows": 38,
+              "provider_season_id": 2017,
+              "report_html_sha256": "28e4709e00c9c660554cb886fe4a29cd83cd92fc951c4259332562620f5338bc",
+              "schedule_html_sha256": "7cb6dc5b1b3eeb7a65dabe1fb7a09bb0b54811ae48490f03337dd83767543837",
+              "schedule_url": "https://www.transfermarkt.co.uk/ostersunds-fk/spielplan/verein/9614/saison_id/2017",
+              "squad_source_path": "squad/2017/SE1/9614.html",
+              "squad_source_sha256": "eff33d4b8edb79678d245f6a6fe91533798e825c74cb6b6c99efb8d0b569784a",
+              "squad_source_url": "https://www.transfermarkt.co.uk/ostersunds-fk/kader/verein/9614/saison_id/2017",
+              "sub_count": 7,
+              "tm_club_id": 9614,
+              "xi_count": 11
+            }
+          ],
+          "game_label": "2017-18",
+          "provider_season_id": 2017
+        },
+        "source_competition_code": "SE1"
+      }
+    ],
+    "classification": "Retained source-set comparison against current installed package; candidate scope for source-year review, not an approved native reassignment.",
+    "inputs": {
+      "2016-17": {
+        "carrier_allocation_sha256": "318043abc988aa475bbba354502e9013f506803f0e0a41aec45b1f31f1cd353f",
+        "competition_map_sha256": "8a82e88d07a0399fc9673a5742fd63bdeaeba0cab3b43c7bad7164a0d89776c1",
+        "opening_lineups_sha256": "93f3407ea7aa20f9be7ddbb1e3915c3a202fcd798292716702ad112a091bb90d",
+        "opening_preallocation_sha256": "32cb977eda1a7f1a06988c3798f1d0ca2ff9f6a122b8de6ec736ae017473196e",
+        "plan_sha256": "541336ff936d905b202f2b04dac6cd854830073b20b880e5a811e71a7241f4f3",
+        "selectors_sha256": "a9ed9ec758a14c2963de2dd806ccddadd1426bc8db8a055afcedcd7a2551ea46",
+        "source_intake_path": ".local/season-historical-squad-backfill-v1/2016-17/revisions/rev-351cfe1eb1dd03289681/source-intake.json",
+        "source_intake_sha256": "a5eff2aa311cc57b2deda9243c274fb5107f5c11ab683633c5e6ce408617344e",
+        "transfermarkt_squads_sha256": "e5cd8244952a59a667880a59a3563e423322087c8ead0562f640a9f0d25c6a1c"
+      },
+      "2017-18": {
+        "carrier_allocation_sha256": "67c43d36c41e019681f7e0540cb3da61c619fdeefa390b5cb4f5f6acffa5603d",
+        "competition_map_sha256": "0989ba3fa20c6292a3394f5258be0d50ee61aee9acb0b7714a2d04b4907260d3",
+        "opening_lineups_sha256": "26170d4d5360b0d0a484eec7f4d619fbe32b2b2fa43f73191c2ca90a2104f878",
+        "opening_preallocation_sha256": "d1bd033cfb1ab47503dfa7017a5ee6478ff3c305e79af25d181f64ce53228d0d",
+        "plan_sha256": "231171d3bded12259ef27a1c3dd57f0701b27c0e37db13ca7cc6643482a1e75f",
+        "selectors_sha256": "2b983c07a30103d2f5fe198537e54cfe3dbeaf307484f5aae2f76ae007ab599e",
+        "source_intake_path": ".local/season-historical-squad-backfill-v1/2017-18/revisions/rev-93dd90d8b0e01b502709/source-intake.json",
+        "source_intake_sha256": "e4af98cd7eb453f84e2f0b720b9313b54ac12651ef7db8d9581deda6b096d128",
+        "transfermarkt_squads_sha256": "c45cd8e92822745fd67a8f1b80e46188cf9d3949d8aaf9c0839530b3740a01d8"
+      }
+    },
+    "interpretation": "2016-17 retained schedule/preallocation sources produce 41 clubs with first league fixtures dated in calendar 2017 (provider season ID 2016). The current 2017-18 package is built from provider season ID 2017: it has 39 country-club rows, 27 stable TM club IDs overlap, 14 calendar-target IDs are absent and 12 current-plan IDs are absent from the target set. Candidate current carrier rows were mapped through each revision carrier-allocation and current package carrier IDs. These assignment files use canonical source ordering and do not establish that the candidate mapping is approved. Source and native labels differ across 25 carrier entries; that is a review scope, not a confirmed count of wrong game clubs or players.",
+    "package": {
+      "game_path": ".local/historical-role-deltas-v1/2017-18/sourced-coady-defence-cascade-20261024-r218a/game",
+      "manifest_file_sha256": "69615be4ec2117bb31021d107fc97041ddc29164b0b152789f2669ade0c9f355",
+      "manifest_path": ".local/season-release-registry-v1/releases/2017-18/sourced-coady-defence-cascade-20261024-r218a/metadata/season-manifest.json",
+      "package_canonical_sha256": "ed4e69657873d66a154066380aaef65be9de9df07b8bdca3c5d59075fcca1cf4",
+      "package_file_sha256": "ed4e69657873d66a154066380aaef65be9de9df07b8bdca3c5d59075fcca1cf4",
+      "package_path": ".local/historical-role-deltas-v1/2017-18/sourced-coady-defence-cascade-20261024-r218a/season-package.json",
+      "release_id": "sourced-coady-defence-cascade-20261024-r218a",
+      "technical_status": "technically-verified"
+    },
+    "raw_source_note": "For all 41 calendar-2017 rows, cached schedule and report HTML bodies exist. The preallocation player rows and original squad source URL/SHA are retained and source SHA matches the snapshot metadata; raw squad HTML body files were not found in the revision/plan cache roots checked. For 39 current-plan rows, schedule/report cache bodies and squad-source snapshot bindings likewise exist."
+  },
+  "classification": "source-planner year-routing discrepancy; no native/game writes and no claims that every row has been independently rebuilt or reviewed",
+  "correction_note": "The Ireland 2017-18 comparison schedule digest is corrected to the actual raw cache hash in v3; v2 is preserved unchanged.",
+  "country_date_year_histograms": {
+    "brazil": {
+      "2001": 8,
+      "2002": 9,
+      "2003": 9,
+      "2004": 9,
+      "2005": 8,
+      "2006": 9,
+      "2007": 9,
+      "2008": 9,
+      "2009": 6,
+      "2010": 8,
+      "2011": 9,
+      "2012": 9,
+      "2013": 9,
+      "2014": 9,
+      "2015": 8,
+      "2017": 9,
+      "2018": 9,
+      "2019": 9,
+      "2020": 9,
+      "2021": 9,
+      "2022": 9,
+      "2023": 9,
+      "2024": 9,
+      "2025": 9,
+      "2026": 9
+    },
+    "ireland": {
+      "2001": 12,
+      "2002": 10,
+      "2003": 10,
+      "2004": 10,
+      "2005": 12,
+      "2006": 11,
+      "2007": 12,
+      "2008": 12,
+      "2009": 8,
+      "2010": 7,
+      "2011": 10,
+      "2012": 12,
+      "2013": 12,
+      "2014": 12,
+      "2015": 9,
+      "2017": 12,
+      "2018": 10,
+      "2019": 10,
+      "2020": 9,
+      "2021": 9,
+      "2022": 10,
+      "2023": 10,
+      "2024": 10,
+      "2025": 8,
+      "2026": 8
+    },
+    "norway": {
+      "2001": 9,
+      "2002": 9,
+      "2003": 9,
+      "2004": 9,
+      "2005": 9,
+      "2006": 9,
+      "2007": 9,
+      "2008": 9,
+      "2009": 9,
+      "2010": 8,
+      "2011": 9,
+      "2012": 9,
+      "2013": 9,
+      "2014": 9,
+      "2015": 8,
+      "2017": 9,
+      "2018": 9,
+      "2019": 9,
+      "2020": 9,
+      "2021": 9,
+      "2022": 9,
+      "2023": 9,
+      "2024": 9,
+      "2025": 8,
+      "2026": 6
+    },
+    "russia": {
+      "2001": 7,
+      "2002": 7,
+      "2003": 7,
+      "2004": 7,
+      "2005": 7,
+      "2006": 7,
+      "2007": 7,
+      "2008": 7,
+      "2009": 5,
+      "2010": 4,
+      "2011": 7,
+      "2012": 6,
+      "2013": 6,
+      "2014": 5,
+      "2016": 7,
+      "2017": 6,
+      "2018": 7,
+      "2019": 7,
+      "2020": 7,
+      "2021": 6,
+      "2022": 5,
+      "2023": 7,
+      "2024": 7,
+      "2025": 6
+    },
+    "sweden": {
+      "2001": 11,
+      "2002": 8,
+      "2003": 2,
+      "2004": 6,
+      "2005": 2,
+      "2006": 11,
+      "2007": 11,
+      "2008": 11,
+      "2009": 8,
+      "2010": 9,
+      "2011": 11,
+      "2012": 11,
+      "2013": 11,
+      "2014": 11,
+      "2015": 10,
+      "2017": 11,
+      "2018": 11,
+      "2019": 11,
+      "2020": 11,
+      "2021": 11,
+      "2022": 11,
+      "2023": 11,
+      "2024": 11,
+      "2025": 10,
+      "2026": 8
+    }
+  },
+  "finding": {
+    "ambiguous_exception": "Russia 2010-11 has source title 10/11 and first fixture in 2011 (7 rows); retain as transition ambiguity pending explicit mapping. Russia 2000-2009 contributes 65 rows whose first fixtures are the following calendar year despite 00/01…09/10 schedule titles; classify them under pre-2011 calendar mapping review.",
+    "implication": "Treat as a confirmed source-plan mapping gap and likely next-calendar-year routing error in retained selected rows. Do not select a corrected provider year mechanically from this report; establish the intended country mapping and inspect its source schedule/roster before rebasing. This is not a count of native defects or proven wrong players. Paired same-club retained schedules for Brazil/Ireland/Norway/Sweden show provider season ID Y-1 yields the recorded first fixture in calendar year Y, while provider ID Y yields the following year; this supports a candidate Y-1 mapping for those four 2017 examples, but is not a complete all-years/country policy declaration.",
+    "observed": "For each available source plan, the capture plan passes the same start_year for every country; Brazil, Ireland, Norway and Sweden first domestic fixture dates in all selected rows are start_year+1. Russia rows for 2000-2010 also show start_year+1, but the 2010/11 source season is separately marked transitional/ambiguous. The current capture therefore has no declared per-country source-year mapping and retained calendar-league results come from the next calendar year relative to each plan start year.",
+    "policy_basis": [
+      "WORLD_2015_MISSING_FAMILY_NTF_CAPTURE_2026-08-31.md lines 9-12: calendar-year leagues use 2015, split-year leagues use 2015_1 and 2015/16 player table.",
+      "RERUNNABLE_SEASON_WORKFLOW_AND_RC_PLAN_2026-10-18.md lines 42-45: declare opening snapshot date and country-to-source-season mapping; calendar-year label is not proof of August ownership."
+    ],
+    "uncovered": "No MLS/USA, Japan or China rows in this retained planner set; this audit cannot assess those countries."
+  },
+  "implementation_evidence": {
+    "capture_script": "scripts/capture_transfermarkt_opening_lineups_v1.py",
+    "plan_example": "2017-18/plan.json passes --season-start-year 2017 and source selectors/map are country-specific only for league and club identity.",
+    "sha256": "6639dc1448806538fbafcc6408deca4319f07f1aca12c4a28aa2de2be348d8fe",
+    "uniform_parameter": "--season-start-year; _competition_teams and _first_fixture form /saison_id/{season_start_year}; _first_fixture only confines selected schedule to season_start_year / season_start_year+1, with no country-specific source-year mapping."
+  },
+  "input_files": [
+    {
+      "directory": "2000-01",
+      "sha256": {
+        "competition_map": "8381cf2cb04f2aaae660372777fb9f64f2a4f772ec18a0192b39b32ae0549568",
+        "opening_lineups": "e4efe0f52617289f0ea44707ac20f5b90aeabfc447e56a4966984609f497c18a",
+        "plan": "c2af606707e784bf57194fa86fe60242b73bc141dd9bf76bc681dea2d0148515",
+        "selectors": "c698f7f59fbb08258d12fee5854ab642e3d32cb021da15f7ffd4e2aa96a5a90a"
+      }
+    },
+    {
+      "directory": "2001-02",
+      "sha256": {
+        "competition_map": "d53f7fddd981acdcb12546796f3e3fd0008da4833f01170b2bb2e03ee8006356",
+        "opening_lineups": "fc8776eb7a20106b74fa8667dc2837fc440fcc8b76c28b74b3b1816f8069e004",
+        "plan": "419a59a4c0b910757b1700905fc51a9c809449614af3a1d498f4a6fd180b36cd",
+        "selectors": "f2a41ee1a0e80ec14ef811c131de2f9ac5835a1481d4773d508e508a921bc108"
+      }
+    },
+    {
+      "directory": "2002-03",
+      "sha256": {
+        "competition_map": "c894f46fdb3c1cfb7d175481079dfe165b80b9a268da3dfac3637652ffa0dd52",
+        "opening_lineups": "d7d236ce2ba89181dafb8bd69fbc2146c74aa66879f076f3bf701e1209487ff3",
+        "plan": "56add63a89190a68194637c0959401a53c47c891da25e13aee7fbe96d14b665a",
+        "selectors": "fcec0820ff399542f1415e5635f857156aacd1a5f8da6c4b2f676b6c7bce9e82"
+      }
+    },
+    {
+      "directory": "2003-04",
+      "sha256": {
+        "competition_map": "c894f46fdb3c1cfb7d175481079dfe165b80b9a268da3dfac3637652ffa0dd52",
+        "opening_lineups": "439d0d8b5ad58b6bd59786c5e8cbbfd64f9c492951603529a55b725d414e11d1",
+        "plan": "59af2238018e6bc5323f8f97f524cc273c7ac409fadd58ba0315841fd208ce08",
+        "selectors": "7c76dbff2c1753493e404fda83a8e9fd70edb9fef75cd8e057f669b21ab3b506"
+      }
+    },
+    {
+      "directory": "2004-05",
+      "sha256": {
+        "competition_map": "ca9bb3ea39a1d71421988d56f37b1a66ec3509a6f6fd4c2615211aae56acfdaf",
+        "opening_lineups": "1f6fa4e6f5d0fa41a2017efc7a0b8ac586d907b49480e3fce354e6c3da265b15",
+        "plan": "004b92c5fcea10a7f81760c1023b39d7d4671c5ce14318bcc84615353f48b804",
+        "selectors": "9693081235221f2098ab70e842117b30f27b6a1ff034398b7a7544f1eea3a217"
+      }
+    },
+    {
+      "directory": "2005-06",
+      "sha256": {
+        "competition_map": "4692a0d7328e93f46a0f06245959113f71534f521f7072932ea4381d3ec47898",
+        "opening_lineups": "4a70ebe7459b1a7d6ccc939e8d30579a9e01ab3c88a5d9d592783b80ed818ad7",
+        "plan": "525da8ce3654c3e677a2b473e92b6a237fb1beb50166087b29c4284ab11221da",
+        "selectors": "0812bf64d19617ee79d643a991b8fedbbaa1681f6b0325a77c7a3b22ad86287b"
+      }
+    },
+    {
+      "directory": "2006-07",
+      "sha256": {
+        "competition_map": "7a92bbc0250c4d202dbda66893808332b3442fc33dfad3993f3b0225603df5c7",
+        "opening_lineups": "fb687ee93b281286a4005a7626811bda2efeb6da18ab0faa43b866d39e7aa029",
+        "plan": "e093c6fff8701c2ec5f5c953621c92bbb9df8d6831e023b8cb19e0f6897c5839",
+        "selectors": "26ffe886b4c5d0d128377b4e954ca2f9796e2e9370c1acc7309e77895cbcce37"
+      }
+    },
+    {
+      "directory": "2007-08",
+      "sha256": {
+        "competition_map": "b351a4fcfeb2664bff6157001c0afa81a951963c6961e6b1618f0a5d09ea4476",
+        "opening_lineups": "3069c86921074af89898e46420110f40933ae8918361740ee1f6f0079b412207",
+        "plan": "acae9aaa68fa4f7071a3e9b54166a52790c9cf7b6b31d6cd8ce25d67effd630b",
+        "selectors": "8dffcea3d92042fd47d2c06e756da93d42e3ba57ca392208edc42c978ed31930"
+      }
+    },
+    {
+      "directory": "2008-09",
+      "sha256": {
+        "competition_map": "652f430b8d9d13483af8b18fd656d70c1dadf37de98f4cfcfb4646e25a661c0d",
+        "opening_lineups": "88120c4118598889bdc2201a98846048e4e9a76fb385ace6a8b2d3a513ae1a35",
+        "plan": "70930522bbf7dfad936cd6a1a69c59966b5b80ef92a256c6171f6688fef03ccc",
+        "selectors": "7b03df788db90a4713a9f2f81755524c5deac280d798aa6e57e1c2a5fe0b6b5a"
+      }
+    },
+    {
+      "directory": "2009-10",
+      "sha256": {
+        "competition_map": "5a05f8d86bf9ce02baca2213e0749b1efffe6a7441d8e56bfa21d63a3f76a8f7",
+        "opening_lineups": "a55b94d437d330894c2b7a36dc89549748cd039355c5638c80f5b906649329b4",
+        "plan": "6080b426e6dadca516a58c732eba1593f6891e390f3d11a93713177b2bee0ed4",
+        "selectors": "690cb7f482ebedc68b0be08f0260e89dd9908092bf4de4d8f31fc29bfce9f4db"
+      }
+    },
+    {
+      "directory": "2010-11",
+      "sha256": {
+        "competition_map": "b62bca7604de156e31672d15a69e08a7a6baff17bd605ac902031db8a801a212",
+        "opening_lineups": "b18a5760beef7b119869e763a49697d783138e1a13df1eae52023604e0420f1a",
+        "plan": "1dabab6377a493fac28a2be62aa26485b8255c57fe39581325fe2f5de7d3fff0",
+        "selectors": "76a4507218945c65c13871912068c23f79b3b75d74030c8cb83060426797a767"
+      }
+    },
+    {
+      "directory": "2011-12",
+      "sha256": {
+        "competition_map": "18d11963edc4e0d2a4ccabf997306699a4e8dc4e8a722f9b12901224223b40fd",
+        "opening_lineups": "ab9aa10bfd0a62868e913d1cafb056f6bf911772f74ad0c3d96bab714f82ff1e",
+        "plan": "5d3c31ba68cd4567664b23999cf1885a14d0ad20c1c23848a1e1464b2f9933bb",
+        "selectors": "9599249add96f59ada0c48c7ba49fa594e2dd0bada00ddf527e4399f4db16172"
+      }
+    },
+    {
+      "directory": "2012-13",
+      "sha256": {
+        "competition_map": "44fc1de954693cd63ac87811b84570820b077ddb528e4b1c1412860e03ce0349",
+        "opening_lineups": "5e88120fa05311a71dd7d1ed9d00b5bc026206ce49d1fa8724b93bd312f1711f",
+        "plan": "dd12c9c47516d5449d11aa8e3c93de3df5d78a06bb0f5e7df2eeab1bbe326dcb",
+        "selectors": "43bb59d2f052466d0767a57a44e6236c8f221b1d4f97cfe9f3c81ccd030e1dab"
+      }
+    },
+    {
+      "directory": "2013-14",
+      "sha256": {
+        "competition_map": "0391613cd9dea11fbe278d75fb87c46e4a53c3b9a8c0d18e86df3a1588c86244",
+        "opening_lineups": "e1b204c380aa3d42b907df5acfce778c38b7b33a912d8d777743f6bc528e1537",
+        "plan": "367c0c7c7056aebeb464ae9e1433d5e90103e750f7b3b9a944b3642cc737400a",
+        "selectors": "46a80d5a39abca119d351b10c12e7dccb5ba609dc010ad3f68dbb2212420a3cd"
+      }
+    },
+    {
+      "directory": "2014-15",
+      "sha256": {
+        "competition_map": "635fb19540142df3c574696e7a265c15205622679d6bb21210441e4123c0c934",
+        "opening_lineups": "5688a90764b321c289928838606464f38a215baa6007ad64e4c39f17d5fdea2c",
+        "plan": "c9d11077bfb56825ec4b3ee7e01f728b22037ff205ac4db52d0cb459a8648c57",
+        "selectors": "d4ac335ed410a0b3f9b31861964736c20fef2b4cccca7d1f2302e058ffb4681b"
+      }
+    },
+    {
+      "directory": "2016-17",
+      "sha256": {
+        "competition_map": "8a82e88d07a0399fc9673a5742fd63bdeaeba0cab3b43c7bad7164a0d89776c1",
+        "opening_lineups": "93f3407ea7aa20f9be7ddbb1e3915c3a202fcd798292716702ad112a091bb90d",
+        "plan": "541336ff936d905b202f2b04dac6cd854830073b20b880e5a811e71a7241f4f3",
+        "selectors": "a9ed9ec758a14c2963de2dd806ccddadd1426bc8db8a055afcedcd7a2551ea46"
+      }
+    },
+    {
+      "directory": "2017-18",
+      "sha256": {
+        "competition_map": "0989ba3fa20c6292a3394f5258be0d50ee61aee9acb0b7714a2d04b4907260d3",
+        "opening_lineups": "26170d4d5360b0d0a484eec7f4d619fbe32b2b2fa43f73191c2ca90a2104f878",
+        "plan": "231171d3bded12259ef27a1c3dd57f0701b27c0e37db13ca7cc6643482a1e75f",
+        "selectors": "2b983c07a30103d2f5fe198537e54cfe3dbeaf307484f5aae2f76ae007ab599e"
+      }
+    },
+    {
+      "directory": "2018-19",
+      "sha256": {
+        "competition_map": "db4aeb4655c8c0787ddbea33f5fda036a663b6e3ff69fda96177a70d120cb809",
+        "opening_lineups": "33b01d4e0b5142a6f9577711501e0e10b7443ac1c266f02009f55ca12466a05f",
+        "plan": "034c75fab7b5ddf00bd29fc40a0e890d5fceed30e1bf3938a0856ee37dc07676",
+        "selectors": "31031849ddfb803774363e4809e7ccb322bf731caebe30dea8f1b7bb0c19d3b4"
+      }
+    },
+    {
+      "directory": "2019-20",
+      "sha256": {
+        "competition_map": "db4aeb4655c8c0787ddbea33f5fda036a663b6e3ff69fda96177a70d120cb809",
+        "opening_lineups": "f8c671840a744ba68a65db961eeda61663050ee379383df5f5f774a3a5a0b79f",
+        "plan": "ab3929929810043fc2e3dffcb009cb06ad52128b742b0d92350d94ebade1f94b",
+        "selectors": "0ea398cf63ee769519b9fb9c3955a0ae44be44beaeb0e78acce99ab062951e71"
+      }
+    },
+    {
+      "directory": "2020-21",
+      "sha256": {
+        "competition_map": "0ec97c896b9f7131273fc937675527be5f8383ad0fae24566e220c63e9dcfc1b",
+        "opening_lineups": "97317108e9a18d2a07a75ab1be13dac1f3ae5e13468409878e0442d7ad4f6134",
+        "plan": "33ebfecb8e6e75c5aeb47cc59320ed3ecb241479c3ff74c508d9163cce43145b",
+        "selectors": "3e10e52e43c8358af8cc47026628ea373465b6846b8f860712fdffe0a0befdc4"
+      }
+    },
+    {
+      "directory": "2021-22",
+      "sha256": {
+        "competition_map": "0ec97c896b9f7131273fc937675527be5f8383ad0fae24566e220c63e9dcfc1b",
+        "opening_lineups": "698594d1cb31718984d656ec9a1f650520f5edd82d5d36a0ac1158289ca85fb4",
+        "plan": "e04dd41c1df6a8eff83d17fab5115e1e1fb75d8838bba23ee5d7fb5ca29c21bd",
+        "selectors": "b585a792dc47d772c19f4ac3d1a0756c53bfe83bc65014a8800e26cd99a819f8"
+      }
+    },
+    {
+      "directory": "2022-23",
+      "sha256": {
+        "competition_map": "0ec97c896b9f7131273fc937675527be5f8383ad0fae24566e220c63e9dcfc1b",
+        "opening_lineups": "427a427cc248c080d239b1cb54a8f9f44d6b58567b901ee8b978b0ac80921f9f",
+        "plan": "fb04d93bdc15cdb97290b6fa07eefb065b3ba761737487ae41cc4537413eaac3",
+        "selectors": "30bc8f78692bcc64b4e7b37ed823a7bd37a5674e3c379b6b2d878fd7a16eb60a"
+      }
+    },
+    {
+      "directory": "2023-24",
+      "sha256": {
+        "competition_map": "430adfb8c12d3f1d45a8f52ede26a9494685dceaca242e0946f11af1d533c0df",
+        "opening_lineups": "a38c28110f830a712dbab8c8b1de408265e52423c983b6c1d6b79f8fd9139230",
+        "plan": "80fdcc07c47f785c5f99b64124ceebec4bd3ee465824bb0df01bfcf0ee701a1d",
+        "selectors": "1aeae9beeb25fb13fa08c388abee854451fa6611e4e13c86ed61eff31b993c01"
+      }
+    },
+    {
+      "directory": "2024-25",
+      "sha256": {
+        "competition_map": "a501e6201b3994cacb666def943314474c5f91078d26a6c90f22cedd0c4257ee",
+        "opening_lineups": "53d52be37f2ac7bdd25f9fc4ddfe15b55101b9dc88a50821500a1857d9b1d38b",
+        "plan": "d39d12b005a9da44ec19da1cdaa971c9a6d87ed9e5f16050babdcb8d80a46fb2",
+        "selectors": "c3714fd0130cf590a2935deba588aa48a3cb6d72073434348da5e5314616dc0f"
+      }
+    },
+    {
+      "directory": "2025-26",
+      "sha256": {
+        "competition_map": "d4ab12766a7a982ae1faeeea906bf9c13ec97658c4b42790d9f59c346b378a73",
+        "opening_lineups": "4a86b7eb1c08ca20a7313d1d418e6258586bd6c8df111300ca12c963c4935ceb",
+        "plan": "f28e9f740a23acf0444f18dde33ff125e0a8f4e952297bba8b384cc7509666e2",
+        "selectors": "c6c671f1fde46d0c7ae8ec4771e5c6f72353a73ef252f4c1fd726b3f00f55fe2"
+      }
+    }
+  ],
+  "machine": "joe-Vostro-3350",
+  "paired_provider_schedule_evidence": [
+    {
+      "calendar_target_year": 2017,
+      "club": "Botafogo de Futebol e Regatas",
+      "contrast_first_league_fixture_date": "2018-04-17",
+      "contrast_match_id": "3011399",
+      "contrast_provider_season_id": 2017,
+      "contrast_schedule_cache_path": ".local/transfermarkt-opening-plans-current-v1/2017-18/cache/schedule/2017/537.html",
+      "contrast_schedule_sha256": "b1e8ccf19cacb8419e16b7f896b2f39ba08c64ab5373f5579bae1c1fc2fd9850",
+      "contrast_schedule_title": "Botafogo de Futebol e Regatas - Schedule 17/18 | Transfermarkt",
+      "country": "brazil",
+      "first_league_fixture_date": "2017-05-14",
+      "match_id": "2846995",
+      "provider_season_id": 2016,
+      "schedule_cache_path": ".local/transfermarkt-opening-plans-current-v1/2016-17/cache/schedule/2016/537.html",
+      "schedule_sha256": "4b57067c089466ed3ed520881c335c92cf444407e8c38a17533b3f6d0ab96550",
+      "schedule_title": "Botafogo de Futebol e Regatas - Schedule 16/17 | Transfermarkt",
+      "transfermarkt_club_id": 537
+    },
+    {
+      "calendar_target_year": 2017,
+      "club": "Bohemian Football Club",
+      "contrast_first_league_fixture_date": "2018-02-16",
+      "contrast_match_id": "2984936",
+      "contrast_provider_season_id": 2017,
+      "contrast_schedule_cache_path": ".local/transfermarkt-opening-plans-current-v1/2017-18/cache/schedule/2017/9211.html",
+      "contrast_schedule_sha256": "d663deea4ed15caf5082db972b386990e838df9f9e06d8e162a415d87be6798d",
+      "contrast_schedule_title": "Bohemian Football Club - Schedule 17/18 | Transfermarkt",
+      "country": "ireland",
+      "first_league_fixture_date": "2017-02-24",
+      "match_id": "2818095",
+      "provider_season_id": 2016,
+      "qa_correction": "Corrected inherited v2 digest typo from retained raw file.",
+      "schedule_cache_path": ".local/transfermarkt-opening-plans-current-v1/2016-17/cache/schedule/2016/9211.html",
+      "schedule_sha256": "9cffe91bfff97e9921c139b8793bf728876bde57f95d59c2505bbe44c91cf609",
+      "schedule_title": "Bohemian Football Club - Schedule 16/17 | Transfermarkt",
+      "transfermarkt_club_id": 9211
+    },
+    {
+      "calendar_target_year": 2017,
+      "club": "FK Haugesund",
+      "contrast_first_league_fixture_date": "2018-03-11",
+      "contrast_match_id": "2985176",
+      "contrast_provider_season_id": 2017,
+      "contrast_schedule_cache_path": ".local/transfermarkt-opening-plans-current-v1/2017-18/cache/schedule/2017/2761.html",
+      "contrast_schedule_sha256": "8c8a263759bef545f6b1cb8639cc0d463572358ccb0be634bbbc8da0460df8e7",
+      "contrast_schedule_title": "FK Haugesund - Schedule 17/18 | Transfermarkt",
+      "country": "norway",
+      "first_league_fixture_date": "2017-04-02",
+      "match_id": "2808982",
+      "provider_season_id": 2016,
+      "schedule_cache_path": ".local/transfermarkt-opening-plans-current-v1/2016-17/cache/schedule/2016/2761.html",
+      "schedule_sha256": "1808b7d276a50f6f29fbfe2f8132441d6fea620ba5ccdc48420df18680a3ebfa",
+      "schedule_title": "FK Haugesund - Schedule 16/17 | Transfermarkt",
+      "transfermarkt_club_id": 2761
+    },
+    {
+      "calendar_target_year": 2017,
+      "club": "Djurgårdens IF",
+      "contrast_first_league_fixture_date": "2018-04-01",
+      "contrast_match_id": "3026046",
+      "contrast_provider_season_id": 2017,
+      "contrast_schedule_cache_path": ".local/transfermarkt-opening-plans-current-v1/2017-18/cache/schedule/2017/1044.html",
+      "contrast_schedule_sha256": "51b929697328f7341f7d0593bf973b6c118c3c5ca4ef1e99e0e658e80486d7bf",
+      "contrast_schedule_title": "Djurgårdens IF - Schedule 17/18 | Transfermarkt",
+      "country": "sweden",
+      "first_league_fixture_date": "2017-04-03",
+      "match_id": "2831007",
+      "provider_season_id": 2016,
+      "schedule_cache_path": ".local/transfermarkt-opening-plans-current-v1/2016-17/cache/schedule/2016/1044.html",
+      "schedule_sha256": "cdebbaa0a54c77e603c0be541dd9559083de8dc18ebd5f001d155db27feac245",
+      "schedule_title": "Djurgårdens IF - Schedule 16/17 | Transfermarkt",
+      "transfermarkt_club_id": 1044
+    }
+  ],
+  "recorded_utc": "2026-10-24T05:55:23Z",
+  "representative_schedule_evidence": [
+    {
+      "cache_path": ".local/transfermarkt-opening-plans-current-v1/2017-18/cache/schedule/2017/2863.html",
+      "club": "América Futebol Clube (MG)",
+      "country": "brazil",
+      "date": "2018-04-15",
+      "match_id": "3011397",
+      "provider_season_id": 2017,
+      "schedule_title": "América Futebol Clube (MG) - Schedule 17/18 | Transfermarkt",
+      "schedule_url": "https://www.transfermarkt.co.uk/america-futebol-clube-mg-/spielplan/verein/2863/saison_id/2017",
+      "sha256": "7b683f9d7a15b49a84c2db778250f33a371a0a347ffcd38b40941b0c0f4b6a98"
+    },
+    {
+      "cache_path": ".local/transfermarkt-opening-plans-current-v1/2017-18/cache/schedule/2017/9211.html",
+      "club": "Bohemian Football Club",
+      "country": "ireland",
+      "date": "2018-02-16",
+      "match_id": "2984936",
+      "provider_season_id": 2017,
+      "schedule_title": "Bohemian Football Club - Schedule 17/18 | Transfermarkt",
+      "schedule_url": "https://www.transfermarkt.co.uk/bohemian-football-club-dublin/spielplan/verein/9211/saison_id/2017",
+      "sha256": "d663deea4ed15caf5082db972b386990e838df9f9e06d8e162a415d87be6798d"
+    },
+    {
+      "cache_path": ".local/transfermarkt-opening-plans-current-v1/2017-18/cache/schedule/2017/2761.html",
+      "club": "FK Haugesund",
+      "country": "norway",
+      "date": "2018-03-11",
+      "match_id": "2985176",
+      "provider_season_id": 2017,
+      "schedule_title": "FK Haugesund - Schedule 17/18 | Transfermarkt",
+      "schedule_url": "https://www.transfermarkt.co.uk/fk-haugesund/spielplan/verein/2761/saison_id/2017",
+      "sha256": "8c8a263759bef545f6b1cb8639cc0d463572358ccb0be634bbbc8da0460df8e7"
+    },
+    {
+      "cache_path": ".local/transfermarkt-opening-plans-current-v1/2017-18/cache/schedule/2017/23302.html",
+      "club": "Dalkurd FF",
+      "country": "sweden",
+      "date": "2018-04-02",
+      "match_id": "3026047",
+      "provider_season_id": 2017,
+      "schedule_title": "Dalkurd FF - Schedule 17/18 | Transfermarkt",
+      "schedule_url": "https://www.transfermarkt.co.uk/dalkurd-ff/spielplan/verein/23302/saison_id/2017",
+      "sha256": "5ffdaeaff01ff55fa891feaa3f6be655ac4bbfff2417cac19b7332ab41f924d9"
+    },
+    {
+      "cache_path": ".local/transfermarkt-opening-plans-current-v1/2017-18/cache/schedule/2017/2410.html",
+      "club": "CSKA Moscow",
+      "country": "russia",
+      "date": "2017-07-15",
+      "match_id": "2873131",
+      "provider_season_id": 2017,
+      "schedule_title": "CSKA Moscow - Schedule 17/18 | Transfermarkt",
+      "schedule_url": "https://www.transfermarkt.co.uk/zska-moskau/spielplan/verein/2410/saison_id/2017",
+      "sha256": "df40a67b29308b8fa2f0950d1e7c1038eba81b861a296593cdc1294e945cc8eb"
+    },
+    {
+      "cache_path": ".local/transfermarkt-opening-plans-current-v1/2010-11/cache/schedule/2010/2410.html",
+      "club": "CSKA Moscow",
+      "country": "russia",
+      "date": "2011-03-10",
+      "match_id": "2833522",
+      "provider_season_id": 2010,
+      "schedule_title": "CSKA Moscow - Schedule 10/11 | Transfermarkt",
+      "schedule_url": "https://www.transfermarkt.co.uk/zska-moskau/spielplan/verein/2410/saison_id/2010",
+      "sha256": "b3f22ec68816065574110c48fe9d38e8a09c2a8561995faaed543c67ab7cdcc3"
+    }
+  ],
+  "schema_version": "pm99-calendar-league-year-routing-audit-v3",
+  "scope": {
+    "all_country_rows_total_including_russia_pre_2011": 1003,
+    "available_source_plan_directories": [
+      "2000-01",
+      "2001-02",
+      "2002-03",
+      "2003-04",
+      "2004-05",
+      "2005-06",
+      "2006-07",
+      "2007-08",
+      "2008-09",
+      "2009-10",
+      "2010-11",
+      "2011-12",
+      "2012-13",
+      "2013-14",
+      "2014-15",
+      "2016-17",
+      "2017-18",
+      "2018-19",
+      "2019-20",
+      "2020-21",
+      "2021-22",
+      "2022-23",
+      "2023-24",
+      "2024-25",
+      "2025-26"
+    ],
+    "calendar_country_rows": {
+      "brazil": 218,
+      "ireland": 255,
+      "norway": 219,
+      "russia": 154,
+      "sweden": 239
+    },
+    "calendar_country_rows_total": 931,
+    "missing_directory": "2015-16",
+    "no_retained_selector_or_lineup_rows_for": [
+      "MLS/USA",
+      "Japan",
+      "China"
+    ],
+    "root": ".local/transfermarkt-opening-plans-current-v1",
+    "russia_2000_2009_rows": 65,
+    "russia_2010_transition_rows": 7,
+    "russia_pre_2011_rows": 72
+  },
+  "season_rows": [
+    {
+      "counts": {
+        "brazil": 8,
+        "ireland": 12,
+        "norway": 9,
+        "russia": 7,
+        "sweden": 11
+      },
+      "directory": "2000-01",
+      "fixture_years": {
+        "brazil": {
+          "2001": 8
+        },
+        "ireland": {
+          "2001": 12
+        },
+        "norway": {
+          "2001": 9
+        },
+        "russia": {
+          "2001": 7
+        },
+        "sweden": {
+          "2001": 11
+        }
+      },
+      "start_year": 2000
+    },
+    {
+      "counts": {
+        "brazil": 9,
+        "ireland": 10,
+        "norway": 9,
+        "russia": 7,
+        "sweden": 8
+      },
+      "directory": "2001-02",
+      "fixture_years": {
+        "brazil": {
+          "2002": 9
+        },
+        "ireland": {
+          "2002": 10
+        },
+        "norway": {
+          "2002": 9
+        },
+        "russia": {
+          "2002": 7
+        },
+        "sweden": {
+          "2002": 8
+        }
+      },
+      "start_year": 2001
+    },
+    {
+      "counts": {
+        "brazil": 9,
+        "ireland": 10,
+        "norway": 9,
+        "russia": 7,
+        "sweden": 2
+      },
+      "directory": "2002-03",
+      "fixture_years": {
+        "brazil": {
+          "2003": 9
+        },
+        "ireland": {
+          "2003": 10
+        },
+        "norway": {
+          "2003": 9
+        },
+        "russia": {
+          "2003": 7
+        },
+        "sweden": {
+          "2003": 2
+        }
+      },
+      "start_year": 2002
+    },
+    {
+      "counts": {
+        "brazil": 9,
+        "ireland": 10,
+        "norway": 9,
+        "russia": 7,
+        "sweden": 6
+      },
+      "directory": "2003-04",
+      "fixture_years": {
+        "brazil": {
+          "2004": 9
+        },
+        "ireland": {
+          "2004": 10
+        },
+        "norway": {
+          "2004": 9
+        },
+        "russia": {
+          "2004": 7
+        },
+        "sweden": {
+          "2004": 6
+        }
+      },
+      "start_year": 2003
+    },
+    {
+      "counts": {
+        "brazil": 8,
+        "ireland": 12,
+        "norway": 9,
+        "russia": 7,
+        "sweden": 2
+      },
+      "directory": "2004-05",
+      "fixture_years": {
+        "brazil": {
+          "2005": 8
+        },
+        "ireland": {
+          "2005": 12
+        },
+        "norway": {
+          "2005": 9
+        },
+        "russia": {
+          "2005": 7
+        },
+        "sweden": {
+          "2005": 2
+        }
+      },
+      "start_year": 2004
+    },
+    {
+      "counts": {
+        "brazil": 9,
+        "ireland": 11,
+        "norway": 9,
+        "russia": 7,
+        "sweden": 11
+      },
+      "directory": "2005-06",
+      "fixture_years": {
+        "brazil": {
+          "2006": 9
+        },
+        "ireland": {
+          "2006": 11
+        },
+        "norway": {
+          "2006": 9
+        },
+        "russia": {
+          "2006": 7
+        },
+        "sweden": {
+          "2006": 11
+        }
+      },
+      "start_year": 2005
+    },
+    {
+      "counts": {
+        "brazil": 9,
+        "ireland": 12,
+        "norway": 9,
+        "russia": 7,
+        "sweden": 11
+      },
+      "directory": "2006-07",
+      "fixture_years": {
+        "brazil": {
+          "2007": 9
+        },
+        "ireland": {
+          "2007": 12
+        },
+        "norway": {
+          "2007": 9
+        },
+        "russia": {
+          "2007": 7
+        },
+        "sweden": {
+          "2007": 11
+        }
+      },
+      "start_year": 2006
+    },
+    {
+      "counts": {
+        "brazil": 9,
+        "ireland": 12,
+        "norway": 9,
+        "russia": 7,
+        "sweden": 11
+      },
+      "directory": "2007-08",
+      "fixture_years": {
+        "brazil": {
+          "2008": 9
+        },
+        "ireland": {
+          "2008": 12
+        },
+        "norway": {
+          "2008": 9
+        },
+        "russia": {
+          "2008": 7
+        },
+        "sweden": {
+          "2008": 11
+        }
+      },
+      "start_year": 2007
+    },
+    {
+      "counts": {
+        "brazil": 6,
+        "ireland": 8,
+        "norway": 9,
+        "russia": 5,
+        "sweden": 8
+      },
+      "directory": "2008-09",
+      "fixture_years": {
+        "brazil": {
+          "2009": 6
+        },
+        "ireland": {
+          "2009": 8
+        },
+        "norway": {
+          "2009": 9
+        },
+        "russia": {
+          "2009": 5
+        },
+        "sweden": {
+          "2009": 8
+        }
+      },
+      "start_year": 2008
+    },
+    {
+      "counts": {
+        "brazil": 8,
+        "ireland": 7,
+        "norway": 8,
+        "russia": 4,
+        "sweden": 9
+      },
+      "directory": "2009-10",
+      "fixture_years": {
+        "brazil": {
+          "2010": 8
+        },
+        "ireland": {
+          "2010": 7
+        },
+        "norway": {
+          "2010": 8
+        },
+        "russia": {
+          "2010": 4
+        },
+        "sweden": {
+          "2010": 9
+        }
+      },
+      "start_year": 2009
+    },
+    {
+      "counts": {
+        "brazil": 9,
+        "ireland": 10,
+        "norway": 9,
+        "russia": 7,
+        "sweden": 11
+      },
+      "directory": "2010-11",
+      "fixture_years": {
+        "brazil": {
+          "2011": 9
+        },
+        "ireland": {
+          "2011": 10
+        },
+        "norway": {
+          "2011": 9
+        },
+        "russia": {
+          "2011": 7
+        },
+        "sweden": {
+          "2011": 11
+        }
+      },
+      "start_year": 2010
+    },
+    {
+      "counts": {
+        "brazil": 9,
+        "ireland": 12,
+        "norway": 9,
+        "sweden": 11
+      },
+      "directory": "2011-12",
+      "fixture_years": {
+        "brazil": {
+          "2012": 9
+        },
+        "ireland": {
+          "2012": 12
+        },
+        "norway": {
+          "2012": 9
+        },
+        "sweden": {
+          "2012": 11
+        }
+      },
+      "start_year": 2011
+    },
+    {
+      "counts": {
+        "brazil": 9,
+        "ireland": 12,
+        "norway": 9,
+        "russia": 6,
+        "sweden": 11
+      },
+      "directory": "2012-13",
+      "fixture_years": {
+        "brazil": {
+          "2013": 9
+        },
+        "ireland": {
+          "2013": 12
+        },
+        "norway": {
+          "2013": 9
+        },
+        "russia": {
+          "2012": 6
+        },
+        "sweden": {
+          "2013": 11
+        }
+      },
+      "start_year": 2012
+    },
+    {
+      "counts": {
+        "brazil": 9,
+        "ireland": 12,
+        "norway": 9,
+        "russia": 6,
+        "sweden": 11
+      },
+      "directory": "2013-14",
+      "fixture_years": {
+        "brazil": {
+          "2014": 9
+        },
+        "ireland": {
+          "2014": 12
+        },
+        "norway": {
+          "2014": 9
+        },
+        "russia": {
+          "2013": 6
+        },
+        "sweden": {
+          "2014": 11
+        }
+      },
+      "start_year": 2013
+    },
+    {
+      "counts": {
+        "brazil": 8,
+        "ireland": 9,
+        "norway": 8,
+        "russia": 5,
+        "sweden": 10
+      },
+      "directory": "2014-15",
+      "fixture_years": {
+        "brazil": {
+          "2015": 8
+        },
+        "ireland": {
+          "2015": 9
+        },
+        "norway": {
+          "2015": 8
+        },
+        "russia": {
+          "2014": 5
+        },
+        "sweden": {
+          "2015": 10
+        }
+      },
+      "start_year": 2014
+    },
+    {
+      "counts": {
+        "brazil": 9,
+        "ireland": 12,
+        "norway": 9,
+        "russia": 7,
+        "sweden": 11
+      },
+      "directory": "2016-17",
+      "fixture_years": {
+        "brazil": {
+          "2017": 9
+        },
+        "ireland": {
+          "2017": 12
+        },
+        "norway": {
+          "2017": 9
+        },
+        "russia": {
+          "2016": 7
+        },
+        "sweden": {
+          "2017": 11
+        }
+      },
+      "start_year": 2016
+    },
+    {
+      "counts": {
+        "brazil": 9,
+        "ireland": 10,
+        "norway": 9,
+        "russia": 6,
+        "sweden": 11
+      },
+      "directory": "2017-18",
+      "fixture_years": {
+        "brazil": {
+          "2018": 9
+        },
+        "ireland": {
+          "2018": 10
+        },
+        "norway": {
+          "2018": 9
+        },
+        "russia": {
+          "2017": 6
+        },
+        "sweden": {
+          "2018": 11
+        }
+      },
+      "start_year": 2017
+    },
+    {
+      "counts": {
+        "brazil": 9,
+        "ireland": 10,
+        "norway": 9,
+        "russia": 7,
+        "sweden": 11
+      },
+      "directory": "2018-19",
+      "fixture_years": {
+        "brazil": {
+          "2019": 9
+        },
+        "ireland": {
+          "2019": 10
+        },
+        "norway": {
+          "2019": 9
+        },
+        "russia": {
+          "2018": 7
+        },
+        "sweden": {
+          "2019": 11
+        }
+      },
+      "start_year": 2018
+    },
+    {
+      "counts": {
+        "brazil": 9,
+        "ireland": 9,
+        "norway": 9,
+        "russia": 7,
+        "sweden": 11
+      },
+      "directory": "2019-20",
+      "fixture_years": {
+        "brazil": {
+          "2020": 9
+        },
+        "ireland": {
+          "2020": 9
+        },
+        "norway": {
+          "2020": 9
+        },
+        "russia": {
+          "2019": 7
+        },
+        "sweden": {
+          "2020": 11
+        }
+      },
+      "start_year": 2019
+    },
+    {
+      "counts": {
+        "brazil": 9,
+        "ireland": 9,
+        "norway": 9,
+        "russia": 7,
+        "sweden": 11
+      },
+      "directory": "2020-21",
+      "fixture_years": {
+        "brazil": {
+          "2021": 9
+        },
+        "ireland": {
+          "2021": 9
+        },
+        "norway": {
+          "2021": 9
+        },
+        "russia": {
+          "2020": 7
+        },
+        "sweden": {
+          "2021": 11
+        }
+      },
+      "start_year": 2020
+    },
+    {
+      "counts": {
+        "brazil": 9,
+        "ireland": 10,
+        "norway": 9,
+        "russia": 6,
+        "sweden": 11
+      },
+      "directory": "2021-22",
+      "fixture_years": {
+        "brazil": {
+          "2022": 9
+        },
+        "ireland": {
+          "2022": 10
+        },
+        "norway": {
+          "2022": 9
+        },
+        "russia": {
+          "2021": 6
+        },
+        "sweden": {
+          "2022": 11
+        }
+      },
+      "start_year": 2021
+    },
+    {
+      "counts": {
+        "brazil": 9,
+        "ireland": 10,
+        "norway": 9,
+        "russia": 5,
+        "sweden": 11
+      },
+      "directory": "2022-23",
+      "fixture_years": {
+        "brazil": {
+          "2023": 9
+        },
+        "ireland": {
+          "2023": 10
+        },
+        "norway": {
+          "2023": 9
+        },
+        "russia": {
+          "2022": 5
+        },
+        "sweden": {
+          "2023": 11
+        }
+      },
+      "start_year": 2022
+    },
+    {
+      "counts": {
+        "brazil": 9,
+        "ireland": 10,
+        "norway": 9,
+        "russia": 7,
+        "sweden": 11
+      },
+      "directory": "2023-24",
+      "fixture_years": {
+        "brazil": {
+          "2024": 9
+        },
+        "ireland": {
+          "2024": 10
+        },
+        "norway": {
+          "2024": 9
+        },
+        "russia": {
+          "2023": 7
+        },
+        "sweden": {
+          "2024": 11
+        }
+      },
+      "start_year": 2023
+    },
+    {
+      "counts": {
+        "brazil": 9,
+        "ireland": 8,
+        "norway": 8,
+        "russia": 7,
+        "sweden": 10
+      },
+      "directory": "2024-25",
+      "fixture_years": {
+        "brazil": {
+          "2025": 9
+        },
+        "ireland": {
+          "2025": 8
+        },
+        "norway": {
+          "2025": 8
+        },
+        "russia": {
+          "2024": 7
+        },
+        "sweden": {
+          "2025": 10
+        }
+      },
+      "start_year": 2024
+    },
+    {
+      "counts": {
+        "brazil": 9,
+        "ireland": 8,
+        "norway": 6,
+        "russia": 6,
+        "sweden": 8
+      },
+      "directory": "2025-26",
+      "fixture_years": {
+        "brazil": {
+          "2026": 9
+        },
+        "ireland": {
+          "2026": 8
+        },
+        "norway": {
+          "2026": 6
+        },
+        "russia": {
+          "2025": 6
+        },
+        "sweden": {
+          "2026": 8
+        }
+      },
+      "start_year": 2025
+    }
+  ],
+  "source_session": "01a0592d-fcd5-7262-a637-743a8253d9b4",
+  "superseded_by": "calendar-league-year-routing-audit-v3.json; v1/v2 retained unchanged",
+  "supersedes": [
+    "calendar-league-year-routing-audit-v1.json",
+    "calendar-league-year-routing-audit-v2.json; preserve both prior files unchanged"
+  ]
+}

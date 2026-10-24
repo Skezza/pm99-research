@@ -33,9 +33,12 @@ from urllib.request import Request, urlopen
 from bs4 import BeautifulSoup
 
 
+
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+
+from scripts import transfermarkt_calendar_year_policy_v1 as calendar_year_policy  # noqa: E402
 
 
 BASE_URL = "https://www.transfermarkt.co.uk"
@@ -232,7 +235,8 @@ def load_club_identity_aliases(path: Path | None) -> tuple[dict[tuple[str, str, 
     return aliases, _sha256_bytes(raw)
 
 
-def _competition_teams(*, season_start_year: int, competition_code: str, cache: SnapshotCache) -> list[TeamRef]:
+def _competition_teams(*, season_start_year: int, competition_code: str, cache: SnapshotCache,
+                       target_season_start_year: int | None = None) -> list[TeamRef]:
     """Return first-team identities from the exact season's competition page."""
 
     # Transfermarkt currently ignores the legacy ``?saison_id=`` query on
@@ -240,7 +244,10 @@ def _competition_teams(*, season_start_year: int, competition_code: str, cache: 
     # path-shaped season selector is stable and exposes hash-verifiable links
     # carrying the requested ``/saison_id/<year>`` value.
     url = f"{BASE_URL}/wettbewerb/startseite/wettbewerb/{competition_code}/saison_id/{season_start_year}"
-    page = BeautifulSoup(cache.get(url, f"competition-v2/{season_start_year}/{competition_code}.html"), "html.parser")
+    target_year = season_start_year if target_season_start_year is None else target_season_start_year
+    key = calendar_year_policy.cache_key(kind="competition", target_year=target_year,
+        provider_year=season_start_year, code=competition_code)
+    page = BeautifulSoup(cache.get(url, key), "html.parser")
     candidates: set[tuple[str, str, int]] = set()
     for link in page.select(f'a[href*="/startseite/verein/"][href*="/saison_id/{season_start_year}"]'):
         match = re.search(r"^/([^/]+)/startseite/verein/(\d+)/saison_id/\d+", str(link.get("href") or ""))
@@ -280,11 +287,24 @@ def _team_ref_alias(club: str, alias: Mapping[str, Any], candidates: list[TeamRe
     )
 
 
-def _first_fixture(ref: TeamRef, *, season_start_year: int, competition_code: str, cache: SnapshotCache) -> dict[str, str]:
+def _first_fixture(ref: TeamRef, *, season_start_year: int, competition_code: str,
+                   cache: SnapshotCache, country_catalog: str | None = None) -> dict[str, Any]:
+    target_year = season_start_year
+    route = calendar_year_policy.route_provider_year(target_year, competition_code, country_catalog)
+    provider_year = route.provider_season_id
     slug = ref.club_path.split("/")[1]
-    url = f"{BASE_URL}/{slug}/spielplan/verein/{ref.club_id}/saison_id/{season_start_year}"
-    page = BeautifulSoup(cache.get(url, f"schedule/{season_start_year}/{ref.club_id}.html"), "html.parser")
-    matches: list[dict[str, str]] = []
+    url = f"{BASE_URL}/{slug}/spielplan/verein/{ref.club_id}/saison_id/{provider_year}"
+    key = calendar_year_policy.cache_key(kind="schedule", target_year=target_year,
+        provider_year=provider_year, code=competition_code, club_id=ref.club_id)
+    page_bytes = cache.get(url, key)
+    page = BeautifulSoup(page_bytes, "html.parser")
+    if provider_year != target_year:
+        try:
+            calendar_year_policy.require_source_title(page_bytes, provider_year=provider_year,
+                target_year=target_year, label="schedule")
+        except calendar_year_policy.RoutingError as exc:
+            raise CaptureError(str(exc)) from exc
+    matches: list[dict[str, Any]] = []
     for row in page.select("tr"):
         report = row.select_one('a[href*="/spielbericht/index/spielbericht/"]')
         competition = row.select_one('a[href*="/test/spieltag/wettbewerb/"]')
@@ -305,8 +325,19 @@ def _first_fixture(ref: TeamRef, *, season_start_year: int, competition_code: st
             "schedule_url": url,
         })
     if not matches:
-        raise CaptureError(f"{ref.source_club_name}: no {competition_code} fixture found in {season_start_year}/{season_start_year + 1} schedule")
-    return min(matches, key=lambda row: (row["date"], int(row["match_id"])))
+        raise CaptureError(f"{ref.source_club_name}: no {competition_code} fixture found in provider season {provider_year}")
+    if provider_year != target_year:
+        matches = [row for row in matches if datetime.strptime(row["date"], "%Y-%m-%d").year == target_year]
+        if not matches:
+            raise CaptureError(
+                f"{ref.source_club_name}: provider season {provider_year} has no actual fixture in target calendar year {target_year}"
+            )
+    selected = min(matches, key=lambda row: (row["date"], int(row["match_id"])))
+    if provider_year != target_year:
+        selected["calendar_year_routing"] = route.document()
+        selected["provider_season_id"] = provider_year
+        selected["target_calendar_year"] = target_year
+    return selected
 
 
 def _player_from_link(link: Any, *, position_group: str | None = None) -> dict[str, Any]:
@@ -386,8 +417,14 @@ def _modern_lineup(box: Any) -> tuple[list[dict[str, Any]], list[dict[str, Any]]
     return starters, bench, formation_match.group(1), manager or None
 
 
-def _lineup_from_report(ref: TeamRef, fixture: Mapping[str, str], cache: SnapshotCache) -> dict[str, Any]:
-    page = BeautifulSoup(cache.get(str(fixture["report_url"]), f"report/{fixture['match_id']}.html"), "html.parser")
+def _lineup_from_report(ref: TeamRef, fixture: Mapping[str, Any], cache: SnapshotCache) -> dict[str, Any]:
+    route_doc = fixture.get("calendar_year_routing")
+    report_key = (calendar_year_policy.cache_key(kind="report",
+        target_year=int(fixture["target_calendar_year"]),
+        provider_year=int(fixture["provider_season_id"]),
+        code=str(route_doc["source_competition_code"]), club_id=int(fixture["match_id"]))
+        if route_doc else f"report/{fixture['match_id']}.html")
+    page = BeautifulSoup(cache.get(str(fixture["report_url"]), report_key), "html.parser")
     def is_requested_team(box):
         ids = {int(match.group(1)) for a in box.select('a[href]')
                if (match := re.search(r'/startseite/verein/(\d+)(?:/|$)', str(a.get('href') or '')))}
@@ -451,20 +488,26 @@ def capture(
 ) -> dict[str, Any]:
     rows: list[dict[str, Any]] = []
     failures: list[dict[str, str]] = []
-    team_indexes: dict[str, list[TeamRef]] = {}
-    selected_codes = {
-        competition_map[(str(row["country_catalog"]), str(row["competition_catalog"]))]
-        for row in clubs
-        if (str(row["country_catalog"]), str(row["competition_catalog"])) in competition_map
-    }
-    for code in sorted(selected_codes):
+    if any(str(competition_map.get((str(row.get("country_catalog")), str(row.get("competition_catalog"))), ""))
+           in {*calendar_year_policy.CALENDAR_CODE_COUNTRY, "RU1"} for row in clubs):
+        calendar_year_policy.verify_audit(ROOT)
+    team_indexes: dict[tuple[str, str], list[TeamRef]] = {}
+    route_by_pair: dict[tuple[str, str], calendar_year_policy.YearRoute] = {}
+    pairs = sorted({(str(row["country_catalog"]), str(row["competition_catalog"]))
+        for row in clubs if (str(row["country_catalog"]), str(row["competition_catalog"])) in competition_map})
+    for country, competition in pairs:
+        code = competition_map[(country, competition)]
         try:
-            team_indexes[code] = _competition_teams(
-                season_start_year=season_start_year, competition_code=code, cache=cache,
+            route = calendar_year_policy.route_provider_year(season_start_year, code, country)
+            route_by_pair[(country, competition)] = route
+            team_indexes[(country, competition)] = _competition_teams(
+                season_start_year=route.provider_season_id, target_season_start_year=season_start_year,
+                competition_code=code, cache=cache,
             )
         except (CaptureError, OSError, ValueError) as exc:
-            team_indexes[code] = []
-            failures.append({"club_name": "<competition-source>", "competition_catalog": "<not-applicable>", "country_catalog": "<not-applicable>", "reason": f"{code}: {exc}"})
+            team_indexes[(country, competition)] = []
+            failures.append({"club_name": "<competition-source>", "competition_catalog": competition,
+                "country_catalog": country, "reason": f"{code}: {exc}"})
     for source_club in clubs:
         club_name = str(source_club["club_name"])
         country = str(source_club["country_catalog"])
@@ -476,9 +519,15 @@ def capture(
             continue
         try:
             alias = club_identity_aliases.get((country, competition, club_name))
-            ref = _team_ref_alias(club_name, alias, team_indexes[code]) if alias is not None else _team_ref(club_name, team_indexes[code])
-            fixture = _first_fixture(ref, season_start_year=season_start_year, competition_code=code, cache=cache)
+            candidates = team_indexes[(country, competition)]
+            ref = _team_ref_alias(club_name, alias, candidates) if alias is not None else _team_ref(club_name, candidates)
+            fixture = _first_fixture(ref, season_start_year=season_start_year, competition_code=code,
+                cache=cache, country_catalog=country)
             row = _lineup_from_report(ref, fixture, cache)
+            if "calendar_year_routing" in fixture:
+                row["calendar_year_routing"] = fixture["calendar_year_routing"]
+                row["provider_season_id"] = fixture["provider_season_id"]
+                row["target_calendar_year"] = fixture["target_calendar_year"]
             row["source_selector"].update({"competition_catalog": competition, "country_catalog": country})
             row["source_competition_code"] = code
             rows.append(row)
@@ -500,6 +549,8 @@ def capture(
             "club_identity_alias_schema": CLUB_IDENTITY_ALIAS_SCHEMA if club_identity_aliases_sha256 is not None else None,
             "club_identity_aliases_sha256": club_identity_aliases_sha256,
             "cache_files": [cache.used[key] for key in sorted(cache.used)],
+            **({"calendar_year_routing_audit": calendar_year_policy.verify_audit(ROOT)}
+               if any(route.provider_season_id != route.target_year for route in route_by_pair.values()) else {}),
         },
         "summary": {
             "source_club_count": len(clubs),

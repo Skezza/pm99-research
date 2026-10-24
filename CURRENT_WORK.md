@@ -1,5 +1,110 @@
 # PM99: current work
 
+## v149 delivered; Altrincham candidate held by role QA — 2026-10-24 07:03 UTC
+
+Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+
+**Installed and verified:** checkpoint v149. The 2000 preferred game is
+`sourced-woolley-mcloughlin-opening-20261024-r220a`; the 2001 game is
+`sourced-anelka-traore-lens-chain-20261024-r219a`. Actual builds, full SOURCE game
+and raw-recipe equality, native readback, independent QA, player profiles and fresh
+Stoke startups passed. Southport/Motherwell counterparts and PSG Anelka are
+preserved. Original 2015 and all unselected preferred releases are preserved.
+The fixed baseline is **86 disposed / 2,723 review-or-confirmed-open**, from 2,809.
+
+**Altrincham r221a/b are rejected, unpublished candidates.** Their complete replay
+passed, but actual-role QA found four wrong generic defaults: Hawes/Adams were
+centre-backs instead of fullbacks; Gallagher/Murphy central instead of wide
+midfielders. Do not install or capture them as corrected releases. The v2 source
+adapter and A/B evidence remain unchanged for reproducibility. Disk worker is
+preparing a private v3 composition with the four sourced/inferred side roles;
+reserve r221c/d for the corrected build. Profile display names are only `Hawes`
+and `Gallagher`; full-name searches would miss them. Use exact native names and
+confirm the club/age/role in the actual frame. No r221 runner is active.
+
+**Source routing:** the canonical calendar request/acceptance fix and downstream
+route provenance are implemented. All 34 focused and existing tests passed;
+independent review and CLI import checks passed. Public metadata evidence and
+`docs/CALENDAR_SOURCE_YEAR_CORRECTION_2026-10-24.md` explain the defect and delivery
+boundary. This is a collector fix, not a completed repair of existing country
+rosters. Private 2017 inputs now fit all 41 clubs with one Sweden carrier swap.
+A source-hash continuity helper proposal is awaiting lead review; no country
+package or game has been built from it.
+
+**Workers and next actions:**
+- Disk: v3 Altrincham role composition and tests. It has completed native QA of
+  rejected v2, including exact preservation of real Kidderminster 370.
+- Hayes: private Shuker ownership transfer after the ready two-actor Berkovic/
+  Ostenstad/Etuhu proposal. Actual delivery must follow installed r222, not its
+  preliminary r220 test parent.
+- Release: 41-club capacity-fit inputs and the continuity helper are returned;
+  assign peer QA of the next integrated helper when appropriate.
+
+Root reviewed the Etuhu proposal and found items to fix before promotion: wrong
+11v11 URI in the resulting recipe, missing original Berkovic loan-source binding,
+raw-byte SOURCE checks, and a generic compiler-file hash pin that would invalidate
+SOURCE when unrelated dispatches are added. No r222 build has started.
+
+Verified Pi retirement of unregistered 2001 and 2014 r1 test installs freed about
+718 MB allocated in total. Both have per-file recovery ledgers under
+`.local/cleanup-20261024/`. Referenced r1/r2/RC-quality trees were preserved. The
+2000 r220 disposable runner copy was retired after v149 completed; shared Wine
+prefixes, source games and all screenshots are retained. Capture controller29651
+is complete. Installer10202 completed; earlier private installer harness failures
+stopped before publication, and their fixes did not rebuild game data.
+
+**Exact next action:** finish and review the private Altrincham v3 overlay, build
+only corrected r221c/d, then run the target profiles and Stoke startup. In parallel,
+promote the reviewed r222 identity transaction with the above guard fixes and
+perform its actual A/B SOURCE build. Keep calendar game repairs and the source-
+confirmed Shuker move open. Latest critical ledger v3 is bound to v148 and needs
+an additive update for v149; do not reuse its old disposed count as current.
+Evidence root: `.local/consolidated-audit-20261009/parallel-rc-20261023/`.
+
+
+## Disk space recovered; game checks resumed — 2026-10-24 06:23 UTC
+
+Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Source changes are pushed in commit `8e82658`.
+
+**Installed:** checkpoint v147, with 83 of the original 2,809 cross-club candidates
+disposed and 2,726 still requiring review or correction. These are candidates,
+not 2,726 proven bugs. The original 2015 release remains preserved.
+
+**Built, not installed:** the 2001 Anelka/Traore/Lens correction (r219) and the
+2000 Woolley/McLoughlin correction (r220). Each actual A/B pair has identical game
+inventories and recipe bytes after full SOURCE replay. Traore's Liverpool profile
+has passed visual, digit, native-input and kit checks. The first Rodriguez search
+opened Dani at Southampton; this is retained negative evidence, not an approved
+Bruno/Lens profile. Controller 76743 is capturing result row seven, then a fresh
+Stoke startup. Inspect those originals before running the reviewed v148 installer.
+The installer now requires separate, hash-bound visual reviews; it must not expect
+the raw capture transport to approve its own screenshots.
+
+**Disk:** moved only the unregistered 2001 `worldwide-source-backed-r1` test tree
+to the Pi and verified all 275 files (358,379,735 bytes) before deleting locally.
+The referenced r2 and RC-quality trees were preserved. Full inventory, reference
+checks and remote verification are in
+`.local/cleanup-20261024/worldwide-source-backed-r1-to-pi/`.
+
+**Workers:**
+- Disk worker: independent QA of actual r220 games, then a private gated v149 installer.
+- Hayes: revise the private calendar-routing patch. Review caught a validator that
+  demanded a European-style provider title instead of the actual calendar year.
+  Nothing from that patch is promoted yet.
+- Release worker: index retained correct-year source evidence across all seasons.
+
+Root independently verified PSG Anelka carrier **12616**, owner **502**, unchanged
+in parent, r219a and r219b. The worker corrected an earlier mistaken carrier label
+before publication. The native payload SHA-256 is
+`b786f6e3436205555473e260ba139345c0aac33fb4624f22a56722a4caf236af`.
+
+**Next action:** inspect the r219 retry and startup, install only after all gates
+pass, then run r220 profiles. Prepare Altrincham r221 against the newly installed
+2001 parent. Calendar source-year repair remains a genuine release blocker; the
+milestone is not complete. Evidence is under
+`.local/consolidated-audit-20261009/parallel-rc-20261023/`.
+
 ## r219/r220 built; runtime gates remain — 2026-10-24 06:19 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.

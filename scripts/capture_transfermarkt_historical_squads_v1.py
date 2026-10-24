@@ -28,6 +28,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import transfermarkt_calendar_year_policy_v1 as calendar_year_policy  # noqa: E402
+
 from scripts.capture_transfermarkt_opening_lineups_v1 import (  # noqa: E402
     BASE_URL,
     CaptureError,
@@ -189,15 +191,29 @@ def build_capture(
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     clubs: list[dict[str, Any]] = []
     gaps: list[dict[str, Any]] = []
+    calendar_routes = []
     for competition in scope:
         configured_code = competition["source_competition_code"]
+        if configured_code in {*calendar_year_policy.CALENDAR_CODE_COUNTRY, "RU1"}:
+            calendar_year_policy.verify_audit(ROOT)
+        try:
+            route = calendar_year_policy.route_provider_year(
+                season_start_year, configured_code, competition["country_catalog"])
+        except calendar_year_policy.RoutingError as exc:
+            gaps.append({**competition, "reason": "calendar-year-routing-quarantined", "detail": str(exc)})
+            continue
+        provider_year = route.provider_season_id
+        is_calendar_routed = provider_year != season_start_year
+        if is_calendar_routed:
+            calendar_routes.append(route.document())
         teams = []
         effective_code = configured_code
         errors: list[str] = []
         for candidate in competition_code_candidates(configured_code, season_start_year):
             try:
                 teams = _competition_teams(
-                    season_start_year=season_start_year,
+                    season_start_year=provider_year,
+                    target_season_start_year=season_start_year,
                     competition_code=candidate,
                     cache=cache,
                 )
@@ -219,10 +235,14 @@ def build_capture(
             continue
         for team in sorted(teams, key=lambda value: (value.transfermarkt_name, value.club_id)):
             slug = team.club_path.strip("/").split("/")[0]
-            url = f"{BASE_URL}/{slug}/kader/verein/{team.club_id}/saison_id/{season_start_year}"
-            cache_key = f"squad/{season_start_year}/{effective_code}/{team.club_id}.html"
+            url = f"{BASE_URL}/{slug}/kader/verein/{team.club_id}/saison_id/{provider_year}"
+            cache_key = calendar_year_policy.cache_key(kind="squad", target_year=season_start_year,
+                provider_year=provider_year, code=effective_code, club_id=team.club_id)
             try:
                 payload = cache.get(url, cache_key)
+                if is_calendar_routed:
+                    calendar_year_policy.require_source_title(payload, provider_year=provider_year,
+                        target_year=season_start_year, label="historical squad")
                 players = [canonical_player(row) for row in parse(payload)]
                 if not players:
                     raise CaptureError("historical squad page yielded no supported player rows")
@@ -230,10 +250,11 @@ def build_capture(
                 gaps.append({
                     **competition, "club_name": team.transfermarkt_name,
                     "source_club_id": team.club_id, "source_url": url,
-                    "reason": "squad-page-unavailable-or-unparseable", "detail": str(exc),
+                    "reason": "squad-source-season-title-mismatch" if is_calendar_routed else "squad-page-unavailable-or-unparseable",
+                    "detail": str(exc),
                 })
                 continue
-            clubs.append({
+            club = {
                 "club_name": team.transfermarkt_name,
                 "competition_catalog": competition["competition_catalog"],
                 "competition_name": competition["competition_name"],
@@ -242,7 +263,11 @@ def build_capture(
                 "source_path": cache_key,
                 "source_sha256": sha256_bytes(payload),
                 "source_competition_code": effective_code,
-            })
+            }
+            if is_calendar_routed:
+                club["source_provider_season_id"] = provider_year
+                club["calendar_year_routing"] = route.document()
+            clubs.append(club)
     clubs.sort(key=lambda row: (row["country_catalog"], row["competition_catalog"], row["club_name"]))
     gaps.sort(key=lambda row: (
         row["country_catalog"], row["competition_catalog"], str(row.get("club_name") or ""), row["reason"]
@@ -255,6 +280,8 @@ def build_capture(
         "snapshots": [dict(row) for _key, row in sorted(getattr(cache, "used", {}).items())],
         "scope_sha256": scope_sha256,
         "title": SOURCE_TITLE,
+        **({"calendar_year_routing_policy": calendar_year_policy.verify_audit(ROOT),
+            "revision": "content-addressed-calendar-route-v1"} if calendar_routes else {}),
     }
     identified = sum(
         identity_lib.IDENTITY_FIELD in player for club in clubs for player in club["players"]
