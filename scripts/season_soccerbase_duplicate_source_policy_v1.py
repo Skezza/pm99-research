@@ -199,6 +199,9 @@ def extend_original_people(people, document):
 
 def person_id(person):
     id=person['source_player_id']
+    if person.get('source_provider') == 'fifa':
+        from scripts import season_fifa_dated_roster_admission_v1 as fifa_admission
+        return fifa_admission.person_id(person)
     if person.get('identity_policy') == 'original-11v11-player-949-profile-explicit-DOB-conflict-v1':
         from bs4 import BeautifulSoup
         expected = {

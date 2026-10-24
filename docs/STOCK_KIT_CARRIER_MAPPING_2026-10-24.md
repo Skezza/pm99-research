@@ -30,8 +30,12 @@ The 2000/01 prototype remaps 18 clubs in `MINIESC.PKF`, `NANOESC.PKF` and
 readback confirms each target equals its clean donor and every untargeted bitmap
 is unchanged. Full A/B game inventories and raw recipe bytes match. Player and
 club databases, managers, portraits, palette and executable remain unchanged.
-At this checkpoint the prototype is built and byte-verified, but not installed or
-runtime-approved. A fresh Inter profile is required before promotion.
+The 2000/01 correction is installed as r235a at checkpoint v155. A genuine fresh
+Inter player profile shows the corrected black/blue kit: 153 interior pixels
+match clean Inter carrier 213 exactly, while the old Perugia donor fails. Fresh
+Stoke startup also passed. These representative runtime checks supplement
+bytewise validation of all 18 targets; they are not 18 separate club captures.
+The remaining 309 candidate mappings have not yet been delivered.
 
 Evidence is under
 `.local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/`:

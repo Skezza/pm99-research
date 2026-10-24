@@ -35,6 +35,7 @@ INPUT_SCHEMA = SCHEMA + '-input'
 PREFIX = 'opening-identity-exchange-'
 MODE = 'known-good-baseline-source-bound-opening-identity-exchange-v1'
 SCOPE = 'Selected source-bound reserve identities, portraits and explicit complete owned bench ordering only; fixed club membership/counts, starters, tactics, managers, kits and unrelated records preserved.'
+FOREIGN_IDENTITY_ONLY_POLICY = 'foreign-mode1-profile-identities-with-opaque-opening-controls-preserved-v1'
 SOURCE_COUNTRIES = {**NATIONALITY_CODES, 'Benin': 'BEN'}
 
 
@@ -352,8 +353,13 @@ def _uses_reviewed_new_person_provider(selection):
                  or ('squad_context' in selection and 'opening_contract' not in selection)))
 
 
-def new_person(selection, evidence):
+def new_person(selection, evidence, *, season=None, club=None):
     """Keep ordinary admissions; route only explicit reviewed provider shapes."""
+    if 'admission_policy' in selection:
+        from scripts import season_fifa_dated_roster_admission_v1 as fifa_admission
+        if not season or club is None:
+            raise ValueError('dated FIFA admission requires explicit season and destination club')
+        return fifa_admission.new_person(selection, evidence, season, club)
     if _uses_reviewed_new_person_provider(selection) and isinstance(evidence, dict):
         from scripts import season_opening_new_person_dispatch_v1 as dispatch
         provider_evidence = selection.get('_provider_evidence', evidence)
@@ -406,8 +412,93 @@ def published_name_key(name):
     return roster.normalise(name.translate(str.maketrans({'ø': 'o', 'Ø': 'O'})))
 
 
+def official_biography_birth_date(actor, claim, evidence, *, season=None):
+    """Read an explicit named DOB; later biographies do not establish ownership."""
+    if (set(claim) not in ({'format', 'evidence_key', 'birth_date'},
+                           {'format', 'evidence_key', 'birth_date', 'identity_fifa'})
+            or claim['format'] != 'norwegian-club-named-parenthetical-birthday-v1'):
+        raise ValueError('unsupported explicit biography birth-date correction')
+    source = evidence[claim['evidence_key']]
+    origin = urlsplit(source['url'])
+    if origin.scheme != 'https' or origin.hostname not in ('www.moldefk.no', 'moldefk.no'):
+        raise ValueError('biography needs its supported official club HTTPS publisher URL')
+    page = BeautifulSoup(original(source).read_bytes(), 'html.parser')
+    articles = page.select('article')
+    name = actor.get('source_name') or actor['name']
+    if claim.get('identity_fifa'):
+        if not season:
+            raise ValueError('FIFA-linked biography identity requires its explicit target season')
+        from scripts import season_fifa_dated_roster_admission_v1 as fifa_admission
+        name = fifa_admission.published_move_display(
+            actor, claim['identity_fifa'], evidence, season)['published_full_name']
+    months = {'januar': 1, 'februar': 2, 'mars': 3, 'april': 4, 'mai': 5, 'juni': 6,
+              'juli': 7, 'august': 8, 'september': 9, 'oktober': 10, 'november': 11, 'desember': 12}
+    dates = []
+    for article in articles:
+        heading = article.select_one('h1')
+        if heading is None or not heading.get_text(' ', strip=True).startswith(name):
+            continue
+        for paragraph in article.select('p'):
+            text = ' '.join(paragraph.get_text(' ', strip=True).split())
+            found = re.fullmatch(re.escape(name) + r'\s*\(f\.\s*(\d{1,2})\.\s*([a-z]+)\s+(\d{4}),[^)]+\)', text)
+            if found and found[2] in months:
+                dates.append(date(int(found[3]), months[found[2]], int(found[1])).isoformat())
+    if dates != [claim['birth_date']] or actor['facts']['birth_date'] == claim['birth_date']:
+        raise ValueError('one exact named original biography DOB correction is required')
+    return dict(before=actor['facts']['birth_date'], after=dates[0],
+                evidence_key=claim['evidence_key'], source_sha256=source['sha256'],
+                policy=claim['format'])
+
+
 def selected_carriers(plan):
     return {row['carrier_id'] for row in plan['decisions']}
+
+
+def omitted_slot_birth_date_preimage(actor, native, moved_sources):
+    """An omitted slot's explicit unknown DOB is not the old person's birthday."""
+    if (actor['carrier_id'] in moved_sources
+            or actor['facts']['birth_date'] != {'policy': 'preserve-existing-mode1'}):
+        return None
+    return dict(carrier_id=actor['carrier_id'], native_slot_birth_date=native['birth_date'],
+                declared_recipe_value=copy.deepcopy(actor['facts']['birth_date']),
+                historical_birth_date_verified=False,
+                scope='Displaced slot preimage only; no old-person DOB assertion or moved-source exception.')
+
+
+def foreign_mode1_identity_scope(request, clubs, players, targets, eq):
+    """Opt into profile edits without asserting unproved foreign AI XI semantics."""
+    claim = request.get('foreign_mode1_identity_only')
+    if claim is None:
+        return None
+    if (set(claim) != {'policy', 'club_carrier_ids'}
+            or claim['policy'] != FOREIGN_IDENTITY_ONLY_POLICY
+            or request.get('orders') or request.get('complete_mode1_opening')):
+        raise ValueError('foreign identity-only policy cannot edit opening order or tactics')
+    ids = claim['club_carrier_ids']
+    if (not isinstance(ids, list) or not ids or any(type(v) is not int for v in ids)
+            or len(ids) != len(set(ids))):
+        raise ValueError('foreign identity-only scope needs unique native club IDs')
+    selected = {players[c]['club_id'] for c in targets}
+    foreign = [clubs[c] for c in sorted(selected) if roster.club_group(clubs[c]) not in (None, 'england')]
+    if set(ids) != {c['carrier_id'] for c in foreign}:
+        raise ValueError('foreign identity-only scope differs from selected non-English clubs')
+    index = IndexedFDIFile.from_bytes(eq)
+    entries = {entry.record_id: entry for entry in index.entries}
+    result = []
+    for club in foreign:
+        if (club['id'].startswith('english-') or club.get('opening', {}).get('policy') != 'preserve-existing-mode1'
+                or club['division'] != 'preserve-existing-mode1-membership'):
+            raise ValueError('foreign identity-only scope cannot opt out a managed/authored English opening')
+        entry = entries[club['carrier_id']]
+        raw = eq[entry.payload_offset:entry.payload_offset + entry.payload_length]
+        parsed = delta.compiler.parse_eq_external_team_roster_payload(raw, {})
+        if parsed is None or parsed.mode_byte != 1:
+            raise ValueError('foreign identity-only policy requires original native mode1 clubs')
+        result.append(dict(club_id=club['id'], club_carrier_id=club['carrier_id'],
+                           native_eq_record_sha256=digest(raw),
+                           opening_semantics='foreign-AI-XI-unproven-no-historical-opening-assignment-claim'))
+    return dict(policy=FOREIGN_IDENTITY_ONLY_POLICY, clubs=result,
+                controls='All EQ bytes and each selected player startup-control value must remain unchanged.')
 
 
 def verify_bench_mapping(result, row, evidence):
@@ -476,12 +567,16 @@ def prepare(base, input_path):
     sources = [row['source'] for row in moves]
     if len(set(sources)) != len(sources) or not set(sources) <= set(targets):
         raise ValueError('every moved original copy must be consumed exactly once')
+    foreign_identity = foreign_mode1_identity_scope(request, clubs, players, targets, eq)
+    foreign_identity_ids = ({row['club_id'] for row in foreign_identity['clubs']}
+                            if foreign_identity else set())
     preimage_claims = request.get('target_native_preimage_opt_ins', [])
     if 'target_native_preimage_opt_ins' in request and (not isinstance(preimage_claims, list) or len(preimage_claims) != 1
             or not isinstance(preimage_claims[0], dict)
             or preimage_claims[0].get('carrier_id') != 19 or 19 not in targets):
         raise ValueError('only one exact carrier-19 target-native-preimage opt-in is supported')
     target_native_preimages = {}
+    omitted_birth_date_preimages = []
     for carrier in set(targets):
         actor = players[carrier]
         native = facts.native_facts(jug, carrier)
@@ -491,12 +586,17 @@ def prepare(base, input_path):
             target_preimage_optin = preimage.verify_target_native_preimage(
                 base, request, package, jug, eq, actor, native, skills(jug, carrier), owners)
             target_native_preimages[carrier] = target_preimage_optin
-        if ((native['startup_order'] <= 11 and complete_mode1 is None)
+        if ((native['startup_order'] <= 11 and complete_mode1 is None
+             and actor['club_id'] not in foreign_identity_ids)
                 or roster.normalise(native['name']) != roster.normalise(actor['name'])
                 or owners.get(carrier) != {clubs[actor['club_id']]['carrier_id']}):
             raise ValueError('opening exchange requires exact exclusively owned native reserves and matching skills')
+        omitted_dob = (omitted_slot_birth_date_preimage(actor, native, sources)
+                       if target_preimage_optin is None else None)
+        if omitted_dob is not None:
+            omitted_birth_date_preimages.append(omitted_dob)
         if (target_preimage_optin is None
-                and (native['birth_date'] != actor['facts']['birth_date']
+                and ((native['birth_date'] != actor['facts']['birth_date'] and omitted_dob is None)
                      or skills(jug, carrier) != actor['ratings']['values'])):
             raise ValueError('opening exchange requires exact exclusively owned native reserves and matching skills')
     decisions = []
@@ -510,6 +610,9 @@ def prepare(base, input_path):
             dated_source(evidence[key])
         decision = dict(carrier_id=row['destination'], preserved_source_carrier=row['source'],
                         before=target, moved_before=source)
+        if row.get('source_birth_date_correction'):
+            decision['source_birth_date_correction'] = official_biography_birth_date(
+                source, row['source_birth_date_correction'], evidence, season=base.season)
         if row.get('published_family_person_id') is not None:
             from scripts import season_published_family_component_v1 as families
             from scripts import season_same_carrier_name_capacity_v1 as capacity
@@ -527,6 +630,20 @@ def prepare(base, input_path):
             _, recovery = capacity.recover_slot(jug, row['destination'], request['same_carrier_name_capacity'])
             decision.update(display_name=aliases[0]['name'], published_family_claim=claim,
                             same_carrier_capacity_claim=recovery)
+        if row.get('fifa_short_display'):
+            if row.get('published_family_person_id') is not None:
+                raise ValueError('moved person cannot have competing display-source policies')
+            from scripts import season_fifa_dated_roster_admission_v1 as fifa_admission
+            claim = fifa_admission.published_move_display(source, row['fifa_short_display'], evidence, base.season)
+            # A published alias need not recover any space. The native writer
+            # still rejects overflow; recovery requires its separate opt-in.
+            decision.update(display_name=claim['display_name'], published_fifa_display=claim)
+        if 'recover_same_carrier_capacity' in row:
+            if row['recover_same_carrier_capacity'] is not True or row.get('published_family_person_id') is not None:
+                raise ValueError('explicit capacity recovery cannot duplicate the legacy family recovery policy')
+            from scripts import season_same_carrier_name_capacity_v1 as capacity
+            _, recovery = capacity.recover_slot(jug, row['destination'], request['same_carrier_name_capacity'])
+            decision['same_carrier_capacity_claim'] = recovery
         decisions.append(decision)
     retired = set(targets) - set(sources)
     retirements = request.get('retirements', [])
@@ -549,7 +666,11 @@ def prepare(base, input_path):
             raise ValueError('new person destination club differs')
         if _uses_reviewed_new_person_provider(row) and base.season != '2005-06':
             raise ValueError('reviewed new-person source provider belongs only to 2005-06')
-        if row.get('opening_contract'):
+        if 'admission_policy' in row:
+            from scripts import season_fifa_dated_roster_admission_v1 as fifa_admission
+            opening_date = fifa_admission.roster_membership(
+                row, evidence, base.season, clubs[actor['club_id']])['date']
+        elif row.get('opening_contract'):
             from scripts import season_dated_reserve_membership_v1 as contracts
             opening_date = contracts.verify(row, evidence, season=base.season, club=clubs[actor['club_id']])
         elif complete_mode1 is not None:
@@ -559,7 +680,7 @@ def prepare(base, input_path):
         else:
             verify_match_club(evidence[row['match']], clubs[actor['club_id']]['name'])
             opening_date = evidence[row['match']]['date']
-        replacement = new_person(row, evidence)
+        replacement = new_person(row, evidence, season=base.season, club=clubs[actor['club_id']])
         key = roster.normalise(row['name']), row['birth_date']
         if any(identity(p) == key for p in players.values()):
             raise ValueError('new person already represented; use a retained move')
@@ -577,8 +698,12 @@ def prepare(base, input_path):
         decision = dict(carrier_id=row['carrier_id'], preserved_source_carrier=None, before=actor,
                         fine_roles=fine_roles)
         if 'native_display_name' in row:
-            decision.update(display_name=published_profile_family_display(row, evidence),
-                            display_policy='original-profile-explicit-entire-family-heading-v1')
+            if 'admission_policy' in row:
+                decision.update(display_name=replacement['raw_evidence']['published_display_name'],
+                                display_policy='original-official-roster-published-given-and-family-name-v1')
+            else:
+                decision.update(display_name=published_profile_family_display(row, evidence),
+                                display_policy='original-profile-explicit-entire-family-heading-v1')
         decisions.append(decision)
     plan = dict(schema=SCHEMA, season=base.season, release_id=base.release_id,
         source_input=binding(input_path), package_sha256=registry.sha256_file(base.package_path),
@@ -586,6 +711,22 @@ def prepare(base, input_path):
         bindings=dict(snapshot=dict(project_url='https://www.transfermarkt.com/')),
         source_title='Dated opening bench identities and August ownership exchanges',
         proof_covers=['bounded-reserve-ownership-and-original-bench-only'], scope=SCOPE)
+    if omitted_birth_date_preimages:
+        plan['unverified_displaced_slot_birth_date_preimages'] = sorted(
+            omitted_birth_date_preimages, key=lambda row: row['carrier_id'])
+    if foreign_identity:
+        plan['foreign_mode1_identity_only'] = foreign_identity
+        plan['scope'] = ('Source-bound profile identity exchange; English starters unchanged, foreign mode1 '
+                         'opening controls preserved without assigning their unproved AI-XI meaning. '
+                         'All EQ, tactics, managers, kits and unrelated player records preserved.')
+    if any('admission_policy' in row for row in request['new_people']):
+        plan.update(bindings=dict(snapshot=dict(project_url='https://www.premierleague.com/')),
+                    source_title='Dated official opening squad membership and exact period FIFA identities',
+                    proof_covers=['dated-official-August-squad-membership-not-opening-XI-or-appearance-claim',
+                                  'exact-target-edition-FIFA-identity-roles-and-abilities'])
+    if any(row.get('source_birth_date_correction') for row in decisions):
+        plan['scope'] += ' Explicit named original-biography DOB corrections only; moved abilities remain unchanged.'
+        plan['proof_covers'].append('explicit-original-named-biography-DOB-correction')
     if complete_mode1 is not None:
         plan['complete_mode1_opening'] = complete_mode1
         plan['scope'] = 'Selected dated identity replacements plus complete original-XI mode1 startup orders; other actors/facts, roster links, managers, opaque tactics, kits and assets preserved except displaced photos.'
@@ -654,6 +795,11 @@ def bind(package, plan):
         if source is not None:
             fixed = {key: target[key] for key in ('id', 'carrier_id', 'carrier_family', 'club_id')}
             target.clear(); target.update(copy.deepcopy(old[source])); target.update(fixed)
+            if row.get('source_birth_date_correction'):
+                correction = row['source_birth_date_correction']
+                if target['facts']['birth_date'] != correction['before']:
+                    raise ValueError('moved person birth-date correction preimage differs')
+                target['facts']['birth_date'] = correction['after']
             if row.get('display_name'):
                 target['name'] = row['display_name']
             target['facts']['shirt_number'] = {'policy': 'preserve-existing-mode1'}
@@ -669,9 +815,16 @@ def bind(package, plan):
             values = ratings.editorial(target, strength, 'opening_squad', date(int(plan['season'][:4]), 8, 1))
             if target['facts']['primary_position'] != 'G':
                 values['handling'] = max(1, min(20, values['handling']))
-            target['ratings'] = dict(profile='pm99-visible-skills-v1', values=values,
-                provenance=dict(method='identity-club-role-age-optional-editorial-calibration-v3',
-                    proof_grade='reviewed-editorial', source_ids=[ratings.SOURCE_ID]))
+            replacement = next(u['replacement'] for u in plan['updates'] if u['carrier_id'] == row['carrier_id'])
+            if replacement['source_person'].get('source_provider') == 'fifa':
+                values = copy.deepcopy(replacement['raw_evidence']['fifa_values'])
+                target['ratings'] = dict(profile='pm99-visible-skills-v1', values=values,
+                    provenance=dict(method='exact-target-FIFA-edition-identity-and-DOB-v1',
+                        proof_grade='source-receipt', source_ids=[ratings.SOURCE_ID]))
+            else:
+                target['ratings'] = dict(profile='pm99-visible-skills-v1', values=values,
+                    provenance=dict(method='identity-club-role-age-optional-editorial-calibration-v3',
+                        proof_grade='reviewed-editorial', source_ids=[ratings.SOURCE_ID]))
         target['proof'] = dict(artifact_id=aid, grade='source-receipt')
     for collection in ('players', 'sources', 'proofs'):
         for row in result[collection]:
@@ -774,6 +927,14 @@ def apply(jug, eq, plan):
     preserve_other_records(original_jug, candidate, selected_carriers(plan) | order_carriers)
     old_entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(original_jug).entries}
     new_entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(candidate).entries}
+    if plan.get('foreign_mode1_identity_only'):
+        if patched_eq != original_eq:
+            raise ValueError('foreign profile identity exchange changed opaque EQ/opening bytes')
+        for carrier in selected_carriers(plan):
+            before_order = read_initial_order(old_entries[carrier].decode_payload(original_jug)).order
+            after_order = read_initial_order(new_entries[carrier].decode_payload(candidate)).order
+            if before_order != after_order:
+                raise ValueError('foreign profile identity exchange changed a startup control')
     for carrier in order_carriers - selected_carriers(plan):
         before = old_entries[carrier].decode_payload(original_jug)
         after = new_entries[carrier].decode_payload(candidate)

@@ -1,5 +1,108 @@
 # PM99: current work
 
+## r236 A/B built and independently checked; runtime capture active — 2026-10-24 12:44 UTC
+
+Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+
+Preferred releases remain v155 (2017/18 r230a). New 2017/18 r236a/b are
+BUILT, NOT INSTALLED, NOT YET RUNTIME VERIFIED. Independent actual package/native
+QA passed: only five selected JUG payloads changed; all11,622 unselected players,
+all543 clubs/managers, EQ, ownership, startup controls and nonportrait assets exact.
+A/B raw recipes and all461 game files equal. SOURCE parent reconstruction was
+not a clean-machine rebuild; no such claim is made. Evidence:
+`parallel-rc-20261023/stoke-rubin-rostov-molde-delivery-v1/independent-native-package-qa-v2.json`
+SHA34e4f910...87eaf08 and `complete-SOURCE-replay.json`.
+
+ROOT serial local runner controller5808 captures Harry Souttar, Thibaud Verlinden,
+Moritz Bauer, Pavel Mogilevets, Bjorn Sigurdarson, then fresh Stoke startup.
+Original images require actual visual review and independent native/digit proof
+before promotion. Foreign mode1 opening controls are preserved opaque values,
+not a proven historical AI XI. Release worker independently reviewed the narrow
+foreign policy and found no blocker. Current source tests69passed.
+
+Luna assignments: Hayes reviews new admission identity/source guards; Release
+drafts gated private v156 installer without running it; Disk validates official
+NFF2016 source packet and assesses remaining calendar source recovery.
+NFF2016 original eight round1 match pages captured:16 clubs,176 XI entries,
+109 listed substitutes; no inferred DOB/nationality/managers. Receipt:
+`resume-qa/nff-norway-2016-round1-source-v1/nff-tippeligaen-2016-round1-eight-match-source-package-v1.json`
+SHAe77af08a...b19cd04. Source-only, not native delivery.
+
+Counts unchanged: frozen105 disposed/2704 review-or-confirmed-open; critical
+14groups/11delivered/3pending. No build/source/test count credited as a fix.
+Exact next action: inspect each completed original runner frame, bind native
+proofs, review gated installer and promote only affected2017 release after pass.
+Free9.7GiB before runtimecopy; shared initialized Wineprefix retained.
+
+## v155 installed; five-seat ownership integration active — 2026-10-24 11:34 UTC
+
+Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+
+INSTALLED/VERIFIED preferred2000/01 is r235a stock-kit correction;2017/18 remains
+r230a Ballymena/Shevlin. Other24 and original2015 preserved. Frozen counts remain
+105 disposed /2704 review-or-confirmed-open from2809. Critical ledgerv7 stays
+14 groups /11 delivered /3 pending; stock mappings18 delivered /309 not delivered.
+No duplicate count is credited to kit tests or source capture.
+
+Actual Inter Gimmelli frame shows black/blue instead of Perugia red/white.
+ROOT inspected original `local_2000_01_r235a_gimmelli/screens/47_profile_only_gimmelli_done.png`;
+153 interior pixels match CLEAN Inter213 at zero error; oldPerugia225 fails with
+max255. Genuine fresh Stoke startup022 shows legibleStoke/Aug1 2000. FullSOURCE
+A/B and independent all18-target/three-size byte QA pass; only3PKFs change, all
+DB/photos/DAT/EXE/rawrecipe exact. ROOT-reviewedv155 installer preflight+install
+bothpassed. Evidence: `parallel-rc-20261023/inter-gimmelli-serena-delivery-v1/completion-proof-v155.json`
+and `resume-qa/kit-seed-misassignment-review-v1/2000-r224a-prototype-v1/`.
+This proves stock identity mapping, not target-season design authenticity.
+
+Disk cleanup COMPLETE: selected previously trashed oldDuctor files archived to
+Pi HDD, per-member hashes/modes/IDs verified, originalpaths/restoremetadata saved;
+2,412,716,032bytes freed. Three unrelateddiynas entries retained. Ledger:
+`.local/cleanup-20261024/trash-to-pi-v1/archive-retirement-receipt.json`.
+ArchiveSHA77693bce...ce42b9, remoteUUID1f364414-880d-4f96-8619-3bd8c9954cc0.
+Verified r235 runtime game-copy retirement controller73081; source/evidence and
+shared Wine prefix retained. Free about9.8GiB. No gamebuild/capture active.
+
+Active actual-data nextstep: five reserve-seat ownership chain fromr230:
+Stoke9264Bauer→HarrySouttar;9275Stafylidis→ThibaudVerlinden;
+Rubin32982Mogilevets→Bauer;Rostov31878Bjorn→Mogilevets;
+Molde30648LekeJames→Bjorn. Counts25/17/20/20 andXI/tactics preserved.
+Leke positiveMolde signing30Apr2018; Staf displacedStokeslot is a CAPACITY
+OMISSION, notretirement/freeagency/notAugsburg. All23Augsburg actors preserved.
+Existing exact factory30648FreddyDosSantos window recovers12bytes reversibly;
+reuse existing runtime-proven capacitybundle. No new format investigation needed.
+
+ROOT found BOTHnewpeople already in canonical FIFA18 cachedCSV (season2017/18),
+SHA13389f46...a133e. Harry229901:1998-10-22,CB4,SCO,200/79; Thibaud237337:
+1999-07-09,RM6,BEL,173/65. CurrentindexedTMleftwing is NOTperiodroleevidence.
+OfficialPLAug11PDF independently proves Stoke#36/#31; ScottishFA2017 corroborates
+HarrySCO. A new GENERIC exact-period-FIFA+dated-official-roster admission path is
+implemented in canonical scripts, source-admission test passedactual2rows/PDF;
+noTransfermarktHTML required orfabricated. Full legal source names retained,
+native display uses whole publishedgiven/surname; honestperson-fifa namespace.
+ROOT58focused/oldprovider regressiontests passed. Not yet natively delivered.
+
+BjornFIFA18DOBitself iswrongDec26. OfficialMolde namedbiography binds26Feb1991;
+ROOT added optional original-named-biography DOB correction onknown-personmoves,
+with no ability rerating. His literalFIFAshortname canbindnativealias after
+factory recovery, keepingfullsource_name. Allold SOURCE paths unchanged unless
+newexplicitpolicyselected. Newcode uncommitted pendingactualfive-seatprepare,
+adversarialQA and nativeA/B. Source docs/bodies: `resume-qa/stoke-youth-admissions-v1/`
+and `resume-qa/stoke-2017-late-arrivals-v1/`.
+
+Workers: Hayes prepares source-bound standardexchange input/in-memory proof;
+Disk finishedofficialprofiles,PLPDF andScottishFArawresearch; Release reviewed
+actualFIFA/PDFsource. Its initial2015backfill schema objection was a false
+positive againstwrongcache, explicitlyretracted after checkingcanonicalCSV.
+Calendar missing2000/2016 plans have realCloudFront202 zero-bodychallenge;
+retain8gaps andheaders, nofakeoldyearretag. Existing865pairs across23plansremain
+verified/reusable. Molde sourcecohortV4 hasXI11+BENCH7+Haalandannual=19, not7used
+subs; only3actuallyentered. Partial405missing-world warnings are notnewRCbugs.
+
+Git921c66c pushed (reusable stockremap command,14tests/all26dryruns passed).
+Exactnextaction: complete/reviewfive-seatrequest, runstandardprepare/applyguards,
+thenoneactualA/Bbuild and targetedserialrunnerprofiles; checkpointallchanges.
+
+
 ## Reusable kit patch checked across26; Pi archive verifying — 2026-10-24 10:53 UTC
 
 Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
