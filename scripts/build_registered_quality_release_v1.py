@@ -392,6 +392,26 @@ def build(season: str, *, release_id: str, resume: bool = False) -> dict[str, An
     reconstructed = horne_facts.reconstruction(previous, release_id)
     if reconstructed is not None:
         return reconstructed
+    from scripts import season_rawle_forbes_standard_v1 as rawle_forbes
+    reconstructed = rawle_forbes.reconstruction(previous, release_id)
+    if reconstructed is not None:
+        return reconstructed
+    from scripts import season_evers_mcclune_opening_v1 as evers_mcclune
+    reconstructed = evers_mcclune.reconstruction(previous, release_id)
+    if reconstructed is not None:
+        return reconstructed
+    from scripts import season_coady_centerback_cascade_v1 as coady_cascade
+    reconstructed = coady_cascade.reconstruction(previous, release_id)
+    if reconstructed is not None:
+        return reconstructed
+    from scripts import season_coady_centerback_exchange_v1 as coady_role
+    reconstructed = coady_role.reconstruction(previous, release_id)
+    if reconstructed is not None:
+        return reconstructed
+    from scripts import season_batth_wolves_opening_transfer_v1 as batth_wolves
+    reconstructed = batth_wolves.reconstruction(previous, release_id)
+    if reconstructed is not None:
+        return reconstructed
     from scripts import season_altrincham_macc_joint_exchange_v1 as alty_joint
     reconstructed = alty_joint.reconstruction(previous, release_id)
     if reconstructed is not None:

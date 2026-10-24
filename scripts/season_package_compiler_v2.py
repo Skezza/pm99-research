@@ -2151,6 +2151,16 @@ def compile_package_to_tree(
         barrow_roles.reject_factory_recipe(package)
         from scripts import season_horne_26979_facts_v1 as horne_facts
         horne_facts.reject_factory_recipe(package)
+        from scripts import season_rawle_forbes_standard_v1 as rawle_forbes
+        rawle_forbes.reject_factory_recipe(package)
+        from scripts import season_evers_mcclune_opening_v1 as evers_mcclune
+        evers_mcclune.reject_factory_recipe(package)
+        from scripts import season_coady_centerback_cascade_v1 as coady_cascade
+        coady_cascade.reject_factory_recipe(package)
+        from scripts import season_coady_centerback_exchange_v1 as coady_role
+        coady_role.reject_factory_recipe(package)
+        from scripts import season_batth_wolves_opening_transfer_v1 as batth_wolves
+        batth_wolves.reject_factory_recipe(package)
         from scripts import season_altrincham_macc_joint_exchange_v1 as alty_joint
         alty_joint.reject_factory_recipe(package)
         from scripts import season_vokes_crouch_opening_exchange_v2 as vokes_crouch

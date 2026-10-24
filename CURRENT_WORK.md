@@ -1,5 +1,34 @@
 # PM99: current work
 
+## Resumed delivery — 2026-10-24 04:25 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Authoritative completed checkpoint v144: original2809 baseline,81 disposed,
+2728 remaining REVIEW/confirmed-open (not2728 proven bugs). Altrincham/Macc
+r211a is INSTALLED and VERIFIED, superseding older entries below. Original2015
+preserved. Evidence `parallel-rc-20261023/altrincham-macc-delivery-v1/`.
+2018 Batth r214 and Coady r215 are BUILT/SOURCE-identical; final r215 Batth,
+Coady and Stoke genuine captures plus native/digit checks passed. Installation completed and VERIFIED at v145 (controller98374 terminal0).
+Initial inventory guard wrongly tested truthiness of all diff fields including
+`equal=True`; corrected to require equal and empty changed/missing lists.
+Negative attempt retained; no native change or capture repeated.
+Rawle/Forbes2000 r216a/b BUILT and complete game/recipe SOURCE-identical;
+NOT installed/runtime verified. Evidence `parallel-rc-20261023/rawle-forbes-delivery-v1/`.
+Evers/McClune r217 on r216 is building controller14840; then capture three profiles+Stoke
+and publish the verified2000 chain. Coady2017/2019 two-byte role cascade remains
+pending actual builds/captures. Onoh2025 birthday unavailable: metadata/native
+conformance proposal requires review; do not invent DOB or approve misleading
+mode1 policy on mode0 without resolving its contract. Secondary unknowns allowed.
+
+Luna Hayes independently audits actualr216 native/SOURCE/preserved Alty data;
+Luna disk prepares private r217 build driver; Luna release prepares private
+2017/2019 Coady build driver. Root reviews/integrates, serializes actual builds
+and runner, maintains at least8GiB runtime headroom. Current free8.2GiB.
+No repeated completed research or unaffected-season regeneration. Final remaining
+work: those bounded corrections, honest Onoh handling, fixed-checklist state
+reconciliation, one consolidated26 regression and evidence-backed handoff.
+All paths above relative to `.local/consolidated-audit-20261009/`.
+
 ## Dated owner review: Rawle/Evers — 2026-10-24 02:49 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.

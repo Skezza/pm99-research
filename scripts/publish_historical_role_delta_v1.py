@@ -546,6 +546,21 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         from scripts import season_madrid_mode1_activation_v1 as madrid_activation
         if assignment_plan.get('schema') == madrid_activation.SCHEMA:
             assignments = madrid_activation
+        from scripts import season_rawle_forbes_standard_v1 as rawle_forbes
+        if assignment_plan.get('schema_version') == rawle_forbes.SCHEMA:
+            assignments = rawle_forbes
+        from scripts import season_evers_mcclune_opening_v1 as evers_mcclune
+        if assignment_plan.get('schema') == evers_mcclune.SCHEMA:
+            assignments = evers_mcclune
+        from scripts import season_coady_centerback_cascade_v1 as coady_cascade
+        if assignment_plan.get('schema') == coady_cascade.SCHEMA:
+            assignments = coady_cascade
+        from scripts import season_coady_centerback_exchange_v1 as coady_role
+        if assignment_plan.get('schema') == coady_role.SCHEMA:
+            assignments = coady_role
+        from scripts import season_batth_wolves_opening_transfer_v1 as batth_wolves
+        if assignment_plan.get('schema') == batth_wolves.SCHEMA:
+            assignments = batth_wolves
         from scripts import season_altrincham_macc_joint_exchange_v1 as alty_joint
         if assignment_plan.get('schema') == alty_joint.SCHEMA:
             assignments = alty_joint
@@ -663,6 +678,14 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
             portrait_archive, portrait_offsets = portrait_delta.no_photo_archive(original_archive,
                 haladas_keeper.selected_carriers(assignment_plan))
+        elif assignment_plan.get('schema_version') == rawle_forbes.SCHEMA:
+            original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
+            portrait_archive = rawle_forbes.apply_minifoto(original_archive, assignment_plan)
+            portrait_offsets = {carrier: [] for carrier in rawle_forbes.selected_carriers(assignment_plan)}
+        elif assignment_plan.get('schema') == evers_mcclune.SCHEMA:
+            from scripts import season_duplicate_ownership_delta_v1 as portrait_delta
+            original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
+            portrait_archive, portrait_offsets = portrait_delta.no_photo_archive(original_archive, evers_mcclune.selected_carriers(assignment_plan))
         elif assignment_plan.get('schema') == alty_joint.SCHEMA:
             patched_ent = alty_joint.apply_ent(original_ent, assignment_plan)
             if alty_joint.apply_ent(patched_ent, assignment_plan) != patched_ent:
@@ -1016,6 +1039,34 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
             removed_target_roster_links=[], fixed_duplicate_case_ids=[],
             players_written=len(assignment_plan['decisions']), allowed_write=assignment_plan['scope'])
+    elif assignment_plan is not None and assignment_plan.get('schema_version') == rawle_forbes.SCHEMA:
+        receipt.update(compilation_mode=rawle_forbes.MODE,
+            original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
+            removed_target_roster_links=[], fixed_duplicate_case_ids=[],
+            players_written=1,
+            allowed_write='Only source-backed carrier33254 Rawle-to-Forbes identity/facts/editorial ratings and proof/no-photo projection; Boston11027, all roster links and every other actor preserved.',
+            source_summary=assignment_plan['summary'])
+    elif assignment_plan is not None and assignment_plan.get('schema') == evers_mcclune.SCHEMA:
+        receipt.update(compilation_mode=evers_mcclune.MODE,
+            original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
+            removed_target_roster_links=[dict(club_carrier_id=385,player_carrier_id=33121)],
+            fixed_duplicate_case_ids=[], players_written=2, allowed_write=assignment_plan['scope'])
+    elif assignment_plan is not None and assignment_plan.get('schema') == coady_cascade.SCHEMA:
+        receipt.update(compilation_mode=coady_cascade.MODE,
+            original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
+            removed_target_roster_links=[], fixed_duplicate_case_ids=[],
+            players_written=1, allowed_write=assignment_plan['scope'])
+    elif assignment_plan is not None and assignment_plan.get('schema') == coady_role.SCHEMA:
+        receipt.update(compilation_mode=coady_role.MODE,
+            original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
+            removed_target_roster_links=[], fixed_duplicate_case_ids=[],
+            players_written=1, allowed_write=assignment_plan['scope'])
+    elif assignment_plan is not None and assignment_plan.get('schema') == batth_wolves.SCHEMA:
+        receipt.update(compilation_mode=batth_wolves.MODE,
+            original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
+            removed_target_roster_links=[dict(club_carrier_id=351,player_carrier_id=10749)],
+            fixed_duplicate_case_ids=[], players_written=len(assignment_plan['order_changes']),
+            allowed_write=assignment_plan['scope'])
     elif assignment_plan is not None and assignment_plan.get('schema') == alty_joint.SCHEMA:
         receipt.update(compilation_mode=alty_joint.MODE,
             original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
