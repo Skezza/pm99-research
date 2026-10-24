@@ -1,5 +1,114 @@
 # PM99: current work
 
+## v161 installed; kits validated; ownership build resumes — 2026-10-24 18:17 UTC
+
+Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+
+INSTALLED / VERIFIED: 2004/05 now prefers r246a, Seedorf central-midfield editorial
+role. Exactly three role bytes changed; Holland, DOB, all skills, ownership and
+other game files remain unchanged. ROOT viewed actual profile49 (CENTRAL MID.)
+and Stoke022 (Sunday1Aug2004); native/digit/age and full SOURCE checks passed.
+Independent actual QA passed. Preflight16933 and promotion46707 passed. Other25
+preferred releases and original2015 remain unchanged; recipe spreadsheet selects
+r246. Disposable runner copy retired19148, screenshots/prefix/source preserved.
+Root fixed private installer Path-vs-document access, module shadowing, and the
+new critical-ledger reference BEFORE publication; interrupted preliminary
+read-only preflight60303 is preserved, not counted as a pass.
+
+Authoritative checklist v161 SHA:
+`f58edef7d48de20e697f1cdcf52572b41b11d4faed61ea38eba4ec32ef8aca98`.
+Critical ledger v13:15 groups /12 delivered /3 open. Frozen2809 /109 disposed /
+2700 review-or-confirmed-open. Stock327 /38 installed /289 pending. These counts
+are unchanged by one role correction. Seedorf2006 and2007 left-back occurrences
+remain open; their generic role requests dryprepare successfully. No global RC
+completion claim.
+
+BUILT / RUNTIME VERIFIED, NOT INSTALLED: 2002/03 r247a/b,20 stock-kit mappings.
+Independent QA reads all20×3 selected bitmaps against the sealed clean source,
+all unselected archive bytes and game files exact parent, A/B recipes/inventories
+match SOURCE. The immutable-media optimization is now proven in actual A/B
+builds: all mutable files independent, only reviewed factory media shared.
+ROOT inspected Zanetti57 and Stoke022 (Thursday1Aug2002); native/digit/age proof
+passed. Actual displayed Inter225 matches clean Inter213 at153 pixels with zero
+channel error; wrong-parent control fails. Runtime99020 complete; game copy
+retired42550. Evidence `.local/season-stock-kit-seed-remaps-v1/2002-03-r247-candidate-v1/`.
+Worker prepares v162 installation; do not promote while the ownership build
+below holds a catalog snapshot.
+
+New visible country review: Zanetti4158 shows ITALY. Source/recipe/native name
+and DOB1973-08-10 agree, but recipe nationality explicitly preserves native data;
+it is an inherited seed-country fallback, not a raw parser claiming Italy.
+Official sporting-nationality evidence and a reusable annual-row identity
+witness are being prepared. Do not claim his country is validated by kit tests,
+or invent a missing match/player ID. Keep this occurrence explicit within the
+existing country issue group. Hayes also has2012 Seedorf normal ID4168 DOB/country
+correction prepared in memory; not yet built.
+
+RUNNING: actual r245 Turner/Bolger A/B publisher27681. It reuses completed r244
+birthday A/B, the existing proven same-carrier capacity bundle (13586 cursor24→32)
+and the now-passing canonical v6 exchange. Only source identities13450/13586
+move between fixed Cork/StPats slots; EQ/startup controls remain exact. Generic
+preservation fixes committed/pushed f0ea9b5 (67 tests passed) carry each person's
+actual six native source roles through the existing writer and honor nationality
+preservation during readback. No historical fine-role/country claim is invented.
+Log `resume-qa/calendar-2017-source-correction-input-v1/turner-bolger-owner-exchange-v1/root-r245-v6-build.log`.
+
+Workers: Disk checks a bounded Pi-backed immutable-media dedupe proposal to fund
+the remaining builds; read-only so far. Release prepared23 SHA-bound stock
+requests (269 mappings, IDs248–270) using per-season parent guards, and prepares
+v162. Hayes prepares generic source-row identity admission for matching full-name
+and DOB cases; conflicted birthdays remain separate evidence cases. Workers do
+not publish or run captures. Current free~8.5GiB; reserve8GiB. No other publisher
+or runner is active.
+
+Next: finish27681, independently verify actual identities/roles/photos, capture
+Turner13586, Bolger13450 and Stoke2017 serially, then install after SOURCE/runtime.
+Promote the already validated r247 kit update when no candidate build holds its
+catalog snapshot. Then continue the prepared stock cascade and remaining
+source-country/role corrections. Preserve all failed/preliminary evidence and
+avoid rerunning completed builds or scans.
+
+## Active validation and builds — 2026-10-24 17:52 UTC
+
+Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Installed checkpoint remains v160. Frozen109/2700; stock38 delivered/289 pending;
+critical12/15 groups delivered. Do not count uninstalled builds as delivery.
+
+BUILT, not installed: r246a/b Seedorf editorial compatible role, 2004/05.
+Exactly three JUG role bytes change; EQ, country, DOB, ratings and all other
+files remain exact; complete SOURCE recipes and inventories match. ROOT runner
+profile+Stoke capture52302 is RUNNING. Build proof/log under
+`parallel-rc-20261023/resume-qa/seedorf-editorial-finerole-pilot-v1/r246-candidate-v2/`.
+Hayes prepares independent actual QA and private v161 installer; no promotion
+until runtime proof and the concurrent immutable build finish.
+
+RUNNING: 2002/03 stock-kit r247a/b build14889 (20 mappings), using the reviewed
+existing driver and new immutable-media sharing helper. One runner copy plus
+~204MB incremental build budget passed with8.4GiB free and8GiB reserve. No other
+publisher is running. Log in `resume-qa/kit-seed-misassignment-review-v1/stock-kit-next-two-plan-v1/root-r247-build.log`.
+Release worker prepares generic subsequent-season requests, not more hardcoded
+builders; no worker publishes or operates the runner.
+
+HELD before publication: r245 Turner/Bolger exchange. Completed r244 birthday
+A/B is independently verified (three intended bytes), not rebuilt or installed.
+The fallback-note ordering defect is fixed7c731ba (33 tests passed; pushed).
+Existing same-carrier capacity recovery proves13586 cursor24→32 and fits full
+Ian Turner. Native apply now exposes an existing role-policy handling gap:
+source facts say preserve roles, but the writer expects explicit codes. Disk
+prepares a narrow private proposal to carry each source person's actual six
+native roles through the existing writer, without rerating or inventing roles.
+No r245 locator/game was produced; v4/v5/v6 failures and requests are preserved.
+
+Seedorf2012 source binding is actually available through normal ID4168 and the
+retained2013 report; the latter is identity linkage, not2012 ownership proof.
+An in-memory existing-adjudicator DOB/country correction passes, not built or
+installed. Annual2012 source and dated club evidence remain separate.
+
+Next: inspect r246 original frames and complete native/digit checks; finish
+r247 SOURCE proof, then install the validated role pilot. Review the r245 role
+preservation proposal and resume only its failed pre-publication stage. Keep
+8GiB reserve and preserve all current games, backup, source and screenshots.
+
 ## v160 installed and runner-verified — 2026-10-24 17:41 UTC
 
 Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
