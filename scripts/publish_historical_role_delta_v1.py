@@ -597,6 +597,9 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         from scripts import season_barrow_winger_fine_role_v1 as barrow_winger_roles
         if assignment_plan.get('schema') == barrow_winger_roles.SCHEMA:
             assignments = barrow_winger_roles
+        from scripts import season_horne_26979_facts_v1 as horne_facts
+        if assignment_plan.get('schema') == horne_facts.SCHEMA:
+            assignments = horne_facts
         from scripts import season_2015_english_fifa_roles_v1 as english_roles
         if assignment_plan.get('schema') == english_roles.SCHEMA:
             assignments = english_roles
@@ -964,7 +967,7 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             fixed_duplicate_case_ids=(['2c01311314826e92f838732f4049bdbb8a1f3f3dab539de196dd43de8bfed553']
                 if assignment_plan['schema'] == stevenage.SCHEMA else assignment_plan['fixed_duplicate_case_ids']),
             players_written=len(assignment_plan['orders']), allowed_write=assignment_plan['scope'])
-    elif assignment_plan is not None and assignment_plan.get('schema') in (owned_roster.SCHEMA, source_changes.SCHEMA, quality_only.SCHEMA, exact_roles.SCHEMA, conservative_roles.SCHEMA, english_roles.SCHEMA, donor_roles.SCHEMA, primary_positions.SCHEMA, alias_primary_positions.SCHEMA, country_policy.SCHEMA, resolved_country.SCHEMA, shirt_numbers.SCHEMA, commons_number.SCHEMA, alias_countries.SCHEMA, birthday_disagreements.SCHEMA, maccabi_roles.SCHEMA, annual_roles.SCHEMA, barrow_winger_roles.SCHEMA):
+    elif assignment_plan is not None and assignment_plan.get('schema') in (owned_roster.SCHEMA, source_changes.SCHEMA, quality_only.SCHEMA, exact_roles.SCHEMA, conservative_roles.SCHEMA, english_roles.SCHEMA, donor_roles.SCHEMA, primary_positions.SCHEMA, alias_primary_positions.SCHEMA, country_policy.SCHEMA, resolved_country.SCHEMA, shirt_numbers.SCHEMA, commons_number.SCHEMA, alias_countries.SCHEMA, birthday_disagreements.SCHEMA, maccabi_roles.SCHEMA, annual_roles.SCHEMA, barrow_winger_roles.SCHEMA, horne_facts.SCHEMA):
         receipt.update(compilation_mode=assignments.MODE,
             original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
             removed_target_roster_links=[],fixed_duplicate_case_ids=[],

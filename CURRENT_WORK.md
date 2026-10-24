@@ -1,5 +1,96 @@
 # PM99: current work
 
+## v139 installed; verified Pi archive completed — 2026-10-24 00:56 UTC
+
+Machine `joe-Vostro-3350`; session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Controller15258 terminal0 installed2016 r209a and current-bound runtime
+attestation. Barrow actualprofile24/Gambia/Swansea/MID/LEFT WINGER inspected;
+independent ten-skill/age/nativeinputs/kitpixels PASS. Exactlyonefine-role byte,
+completeSOURCE-identical r209b. BroadM legitimatecompatiblewinger projection,
+not a remaining forcedF/M bug. Existing #77 decoration remains a known separate
+formatting candidate, not a new person/role failure. Controller79025 terminal0
+saved v139:65disposed/2744REVIEW, frozen2809 unchanged, globalhistoricalRCfalse.
+
+Two newlyconfirmed pre-existing2018extras explicitly added outside baseline:
+Vokes and Batth January2019arrivals presentinAugustStoke. FirstXI matches exact
+Aug5 source; no lineup-order regression. Luna prepares Vokes/Crouch EQ-link
+exchange preservingpersonIDs/ratings/photos, Batthseparate. TomEdwards one-day
+DOB mismatch needs source/career identity disposition, not automatic namesake.
+No newissue counted as delivered. Evidence `resume-qa/rc-ledger-review-v1/`.
+
+Controller87270 terminal0: private2000r210a/b Horne374DOB/WAL wholeSOURCE
+identical, actual4byte proof controller68634 passes, allotheractors/files exact.
+Pending runtime/installation. Horneinput uniqueSCHEMA+MODE, canonical8tests
+passed; exactsourceURL/body/receipt/parent guards retained.
+Controller18699 nowserialcapture final2013r212a Kilkenny plusStokestartup.
+Rootviewed NeilKILKENNY /28/Australia/BristolCity/MID/CENTRAL MID without#88;
+controller7766 verifies independentdigits/nativekit. r21212namewindows source-
+backed, allotherfacts/roles/ownership exact, wholeSOURCEr212b passed.
+
+Controller99771 terminal0 moved24superseded contextual-tactics v1 candidates
+toPi, all2979members independentSHAverified, originals rehashed, catalogue
+unchanged, onlythenlocaltreesretired. Excluded2014/2015; retainedv3/r18parents,
+allcurrent26/original2015/sources. Archive SHA746bb26d536b670697bfaf8c242397bfd0edf617fb91ec125c36aec2ecb1ad92;
+ledger `.local/cleanup-20261024/contextual-v1-24seasons-to-pi/`, remote exactpath
+in PI_ARCHIVE_LEDGER. Observedfree9729155072bytes (~9.1GiB), netgain947458048.
+No blindcleanup/nativeSOURCEparent removed. CompletedBarrow disposablegame
+358622518bytes also retired separately withfullproof, allscreens/prefix retained.
+
+Workers: Hayes extends privateAlty typedadapter beyondprepare-only to native
+postimage proposal; must preserve18Kidder374actors, source-admitMaccBettney,
+onlyoneold3310flag1→0andusecaller-guarded lowerorderwriterfordd6361Foster
+carrier. Releaseworker builds privateVokes/Crouch source/native swap proposal.
+Diskworker completed archive inventory, available for nextbounded sourcebatch.
+Next finish2013runtime/install, Horneactualprofile/finalstartup (orfinalcombined
+child ifAltyready), integrate approvedAlty/Macc and2018owner corrections,
+foreignTEAMRATING screens, thenconsolidatedall26regression. No globalRCclaim.
+
+## O'Hara installed; Horne building; Pi online — 2026-10-24 00:36 UTC
+
+Machine `joe-Vostro-3350`; source session
+`01a0592d-fcd5-7262-a637-743a8253d9b4`, commit744250b pushed.
+Controller26773 terminal0 installed2018 r206a, source/native3byteproof and
+actual O'Hara23/Scotland/Peterborough/MID/CENTRAL MID profile reviewed; independent
+ten-skill/age/nativeinputs/kitpixels PASS. ROOT inspected StokeAug1 2018 final
+frame; current-bound attestation passed. Controller18337 terminal0 saved v138 checklist
+with unchanged65disposed/2744REVIEW.
+This role proof does not approve every Stoke2018 roster fact; source worker
+checks retained opener evidence against a separate observed roster candidate.
+
+r212a/b 2013 Kilkenny+12 source-proven numeric-name removals complete SOURCE
+identical. Controller3479 independently verifies actual12exactnamewindows,
+preserving all facts/roles/skills/ownership/unselectedactors/files. Runtime
+pending. Existing frozen names-v2 unchanged, source witness season rows are
+biography/name evidence only, never new ownership claims. Remaining19name
+candidates remain classified by missing/ambiguous source or legacy scope.
+
+Horne canonical unique-schema adapter integrated; root canonicalproduction QA
+8passed70.11s. Controller87270 builds r210a/b exact4physicalbytes DOB/WAL on
+Kidder374 actor26979, preserving WalsallCarter21064 and allotheractors. Not
+installed/runtimeverified yet. Shared publisher/source/compiler hooks added;
+private plan retains exactsource/input/parent guards, no globalTM fixture gate
+relaxed. Barrowr209 SOURCE/nativeonebyte proof passed; controller93537 now
+serially captures target profile/finalStoke. No competing runner/build jobs.
+
+Disk guard refused O'Hara startup before creating evidence. Cleared only npm
+downloadcache154710016allocatedbytes (dependencies untouched), retried startup
+without repeating build/profile. CompletedO'Hara disposablegame358617313bytes
+retired with fullsource/copy/noactive-mount checks; everyframe/prefix retained.
+Pi SSHonline, mountedUUID1f364414-880d-4f96-8619-3bd8c9954cc0 confirmed,
+~258GBfree. Coldcandidate reference review underway, no newPiarchive move yet.
+Full.local singledu finished118GiB, not a deletion list; currentSOURCEancestry
+must remain. New cleanup ledgers under `.local/cleanup-20261024/`.
+
+Alty18 data proposal now assembled, exact11+6+1 friendly selection and preserved
+18Kiddercounterparts. Atomic joint Macc leg has positive Aug12usedsubBettney
+source for lateAdams replacement; no exact disputed transferday claim. Seven
+explicitENG biographies sourced; othersecondaryfacts unknown/conflicted.
+Nationality report's finalQuinn rationale correction recorded both old/new
+exactversions in finalreceipt, sourcebodies unchanged. Worker prepares typed
+source/allocation proposal; no native club replacement executed. Next finish
+role runtime, Horne SOURCE/runtime and rebase coherent Alty/Macc transaction;
+foreignTEAMRATING evidence still pending, no claim globalRCcomplete.
+
 ## 2005 full chain installed; role runner continuing — 2026-10-24 00:23 UTC
 
 Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`; commitf5f0f49 pushed.

@@ -1,5 +1,60 @@
 # Pi archive ledger
 
+## Superseded contextual-tactics v1 candidates — 2026-10-24 00:54 UTC
+
+Machine `joe-Vostro-3350`; source session
+`01a0592d-fcd5-7262-a637-743a8253d9b4`. Archived 24 exact
+`.local/contextual-tactics-v1/<season>/english-rollout-candidate-v1` trees,
+excluding2014-15/2015-16. All v3 siblings, registered r18a source parents,
+current26 releases and original2015 remain local. Full registered/SOURCE
+metadata reference check passed; no active target or symlink was accepted.
+
+Pi `joe@192.168.1.133`, mountedUUID `1f364414-880d-4f96-8619-3bd8c9954cc0`:
+`/srv/hdd/pm99-archive/research/contextual-tactics-superseded/20261024/english-rollout-candidate-v1-24seasons.tar.gz`.
+SHA256 `746bb26d536b670697bfaf8c242397bfd0edf617fb91ec125c36aec2ecb1ad92`.
+All2979 members independently SHA/size verified on Pi; every local original
+rehash passed before removal, catalog unchanged throughout. Internal hardlinks
+verified against already checked members; no extraction was needed.
+
+Ledger `.local/cleanup-20261024/contextual-v1-24seasons-to-pi/` retains exact
+file/target inventory, fullreferencecheck, upload, Pi verification, pre-removal
+proof, completion and reproducible archive script. Restore archive root-relative
+members under `/home/joe/pm99-research` and reverify with inventory JSON before
+reopening old candidate commands. These private historical experiments include
+native payloads; they are not a public redistribution package.
+
+Predicted reclaim961830912 allocatedbytes after shared-hardlink accounting;
+observed netfreegain947458048bytes during continuing work. Freeafter9729155072
+bytes (~9.1GiB). Do not count all1.35GBlogical bytes as local space recovered.
+
+## Completed Barrow runtime copy — 2026-10-24 00:56 UTC
+
+Retired ONLY inactive r209 disposable game358622518bytes after sealed-source,
+fullcopy inventory and no-active-mount checks. All source/releases/profile and
+startupframes/sharedprefix retained. Receipt
+`.local/cleanup-20261024/verified-inactive-final-barrow-r209-runtime/`.
+Recovery through registered local capture helper; no Pi transfer for this copy.
+Machine/session as above. This reused capture space, not extra archive gain.
+
+## O'Hara runtime copy and npm cache — 2026-10-24 00:36 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. No Pi transfer.
+Retired ONLY inactive r206 disposablegame358617313bytes after sealed-source,
+fullcopy and no-active-mount checks; every original frame/release/prefix kept.
+Receipt `.local/cleanup-20261024/verified-inactive-final-ohara-r206-runtime/`.
+Capture helper recreates this copy from the retained registered release.
+
+Cleared only `/home/joe/.npm/_cacache` using `npm cache clean --force` after
+confirming configured cache root and no active npm install/cache process.
+154710016 allocated filebytes; installed dependencies/lockfiles/source intact.
+Receipts `.local/cleanup-20261024/inactive-npm-download-cache/{before,after}.json`
+and command.log. npm downloads entries again when needed. This recovered
+headroom after a capture guard refusal; no thresholds were lowered.
+
+Pi independently checked online: `/srv/hdd` is mounted on `/dev/sda1`, UUID
+`1f364414-880d-4f96-8619-3bd8c9954cc0`, about258GB available. No archive move
+has been performed in this batch; cold-candidate reference review is underway.
+
 ## Completed Madrid runtime copy — 2026-10-24 00:22 UTC
 
 Machine `joe-Vostro-3350`; source session
