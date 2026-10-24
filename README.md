@@ -126,6 +126,9 @@ and [FC Viktoria Plzeň's dated match reports](https://www.fcviktoria.cz/zapas.a
 support the two distinct Tal Ben Haim identities in 2015/16. Original URLs and
 raw page hashes are retained; this does not imply permission to redistribute
 the publishers' text or images.
+[Viking FK’s historical Egil Østenstad profile](https://www.vikingfotball.no/former-players/ostenstad-egil)
+and the exact 11v11 biography support the reviewed Norway nationality correction;
+biography nationality is distinguished from birthplace and national-team eligibility.
 
 [Wikipedia contributors](https://en.wikipedia.org/) are also credited for
 independently cross-checked player biographies and senior career spans. Original

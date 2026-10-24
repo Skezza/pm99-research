@@ -47,6 +47,7 @@ from scripts import season_source_intake_v1 as source_intake_v1  # noqa: E402
 from scripts import season_source_club_selection_v1 as source_club_selection_v1  # noqa: E402
 from scripts import materialise_opening_squad_preallocation_v1 as opening_preallocation_v1  # noqa: E402
 from scripts import season_carrier_allocation_v1 as carrier_allocation_v1  # noqa: E402
+from scripts import season_source_hash_continuity_v1 as source_hash_continuity_v1  # noqa: E402
 from scripts import world_fixed_carrier_ledger_v2 as registry_v2  # noqa: E402
 from scripts.prepare_2015_world_fifa16_carrier_allocation import group_for_carrier  # noqa: E402
 
@@ -147,6 +148,14 @@ def _normalise_club_name(value: str) -> str:
 
     decomposed = unicodedata.normalize("NFKD", value)
     return "".join(char.casefold() for char in decomposed if char.isalnum())
+
+
+def _is_continuing_allocation_method(method: str) -> bool:
+    return method in {
+        "continuing-club-normalized-identity",
+        "continuing-club-exact-normalised-name",
+        source_hash_continuity_v1.METHOD,
+    }
 
 
 def _source_person_id(
@@ -382,6 +391,9 @@ def build_draft(
     carrier_allocation: Mapping[str, Any] | None = None,
     source_club_selection: Mapping[str, Any] | None = None,
     opening_squad_preallocation: Mapping[str, Any] | None = None,
+    continuity_preallocation: Mapping[str, Any] | None = None,
+    continuity_source_capture: Mapping[str, Any] | None = None,
+    continuity_source_assignment: Mapping[str, Any] | None = None,
     calendar_binding_audit: Mapping[str, Any] | None = None,
     template_prevalidated: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -400,6 +412,18 @@ def build_draft(
     opening_squad_preallocation = (
         copy.deepcopy(dict(opening_squad_preallocation))
         if opening_squad_preallocation is not None else None
+    )
+    continuity_preallocation = (
+        copy.deepcopy(dict(continuity_preallocation))
+        if continuity_preallocation is not None else None
+    )
+    continuity_source_capture = (
+        copy.deepcopy(dict(continuity_source_capture))
+        if continuity_source_capture is not None else None
+    )
+    continuity_source_assignment = (
+        copy.deepcopy(dict(continuity_source_assignment))
+        if continuity_source_assignment is not None else None
     )
     calendar_binding_audit = (
         copy.deepcopy(dict(calendar_binding_audit))
@@ -532,6 +556,7 @@ def build_draft(
                     raise SourcePackageBuildError("complete opening squad preallocation must put XI orders 1..11 first")
         source_rows = list(projected_rows)
         opening_preallocation_sha256 = _sha256_document(opening_squad_preallocation)
+    source_hash_continuity_context = None
     if carrier_allocation is not None:
         if carrier_allocation.get("schema_version") != carrier_allocation_v1.SCHEMA:
             raise SourcePackageBuildError("carrier allocation schema is unsupported")
@@ -610,7 +635,36 @@ def build_draft(
             if str(row.get("club_name")) != expected_club_name:
                 raise SourcePackageBuildError(f"carrier allocation {carrier_id} club name disagrees with source")
             method = str(row.get("method"))
-            if method not in {
+            if method == source_hash_continuity_v1.METHOD:
+                try:
+                    if source_hash_continuity_context is None:
+                        source_hash_continuity_context = source_hash_continuity_v1.SourceHashContinuityContext(
+                            template=template,
+                            original_template_sha256=original_template_sha256,
+                            old_preallocation=continuity_preallocation,
+                            source_intake=source_intake,
+                            registry=registry,
+                            source_capture=continuity_source_capture,
+                            source_assignment=continuity_source_assignment,
+                        ) if continuity_preallocation is not None else None
+                    source_hash_continuity_v1.validate_source_hash_continuity_allocation_row(
+                        method=method,
+                        row=row,
+                        template=template,
+                        original_template_sha256=original_template_sha256,
+                        old_preallocation=continuity_preallocation,
+                        source_intake=source_intake,
+                        registry=registry,
+                        source_capture=continuity_source_capture,
+                        source_assignment=continuity_source_assignment,
+                        target_source_club=source_club,
+                        context=source_hash_continuity_context,
+                    )
+                except source_hash_continuity_v1.SourceHashContinuityError as exc:
+                    raise SourcePackageBuildError(
+                        f"carrier allocation {carrier_id} source-hash continuity proof is invalid: {exc}"
+                    ) from exc
+            elif method not in {
                 "continuing-club-normalized-identity",
                 "same-country-replacement-canonical-source-order",
             }:
@@ -1196,10 +1250,7 @@ def build_draft(
             "out_of_scope_source_club_count": len(out_of_scope_sources),
             "exact_unique_club_match_count": len(mappings),
             "continuing_club_assignment_count": sum(
-                row["allocation_method"] in {
-                    "continuing-club-normalized-identity",
-                    "continuing-club-exact-normalised-name",
-                }
+                _is_continuing_allocation_method(row["allocation_method"])
                 for row in mapping_rows
             ),
             "same_country_replacement_count": sum(
@@ -1320,6 +1371,21 @@ def _parser() -> argparse.ArgumentParser:
         help="hash-bound opening-XI-first projection consumed before carrier slot allocation",
     )
     parser.add_argument(
+        "--continuity-preallocation",
+        type=Path,
+        help="old opening preallocation whose full SHA is pinned by the preferred template package; required only for source-hash continuity allocations",
+    )
+    parser.add_argument(
+        "--continuity-source-capture",
+        type=Path,
+        help="raw source capture required only when the new source-hash continuity method is used",
+    )
+    parser.add_argument(
+        "--continuity-source-assignment",
+        type=Path,
+        help="assignment ledger required only when the new source-hash continuity method is used",
+    )
+    parser.add_argument(
         "--calendar-binding-audit",
         type=Path,
         help="hash-bound calendar-overlay audit that may close only the calendar receipt gate",
@@ -1351,6 +1417,21 @@ def main(argv: Sequence[str] | None = None) -> int:
             if args.opening_squad_preallocation is not None
             else None
         )
+        continuity_preallocation = (
+            _read(args.continuity_preallocation, "continuity preallocation")
+            if args.continuity_preallocation is not None
+            else None
+        )
+        continuity_source_capture = (
+            _read(args.continuity_source_capture, "continuity source capture")
+            if args.continuity_source_capture is not None
+            else None
+        )
+        continuity_source_assignment = (
+            _read(args.continuity_source_assignment, "continuity source assignment")
+            if args.continuity_source_assignment is not None
+            else None
+        )
         calendar_binding_audit = (
             _read(args.calendar_binding_audit, "calendar binding audit")
             if args.calendar_binding_audit is not None
@@ -1363,6 +1444,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             carrier_allocation=allocation,
             source_club_selection=source_club_selection,
             opening_squad_preallocation=opening_preallocation,
+            continuity_preallocation=continuity_preallocation,
+            continuity_source_capture=continuity_source_capture,
+            continuity_source_assignment=continuity_source_assignment,
             calendar_binding_audit=calendar_binding_audit,
         )
         _write(args.output_audit, audit)

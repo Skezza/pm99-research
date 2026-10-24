@@ -1,6 +1,44 @@
 # PM99: current work
 
-## v150 installed and verified — 2026-10-24 08:19 UTC
+## Norway correction replay and safe disk pause — 2026-10-24 08:23 UTC
+
+Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+
+v150 remains installed/verified, 103 disposed /2706 review-or-confirmed-open.
+Canonical bounded adapters, provider integration and tests are pushed at `521f165`.
+The 2000 r225 A/B and 2001 r226 A/B country-only games have full SOURCE equality.
+Independent QA confirms exactly one native country byte and one recipe actor in
+each; no EQ, artwork, ratings or other actor changes. Real Berkovic7878 and the
+new Etuhu9184 remain exact. Lead inspected the final r225 player profile: Egil
+OSTENSTAD,28,NORWAY,Blackburn,Forward/Central Striker; digit/native proof passes.
+
+2002 r227A is sealed and native-checked; SOURCE B stopped at the 8 GiB disk
+reserve guard before creating its output. Do not rebuild A. A SOURCE-only resume
+script is ready in `resume-qa/ostenstad-nationality-v3/`. The r225 Stoke capture
+also stopped at its disk preflight before evidence creation. No corrupted game.
+Controller70883 archives inactive downloaded Playwright headless browser cache
+1248 to Pi, checks every archive file against a local manifest, then removes only
+the cache. Ledger `.local/cleanup-20261024/playwright-headless-shell-1248-to-pi/`.
+System Chrome, current game trees, evidence and Wine prefix are preserved.
+
+Workers: Disk reviews country A/B and prepares gated v151; Hayes promotes/tests
+the opt-in continuity guard and attempts 2017 four-country partial draft; Release
+finishes the native-safe Gimmelli/Serena two-actor adapter. Root reviewed/promoted
+Shuker and tested owner/order preservation. Its preliminary request reused frozen
+Berkovic ID 9b627... incorrectly: canonical input v2 uses separate additional
+Shuker ID ef44711...; old private evidence remains unchanged. Do not close a
+frozen duplicate for Shuker. Full critical ledger v4 preserves the baseline,
+reports 12 issue groups,6 delivered,6 pending,2 frozen confirmed cases and2704
+other unreviewed candidates. These are case classifications, not percent release
+completion. Calendar source rows are not independently proven native defect counts.
+
+Exact next action: finish verified cache retirement; resume ONLY r227 SOURCE B;
+capture final country profiles and fresh per-season Stoke startups serially,
+then gate v151 publication. Native Shuker A/B can follow the country build queue.
+No country release is installed yet. Evidence root remains
+`.local/consolidated-audit-20261009/parallel-rc-20261023/`.
+
+## v150 installed and verified — 2026-10-24 08:14 UTC
 
 Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
 
