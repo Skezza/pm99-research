@@ -16,7 +16,6 @@ import pytest
 
 from scripts import season_adjudicated_player_facts_v1 as adjudicated
 from scripts import season_annual_row_identity_guard_v1 as annual_identity
-from scripts import season_package_v2 as packages
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
 from scripts import season_source_verified_player_changes_v1 as changes
@@ -164,7 +163,46 @@ def _local_witness(season):
     if not path.is_file():
         pytest.skip(f'retained {season} source/release evidence is unavailable in this checkout')
     request = pipeline.read_json_file(path)
-    return path, request, request['changes'][0]['witness']
+    witness = request['changes'][0]['witness']
+    annual = witness.get('annual_identity', {})
+    bindings = [annual.get(key) for key in ('preallocation', 'source_intake', 'package',
+                                             'native_jug', 'native_eq', 'native_textos')]
+    bindings += [source for source in witness.get('official_sources', [])]
+    bindings += [source.get('receipt') for source in witness.get('official_sources', [])]
+    bindings += [source.get('body') for source in witness.get('official_subject_contexts', [])]
+    missing = []
+    for binding in bindings:
+        if (not isinstance(binding, dict) or not isinstance(binding.get('path'), str)
+                or not (ROOT / binding['path']).is_file()):
+            missing.append(binding.get('path') if isinstance(binding, dict) else None)
+    if missing:
+        pytest.skip(f'retained {season} evidence files are unavailable: {missing!r}')
+    _optional_registered_release(request['season'], request['release_id'])
+    return path, request, witness
+
+
+def _optional_registered_release(season, release_id):
+    locator = registry.locator_path(season, release_id)
+    if not locator.is_file():
+        pytest.skip(f'registered locator is unavailable: {locator}')
+    # Once a locator exists, malformed/stale release data is a test failure,
+    # never an optional-evidence skip.
+    return registry.load_registered_release(season, release_id)
+
+
+def test_optional_release_skips_only_when_locator_is_absent(tmp_path, monkeypatch):
+    locator = tmp_path / 'missing' / 'locator.json'
+    monkeypatch.setattr(registry, 'locator_path', lambda _season, _release: locator)
+    with pytest.raises(pytest.skip.Exception, match='locator is unavailable'):
+        _optional_registered_release('2003-04', 'r184a')
+
+    locator.parent.mkdir()
+    locator.write_text('{"not":"a valid release locator"}', encoding='utf-8')
+    def invalid_registered_release(_season, _release):
+        raise registry.RegistryError('invalid existing release locator')
+    monkeypatch.setattr(registry, 'load_registered_release', invalid_registered_release)
+    with pytest.raises(registry.RegistryError, match='invalid existing'):
+        _optional_registered_release('2003-04', 'r184a')
 
 
 @pytest.mark.parametrize('season', ['2002-03', '2003-04'])
