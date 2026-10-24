@@ -40,7 +40,9 @@ def test_discovers_season_presets_without_raw_sources(tmp_path: Path) -> None:
     assert discovered["2000-01"][1].title == "test-ledger"
 
 
-def test_optional_source_capture_and_catalog_allowlist(tmp_path: Path) -> None:
+def test_optional_source_capture_and_catalog_allowlist(tmp_path: Path, monkeypatch) -> None:
+    # A developer's proprietary local backup must not leak into this fixture.
+    monkeypatch.setattr("tools.season_preset_browser.discover_legacy_2015_presets", lambda: [])
     _write(tmp_path / "2015-16" / "workspace.json", {"schema_version": "workspace-v1", "workspace_id": "world-2015"})
     _write(tmp_path / "2015-16" / "sources" / "squad.json", {"source": "dated"})
     catalog = PresetCatalog(tmp_path, include_source_captures=True, **_empty_indexes(tmp_path))
@@ -265,3 +267,40 @@ def test_runtime_recipe_discovery_requires_the_matching_local_game_tree(tmp_path
 
     assert discovered["2000-01"][0].kind == "runtime-recipe"
     assert states["2000-01"]["playable"] is True
+
+
+def test_registered_recipe_wins_over_stale_ingress_and_rejects_ambiguity(tmp_path):
+    from tools.season_preset_browser import Preset
+    current = tmp_path / "current.json"
+    stale = tmp_path / "stale.json"
+    _write(current, {"schema_version": "pm99-season-package-v2", "players": [{"name": "New Player"}]})
+    _write(stale, {"schema_version": "pm99-season-package-v2", "players": [{"name": "Old Player"}]})
+    def row(path, kind):
+        return Preset("2000-01", kind + "/recipe.json", kind, kind, kind,
+                      "pm99-season-package-v2", path.stat().st_size,
+                      hashlib.sha256(path.read_bytes()).hexdigest(), path)
+    catalog = object.__new__(PresetCatalog)
+    catalog.entries = {"2000-01": [row(stale, "runtime-recipe"), row(current, "preferred-release-recipe")]}
+    selected = catalog._spreadsheet_preset("2000-01")
+    assert json.loads(selected.path.read_text())["players"][0]["name"] == "New Player"
+    catalog.entries["2000-01"].append(row(stale, "preferred-release-recipe"))
+    with pytest.raises(ValueError, match="ambiguous"):
+        catalog._spreadsheet_preset("2000-01")
+
+
+def test_current_recipe_discovery_checks_manifest_binding(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    from tools import season_preset_browser as browser
+    package = tmp_path / 'registered.json'
+    _write(package, {'schema_version': 'pm99-season-package-v2', 'players': []})
+    release = SimpleNamespace(release_id='test-release', package_path=package, manifest_sha256='a' * 64)
+    monkeypatch.setattr(browser, 'ROOT', tmp_path)
+    monkeypatch.setattr(browser.release_registry, 'load_catalog', lambda _: {
+        '2000-01': {'release_id': 'test-release', 'release_manifest_sha256': 'a' * 64}})
+    monkeypatch.setattr(browser.release_registry, 'load_registered_release', lambda *args: release)
+    rows = browser.discover_preferred_release_recipe_presets(tmp_path / 'catalog.json')
+    assert rows['2000-01'][0].path == package
+    assert rows['2000-01'][0].sha256 == hashlib.sha256(package.read_bytes()).hexdigest()
+    release.manifest_sha256 = 'b' * 64
+    with pytest.raises(ValueError, match='manifest'):
+        browser.discover_preferred_release_recipe_presets(tmp_path / 'catalog.json')

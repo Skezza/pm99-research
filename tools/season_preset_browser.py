@@ -34,6 +34,7 @@ if str(ROOT) not in sys.path:
 
 from tools import season_manifest_amendments as amendments
 from tools import season_preset_spreadsheet as spreadsheet
+from scripts import season_release_registry_v1 as release_registry
 
 
 DEFAULT_SEASONS_ROOT = ROOT / "seasons"
@@ -853,6 +854,26 @@ def discover_legacy_2015_presets() -> list[Preset]:
     return presets
 
 
+def discover_preferred_release_recipe_presets(catalog_path: Path) -> dict[str, list[Preset]]:
+    """Hash-locked current main recipes; old source revisions stay available."""
+    discovered: dict[str, list[Preset]] = {}
+    for season, binding in release_registry.load_catalog(catalog_path).items():
+        release = release_registry.load_registered_release(season, binding["release_id"])
+        if release.manifest_sha256 != binding["release_manifest_sha256"]:
+            raise ValueError("preferred recipe manifest no longer matches registered catalogue")
+        path = _safe_regular_file(release.package_path, root=ROOT)
+        if path is None or _json_summary(path)[1] != "pm99-season-package-v2":
+            raise ValueError("preferred release recipe is unavailable or unsupported")
+        discovered[season] = [_preset_from_file(
+            season=season,
+            relative_path=f"preferred-release/{release.release_id}/season-package.json",
+            kind="preferred-release-recipe",
+            role="Current preferred registered recipe (amendment sidecar)",
+            path=path, title=f"Preferred release recipe · {release.release_id}",
+        )]
+    return discovered
+
+
 class PresetCatalog:
     """An in-memory allowlist; request paths never address the filesystem directly."""
 
@@ -869,6 +890,7 @@ class PresetCatalog:
         manager_overlay_index: Path = DEFAULT_MANAGER_OVERLAY_INDEX,
         overlays_root: Path = DEFAULT_OVERLAYS_ROOT,
         amendment_output_root: Path = DEFAULT_AMENDMENT_OUTPUT_ROOT,
+        preferred_catalog_path: Path | None = None,
     ) -> None:
         self.seasons_root = seasons_root.expanduser().resolve()
         self.amendment_output_root = amendment_output_root.expanduser().resolve()
@@ -922,6 +944,14 @@ class PresetCatalog:
             "playable": False,
             "release_status": "V1 starts but is not historically release-ready; V2 correction is required",
         }
+        if preferred_catalog_path is not None:
+            for season, presets in discover_preferred_release_recipe_presets(preferred_catalog_path).items():
+                self.entries.setdefault(season, []).extend(presets)
+                self.states[season] = {
+                    "state": "registered-preferred-release",
+                    "playable": True,
+                    "release_status": "Registered preferred release; gameplay review pending",
+                }
         for presets in self.entries.values():
             presets.sort(key=lambda item: (item.kind != "season-map", item.relative_path))
         self._by_key = {
@@ -1038,6 +1068,12 @@ class PresetCatalog:
         if season not in self.entries or not SEASON_NAME.fullmatch(season):
             raise KeyError("season is not in the local catalog")
         items = self.entries[season]
+        current = [item for item in items if item.kind == "preferred-release-recipe"
+                   and item.schema == "pm99-season-package-v2"]
+        if current:
+            if len(current) != 1:
+                raise ValueError("ambiguous preferred release recipe for season")
+            return current[0]
         preferred = [
             item for item in items
             if item.kind == "runtime-recipe" and item.schema == "pm99-season-package-v2"
@@ -1505,6 +1541,7 @@ def main() -> int:
     try:
         catalog = PresetCatalog(
             args.seasons_root,
+            preferred_catalog_path=release_registry.CATALOG_PATH,
             include_source_captures=args.include_source_captures,
             playtests_root=args.playtests_root,
             authoring_root=args.authoring_root,
