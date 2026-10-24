@@ -1,5 +1,57 @@
 # PM99: current work
 
+## v156 installed and verified; next Vicenza ownership batch — 2026-10-24 13:07 UTC
+
+Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+
+INSTALLED/VERIFIED preferred2017/18 is r236a, five-seat Stoke/Rubin/Rostov/Molde
+identity correction. Other25 preferred releases and original2015 backup unchanged.
+Allfive original runner profiles ROOT-inspected; independent bitmap digits, age,
+native names/DOB/country/broad and sixfine roles, eightDBDAT input hashes and
+compiler provenance pass. Actual fresh Stoke022 is legible,1Aug2017, no crash.
+A/B rawrecipes and all461files identical; exactly5JUGpayloads change andall11,622
+otherplayers/all543clubs/managers/EQ/tactics/kits exact. Known3movedpeople keep
+all10ratings. Bjorn DOBofficially corrected26Feb1991. Five selected portraits
+are native-no-photo; source shirt numbers retained but native controls preserved.
+Foreign controls remain opaque, not an authored/proven historical AI XI.
+
+ROOT reviewed private installer, corrected draft schema/order/newline errors,
+then finalpreflight55634PASS andinstall98967PASS. Negative preflight logs retained.
+Evidence: `parallel-rc-20261023/stoke-rubin-rostov-molde-delivery-v1/`
+`v156-installer-draft/completion-proof-v156.json`, `runtime-proof-index-v1.json`,
+`native-scope-proof.json`, `complete-SOURCE-replay.json`, allfive profile proofs.
+Genuine startup: `.local/runlogs/pm99_runner/local_2017_18_r236a_stoke_startup/screens/022_line_up_inspect.png`.
+Play: `./pm99-season play 2017-18`.
+
+Authoritative checklistv156. Frozen105disposed/2704review-or-confirmed-open from2809
+UNCHANGED (this group was additional, not frozen case disposal). Criticalledgerv8:
+14groups/12delivered/2pending, SHAa69e05db...412c1. Remaining groups: actual-game
+calendar-country source-year repair; stockkit18delivered/309notdelivered. Fixed
+old stock prototype status wording; r235runtime evidence is underkitreviewprototype,
+not the older r224Gimmelli folder. No case credit to tests/builds/source captures.
+
+Next bounded actual-game candidate:2000/01 Vicenza DalCanto4482→ChristianMaggio,
+Zanchi24478→FabioViviani; preserve Bologna4065/Juve1997 and currentr235kitfix.
+Luna recovered officialFIGCMaggioPDF, original11v11openingreport, LaDomenica
+Viviani biography, Wikipedia and rawWikidataentities with exactTMIDs/DOBs. Root
+independently read original biographies and P2446/P569/P27/P413 values. RawTM
+profiles/fixture blocked; structured fixture extraction remains explicitly labelled.
+No replacement or frozen-case disposal delivered yet.
+Private generic Wikidata identity prototype failed ROOT review: date check dropped
+month and whole-document name/date/role matching could mix people. Hayes repairing
+only private prototype+negative tests; do not integrate looseversion. Release
+worker finishedinstaller/conditionalledger; Disk classifies2017country14repeated
+sourceidentity and2tailshortage diagnostic candidates. No worker editsrecipes orrunner.
+
+Norway2000/2016 official fullround1 captured; Sweden2016 fullround1 captured,
+Sweden2000 fixtures/tables captured but all7lineups empty (honestgap). Source-only.
+Ireland historicaltransition reviewed; no actualroutingbug proved byproviderlabels,
+so no newcriticalcase orblindroutingchange. See `resume-qa/ireland-calendar-transition-v1/`.
+Disk about9.3GiBfree, no active build/capture. Runtimecopy retained pending safe
+verified retirement; shared Wineprefix must be preserved. Git3dcc39e pushed generic
+FIFAadmission+docs+v155catalog. Exactnextaction: checkpointv156 catalog/docs, review
+repaired reusableWikidata bridge and deliver the two approvedVicenza corrections.
+
 ## r236 A/B built and independently checked; runtime capture active — 2026-10-24 12:44 UTC
 
 Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
@@ -15,10 +67,15 @@ SHA34e4f910...87eaf08 and `complete-SOURCE-replay.json`.
 
 ROOT serial local runner controller5808 captures Harry Souttar, Thibaud Verlinden,
 Moritz Bauer, Pavel Mogilevets, Bjorn Sigurdarson, then fresh Stoke startup.
-Original images require actual visual review and independent native/digit proof
-before promotion. Foreign mode1 opening controls are preserved opaque values,
+ROOT reviewed Souttar and Verlinden original frames; both native/runtime and
+independent ten-skill/age digit proofs passed. Three profiles and Stoke remain
+pending. Original images require review before promotion. Foreign mode1 opening controls are preserved opaque values,
 not a proven historical AI XI. Release worker independently reviewed the narrow
-foreign policy and found no blocker. Current source tests69passed.
+foreign policy and found no blocker. Current source tests69passed across provider set; latest focused exchange+admission
+regression65passed. Generic code/docs/catalog v155 committed and pushed3dcc39e.
+Private v156 installer source/native preflight now passes and correctly stops at
+missing runtime index. Root fixed tuple-order and double-LF draft assertions;
+original negative preflight logs preserved.
 
 Luna assignments: Hayes reviews new admission identity/source guards; Release
 drafts gated private v156 installer without running it; Disk validates official
@@ -26,7 +83,9 @@ NFF2016 source packet and assesses remaining calendar source recovery.
 NFF2016 original eight round1 match pages captured:16 clubs,176 XI entries,
 109 listed substitutes; no inferred DOB/nationality/managers. Receipt:
 `resume-qa/nff-norway-2016-round1-source-v1/nff-tippeligaen-2016-round1-eight-match-source-package-v1.json`
-SHAe77af08a...b19cd04. Source-only, not native delivery.
+SHAad9ca236...f032db after source-only metadata correction; prior SHAe77af08a
+was superseded transparently (unretained response-header assertions removed).
+Independent original-body QA SHA36622b2f...3ae15. Source-only, not native delivery.
 
 Counts unchanged: frozen105 disposed/2704 review-or-confirmed-open; critical
 14groups/11delivered/3pending. No build/source/test count credited as a fix.
