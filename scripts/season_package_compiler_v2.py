@@ -2111,10 +2111,12 @@ def compile_package_to_tree(
     from scripts import season_trabzon_opening_layer_v1 as trabzon_opening
     from scripts import season_maccabi_name_layer_v1 as maccabi_names
     from scripts import season_profile_assignment_pruning_layer_v1 as assignments
+    from scripts import season_inter_gimmelli_serena_exchange_v1 as gimmelli_serena
     try:
         trabzon_opening.reject_factory_recipe(package)
         maccabi_names.reject_factory_recipe(package)
         assignments.reject_factory_recipe(package)
+        gimmelli_serena.reject_factory_recipe(package)
         from scripts import season_source_bound_duplicate_opening_v1 as duplicate_opening
         duplicate_opening.reject_factory_recipe(package)
         from scripts import season_source_bound_namesake_dates_v1 as namesake_dates
@@ -2185,6 +2187,8 @@ def compile_package_to_tree(
         retained_composition.reject_factory_recipe(package)
         from scripts import season_opening_identity_exchange_v1 as opening_exchange
         opening_exchange.reject_factory_recipe(package)
+        from scripts import season_ballymena_shevlin_reserve_v1 as shevlin_reserve
+        shevlin_reserve.reject_factory_recipe(package)
         from scripts import season_resolved_period_country_v3 as resolved_country
         resolved_country.reject_factory_recipe(package)
         from scripts import season_biographic_birth_years_v1 as biography

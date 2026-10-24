@@ -222,7 +222,7 @@ def updated_package(package, plan, nationality_plan=None, manager_plan=None, clu
     return result
 
 
-def _verify_prepared_donor_workspace(workspace, release, before, patched, package, plan, assignment):
+def _verify_prepared_donor_workspace(workspace, release, before, patched, package, plan, assignment, *, assignment_module=None):
     """Resume metadata only after independently proving the entire staged game."""
     if workspace.is_symlink() or workspace.resolve()!=workspace.absolute():
         raise ValueError('unsafe prepared donor workspace')
@@ -233,10 +233,11 @@ def _verify_prepared_donor_workspace(workspace, release, before, patched, packag
             or sorted(row['path'] for row in difference['changed'])!=['DBDAT/JUG98030.FDI']
             or (game/'DBDAT/JUG98030.FDI').read_bytes()!=patched):
         raise ValueError('prepared donor game is not the exact already-computed source delta')
-    from scripts import season_donor_keeper_role_delta_v1 as donor
+    if assignment_module is None:
+        from scripts import season_donor_keeper_role_delta_v1 as assignment_module
     expected={'season-package.json':package_v2.canonical_json_bytes(package),
         'role-delta-input.json':pipeline.canonical_json_bytes(plan)+b'\n',
-        donor.filename(assignment):pipeline.canonical_json_bytes(assignment)+b'\n'}
+        assignment_module.filename(assignment):pipeline.canonical_json_bytes(assignment)+b'\n'}
     for name,raw in expected.items():
         path=workspace/name
         if path.is_symlink() or not path.is_file() or path.read_bytes()!=raw or path.stat().st_nlink!=1:
@@ -546,12 +547,18 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         from scripts import season_madrid_mode1_activation_v1 as madrid_activation
         if assignment_plan.get('schema') == madrid_activation.SCHEMA:
             assignments = madrid_activation
+        from scripts import season_inter_gimmelli_serena_exchange_v1 as gimmelli_serena
+        if assignment_plan.get('schema') == gimmelli_serena.SCHEMA:
+            assignments = gimmelli_serena
         from scripts import season_rawle_forbes_standard_v1 as rawle_forbes
         if assignment_plan.get('schema_version') == rawle_forbes.SCHEMA:
             assignments = rawle_forbes
         from scripts import season_evers_mcclune_opening_v1 as evers_mcclune
         if assignment_plan.get('schema') == evers_mcclune.SCHEMA:
             assignments = evers_mcclune
+        from scripts import season_ballymena_shevlin_reserve_v1 as shevlin_reserve
+        if assignment_plan.get('schema') == shevlin_reserve.SCHEMA:
+            assignments = shevlin_reserve
         from scripts import season_english_woolley_mcloughlin_v1 as english_reserves
         if assignment_plan.get('schema_version') == english_reserves.SCHEMA:
             assignments = english_reserves
@@ -711,6 +718,17 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             from scripts import season_duplicate_ownership_delta_v1 as portrait_delta
             original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
             portrait_archive, portrait_offsets = portrait_delta.no_photo_archive(original_archive, evers_mcclune.selected_carriers(assignment_plan))
+        elif assignment_plan.get('schema') == shevlin_reserve.SCHEMA:
+            original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
+            portrait_archive = shevlin_reserve.apply_minifoto(original_archive, assignment_plan)
+            if shevlin_reserve.apply_minifoto(portrait_archive, assignment_plan) != portrait_archive:
+                raise ValueError('Ballymena selected no-photo archive is not idempotent')
+            portrait_offsets = shevlin_reserve.photo_offsets(assignment_plan)
+        elif assignment_plan.get('schema') == gimmelli_serena.SCHEMA:
+            from scripts import season_duplicate_ownership_delta_v1 as portrait_delta
+            original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
+            portrait_archive, portrait_offsets = portrait_delta.no_photo_archive(
+                original_archive, gimmelli_serena.selected_carriers(assignment_plan))
         elif assignment_plan.get('schema') == blackburn_city.SCHEMA:
             original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
             portrait_archive = blackburn_city.apply_minifoto(original_archive, assignment_plan)
@@ -843,12 +861,13 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
     game = workspace / 'game'
     if prepared:
         from scripts import season_donor_keeper_role_delta_v1 as donor
-        if (assignment_plan is None or assignment_plan.get('schema')!=donor.SCHEMA
+        from scripts import season_ballymena_shevlin_reserve_v1 as shevlin_resume
+        if (assignment_plan is None or assignment_plan.get('schema') not in (donor.SCHEMA, shevlin_resume.SCHEMA)
                 or any((plan['updates'],nationality_plan,manager_plan,club_plan,ownership_plan,
                     visibility_plan_path,keeper_plan,birth_year_plan,opening_plan,italian_plan,trabzon_plan,name_plan))
                 or patched_eq!=original_eq or patched_ent!=original_ent or patched_exe!=original_exe):
             raise ValueError('prepared-workspace resume is limited to this exact donor role/country assignment')
-        _verify_prepared_donor_workspace(workspace,release,before,patched,result,plan,assignment_plan)
+        _verify_prepared_donor_workspace(workspace,release,before,patched,result,plan,assignment_plan, assignment_module=assignments)
     else:
         workspace.mkdir(parents=True)
         shutil.copytree(release.game_path, game, copy_function=os.link)
@@ -1120,6 +1139,16 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
             removed_target_roster_links=[dict(club_carrier_id=385,player_carrier_id=33121)],
             fixed_duplicate_case_ids=[], players_written=2, allowed_write=assignment_plan['scope'])
+    elif assignment_plan is not None and assignment_plan.get('schema') == shevlin_reserve.SCHEMA:
+        receipt.update(compilation_mode=shevlin_reserve.MODE,
+            original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
+            removed_target_roster_links=[], fixed_duplicate_case_ids=[],
+            players_written=1, allowed_write=shevlin_reserve.SCOPE)
+    elif assignment_plan is not None and assignment_plan.get('schema') == gimmelli_serena.SCHEMA:
+        receipt.update(compilation_mode=gimmelli_serena.MODE,
+            original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
+            removed_target_roster_links=[], fixed_duplicate_case_ids=[gimmelli_serena.CASE_ID],
+            players_written=2, allowed_write=assignment_plan['scope'])
     elif assignment_plan is not None and assignment_plan.get('schema_version') == english_reserves.SCHEMA:
         receipt.update(compilation_mode=english_reserves.MODE,
             original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),

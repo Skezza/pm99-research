@@ -41,3 +41,16 @@ def test_resume_refuses_changed_or_unrecognised_and_later_state(tmp_path,change)
     if change=='advanced-receipt':(workspace/'role-delta-compiler.json').write_bytes(b'{}')
     if change=='shared-recipe':os.link(workspace/'season-package.json',tmp_path/'shared.json')
     with pytest.raises(ValueError):publisher._verify_prepared_donor_workspace(*args)
+
+
+def test_resume_source_assignment_module_preserves_same_fail_closed_guards(tmp_path):
+    from scripts import season_ballymena_shevlin_reserve_v1 as shevlin
+    args = fixture(tmp_path)
+    workspace = args[0]
+    old = workspace / source.filename(args[-1])
+    new = workspace / shevlin.filename(args[-1])
+    old.rename(new)
+    publisher._verify_prepared_donor_workspace(*args, assignment_module=shevlin)
+    (workspace / 'game/DBDAT/EQ98030.FDI').write_bytes(b'unrelated corruption')
+    with pytest.raises(ValueError):
+        publisher._verify_prepared_donor_workspace(*args, assignment_module=shevlin)

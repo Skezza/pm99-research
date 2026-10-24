@@ -400,6 +400,10 @@ def build(season: str, *, release_id: str, resume: bool = False) -> dict[str, An
     reconstructed = evers_mcclune.reconstruction(previous, release_id)
     if reconstructed is not None:
         return reconstructed
+    from scripts import season_ballymena_shevlin_reserve_v1 as shevlin_reserve
+    reconstructed = shevlin_reserve.reconstruction(previous, release_id)
+    if reconstructed is not None:
+        return reconstructed
     from scripts import season_english_woolley_mcloughlin_v1 as english_reserves
     reconstructed = english_reserves.reconstruction(previous, release_id)
     if reconstructed is not None:
@@ -576,6 +580,10 @@ def build(season: str, *, release_id: str, resume: bool = False) -> dict[str, An
     if reconstructed is not None:
         return reconstructed
     from scripts import season_profile_assignment_pruning_layer_v1 as assignments
+    from scripts import season_inter_gimmelli_serena_exchange_v1 as gimmelli_serena
+    reconstructed = gimmelli_serena.reconstruction(previous, release_id)
+    if reconstructed is not None:
+        return reconstructed
     reconstructed = assignments.reconstruction(previous, release_id)
     if reconstructed is not None:
         return reconstructed

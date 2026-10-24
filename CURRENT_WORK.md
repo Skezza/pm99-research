@@ -1,5 +1,127 @@
 # PM99: current work
 
+## v154 installed; kit A/B passed independent QA — 2026-10-24 10:33 UTC
+
+Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+
+Ballymena r230a is now INSTALLED and VERIFIED as preferred2017/18. Root reviewed
+and ran the gated installer, exit0. One additional source-backed ownership finding
+was delivered; frozen counts stay **105 disposed /2704 review-or-confirmed-open**.
+Shevlin's actual profile/native readback and fresh Stoke startup passed. All other
+25 preferred releases and original2015 are preserved. Completion:
+`parallel-rc-20261023/ballymena-shevlin-delivery-v1/completion-proof-v154.json`.
+
+Kit-only2000 r235a/b are BUILT and independently byte-VERIFIED, NOT installed or
+runtime-approved. Exact18 seed remappings, all untargeted bitmaps untouched;
+only MINIESC/NANOESC/RIDIESC differ. Both full inventories and raw recipes match;
+DB, photos, palette and EXE match parentr224. Proof:
+`resume-qa/kit-seed-misassignment-review-v1/2000-r224a-prototype-v1/actual-r235-ab-independent-qa-v1.json`.
+The combined327-candidate26-season checklist is frozen separately. Source-backed
+kit artwork is excluded. Stock mapping is not target-year design authentication.
+
+Critical ledger v6: **14 issue groups /11 delivered /3 pending** (Stoke2017 late
+arrivals; calendar-country actual-game repair; newly proven stock-kit fallback
+mapping). Added group and counters are explicit, not denominator reset. Next8
+researched duplicate candidates are not yet approved/disposed. About7.7GiB free;
+runner needs8GiB plus copy budget. Disk worker checks previously trashed files for
+open descriptors, then Pi-verifies archive before permitted local retirement.
+No current/source games removed. Root next captures genuine Inter profile from
+r235 once reserve restored; Hayes advances41-country data-only draft rebased on
+r230; Release prepares reusable data-driven stock-remap command, no new renderer.
+
+
+## v153 installed; Ballymena verified; kit mapping prototype next — 2026-10-24 10:23 UTC
+
+Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+
+Installed and verified: v153, **105 frozen cases disposed /2704 review-or-confirmed-open**
+from baseline2809. Preferred2000/01 is Inter exchange r224a: Serena retains his own
+source identity and skills, Gimmelli replaces the late-arrival duplicate, real PSG
+Dalmat is unchanged. Full SOURCE A/B, independent native scope, genuine Gimmelli
+and Serena profiles plus Stoke startup passed. Original2015 remains preserved.
+Evidence: `parallel-rc-20261023/inter-gimmelli-serena-delivery-v1/` under
+`.local/consolidated-audit-20261009/`.
+
+Built and runtime-verified, NOT installed: Ballymena r230a/b. Only player19829 is
+replaced, January2018 McDermott to August2017 Shevlin; native age19 is the game's
+year-only convention. Full SOURCE equality, genuine profile and Stoke startup,
+independent delivery QA v2 passed. Hayes prepares gated v154 installer; additional
+case `0ac2ec5596106c93ae2a6e2cf577e88e6f5fee06ee4ba725e4c88196cda1e939`
+does not change frozen counts. Root owns installation and runner.
+
+Confirmed new visible issue: stock kit fallback follows the original carrier,
+not the logical club. Inter225 inherits Perugia's red/white stock art; stock Inter
+is213. Strict frozen audits find322 candidates across25 seasons plus5 legacy2015;
+source-backed kit rows are excluded. This is logical asset mapping, not palette
+encoding or exact historical-kit authentication. Root next reviews/executes the
+existing visual-patch r235A/B prototype for18 mappings in2000, then validates the
+actual Inter profile in-game before promotion or scaling. Evidence:
+`parallel-rc-20261023/resume-qa/kit-seed-misassignment-review-v1/` and
+`resume-qa/2015-kit-stock-carrier-audit-v1/`.
+
+Workers: Release independently reviews r235 actual scope; Disk freezes the combined
+26-season mapping checklist without builds; Hayes completes v154 gates. After
+r230 installation, rebase the41-country draft against the new2017 baseline, then
+continue the source-year/late-signing chain. Next8 duplicate candidates remain
+research, not automatically approved fixes. No overall RC completion claim.
+
+Disk free about8.6GiB. Pi-verified obsolete browser/Codex cache retirement and
+verified SOURCE-pair storage dedup are complete. Pair dedup recovered237MiB,
+changed only directory-entry/link metadata, preserving all file bytes; backup,
+verification and restoration ledger:
+`resume-qa/storage-dedup-20261024-v1/dedupe-completion.json`.
+Runtime copies for completed captures retired; original game/source/evidence and
+shared initialized Wine prefix preserved. No competing native builds/captures.
+
+
+## v152 installed; Inter A/B running — 2026-10-24 09:17 UTC
+
+Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+
+Shuker r223a is now installed and verified as preferred2000/01. SOURCE A/B,
+independent native/EQ/source review, genuine City player profile and fresh Stoke
+startup all passed. Additional case ef447... is delivered; frozen counts stay
+**104 disposed /2705 review-or-confirmed-open**. Current2001r226a and2002r227a
+Norway fixes remain; original2015 and all other preferred games are preserved.
+Critical ledger `confirmed-critical-batch-20261024-v5.json` tracks13 confirmed
+issue groups:9 delivered,4 pending(InterDalmat,Stoke2017latearrivals,calendar
+country-game repair,Ballymena2017Tom/Shevlin). Eight further frozen source-review
+candidates returned by Luna are not yet lead-approved/disposed; retain counts.
+
+Root corrected a second Inter candidate issue before actual build: canonical
+package JSON already includes LF, so adding LF again broke actual publisher
+byte binding. The final v3 unit test uses the REAL pipeline writer and asserts
+exact bytes. Serena's actual materialized identity/tenratings/height/weight now
+come from correct old4211, not Dalmat14660; adversarial tests passed. Wrongv1/v2
+plans and failed tests are retained negative evidence. Actualr224A/B driver is
+running controller22460 fromcurrentr223. No other native build or capture active.
+No r224 candidate has been installed. Root will inspect Gimmelli/Serena native
+search order before capturing, avoiding previous wrong-person search clicks.
+
+**Important artifact-contract clarification:** the all26 audit found1144 JSON
+artifacts,909rawmatches and235 ONE-LF differences. Existing
+`publish_contextual_tactics_delta_v1.verify_recipe_artifact` explicitly accepts
+canonical-semantic JSON hashes as well as raw bytes. Hence those235 are NOT
+historical defects or a new repair queue. Preserve all97 raw-bound/ambiguous
+files, including the separately externally bound r78 birth plan. The four Onoh
+support-file byte normalizations are benign exact-declared-SHA restoration,
+not DOB repairs or evidence of source-content mutation. No235-file rewrite,
+new framework or26native rebuild is justified. Audit:
+`resume-qa/current26-package-artifact-byte-audit-v1.json` (2ec2c17d...).
+
+Workers: Release finalInterv3 source tests passed, awaitingactualA/B independent
+QA. Hayes prepares canonical-readyBallymena source/SOURCE contract using
+standard assignment locator(no newcustomlocator); known3primaryarchivebodies
+independently read bylead. Disk sources a bounded two-caseVicenza packet from
+the next8 candidates; no deletions or disposals are approved solely fromURLlists.
+AfteractualBallymena correction, rebase41-countrydraft template/proofhashes on
+newpreferred2017 toremoveDerry/BallymenaTomcollision legitimately. Do not inject
+NIRinto4-countryselectors or bypass structural validation. Nativeimages remain
+deferred optionalcoverage; wrong-person images still mustbecleared onidentity
+replacement. Exactnextaction: complete and independently review actualr224A/B,
+then serialnativeprofiles+Stokestartup andgatedpublication; advanceBallymena in
+parallel. No global26RC completionclaim.
+
 ## v151 installed; Shuker runtime active; source-byte repair complete — 2026-10-24 08:57 UTC
 
 Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
