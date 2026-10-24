@@ -1,5 +1,163 @@
 # PM99: current work
 
+## v160 installed and runner-verified — 2026-10-24 17:41 UTC
+
+Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+
+INSTALLED / VERIFIED: 2000/01 r240a replaces the extra Blackpool Brian Reid with
+Rickie Lambert; the true Dunfermline Reid is unchanged. Seedorf's Dutch country
+is delivered in 2004/05 r241a, 2006/07 r242a and 2007/08 r243a. A/B recipes and
+full game inventories match SOURCE reconstruction. ROOT inspected all original
+profiles and fresh Stoke starts; native, bitmap skill-digit and age proofs pass.
+Preflight89088 and installer16908 passed, including preferred playable gates.
+The other 22 preferred releases and the original 2015 backup are unchanged.
+Disposable runtime game copies are retired; source games, screenshots and the
+shared initialized Wine prefix remain.
+
+Checklist v160: frozen baseline 2,809; 109 disposed; 2,700 still need review or
+correction. These are NOT 2,700 confirmed bugs. Critical ledger v12: 15 issue
+groups, 12 delivered, 3 open. Stock-kit mappings: 327 total, 38 delivered,
+289 pending. Seedorf's group remains partly open: four country candidates, two
+recipe birthday conflicts and the visible inherited left-back role. A separate
+2012 native birthday discrepancy has been flagged for adjudication; it is not
+silently counted as verified or folded into the earlier two-case count.
+
+Evidence under `.local/consolidated-audit-20261009/parallel-rc-20261023/`:
+`blackpool-lambert-delivery-v1/v160-installer-draft/` contains the completion,
+runtime attestations, playable validations and install log. Checklist SHA:
+`06a514ae78c3dc2e735852149fe8cf7cc6107bd9cc2953322f3e316dc8b651ca`.
+Raw runner screenshots remain under `.local/runlogs/pm99_runner/`, using exact
+`local_2000_01_r240a_*`, `local_2004_05_r241a_*`, `local_2006_07_r242a_*` and
+`local_2007_08_r243a_*` tags. The successful 2006 startup uses `retry1`; its
+initial OCR-timeout failure is preserved.
+
+The recipe spreadsheet now selects the registered preferred main recipe before
+old static ingress. Old manifests and hash-bound amendment sidecars are retained.
+Commit43c4001 is pushed; 13 browser tests passed. Installation checked the actual
+selector before and after promotion: Lambert replaces Reid in the selected
+recipe. No browser server was running; a new CLI start reads the current catalog.
+Generic source-bound editorial role admission8d99621 is also pushed; nine
+adversarial common-API tests passed. This is not yet a delivered role correction.
+
+BUILT, NOT INSTALLED: Turner birthday r244a/b, with exactly three changed date
+bytes and identical SOURCE reconstruction. RUNNING: reciprocal Turner/Bolger
+identity exchange r245, controller63370, using the corrected private v4 driver.
+Log: `resume-qa/calendar-2017-source-correction-input-v1/turner-bolger-owner-exchange-v1/root-r245-build.log`.
+The existing foreign identity adapter keeps carrier membership/EQ unchanged and
+moves source identities into the correct Cork/St Patrick's slots. The earlier
+v3 driver wrongly expected carrier ownership to change; do not use it.
+
+Workers: Disk independently checks actual r244 and prepares the r245 capture
+route; its r246 role-pilot driver must pass dry preflight after correcting the
+recipe `[9]` versus six native role slots distinction. Hayes researches exact
+retained-source occurrence bindings for the remaining Seedorf facts, without
+inventing provider IDs. Release checks missing-club candidates and prepares a
+reusable stock-kit cascade. Workers do not publish or operate the runner.
+
+Important correction: Hereford is already represented as “Hereford U.” at
+carrier381, with 14 of the 16 opening actors. The earlier Hereford-absent audit
+missed the abbreviation. DO NOT replace duplicate Tranmere3301 with Hereford.
+An additive audit correction and bounded alias/source-ID-aware inventory follow.
+
+Next: finish r245 SOURCE/native checks, inspect person/photo ownership, capture
+Turner, Bolger and Stoke2017, then install after validation. Continue role pilot
+r246, 2002 stock-kit r247 and the remaining kit cascade. Do not restart completed
+builds, regenerate unaffected releases or claim global RC completion.
+
+## Active next checks — 2026-10-24 17:38 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Installed remains v159 (108 frozen dispositions; no premature delivery credit).
+All3 Seedorf profile/native/digit/age and Stoke startup checks COMPLETE. r243
+runtime copy retired17008 with source/screens preserved. Lambert profile ROOT
+inspected: Rickie LAMBERT /Blackpool /18 /England /Midfielder /Central Mid;
+native/digit/age proofs PASS. Its fresh Stoke route controller40018 RUNNING.
+Do not rerun successful profiles. v160 installer pending final Stoke+rootreview.
+
+New confirmed reproducibility/editability gap: actual local recipe spreadsheet
+`tools/season_preset_browser.py` still selects stale static runtime ingress
+rather than current registered release recipe. Thus9595 currently displaysBrian
+Reid despite actual r240 game/main recipe Lambert. Hayes prepares PRIVATE minimal
+preferred-main-recipe selection proposal; preserve immutable old manifests and
+hash-bound amendments. Old untracked TSviewer and native DBeditor are different
+surfaces and do not establish recipe spreadsheet correctness.
+
+TurnerDOB actual r244A/B build controller6093 RUNNING via private additivev4
+(notv3). Worker caught v3's incorrect expectation of changed EQ owners: existing
+foreign identity-only swap intentionally keeps carriers/EQ while source persons
+swap between Cork/StPats. v4 asserts identities at correct fixed slots and EQ
+exact; reciprocal exchange stage245 NOT run yet. Limerick13497 preserved.
+
+Root integrated generic editorial factory-role admission into existing common
+masked writer, currently UNCOMMITTED and NOT BUILT. Common exact plan/bind/apply/
+idempotence passed34458. All6 roles require oldfactoryexact, source/nativeDOB+
+broad+identity and exacttargetyearfixture; no sourcedfinepositionclaim. Adversary
+requested conservative alias hold; root now requires disjoint noninitial name
+tokens between factoryactor and fullsourceperson. Disk tests shared APIs/private
+negativecases. Release worker prepared private20map2002stock r247 driver (notrun),
+now researches Hereford2000 wholeclubalternative source gaps. No broadmassrole
+application or release completion claim. Sharedimmutablemediacopy remains bounded.
+
+Next: complete LambertStoke, rootreview/installv160; then finishDOB244 and source
+identityswap245, rolepilot246 and nextstock247 serially with native/SOURCE/runtime
+checks. Do not restart completed investigations or count tests as gamefixes.
+
+## Actual correction batches built; runtime validation in progress — 2026-10-24 17:23 UTC
+
+Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+
+INSTALLED checkpoint remains v159: frozen2809 /108 disposed /2701 review-or-confirmed
+open; stock327 /38 delivered /289 pending; critical15 groups /12 delivered /3 pending.
+The large candidate count is NOT a count of confirmed bugs. Original2015 preserved.
+
+BUILT, NOT INSTALLED: Lambert Blackpool9595 r240a/b; Seedorf Dutch country
+r241a/b (2004), r242a/b (2006), r243a/b (2007). All four A/B recipe and full
+SOURCE inventories match. Shared source admission385b172, facts56d0b62 and
+bounded immutable-media-copy95e2300 committed/pushed. No unreviewed worker
+correction has installation credit. Lambert only changes target JUG payload;
+three country fixes each change one country byte and preserve DOB/roles/ratings.
+
+ROOT verified original Seedorf profiles for all3: Holland /ages28,30,31, Milan.
+Native, independent bitmap skill-digit and age checks PASS each. 2004 Stoke
+startup reviewed; 2006 successful retry1 reviewed (initial startup failed ONLY
+OCR classification timeouts, failed evidence preserved). 2007 Stoke route is
+RUNNING controller40463. Its profile passes; secondary LEFT BACK remains a
+confirmed separate visible issue, not silently counted fixed by nationality.
+Runtime copies 2004/2006 retired by exact inventory/Docker-mount checks.
+2007 copy still active; retire only after successful capture/review. Shared
+initialized r173 Wine prefix must remain. Root then runs prepared Lambert
+profile+Stoke capture serially, reviews originals, installs four-season v160
+only after all gates pass. Do not restart completed builds/captures.
+
+Evidence root `.local/consolidated-audit-20261009/parallel-rc-20261023/`:
+- `blackpool-lambert-delivery-v1/` actual build complete; independent QA underway.
+- `resume-qa/seedorf-visible-identity-correction-v1/actual-batch-v1/` three builds,
+  individual runtime reviews/native/digit/age proofs; raw runner originals under
+  `.local/runlogs/pm99_runner/local_200*_r24*a_*` (explicit bounded tags).
+- country capture log `resume-qa/seedorf-visible-identity-correction-v1/root-r243-capture.log`.
+
+Workers: Hayes independently reviews actual r240 and prepares v160 installer;
+root requested explicit check of stale preserved English source overlay vs
+main effective recipe/compiler/editor identity. Release worker prepares PRIVATE
+generic guarded editorial fine-role pilot, not shared or published; root caught
+remaining hardcoded provider ID and requested generic identity guard. Disk
+worker independently reviews Turner DOB244 + reciprocal Cork/StPats exchange245
+private driver/evidence before root execution. Limerick13497 remains unresolved.
+Do not run competing builds/runner or modify shared recipes from workers.
+
+Storage: ~8.6GiB free WITH current one runtime copy; 8GiB reserve. Pi factory-media
+archive/dedupe complete, r239 archive SHA39fd6a662b3d30e4df54e45414a25c564024f66fcc14b0e2eef8d52dd7e99d66.
+Root terminated own obsolete read-only recursive-glob PID3140565 after ownership
+and transcript verification; no source loss. Ledger `.local/cleanup-20261024/orphan-recursive-glob-3140565/`.
+Never recursive-glob all `.local`: Wine symlinks can recurse through filesystems.
+Preserve unrelated dirty runner/editor submodules and untracked preset viewer.
+
+Exact next action: finish r243 Stoke capture40463, visually review/bind, retire
+its disposable game copy; execute existing Lambert capture_r240_root_v1.py;
+then review and execute v160 installer, update counts only after actual delivery.
+Continue Turner244/245, guarded source-backed editorial role fix, remaining stock
+kit cascade. No global RC completion claim; remaining confirmed groups are open.
+
 ## v159 installed: 2001/02 kit mappings; three active issue groups — 2026-10-24 15:52 UTC
 
 Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
