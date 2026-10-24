@@ -80,7 +80,7 @@ def verify_historical_identity(witness):
     return int(historical['provider_player_id'])
 
 
-def adjudicate(witness):
+def _adjudicate_official_sources(witness):
     """Reproduce historical identity before admitting independent official facts."""
     verify_historical_identity(witness)
     sources = witness['official_sources']
@@ -92,6 +92,18 @@ def adjudicate(witness):
         receipt = pipeline.read_json_file(checked(source['receipt']))
         if receipt.get('url') != source['url'] or receipt.get('raw_sha256') != source['sha256']:
             raise ValueError('official source original URL/SHA receipt differs')
+        if source.get('provider') == 'premier-league-sdp-player-api':
+            from scripts.season_premier_league_profile_facts_v1 import parse_player_json
+            identity = parse_player_json(body.read_bytes(), url=source['url'],
+                provider_player_id=source['provider_player_id'], full_name=witness['full_name'])
+            if source['birth_date'] != {'label': 'dates.birth', 'literal': identity['birth_date'], 'format': '%Y-%m-%d'}:
+                raise ValueError('Premier League JSON birthday claim differs from its bound record')
+            birthdays.append(identity['birth_date'])
+            if source.get('nationality'):
+                if source['nationality'] != {'label': 'country.country', 'literal': identity['nationality_label'], 'code': identity['nationality']}:
+                    raise ValueError('Premier League JSON country claim differs from its bound record')
+                countries.append(identity['nationality'])
+            continue
         parsed = urlsplit(source['url'])
         if parsed.scheme != 'https' or not parsed.hostname:
             raise ValueError('official source needs an explicit HTTPS origin')
@@ -102,7 +114,7 @@ def adjudicate(witness):
         literal = claim['label'] + ' ' + claim['literal']
         if literal not in text:
             raise ValueError('published birthday label/literal absent')
-        birthdays.append(datetime.strptime(claim['literal'], claim['format']).date().isoformat())
+        birthdays.append(_literal_day_birthday(claim))
         if source.get('nationality'):
             country = source['nationality']
             if (country['label'] != 'Nationality'
@@ -117,6 +129,87 @@ def adjudicate(witness):
             or ('nationality' in values and set(countries) != {values['nationality']})):
         raise ValueError('independent birthday or explicit nationality claims disagree')
     return copy.deepcopy(values)
+
+
+def _literal_day_birthday(claim):
+    fmt, literal = claim['format'], claim['literal']
+    if (not isinstance(fmt, str) or not isinstance(literal, str) or not literal.strip()
+            or '%d' not in fmt or '%Y' not in fmt
+            or not any(month in fmt for month in ('%m', '%b', '%B'))):
+        raise ValueError('birthday source must publish a precise day, month and full year')
+    return datetime.strptime(literal, fmt).date().isoformat()
+
+
+def _subject_birthday_context(page, source, name, context):
+    containers = [node for node in page.select('article,section,div,table,dl')
+                  if name in node.get_text(' ', strip=True)
+                  and context in ' '.join(node.get_text(' ', strip=True).split())]
+    minimal = [node for node in containers
+               if not any(child is not node and node in child.parents for child in containers)]
+    if len(minimal) != 1:
+        raise ValueError('birthday needs one profile container with its subject heading or full-name field')
+    node = minimal[0]
+    headings = [h.get_text(' ', strip=True) for h in node.select('h1,h2,h3,h4,h5,h6')]
+    text = ' '.join(node.get_text(' ', strip=True).split())
+    label = source.get('subject_label')
+    if (any(h != name for h in headings)
+            or (not headings and (not isinstance(label, str) or not label.strip()
+                                  or label + ' ' + name not in text))):
+        raise ValueError('birthday profile container has another subject heading or lacks an exact full-name field')
+
+
+def adjudicate_independent_sources(witness):
+    """Typed alternative: one official bio plus a distinct named reference source."""
+    verify_historical_identity(witness)
+    sources = witness['independent_sources']
+    allowed = {'official_club_or_association_bio', 'independent_named_reference'}
+    required = {'official_club_or_association_bio', 'independent_named_reference'}
+    if (not isinstance(sources, list) or len(sources) < 2
+            or len({urlsplit(s['url']).hostname for s in sources}) != len(sources)
+            or not required.issubset({s.get('publisher_class') for s in sources})
+            or any(s.get('publisher_class') not in allowed for s in sources)):
+        raise ValueError('independent sources require distinct hosts, an official club/association bio, and a named reference')
+    birthdays = []
+    for source in sources:
+        body = checked(source)
+        receipt = pipeline.read_json_file(checked(source['receipt']))
+        if receipt.get('url') != source['url'] or receipt.get('raw_sha256') != source['sha256']:
+            raise ValueError('independent source original URL/SHA receipt differs')
+        parsed = urlsplit(source['url'])
+        if parsed.scheme != 'https' or not parsed.hostname:
+            raise ValueError('independent source needs explicit HTTPS origin')
+        text = ' '.join(BeautifulSoup(body.read_bytes(), 'lxml').get_text(' ', strip=True).split())
+        if witness['full_name'] not in text:
+            raise ValueError('independent source does not name the historical person')
+        page = BeautifulSoup(body.read_bytes(), 'lxml')
+        headings = [h.get_text(' ', strip=True) for h in page.select('title,h1,h2,h3')]
+        if not any(re.search(r'(?<!\w)' + re.escape(witness['full_name']) + r'(?!\w)', h) for h in headings):
+            raise ValueError('independent biography subject heading does not identify the full person')
+        anchors = source.get('identity_anchors')
+        if (not isinstance(anchors, list) or not anchors
+                or any(not isinstance(a, str) or not a.strip() or a not in text for a in anchors)):
+            raise ValueError('independent source lacks reviewed identity-context anchors')
+        claim = source['birth_date']
+        context = claim.get('context')
+        if (not isinstance(context, str) or context not in text
+                or not claim.get('label') or not claim.get('literal')
+                or claim['label'] not in context or claim['literal'] not in context):
+            raise ValueError('independent source verbatim birthday context/label/literal absent')
+        _subject_birthday_context(page, source, witness['full_name'], context)
+        birthdays.append(_literal_day_birthday(claim))
+    values = witness['values']
+    date.fromisoformat(values['birth_date'])
+    if set(values) != {'birth_date'} or set(birthdays) != {values['birth_date']}:
+        raise ValueError('independent source birthday claims disagree or contain unsupported fields')
+    return copy.deepcopy(values)
+
+
+def adjudicate(witness):
+    if 'independent_sources' in witness:
+        if 'official_sources' in witness:
+            raise ValueError('choose one explicit source-adjudication policy')
+        return adjudicate_independent_sources(witness)
+    return _adjudicate_official_sources(witness)
 
 
 def prepare(base, path, request):
@@ -149,10 +242,18 @@ def prepare(base, path, request):
         raw = entry.decode_payload(jug)
         end = native_player(raw, carrier)['name_end']
         old_country = raw[end + 8] ^ 0x61
+        native_before_dob = selection.get('native_before_birth_date')
+        actor_dob = actor['facts']['birth_date']
+        if actor_dob == {'policy': 'preserve-existing-mode1'}:
+            # Narrow branch for an explicitly measured old native birthday. The old value
+            # remains a checked preimage, never an identity source.
+            if not isinstance(native_before_dob, str) or observed['birth_date'] != native_before_dob:
+                raise ValueError('preserved mode1 DOB requires an explicit exact native preimage')
+        elif observed['birth_date'] != actor_dob or (native_before_dob is not None and observed['birth_date'] != native_before_dob):
+            raise ValueError('adjudicated existing birthday fact differs from native preimage')
         if (actor != selection['before'] or actor['person_id'] != witness['person_id']
                 or actor.get('source_name') != witness['full_name']
                 or observed['name'].casefold() != actor['name'].casefold()
-                or observed['birth_date'] != actor['facts']['birth_date']
                 or owners.get(carrier) != {clubs[actor['club_id']]['carrier_id']}
                 or old_country != codes[selection['native_before_country']]):
             raise ValueError('adjudicated actor/native/source identity or exact preimage differs')
@@ -188,7 +289,9 @@ def prepare(base, path, request):
         source_input=changes.binding(path), package_sha256=registry.sha256_file(base.package_path),
         jug_sha256=changes.digest(jug), eq_sha256=changes.digest(eq),
         textos_sha256=registry.sha256_file(base.game_path / 'DBDAT/TEXTOS.PKF'),
-        updates=updates, scope=SCOPE, source_policy='historical-row-provider-ID-before-independent-official-facts-v1')
+        updates=updates, scope=SCOPE, source_policy=('historical-row-provider-ID-before-official-plus-independent-named-reference-facts-v1'
+            if any('independent_sources' in row['witness'] for row in request['changes'])
+            else 'historical-row-provider-ID-before-independent-official-facts-v1'))
     result['transaction_id'] = changes.digest(packages.canonical_json_bytes(result))[:24]
     validate_mask(result)
     return result

@@ -430,3 +430,93 @@ def test_birth_date_only_plan_rejects_missing_or_extra_native_masks():
     expanded_row['witness']['values'] = dict(expanded_row['values'])
     with pytest.raises(ValueError):
         subject.validate_mask(expanded)
+
+
+@pytest.mark.parametrize('claim', [
+    {'literal': '1989', 'format': '%Y'},
+    {'literal': 'April 1989', 'format': '%B %Y'},
+    {'literal': '19 April', 'format': '%d %B'},
+    {'literal': '19 April 89', 'format': '%d %B %y'},
+])
+def test_secondary_birthday_cannot_invent_missing_date_components(claim):
+    with pytest.raises(ValueError, match='precise day'):
+        subject._literal_day_birthday(claim)
+
+
+def test_ordinal_official_birthday_preserves_day_month_and_full_year():
+    assert subject._literal_day_birthday({'literal': '19th April, 1989',
+                                          'format': '%dth %B, %Y'}) == '1989-04-19'
+
+
+@pytest.fixture
+def independent_witness(tmp_path, monkeypatch):
+    monkeypatch.setattr(subject, 'verify_historical_identity', lambda witness: 77)
+    def checked(bound):
+        path = Path(bound['path'])
+        if hashlib.sha256(path.read_bytes()).hexdigest() != bound['sha256']:
+            raise ValueError('test-bound source changed')
+        return path
+    monkeypatch.setattr(subject, 'checked', checked)
+    sources = []
+    for n, publisher in enumerate(['official_club_or_association_bio', 'independent_named_reference']):
+        raw = b'<article><h1>Example Person</h1><p>Example Town</p><p>Born 19 April 1989</p></article>'
+        body = tmp_path / f'{n}.html'
+        body.write_bytes(raw)
+        url = f'https://source{n}.example/player'
+        digest = hashlib.sha256(raw).hexdigest()
+        receipt = tmp_path / f'{n}.json'
+        receipt.write_text(json.dumps({'url': url, 'raw_sha256': digest}))
+        sources.append({'url': url, 'path': str(body), 'sha256': digest,
+            'receipt': {'path': str(receipt), 'sha256': hashlib.sha256(receipt.read_bytes()).hexdigest()},
+            'publisher_class': publisher, 'identity_anchors': ['Example Town'],
+            'birth_date': {'context': 'Born 19 April 1989', 'label': 'Born',
+                           'literal': '19 April 1989', 'format': '%d %B %Y'}})
+    return {'full_name': 'Example Person', 'values': {'birth_date': '1989-04-19'},
+            'independent_sources': sources}
+
+
+def test_official_and_reference_sources_keep_their_distinct_publisher_classes(independent_witness):
+    assert subject.adjudicate(independent_witness) == {'birth_date': '1989-04-19'}
+
+
+def test_two_references_cannot_be_claimed_as_official_corroboration(independent_witness):
+    independent_witness['independent_sources'][0]['publisher_class'] = 'independent_named_reference'
+    with pytest.raises(ValueError, match='official club'):
+        subject.adjudicate(independent_witness)
+
+
+def test_reference_sidebar_name_cannot_identify_another_subjects_birthday(independent_witness):
+    item = independent_witness['independent_sources'][1]
+    path = Path(item['path'])
+    path.write_text('<h1>Different Person</h1><aside>Example Person</aside><p>Example Town</p><p>Born 19 April 1989</p>')
+    item['sha256'] = hashlib.sha256(path.read_bytes()).hexdigest()
+    receipt = Path(item['receipt']['path'])
+    receipt.write_text(json.dumps({'url': item['url'], 'raw_sha256': item['sha256']}))
+    item['receipt']['sha256'] = hashlib.sha256(receipt.read_bytes()).hexdigest()
+    with pytest.raises(ValueError, match='subject heading'):
+        subject.adjudicate(independent_witness)
+
+
+def test_independent_reference_cannot_smuggle_an_unadmitted_country_change(independent_witness):
+    independent_witness['values']['nationality'] = 'ENG'
+    with pytest.raises(ValueError, match='unsupported fields'):
+        subject.adjudicate(independent_witness)
+
+
+def test_two_source_classes_cannot_share_one_publisher_host(independent_witness):
+    independent_witness['independent_sources'][1]['url'] = independent_witness['independent_sources'][0]['url']
+    with pytest.raises(ValueError, match='distinct hosts'):
+        subject.adjudicate(independent_witness)
+
+
+def test_correct_page_subject_cannot_borrow_a_nested_other_players_birthday(independent_witness):
+    item = independent_witness['independent_sources'][1]
+    path = Path(item['path'])
+    path.write_text('<article><h1>Example Person</h1><p>Example Town</p>'
+                    '<section><h3>Other Player</h3><p>Born 19 April 1989</p></section></article>')
+    item['sha256'] = hashlib.sha256(path.read_bytes()).hexdigest()
+    receipt = Path(item['receipt']['path'])
+    receipt.write_text(json.dumps({'url': item['url'], 'raw_sha256': item['sha256']}))
+    item['receipt']['sha256'] = hashlib.sha256(receipt.read_bytes()).hexdigest()
+    with pytest.raises(ValueError, match='another subject heading'):
+        subject.adjudicate(independent_witness)
