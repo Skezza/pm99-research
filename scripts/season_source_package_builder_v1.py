@@ -178,6 +178,45 @@ def _source_person_id(
     return f"person-source-{digest}"
 
 
+def _apply_source_club_label(
+    club: dict[str, Any], *, carrier_id: int, source_name: str,
+    allocation_method: str,
+) -> None:
+    # A continuing match may come from the original carrier registry, while
+    # this template already describes a different season. Never leave that
+    # carrier with an unrelated source-club label.
+    if (
+        allocation_method == "same-country-replacement-canonical-source-order"
+        or _normalise_club_name(str(club["name"])) != _normalise_club_name(source_name)
+    ):
+        country_group = _carrier_group(carrier_id)
+        if country_group is None:
+            raise SourcePackageBuildError(f"source-mapped carrier {carrier_id} has no fixed country group")
+        club["name"] = source_name
+        club["full_name"] = source_name
+        club["identity_id"] = _source_club_identity_id(country_group, source_name)
+
+
+def _verify_source_club_label_postimage(
+    mapping_rows: list[dict[str, Any]], clubs_by_carrier: Mapping[int, Mapping[str, Any]],
+) -> None:
+    """Fail closed if any mapped source squad returned under another club label."""
+    seen: set[int] = set()
+    for row in mapping_rows:
+        carrier_id = int(row["carrier_id"])
+        if carrier_id in seen:
+            raise SourcePackageBuildError(f"duplicate source-club label mapping for carrier {carrier_id}")
+        seen.add(carrier_id)
+        club = clubs_by_carrier.get(carrier_id)
+        source_name = str(row["source_club_name"])
+        if club is None or _normalise_club_name(str(club.get("name", ""))) != _normalise_club_name(source_name):
+            actual = None if club is None else club.get("name")
+            raise SourcePackageBuildError(
+                f"source-club label postimage mismatch for carrier {carrier_id}: "
+                f"expected {source_name!r}, got {actual!r}"
+            )
+
+
 def _source_club_identity_id(country_group: str, club_name: str) -> str:
     payload = {"country_group": country_group, "normalised_name": _normalise_club_name(club_name)}
     return f"club-source-{_sha256_document(payload)}"
@@ -1088,19 +1127,10 @@ def build_draft(
         club = template_clubs[carrier_id]
         club["proof"] = _proof(artifact_id)
         source_name = str(source_club["selector"]["club_name"])
-        # A continuing match may come from the original carrier registry,
-        # while this template already describes a different season. Its
-        # players must not acquire the historical squad but retain an
-        # unrelated template label (e.g. Bremen under Hannover in 2012/13).
-        # Keep an already equivalent friendly spelling unchanged.
-        if (allocation_method == "same-country-replacement-canonical-source-order" or
-                _normalise_club_name(str(club["name"])) != _normalise_club_name(source_name)):
-            country_group = _carrier_group(carrier_id)
-            if country_group is None:
-                raise SourcePackageBuildError(f"source-mapped carrier {carrier_id} has no fixed country group")
-            club["name"] = source_name
-            club["full_name"] = source_name
-            club["identity_id"] = _source_club_identity_id(country_group, source_name)
+        _apply_source_club_label(
+            club, carrier_id=carrier_id, source_name=source_name,
+            allocation_method=allocation_method,
+        )
 
     template["season"] = {
         "start_year": start_year,
@@ -1331,6 +1361,7 @@ def build_draft(
     )
     if identified_slots:
         audit["coverage"]["updated_player_slots_with_provider_identity"] = identified_slots
+    _verify_source_club_label_postimage(mapping_rows, template_clubs)
     return template, audit
 
 

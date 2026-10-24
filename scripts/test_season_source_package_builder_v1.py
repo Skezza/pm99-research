@@ -714,3 +714,33 @@ def test_unique_earliest_opening_fixture_claim_owns_duplicate_source_profile(mon
     )
     assert tied_audit["coverage"]["source_person_identity_conflict_count"] == 1
     assert tied_audit["coverage"]["source_person_identity_unique_earliest_opening_fixture_resolution_count"] == 0
+
+
+def test_label_postimage_rejects_duplicate_carrier_mapping():
+    rows = [{"carrier_id": 1, "source_club_name": "Real Sociedad"}] * 2
+    with pytest.raises(builder.SourcePackageBuildError, match="duplicate source-club label mapping"):
+        builder._verify_source_club_label_postimage(rows, {1: {"name": "Real Sociedad"}})
+
+
+def test_build_return_rejects_stale_label_after_mapping(monkeypatch):
+    monkeypatch.setattr(builder.package_v2, "validate_package", lambda *_a, **_k: None)
+    monkeypatch.setattr(builder.registry_v2, "validate_registry", lambda *_a, **_k: None)
+    monkeypatch.setattr(builder, "_apply_source_club_label", lambda *args, **kwargs: None)
+    template = _template()
+    template["clubs"][0]["name"] = "Valencia"
+    with pytest.raises(builder.SourcePackageBuildError, match="source-club label postimage mismatch"):
+        builder.build_draft(template=template, source_intake=_intake(), registry=_registry(), template_prevalidated=True)
+
+
+def test_label_postimage_accepts_spelling_alias_and_unmapped_club():
+    builder._verify_source_club_label_postimage(
+        [{"carrier_id": 1, "source_club_name": "Réal Sociedad"}],
+        {1: {"name": "Real Sociedad"}, 2: {"name": "Unmapped Club"}},
+    )
+
+
+def test_label_postimage_rejects_missing_carrier():
+    with pytest.raises(builder.SourcePackageBuildError, match="source-club label postimage mismatch"):
+        builder._verify_source_club_label_postimage(
+            [{"carrier_id": 1, "source_club_name": "Real Sociedad"}], {},
+        )
