@@ -120,3 +120,80 @@ def test_dom_fallback_reads_nested_transfermarkt_player_rows(monkeypatch: pytest
         "position": "D", "shirt_number": 4, "weight_kg": None,
         "source_identity": {"provider": "transfermarkt", "player_id": "7"},
     }]
+
+
+def _nested_squad_row(pid: int, name: str, position: str, nation: str) -> str:
+    return f'''<tr><td title="{position}"><div class="rn_nummer">12</div></td>
+      <td><table><tr><td><a href="/person/profil/spieler/{pid}">{name}</a></td></tr>
+      <tr><td>Centre-Forward</td></tr></table></td><td>21</td>
+      <td><img class="flaggenrahmen" title="{nation}"></td></tr>'''
+
+
+def test_nonempty_legacy_parse_does_not_hide_other_literal_player_rows(monkeypatch):
+    legacy = {'name': 'Existing Keeper', 'position': 'G', 'nationality': 'UNK',
+              'shirt_number': 12, 'birth_date': '1980-01-02', 'height_cm': 185, 'weight_kg': 80,
+              'source_identity': {'provider': 'transfermarkt', 'player_id': '11'}}
+    monkeypatch.setattr(subject, 'parse_squad', lambda raw: [dict(legacy)])
+    rows = (_nested_squad_row(11, 'Existing Keeper', 'Goalkeeper', 'Norway')
+            + _nested_squad_row(12, 'Kosuke Example', 'Attack', 'Japan'))
+    parsed = subject.parse_squad_with_dom_fallback(('<table class="items"><tbody>'+rows+'</tbody></table>').encode())
+    by_id = {p['source_identity']['player_id']: p for p in parsed}
+    assert set(by_id) == {'11', '12'}
+    assert by_id['11']['birth_date'] == '1980-01-02'
+    assert by_id['11']['height_cm'] == 185
+    assert by_id['11']['nationality'] == 'NOR'
+    assert by_id['12']['nationality'] == 'JPN'
+
+
+def test_structured_role_ignores_role_words_inside_a_persons_name(monkeypatch):
+    monkeypatch.setattr(subject, 'parse_squad', lambda raw: [])
+    row = _nested_squad_row(12, 'Tom Backman', 'Attack', 'Norway')
+    parsed = subject.parse_squad_with_dom_fallback(('<table class="items"><tbody>'+row+'</tbody></table>').encode())
+    assert parsed[0]['position'] == 'F'
+
+
+def test_literal_distinct_ids_keep_same_named_players(monkeypatch):
+    monkeypatch.setattr(subject, 'parse_squad', lambda raw: [])
+    rows = _nested_squad_row(12, 'Emerson', 'Midfield', 'Brazil') + _nested_squad_row(13, 'Emerson', 'Midfield', 'Brazil')
+    parsed = subject.parse_squad_with_dom_fallback(('<table class="items"><tbody>'+rows+'</tbody></table>').encode())
+    assert {p['source_identity']['player_id'] for p in parsed} == {'12', '13'}
+
+
+def test_unparsed_literal_profile_row_is_an_explicit_gap(monkeypatch):
+    monkeypatch.setattr(subject, 'parse_squad', lambda raw: [])
+    row = _nested_squad_row(12, 'Unknown Position', 'Unrecognized', 'Brazil')
+    with pytest.raises(CaptureError, match='omitted literal player rows'):
+        subject.parse_squad_with_dom_fallback(('<table class="items"><tbody>'+row+'</tbody></table>').encode())
+
+
+@pytest.mark.parametrize('label,code', [('Kenya','KEN'),('Lebanon','LIB'),('Guinea-Bissau','GNB'),('Comoros','COM'),('Isle of Man','IMN')])
+def test_literal_country_flags_keep_known_source_codes(monkeypatch, label, code):
+    monkeypatch.setattr(subject, 'parse_squad', lambda raw: [])
+    row = _nested_squad_row(12, 'Known Person', 'Midfield', label)
+    parsed = subject.parse_squad_with_dom_fallback(('<table class="items"><tbody>'+row+'</tbody></table>').encode())
+    assert parsed[0]['nationality'] == code
+
+
+def test_proven_unrepresentable_isle_of_man_renders_unknown_not_another_country():
+    from scripts.build_2015_english92_release import _country_code
+    assert _country_code('IMN', {'XXX': 42, 'ENGLAND': 7}) == 42
+
+
+def test_unidentified_namesake_is_not_silently_dropped(monkeypatch):
+    unknown = {'name': 'Emerson', 'position': 'M', 'birth_date': None}
+    monkeypatch.setattr(subject, 'parse_squad', lambda raw: [unknown])
+    row = _nested_squad_row(12, 'Emerson', 'Midfield', 'Brazil')
+    parsed = subject.parse_squad_with_dom_fallback(('<table class="items"><tbody>'+row+'</tbody></table>').encode())
+    assert len(parsed) == 2
+    assert unknown in parsed
+    assert sum('source_identity' in p for p in parsed) == 1
+
+
+def test_conflicting_legacy_repeats_cannot_be_overwritten(monkeypatch):
+    first = {'name': 'Emerson', 'position': 'M', 'birth_date': '1980-01-01',
+             'source_identity': {'provider': 'transfermarkt', 'player_id': '12'}}
+    second = dict(first, birth_date='1990-01-01')
+    monkeypatch.setattr(subject, 'parse_squad', lambda raw: [first, second])
+    row = _nested_squad_row(12, 'Emerson', 'Midfield', 'Brazil')
+    with pytest.raises(CaptureError, match='conflicting'):
+        subject.parse_squad_with_dom_fallback(('<table class="items"><tbody>'+row+'</tbody></table>').encode())

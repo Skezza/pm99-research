@@ -208,3 +208,72 @@ def test_selection_bound_join_rejects_stale_selection_hash_and_tampered_selected
         join.validate_selection_bound_preallocation(
             preallocation=result, source_intake=intake, source_club_selection=selection,
         )
+
+
+def _provider_id_join_inputs():
+    selector = {'country_catalog': 'brazil', 'competition_catalog': 'seriea', 'club_name': 'Example', 'source_path': 'x', 'source_sha256': 'a'*64}
+    ids = ['11','12'] + [str(i) for i in range(20,30)]
+    players = [{'source_row_index': n, 'source_row_sha256': f'{n+1:064x}', 'facts': {
+        'name': 'Emerson' if pid in ('11','12') else 'Player '+pid,
+        'birth_date': None, 'source_identity': {'provider':'transfermarkt','player_id':pid}}}
+        for n,pid in enumerate(ids)]
+    starters = [{'source_player_id':pid, 'source_url':f'https://www.transfermarkt.com/person/profil/spieler/{pid}'}
+                for pid in ['12']+ids[2:]]
+    intake = {'schema_version':join.INTAKE_SCHEMA,'season':{'label':'2017/18'},'source_capture_sha256':'b'*64,
+              'source_clubs':[{'selector':selector,'competition_name':'League','players':players}]}
+    lineup = {'schema_version':join.LINEUP_SCHEMA,'clubs':[{'source_selector':selector,'first_league_fixture_date':'2017-05-14','source_match_id':'9','starting_xi':starters}]}
+    reconciliation = {'schema_version':join.RECONCILIATION_SCHEMA,'sources':{'source_capture_sha256':'b'*64,'lineup_capture_sha256':'LINEUP'},
+                      'clubs':[{'source_selector':selector,'starting_xi':[{'source_player_id':'12','source_name':'Emerson','source_birth_date':None}]}]}
+    additions = {'schema_version':join.ADDITIONS_SCHEMA,'sources':{'lineup_capture_sha256':'LINEUP','reconciliation_sha256':'RECON'},'rows':[]}
+    return intake,lineup,reconciliation,additions
+
+
+def _provider_join(values):
+    intake,lineup,reconciliation,additions=values
+    return join.materialise(source_intake=intake,source_intake_sha256='INTAKE',lineup=lineup,lineup_sha256='LINEUP',
+        reconciliation=reconciliation,reconciliation_sha256='RECON',additions=additions,additions_sha256='ADDITIONS')
+
+
+def test_original_profile_id_selects_the_right_same_name_without_a_birthday():
+    result=_provider_join(_provider_id_join_inputs())
+    club=result['source_clubs'][0]
+    assert club['opening_xi_complete']
+    assert club['players'][0]['facts']['source_identity']['player_id']=='12'
+    assert club['players'][-1]['facts']['source_identity']['player_id']=='11'
+
+
+def test_same_name_cannot_override_a_conflicting_literal_provider_id():
+    values=_provider_id_join_inputs()
+    values[0]['source_clubs'][0]['players']=values[0]['source_clubs'][0]['players'][1:]
+    values[1]['clubs'][0]['starting_xi'][0].update(source_player_id='99',source_url='https://www.transfermarkt.com/person/profil/spieler/99')
+    values[2]['clubs'][0]['starting_xi'][0]['source_player_id']='99'
+    result=_provider_join(values)
+    assert not result['source_clubs'][0]['opening_xi_complete']
+    assert result['source_clubs'][0]['opening_xi_blockers'][0]['source_player_id']=='99'
+
+
+def test_unqualified_number_is_not_a_provider_identity_bridge():
+    values=_provider_id_join_inputs()
+    values[1]['clubs'][0]['starting_xi'][0].pop('source_url')
+    result=_provider_join(values)
+    assert not result['source_clubs'][0]['opening_xi_complete']
+
+
+def test_original_profile_url_and_id_must_agree():
+    values=_provider_id_join_inputs()
+    values[1]['clubs'][0]['starting_xi'][0]['source_url']='https://www.transfermarkt.com/person/profil/spieler/99'
+    with pytest.raises(join.PreallocationError,match='URL and player ID disagree'):
+        _provider_join(values)
+
+
+def test_exact_profile_id_cannot_be_inferred_from_unidentified_namesake():
+    values = _provider_id_join_inputs()
+    players = values[0]['source_clubs'][0]['players']
+    players[:] = players[1:]
+    players[0]['facts'].pop('source_identity')
+    values[1]['clubs'][0]['starting_xi'][0].update(
+        source_player_id='99', source_url='https://www.transfermarkt.com/person/profil/spieler/99')
+    values[2]['clubs'][0]['starting_xi'][0]['source_player_id'] = '99'
+    result = _provider_join(values)
+    assert not result['source_clubs'][0]['opening_xi_complete']
+    assert result['source_clubs'][0]['opening_xi_blockers'][0]['source_player_id'] == '99'

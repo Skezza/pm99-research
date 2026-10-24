@@ -1028,6 +1028,7 @@ NATIONALITY = {
 # while QA can report them as a real table-capacity limitation instead of
 # masking the source fact or substituting a different country.
 UNREPRESENTABLE_NATIONALITY = frozenset({
+    "IMN",  # Isle of Man: retain the source fact; no native country/flag entry.
     "ANT",  # Netherlands Antilles
     "ARU",  # Aruba
     "CUW",  # Curaçao

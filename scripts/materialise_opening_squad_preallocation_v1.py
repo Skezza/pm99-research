@@ -331,8 +331,12 @@ def materialise(
     for selector, source_club in sorted(clubs.items()):
         original = list(source_club["players"])
         by_name: dict[str, list[dict[str, Any]]] = {}
+        by_provider_id: dict[str, list[dict[str, Any]]] = {}
         for player in original:
             by_name.setdefault(str(player["facts"]["name"]), []).append(player)
+            identity = player['facts'].get(identity_lib.IDENTITY_FIELD, {})
+            if identity.get('provider') == 'transfermarkt':
+                by_provider_id.setdefault(identity['player_id'], []).append(player)
         lineup_club = lineup_by_club.get(selector)
         reconciled_club = reconciliation_by_club.get(selector)
         ordered_xi: list[dict[str, Any]] = []
@@ -344,8 +348,24 @@ def materialise(
                 source_player_id = str(starter.get("source_player_id") or "")
                 resolved = resolved_by_id.get(source_player_id)
                 player: dict[str, Any] | None = None
-                if resolved is not None:
+                profile_id = identity_lib.profile_id_from_href(starter.get('source_url') or starter.get('profile_url'))
+                if profile_id is not None and profile_id != source_player_id:
+                    raise PreallocationError('opening profile URL and player ID disagree')
+                identified = by_provider_id.get(profile_id, []) if profile_id is not None else []
+                if len(identified) == 1:
+                    player = dict(identified[0])
+                    player['opening_xi_origin'] = 'literal-provider-ID-dated-squad-row'
+                    player['opening_source_player_id'] = source_player_id
+                elif len(identified) > 1:
+                    blockers.append({'source_player_id': source_player_id, 'reason': 'opening-provider-ID-is-not-unique-in-intake'})
+                elif resolved is not None:
                     candidates = by_name.get(str(resolved.get("source_name") or ""), [])
+                    # A known different ID cannot become this person merely
+                    # because both display names and missing DOBs coincide.
+                    if profile_id is not None:
+                        candidates = [candidate for candidate in candidates
+                            if candidate['facts'].get(identity_lib.IDENTITY_FIELD, {}).get('provider') == 'transfermarkt'
+                            and candidate['facts'][identity_lib.IDENTITY_FIELD]['player_id'] == source_player_id]
                     birth_date = resolved.get("source_birth_date")
                     if len(candidates) > 1 and birth_date:
                         candidates = [

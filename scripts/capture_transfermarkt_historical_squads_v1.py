@@ -38,6 +38,18 @@ from scripts.capture_transfermarkt_opening_lineups_v1 import (  # noqa: E402
 )
 from scripts.supplement_2015_ntf_with_transfermarkt import NATIONALITY_CODES, parse_squad  # noqa: E402
 from scripts import season_player_identity_v1 as identity_lib  # noqa: E402
+from scripts.capture_2015_source_tail_squads_v1 import NATIONALITY_CODES as TAIL_NATIONALITY_CODES  # noqa: E402
+
+# The old supplement covered only its missing-country batch. Historical
+# capture must also recognize ordinary home-nation flags in other leagues.
+NATIONALITY_CODES = {**NATIONALITY_CODES, **TAIL_NATIONALITY_CODES,
+    'Norway': 'NOR', 'Sweden': 'SWE', 'Denmark': 'DEN', 'Ireland': 'IRL',
+    'Republic of Ireland': 'IRL', 'Northern Ireland': 'NIR', 'Belgium': 'BEL',
+    'Poland': 'POL', 'Austria': 'AUT', 'Kenya': 'KEN', 'Haiti': 'HAI',
+    'Bermuda': 'BER', 'Madagascar': 'MAD', 'Philippines': 'PHI', 'Pakistan': 'PAK',
+    'Guinea-Bissau': 'GNB', 'Lebanon': 'LIB', 'Zimbabwe': 'ZIM', 'Liberia': 'LBR',
+    'Eritrea': 'ERI', 'Jordan': 'JOR', 'Uganda': 'UGA', 'Comoros': 'COM',
+    'Isle of Man': 'IMN'}
 
 
 SCHEMA = "pm99-footballsquads-season-capture-v1"
@@ -139,23 +151,34 @@ def competition_code_candidates(code: str, season_start_year: int) -> list[str]:
 
 
 def parse_squad_with_dom_fallback(payload: bytes) -> list[dict[str, Any]]:
-    """Handle valid nested squad rows that the legacy streaming parser misses."""
+    """Complete partially parsed tables, preserving literal person identities.
+
+    A nonempty streaming result does not prove the table is complete. Read
+    the structured outer rows too; never merge different IDs by display name.
+    """
 
     try:
-        parsed = parse_squad(payload)
+        parsed = identity_lib.collapse_rows(
+            parse_squad(payload), legacy_key=lambda p: str(p['name']).casefold())
     except identity_lib.IdentityError as exc:
         raise CaptureError(str(exc)) from exc
-    if parsed:
-        return parsed
     soup = BeautifulSoup(payload, "html.parser")
     positions = {"Goalkeeper": "G", "Defender": "D", "Midfield": "M", "Attack": "F"}
     result: list[dict[str, Any]] = []
+    expected_ids = set()
     for tr in soup.select("table.items > tbody > tr"):
         cells = tr.find_all("td", recursive=False)
         anchors = tr.select("a[href*='/profil/spieler/']")
         anchor = anchors[0] if anchors else None
         if not cells or anchor is None:
             continue
+        try:
+            identity = identity_lib.transfermarkt_identity(
+                [link.get('href') for link in anchors], label='outer squad row')
+        except identity_lib.IdentityError as exc:
+            raise CaptureError(str(exc)) from exc
+        if identity is not None:
+            expected_ids.add(identity_lib.identity_key(identity))
         name = " ".join(anchor.get_text(" ", strip=True).split())
         position = positions.get(str(cells[0].get("title") or "").strip())
         if not name or position is None:
@@ -179,8 +202,35 @@ def parse_squad_with_dom_fallback(payload: bytes) -> list[dict[str, Any]]:
         except identity_lib.IdentityError as exc:
             raise CaptureError(str(exc)) from exc
         result.append(player)
+    if not result and not expected_ids:
+        return parsed
+    # Prefer the table's structured broad role and literal flag. Retain any
+    # stronger secondary facts read by the legacy parser from the SAME ID.
+    legacy_by_id = {identity_lib.identity_key(p[identity_lib.IDENTITY_FIELD]): p
+                    for p in parsed if identity_lib.IDENTITY_FIELD in p}
+    dom_ids = set()
+    for player in result:
+        identity = player.get(identity_lib.IDENTITY_FIELD)
+        if identity is None:
+            continue
+        key = identity_lib.identity_key(identity)
+        dom_ids.add(key)
+        prior = legacy_by_id.get(key, {})
+        for field in ('birth_date', 'height_cm', 'weight_kg'):
+            if player.get(field) is None and prior.get(field) is not None:
+                player[field] = prior[field]
+    result.extend(p for p in parsed
+                  if identity_lib.IDENTITY_FIELD in p
+                  and identity_lib.identity_key(p[identity_lib.IDENTITY_FIELD]) not in dom_ids)
+    # Unknown IDs are not evidence that this is an identified namesake.
+    result.extend(p for p in parsed if identity_lib.IDENTITY_FIELD not in p)
+    actual_ids = {identity_lib.identity_key(p[identity_lib.IDENTITY_FIELD])
+                  for p in result if identity_lib.IDENTITY_FIELD in p}
+    if expected_ids - actual_ids:
+        raise CaptureError('squad parser omitted literal player rows: ' + repr(sorted(expected_ids - actual_ids)))
     try:
-        return identity_lib.collapse_rows(result, legacy_key=lambda p: str(p["name"]).casefold())
+        rows = identity_lib.collapse_rows(result, legacy_key=lambda p: str(p["name"]).casefold())
+        return sorted(rows, key=lambda p: (p['position'], p['name'], identity_lib.identity_sort_key(p)))
     except identity_lib.IdentityError as exc:
         raise CaptureError(str(exc)) from exc
 

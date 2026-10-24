@@ -714,6 +714,12 @@ def prepare(base, input_path):
             else:
                 decision.update(display_name=published_profile_family_display(row, evidence),
                                 display_policy='original-profile-explicit-entire-family-heading-v1')
+        if 'recover_same_carrier_capacity' in row:
+            if row['recover_same_carrier_capacity'] is not True:
+                raise ValueError('new-person capacity recovery needs its explicit true opt-in')
+            from scripts import season_same_carrier_name_capacity_v1 as capacity
+            _, recovery = capacity.recover_slot(jug, row['carrier_id'], request['same_carrier_name_capacity'])
+            decision['same_carrier_capacity_claim'] = recovery
         decisions.append(decision)
     plan = dict(schema=SCHEMA, season=base.season, release_id=base.release_id,
         source_input=binding(input_path), package_sha256=registry.sha256_file(base.package_path),

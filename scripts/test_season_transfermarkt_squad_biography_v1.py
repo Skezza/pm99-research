@@ -463,3 +463,23 @@ def test_family_display_rejects_guesses_or_another_person(evidence, tmp_path, de
     elif defect == 'wrong-person': selection['provider_player_id'] = 999
     elif defect == 'changed-family': (tmp_path / 'family.json').write_bytes(b'changed')
     with pytest.raises(ValueError): subject.published_family_display(selection, sources)
+
+
+def test_soccerbase_whole_name_accepts_accent_spelling_without_losing_source_name(evidence, tmp_path):
+    value, witness = evidence
+    raw = _squad(rows=_row(name='Niccolò Galli'))
+    (tmp_path / value['path']).write_bytes(raw)
+    value['sha256'] = hashlib.sha256(raw).hexdigest()
+    bio = _soccerbase(name='Niccolo Galli')
+    (tmp_path / witness['path']).write_bytes(bio)
+    witness['sha256'] = hashlib.sha256(bio).hexdigest()
+    assert _read(value)['published_full_name'] == 'Niccolò Galli'
+
+
+def test_soccerbase_initial_is_not_a_whole_name_accent_variant(evidence, tmp_path):
+    value, witness = evidence
+    raw = _soccerbase(name='G. Parkinson')
+    (tmp_path / witness['path']).write_bytes(raw)
+    witness['sha256'] = hashlib.sha256(raw).hexdigest()
+    with pytest.raises(ValueError, match='full identity'):
+        _read(value)

@@ -110,8 +110,8 @@ def independent_birthday(value, name, provider_player_id=None):
     rows = [r for r in page.select('tr') if r.find('th') is not None
             and r.find('th').get_text(' ', strip=True) == 'Real name']
     if (len(rows) != 1 or rows[0].find('td') is None
-            or rows[0].find('td').get_text(' ', strip=True) != name
-            or title.split(' | ')[0] != name):
+            or exchange.published_name_key(rows[0].find('td').get_text(' ', strip=True)) != exchange.published_name_key(name)
+            or exchange.published_name_key(title.split(' | ')[0]) != exchange.published_name_key(name)):
         raise ValueError('independent biography full identity differs')
     table = rows[0].find_parent('table')
     ages = [r for r in table.select('tr') if r.find('th') is not None
