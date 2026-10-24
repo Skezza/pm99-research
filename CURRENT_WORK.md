@@ -1,5 +1,69 @@
 # PM99: current work
 
+## v159 installed: 2001/02 kit mappings; three active issue groups — 2026-10-24 15:52 UTC
+
+Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+
+INSTALLED / VERIFIED: 2001/02 now prefers `sourced-kit-seed-remap-20261024-r239a`.
+Twenty logical stock-fallback mappings corrected using exact clean factory
+club assets. Only MINIESC/NANOESC/RIDIESC change; recipe, all JUG/EQ/ENT,
+portraits, DAT, EXE and other files exact parent. A/B full inventories/recipes
+and independent SOURCE replay match. This is not a period-authentic kit claim.
+ROOT viewed Seedorf49 and Stoke022 (Wednesday1Aug2001), no crash/legible;
+Inter target223 equals clean source213 across153 interior pixels with ZERO
+channel error. Wrong parent pixels fail. Root corrected private worker installer
+MINIESC/RIDIESC crossbinding and case-sensitive runner token assumption BEFORE
+install; negative preflight log retained. Final preflight6422PASS, install27241
+PASS, preferred playable gatePASS. Other25 + original2015 backup unchanged.
+
+Evidence `.local/season-stock-kit-seed-remaps-v1/2001-02-r239-candidate-v1/`:
+`build-complete.json`, `independent-qa/actual-r239-independent-qa-v1.json`,
+`v159-installer-draft/{completion-proof-v159.json,root-install.log,playable-validation-v159.json}`.
+Runtime reviews under `parallel-rc-20261023/resume-qa/kit-seed-misassignment-review-v1/stock-kit-next-two-plan-v1/2001-02-runtime/`.
+2000/01 remains r238a (Parma Bonazzoli); 2017/18 remains r236a.
+Play `./pm99-season play 2001-02` or any other registered season as before.
+
+Fixed checklist v159: frozen2809 unchanged,108 disposed /2701 review-or-confirmed
+open (NOT2701 confirmed defects). Stock queue327 total /38 actual delivered /
+289 pending (284 main +5 legacy). Critical ledger v11: original8 +7 additions =
+15groups /12 delivered /3pending: calendar-country games, remaining stock-kit
+cascade, newly runner-visible Seedorf nationality/DOB facts. The new group is
+justified by actual frame (Italy) and independent official KNVB/RealMadrid
+sources (Netherlands;1Apr1976), not a generic research expansion. Raw originals
+and exact-name audit in `resume-qa/seedorf-visible-identity-correction-v1/`.
+12 exact-full-name rows screened;7 country mismatches,2 DOB conflicts are
+per-occurrence candidates needing historical ID binding. Five other rows already
+Holland. Do NOT call all12 independently adjudicated or allotherplayers checked.
+No source/test/build counts credited as historical corrections. RC not complete.
+
+Next bounded work, all Luna workers active: Hayes prepares reusable PRIVATE
+11v11 + independent FootballSquads admission for Rickie Lambert at Blackpool9595
+and Michael Black at Tranmere10800, replacing wrong extra Brian Reid/GaryTaylor-
+Fletcher; real Dunfermline/Northwich copies preserved. Full Lambert name fits;
+full Black fits after EXISTING exact same-carrier factory recovery, allother
+payloads preserved. Root reviewed private reader and requested strict target-Aug
+window, typed capture/identity, and historical two-digit DOB fixes before shared
+integration. No new native writer or invented TM IDs. Sourcepacket under
+`resume-qa/first8-positive-replacements-v1/typed-admission-v1/`.
+
+Disk source-bound reciprocal Turner13450/Bolger13586 exchange (Cork/StPats) hits
+Turner old-native1970 birthday vs unknown recipe; must correct DOB from honest
+source evidence BEFORE moving. Historical numeric identity witness passes;
+official StPats gives19Apr1989. Root requested bounded independent-published-source
+admission proposal (user allows reputable references, not two mandatory official
+bios), keeping historical ID/two-host agreement/native masks. No silent guard
+bypass. Additive calendar v4 source index exists, not installed.
+Release proposes typed official PL JSON admission to existing adjudicator for
+Seedorf (native writer unchanged); official JSON actually publishes DOB/country,
+HTML shell does not. Preserve raw sources and distinguish formats/source classes.
+
+Exact next action: Root reviews/integrates these small reusable source admissions,
+delivers the next narrowly scoped native correction batches with SOURCE/readback/
+runner; then continues serial stock-kit cascade. Disk reserve8GiB; verified
+r239 disposable runtime copy retirement started after install, sealed games and
+screenshots preserved. Do not launch competing builds or regenerate untouched
+seasons. Shared importer fixes62d684d and prior r238 checkpointf91c415 are pushed.
+
 ## v158 installed and verified; calendar August slice continues — 2026-10-24 15:26 UTC
 
 Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
