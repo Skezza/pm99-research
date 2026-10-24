@@ -1,5 +1,64 @@
 # PM99: current work
 
+## v163 installed: 2006 Seedorf role verified; next Alverca correction building — 2026-10-24 20:09 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Authoritative installed checklist: `release-delivery-checklist-v163.json` SHA256
+`2b91db52e3863ef56641de89d0c9e5c4bd641ffaaf62d1c936512b6600b151b6`;
+critical ledger `confirmed-critical-batch-20261024-v15.json`.
+
+DELIVERED:2006/07 preferredr271a corrects Seedorf's inherited fine roles to
+compatible editorial central midfield. Exactly3 JUG bytes; all other players,
+ratings, EQ, assets and native files preserved. Full recipe/game SOURCE A/B
+identical. ROOT inspected original profile (Milan,30,Holland,Central Mid),
+independent native/bitmap skill and age checks passed; ROOT inspected fresh
+Stoke2006 startup. Installer12773 passed after fixing private receipt-status
+literal and strengthening runtime payload/hash assertions. Other25 preferred
+releases and original2015 preserved. Recipe viewer selects current role[9].
+Evidence `resume-qa/seedorf-visible-identity-correction-v1/fine-role-occurrence-dryrun-v1/r271-candidate-v1/`.
+Disposable runner game copy retired58506 after exact source/copy inventory and
+active-mount checks; screenshots/sourcegames/shared Wine prefix retained.
+
+Counts remain frozen2809/109disposed/2700review-or-confirmed-open; stock327/
+58installed/269notinstalled; critical15groups/12delivered/3open (unweighted).
+2007/08 Seedorf fine-role occurrence remains open. Annual nationality admission
+is integrated and tested (75 legacy tests,9 canonical guards/API cases plus
+focused skip-helper checks); actual Zanetti2002 and Seedorf2003 country fixes
+are NOT built/installed yet. Commits6cb9f17,d85d0b8,3436ea6 preserve generic work.
+
+Country identity audit:34 distinct-provider label-conflict candidates plus12
+likely-alias reviews. First5 have distinct-club/cohort evidence; v3 corrects stale
+prose counts to22/16/16/20/19. Dated manager evidence exists; source co-managers
+at Djurgården need faithful representation, not silent collapse. Root Alverca
+r276A/B build77083 is RUNNING/UNINSTALLED: FC Porto623→FC Alverca; unique ENT2032
+Lopetegui→Ferreira (recipe Jesualdo Ferreira). Standard planner carried258 prior
+manager entries; root filters to selected2032 and preserves all other parent
+entries without reauthoring. First assertion failure is retained as negative
+before any game write. Existing generic EQ/ENT writers and SOURCE replay used.
+
+Kit/identity dependency audit `source-club-label-scan-v1/kit-plan-identity-intersection-v1.json`:
+15 stock proposals intersect34 identity candidates;3 are in installed seasons
+(2001c1854,2002c1108/c1859). These need source-identity review;58 installed is an
+installation count, NOT historical approval of disputedclub identities. R248
+is still built/uninstalled; further bulk stock publication stays held. Alverca
+and the other first5 have no overlap with stock proposal carriers.
+
+Irish2017:12 IR1 clubs cover exactly12carriers; IR2 is not required. Worker has
+reviewed frozen30 annual duplicate IDs and persisted a hash-bound manifest,
+ROOT independently accepted first10source dispositions; other20 under adversarial
+QA. Gavin Brennan remains medium-confidence/open; Cregg's14AugForfar move needs
+world-actor check. LaterDOM-only6IDs remain separate, not added silently. Never
+promote r245; club labels/sourcecohorts must be fixed together. No country game
+fix delivered by these research receipts. All other countries must remain exact.
+
+Luna assignments: disk—private generic full-cohort label admission patch/tests;
+release—Gavin closure plus dated August2017 Irish XI/bench from retained RSSSF;
+Hayes—independent remaining Irish ownership source QA. Root owns integration,
+build/publication and serialrunner. Next action: inspect r276 build/SOURCE result,
+QA narrowed changes and capture genuine Alverca/manager evidence; integrate only
+reviewed generic cohort seam for remaining confirmed labels. Continue to country
+repair and remaining RC checklist, no completed investigation restart.
+
 ## Resume: verified 2GiB space recovery; Irish repair remains held — 2026-10-24 19:42 UTC
 
 Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
