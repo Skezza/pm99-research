@@ -1,5 +1,100 @@
 # PM99: current work
 
+## Resume: verified 2GiB space recovery; Irish repair remains held — 2026-10-24 19:42 UTC
+
+Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Installed checkpoint is still v162; no new preferred release claimed.
+
+Completed controller7804: archive-backed immutable factory-media deduplication,
+84 closed inodes /2353 paths /2,147,483,648 allocated bytes recovered. File SHA,
+size, mode, uid/gid and locator/inventory hashes preserved. Target mtimes adopt
+keeper mtimes; original metadata retained in the per-path journal (not a claim
+that timestamps were preserved). Free space approximately11GiB. Pi UUID and
+144-member archive were reverified before mutation.
+Evidence: `.local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/storage-dedup-2gib-subset-v1/`.
+Completion `2gib-relink-completion-v2.json` SHA256
+`24f0848dcfb87ec4cf537684675c49547af597b048e7f88dde8a44f8f77ceb10`.
+
+Source-club scan v3 binds exact current roster rows and package artifact hashes:
+46 distinct-provider-ID cohort candidates;12 likely aliases remain review,
+34 require disposition, not automatically confirmed historical bugs. Receipt
+`resume-qa/source-club-label-scan-v1/source-club-label-scan-v3.json` SHA256
+`7d078e5450f5865fa701d438b6d4e73e340018580a8efb68432e6b437a6081b6`.
+Confirmed2017 Irish label conflicts remain1854/1857/1859. Candidate v4 has
+12 Premier clubs mapped bijectively to all12 Irish carriers1851–1862; each has
+a verified2017 fixture/schedule/report. First Division coverage is OPTIONAL,
+not a release blocker: the source repair requires12 Premier clubs, not20 clubs.
+Irish annual source has30 overlapping provider-ID candidates (not30 confirmed
+bugs); lead requested dated ownership review. Retained squad pages under2016
+cache folders explicitly say Season2017: use body evidence, not folder alone.
+Do not promote r245 or patch isolated players using stale club labels.
+
+Luna assignments resumed: disk worker alias/exception triage and private generic
+mapping gate; release worker correct2017 Irish coverage/source capture and bounded
+slice route; Hayes private annual nationality-admission hardening. Workers cannot
+publish or run captures. Root preparing2006 Seedorf role request via reviewed
+existing driver, controller20440 preflight only. R248 remains built/uninstalled.
+Next: inspect preflight and worker evidence, integrate supported corrections,
+serialise builds/runner, preserve other countries and original2015. Boundary
+check passed on resume. Counts remain109/2700, stock58/269, critical12/15 groups.
+Integrated label postimage guard:23 canonical builder tests pass; independent
+adversarial review found no concrete defect. Annual-admission legacy regression
+75 tests pass; new canonical guard/API9 tests pass. These are code validation,
+not additional installed historical corrections. R2712006 role A/B building
+controller13307; not installed or visually verified yet.
+
+## HOLD r245: confirmed Irish source/club-label mismatch — 2026-10-24 19:16 UTC
+
+Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Authoritative installed checkpoint remains v162. Do NOT promote r245, resume a
+Cork-only player capture as proof of a country fix, or patch Limerick13497 alone.
+Preserve all installed releases, original2015 and existing candidate evidence.
+
+Actual runner Turner13586 shows St Patrick's/28/Ireland/left winger; ROOT native,
+digit and age checks pass. The Bolger full-name query opened the Limerick copy,
+not Cork13450: ROOT explicitly rejected it (`bolger-visual-target-rejection-v1.json`).
+Fresh Stoke2017 capture succeeded and was inspected, but it does not resolve
+foreign club identity. Controller39860 finished; disposable copy retirement is
+running after exact inventory checks. Source A/B games and screenshots remain.
+
+The mismatch is wider than that player: current r236 already has18/18 of St
+Patrick's source-row names at Cork1854;23/23 Shamrock names at Limerick1857;
+22/22 Cork names at Shamrock1859. Limerick FC1860 agrees with its own source row.
+Retained preallocation-package-audit confirms these assignments, independently
+of r245. Clean factory labels are St Patrick's1854, Shamrock1857, Cork1859,
+Athlone1860 and Galway1862. Current labels at the first3 are stale template
+identities;1862 still carries legacy St Patrick's players. Do not infer exact
+source-pipeline stage without provenance: compiler receipts show zero club writes,
+but no retained invocation proves the current builder's rename logic was used.
+
+Current preallocation used2017 provider pages with2018 Irish fixtures (known
+calendar boundary issue). The reviewed candidate v4 instead uses2016 provider
+pages for target2017 and remains blocked; source assignment is not yet publication
+authority. Correct target-year country data and club-name/manager alignment must
+be resolved together. R245 is an uninstalled narrow candidate, not a closed
+ownership milestone. The birthday correction in r244 remains independently valid.
+
+Disk worker is performing a mechanical26-release source-club/label consistency
+sweep with aliases and later delivered exceptions respected; no exhaustive new
+historical research or regeneration. Release worker checks correct2017 Ireland
+Premier+First source coverage; Hayes continues isolated annual-row nationality
+admission. Workers do not publish or run captures. Further stock builds after
+completed r248 are held until the identity-scope audit is clear; no delivered kit
+or country correction has been reverted.
+
+R248a/b (2003/04,24 stock mappings) BUILT/SOURCE exact via generic driver28765;
+not installed. R235 storage relink completed26775 (~629MiB), all1152 paths exact,
+Pi144-member archive verified. Larger2GiB storage proposal is PRIVATE, not executed.
+Installed counts still frozen109/2700, stock58/269, critical12/15 groups. The Irish
+mapping finding belongs explicitly in the existing calendar/identity group;
+no silent completion credit or count reset.
+
+Next: inspect the bounded mapping audit and existing2017 country assignment/source
+packets; produce one source-correct country repair preserving all other countries
+and completed fixes. Add a deterministic source-club/native-label consistency
+gate so a mapped squad cannot silently inherit an unrelated template club label.
+Do not continue person-by-person ownership patches inside mismatched club labels.
+
 ## v162 installed; space recovered; ownership runner active — 2026-10-24 18:49 UTC
 
 Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.

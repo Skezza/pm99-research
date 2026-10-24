@@ -1654,3 +1654,33 @@ Restore the archive's `season-draft-replay-v2` member tree under `.local` and
 verify against the member ledger before reopening those old draft-only commands.
 Free space before8717537280/after9125728256 bytes (~8.5GiB); current26 and
 original2015 retained, no reserve thresholds changed.
+
+
+## Verified factory-media archive reuse and local deduplication — 2026-10-24 19:42 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Reused the existing144-member immutable factory-media archive on Pi
+`joe@192.168.1.133`, volume UUID `1f364414-880d-4f96-8619-3bd8c9954cc0`:
+`/srv/hdd/pm99-archive/research/storage-dedup/20261024/r239-factory-media-v1/factory-media.tar.gz`.
+SHA256 `39fd6a662b3d30e4df54e45414a25c564024f66fcc14b0e2eef8d52dd7e99d66`.
+Remote volume, archive hash and every member were reverified before changing
+local links. No new archive upload is claimed.
+
+Local deduplication replaced2353 references to84 closed duplicate inodes with
+links to byte-identical keepers; recovered2,147,483,648 allocated bytes. Content,
+size, mode, uid/gid and release locator/inventory hashes were preserved. Target
+mtimes adopt keeper mtimes; original timestamps and before/after inode details
+are retained per path. This is not deletion of game assets or recipe evidence.
+The earlier r235 descendant operation recovered a further659,415,040 bytes
+across1152 paths with mtimes preserved, recorded in its separate receipt.
+
+Evidence root `.local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/`:
+`storage-dedup-2gib-subset-v1/2gib-relink-completion-v2.json` SHA256
+`24f0848dcfb87ec4cf537684675c49547af597b048e7f88dde8a44f8f77ceb10`,
+its `2gib-relink-journal-v2.jsonl`, exact subset plan and archive verification;
+earlier `storage-dedup-r239-factory-media-v1/r235-relink-completion-v1.json`.
+For independent copies, replace a recorded hardlink with a verified archive
+member through an atomic replacement; restore its recorded metadata as needed.
+Do not modify a shared immutable asset in place. Current recipes, native
+DBDAT files, mutable game state and original2015 backup were not deduplicated
+by this operation.
