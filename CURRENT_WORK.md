@@ -1,5 +1,138 @@
 # PM99: current work
 
+## r219/r220 built; runtime gates remain — 2026-10-24 06:19 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Installed checkpoint remains v147 (83 disposed /2726 review-or-confirmed-open).
+Actual r2192001 and r2202000 A/B builds both completed with exact whole-game and
+raw recipe SOURCE equality. Neither is installed yet. r219 Traore original frame
+passed visual, independent digit/native/kit checks. First Rodriguez capture
+opened Dani/Southampton, not Bruno/Lens: preserved negative evidence, NOT approved.
+Prepared explicit result-row7 retry plus Stoke startup. Capture controller40076
+ended before Stoke because disk reserve guard; do not rerun completed profiles.
+Disk Luna is verifying unregistered2001 worldwide-source-backed-r1 test install
+on Pi before deleting local copy; no locator references were found. Preserve r2
+and rc-quality old trees: they DO have registry references. Evidence/ledger under
+`.local/cleanup-20261024/worldwide-source-backed-r1-to-pi/`.
+
+Critical ledger v2 now lists original8 +2 evidence-backed additions: ten groups,
+two delivered, eight pending. Frozen22 confirmed-case baseline unchanged. Source
+calendar audit v3 fixes Ireland receipt typo and finds41 reusable correct-year
+2017 club source sets;25 carrier allocation differences are review scope, not25
+proven native mistakes. Root rejected simplistic Haaland replacement; correct
+Molde2017 opener includes Bjorn, Haaland is source squad member. A generic scoped
+calendar source repair needs reviewed allocation, dated sources and exact outside-
+country preservation; existing build_draft does not accept missing countries as
+release-ready, so do not silence its all-carrier blockers.
+
+Altrincham2001 canonical v2 integrated but NOT built: fresh prepare must follow
+installed r219. Root reviewed raw official manager-history aligned rows (2000-01
+Ward;2001-02 Taylor). Peer QA corrected URL-only binding and stale2000person keys.
+Root strengthened SOURCE to compare raw canonical package bytes and original tree
+inventory, not parsed JSON alone. Old2000 modules remain unchanged. r221 driver
+parent typo corrected in separate lead-reviewed copy; no r221 execution yet.
+Workers: disk archive then r220 independent QA; Hayes private minimal source-year
+collector integration/tests; release all-season retained-source reuse index.
+Next exact action: finish verified disk retirement; run prepared r219 row7 retry
+and Stoke capture, inspect and register through lead-reviewed v148 installer;
+then r220 profiles/installation and fresh r221 build. No global completion claim.
+Evidence roots relative to `.local/consolidated-audit-20261009/parallel-rc-20261023/`.
+
+
+## r219 built; source-year blocker confirmed — 2026-10-24 06:07 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Latest installed checkpoint remains **v147**, 83 disposed / 2726 review-or-confirmed-open.
+Actual 2001 r219a/b Anelka/Traore/Lens build and whole SOURCE replay passed; only
+JUG changed. Not installed or runtime-verified yet. Serial controller40076 now
+captures Traore, Rodriguez and fresh Stoke. Independent Luna delivery QA active.
+Evidence: `parallel-rc-20261023/anelka-traore-lens-delivery-v1/`.
+
+Critical new finding: retained Brazil/Ireland/Norway/Sweden source fixtures are
+one calendar year later than intended opening-year policy: 931 club-season source
+rows across 25 plans; this is NOT a count of independently verified native bugs.
+Audit `resume-qa/calendar-league-year-routing-audit-v2.json`; its Ireland contrast
+hash typo requires additive correction. Russia65 early rows remain separate;
+transition7 ambiguous; no audited MLS/Japan/China selectors. Private routing
+helper ten tests passed; not integrated. Worker release audits reuse of prior
+season raw captures before any rescraping or game changes. Molde Haaland removal
+proposal withdrawn: wrong-year source must be corrected first, not valid players
+removed on an inconsistent date. No calendar-country changes delivered yet.
+
+Worker Hayes independently QAing 2001 Altrincham found manager-history URL-only
+binding, now tasked retaining exact official row/body before promotion. Disk
+worker checks actual r219 native/SOURCE evidence. Canonical Woolley/McLoughlin
+adapter promoted with AST-equivalent four-space indentation plus dispatches;
+actual r220 build not yet started. No parallel builds or runner jobs.
+
+Shawcross controlled GUI probe completed: literal DEF both before and after
+reserve19-to-starter3 swap; actual player profile also DEF. Reinspection of the original
+r218 frame also shows DEF: the lead misread adjacent Biram Diouf FOR as Shawcross.
+False-positive observation closed in lead-conclusion-v3.json; no data patch needed. Original probe
+frames and failed earlier routes retained under Shawcross investigation folder.
+Verified unchanged disposable2019 r218 runtimecopy retired with season-specific
+ledger; original2017 ledger kept. Shared prefix and all source games preserved.
+Next: finish r219 captures/review/install; actual r220 narrow two-player A/B;
+Altrincham rebased on installed2001 child; then calendar-source repairs scoped
+by reproducible source-year contract. No claim that all RC blockers are closed.
+
+
+## v147 delivered; bounded corrections continue — 2026-10-24 05:27 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Latest completed checkpoint **v147**. Coady2017/2019r218a installed and verified
+(controller43069 terminal0); 2018r215 was already installed. Allthree identified
+period-role cases nowclosed with exact2-byte native changes, whole SOURCE,
+original profiles+independentdigits/native/kit andfreshStokeAug1 screens.
+Current2000r217 remainsinstalled/verified; original2015preserved. Frozenbaseline
+still83disposed/2726review-or-confirmed-open, NOT2726provenbugs. Sourcecritical
+batch v1 at `parallel-rc-20261023/confirmed-critical-batch-20261024-v1.json`
+bound tov146 is immutable: its2Coady groups nowdelivered; sixother groups pending.
+Do not confuse state of that oldreceipt with latestv147.
+
+Serialized runner active77497: actualShawcross2019r218 profile investigation.
+Lineup screenshot showsShawcrossFOR while literalrecipe/nativeJUG broadD/fine4;
+Cousins/Powell similarly have different lineup POS labels. No speculative byte
+patch. Need actualprofile to distinguish preferredrole vs tactical/displayfield.
+Coady2019 runtimecopy is reused; do notretire untilthiscapture completes.
+2017r218 runtimecopy retired afterinventory/noactivemountproof; screenshots and
+source trees retained. Real2017r218Stokeframe also exposedBauer bench: official
+PremierLeague9Jan2018 arrival confirms wrong2017openingowner. Current2017Stoke
+alsohasStafylidis9275; PLJanuary2018 list corroborates futurearrival. Source-only
+additional Stoke2017late-arrivals group mustbe added honestly tofixedcritical
+count, notsilently accepted. IncomingAugustcup namesHarrySouttar/ThibaudVerlinden
+bothpositivelyappeared23Aug2017 vsRochdale; mayneedcoupledRubin/Augsburg review.
+No gamecorrection for these has beenmade yet. Chester2019Januaryloan suspicion
+not yetsource-verified; don'tcallitconfirmed onmemoryalone.
+
+Allthree Luna workers remain private/nonpublishing:
+- release: Anelka/Traore/Lens twoidentity adapter QA initiallypassed, ROOT found
+unencoded Lensformation/tactics claims and incompleteSOURCEhook. Worker revises
+KEEP Lensopening native-preserve policy, fullactualSOURCEpublisherreplay, plus
+missing datedAnelkaUEFA/TraoreSkychronology bindings. No canonicalpromotion yet.
+Private root `resume-qa/anelka-traore-lens-private-v2/`. BrunoDOB25Nov1972 now
+primaryFCMetz confirmed; 180/79 adultprofile vsPL175 andSkyOctDOB conflict explicit.
+- disk: private2000twoEnglish replacement adapter: Macc32952→MattWoolley
+(source11v11dates19Jul1999–31Mar2003;DOB22Feb1982,ENG178/71M); Wigan33162→Alan
+McLoughlin (publicdisplaywithoutmiddleFrancis; sourceDOB20Apr1967,IRL5ft8MF,
+joined9Dec1999 andusedsub5Aug2000). KeepSouthport/Motherwell correctcopies. QA
+caughtPath-vs-bytes helpercall; fixesprivate only, no actualbuild. Other proposed
+InterGimmelli / BlackburnOstenstad need further approvedsource/atomicchain work.
+- Hayes: private2001Altrincham3310 wholecohort18; realKidder370 preserved; source
+11Augfriendly18people EXACT442prose; source14Augpublished15Aug namesBernardTaylor.
+ROOT rejected initial managerWard columnmisalignment. Correctproposalv3/receiptsv2
+under `resume-qa/altrincham-2001-continuity-v1/`. EQgroundMossLane; ENTmanagerTaylor;
+keepopaque mode1league/tactics, source442 notclaimencoded. All17frozen duplicate
+caseIDs derivefromoriginal2001rows with clubset{370,3310}; don'tcloseuntilactual
+native/SOURCE/runtime. SOURCEparentmustrebase afterpendingAnelka2001child.
+
+Next: review/privateQA returns, integrate canonical adapters and exactpublisher/
+SOURCE hooks, actualboundedA/B builds oneatime; deliverapprovedowner corrections
+withsource/native/preserved-data proofs andserializedprofiles/startup. Reconcile
+stale checklist states andONEfinal26regression whenaffectedcurrentgames final.
+KeepOnoh allowedunknownDOB withknownfallback/native discrepancy; no inventeddate.
+Relative evidence roots `.local/consolidated-audit-20261009/parallel-rc-20261023/`.
+
 ## r217 delivered; remaining source-backed findings — 2026-10-24 04:54 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.

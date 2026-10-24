@@ -2155,12 +2155,18 @@ def compile_package_to_tree(
         rawle_forbes.reject_factory_recipe(package)
         from scripts import season_evers_mcclune_opening_v1 as evers_mcclune
         evers_mcclune.reject_factory_recipe(package)
+        from scripts import season_english_woolley_mcloughlin_v1 as english_reserves
+        english_reserves.reject_factory_recipe(package)
+        from scripts import season_anelka_traore_lens_chain_v1 as anelka_chain
+        anelka_chain.reject_factory_recipe(package)
         from scripts import season_coady_centerback_cascade_v1 as coady_cascade
         coady_cascade.reject_factory_recipe(package)
         from scripts import season_coady_centerback_exchange_v1 as coady_role
         coady_role.reject_factory_recipe(package)
         from scripts import season_batth_wolves_opening_transfer_v1 as batth_wolves
         batth_wolves.reject_factory_recipe(package)
+        from scripts import season_altrincham_2001_whole_club_v2 as alty_2001
+        alty_2001.reject_factory_recipe(package)
         from scripts import season_altrincham_macc_joint_exchange_v1 as alty_joint
         alty_joint.reject_factory_recipe(package)
         from scripts import season_vokes_crouch_opening_exchange_v2 as vokes_crouch

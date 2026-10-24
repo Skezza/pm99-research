@@ -400,6 +400,14 @@ def build(season: str, *, release_id: str, resume: bool = False) -> dict[str, An
     reconstructed = evers_mcclune.reconstruction(previous, release_id)
     if reconstructed is not None:
         return reconstructed
+    from scripts import season_english_woolley_mcloughlin_v1 as english_reserves
+    reconstructed = english_reserves.reconstruction(previous, release_id)
+    if reconstructed is not None:
+        return reconstructed
+    from scripts import season_anelka_traore_lens_chain_v1 as anelka_chain
+    reconstructed = anelka_chain.reconstruction(previous, release_id)
+    if reconstructed is not None:
+        return reconstructed
     from scripts import season_coady_centerback_cascade_v1 as coady_cascade
     reconstructed = coady_cascade.reconstruction(previous, release_id)
     if reconstructed is not None:
@@ -410,6 +418,10 @@ def build(season: str, *, release_id: str, resume: bool = False) -> dict[str, An
         return reconstructed
     from scripts import season_batth_wolves_opening_transfer_v1 as batth_wolves
     reconstructed = batth_wolves.reconstruction(previous, release_id)
+    if reconstructed is not None:
+        return reconstructed
+    from scripts import season_altrincham_2001_whole_club_v2 as alty_2001
+    reconstructed = alty_2001.reconstruction(previous, release_id)
     if reconstructed is not None:
         return reconstructed
     from scripts import season_altrincham_macc_joint_exchange_v1 as alty_joint
