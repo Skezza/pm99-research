@@ -570,6 +570,15 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         from scripts import season_altrincham_macc_joint_exchange_v1 as alty_joint
         if assignment_plan.get('schema') == alty_joint.SCHEMA:
             assignments = alty_joint
+        from scripts import season_shuker_city_reserve_move_v1 as shuker_move
+        if assignment_plan.get("schema") == shuker_move.SCHEMA:
+            assignments = shuker_move
+        from scripts import season_blackburn_ostenstad_etuhu_atomic_v1 as blackburn_city
+        if assignment_plan.get('schema') == blackburn_city.SCHEMA:
+            assignments = blackburn_city
+        from scripts import season_altrincham_2001_role_overlay_v3 as alty_2001_roles
+        if assignment_plan.get('schema') == alty_2001_roles.SCHEMA:
+            assignments = alty_2001_roles
         from scripts import season_altrincham_2001_whole_club_v2 as alty_2001
         if assignment_plan.get('schema') == alty_2001.SCHEMA:
             assignments = alty_2001
@@ -702,6 +711,17 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             from scripts import season_duplicate_ownership_delta_v1 as portrait_delta
             original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
             portrait_archive, portrait_offsets = portrait_delta.no_photo_archive(original_archive, evers_mcclune.selected_carriers(assignment_plan))
+        elif assignment_plan.get('schema') == blackburn_city.SCHEMA:
+            original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
+            portrait_archive = blackburn_city.apply_minifoto(original_archive, assignment_plan)
+            portrait_offsets = {carrier: [] for carrier in blackburn_city.selected_carriers(assignment_plan)}
+        elif assignment_plan.get('schema') == alty_2001_roles.SCHEMA:
+            patched_ent = alty_2001_roles.apply_ent(original_ent, assignment_plan)
+            if alty_2001_roles.apply_ent(patched_ent, assignment_plan) != patched_ent:
+                raise ValueError('Altrincham sourced role composition manager is not idempotent')
+            original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
+            portrait_archive = alty_2001_roles.apply_minifoto(original_archive, assignment_plan)
+            portrait_offsets = alty_2001_roles.photo_offsets(assignment_plan)
         elif assignment_plan.get('schema') == alty_2001.SCHEMA:
             patched_ent = alty_2001.apply_ent(original_ent, assignment_plan)
             if alty_2001.apply_ent(patched_ent, assignment_plan) != patched_ent:
@@ -727,7 +747,7 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             portrait_archive, portrait_offsets = portrait_delta.no_photo_archive(original_archive,
                 woking_owned.selected_carriers(assignment_plan))
         predicted = (len(patched) if patched != original else 0) + len(patched_eq) + len(package_v2.canonical_json_bytes(result)) + len(pipeline.canonical_json_bytes(assignment_plan)) + 32 * 1024**2
-        if assignment_plan.get('schema') in (woking_owned.SCHEMA, alty_joint.SCHEMA, alty_2001.SCHEMA):
+        if assignment_plan.get('schema') in (woking_owned.SCHEMA, alty_joint.SCHEMA, alty_2001.SCHEMA, alty_2001_roles.SCHEMA):
             predicted += len(patched_ent)
         if portrait_archive is not None and portrait_archive != original_archive:
             predicted += len(portrait_archive)
@@ -903,6 +923,22 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             pipeline.write_canonical_json(workspace / artifact['filename'], artifact['document'])
             if registry.sha256_file(workspace / artifact['filename']) != artifact['sha256']:
                 raise ValueError('Altrincham source artifact write/hash differs')
+        if assignment_plan.get('schema') == blackburn_city.SCHEMA:
+            artifact = blackburn_city.source_artifact(assignment_plan)
+            target = workspace / artifact['filename']
+            if target.exists():
+                raise ValueError('existing Blackburn/City source artifact must not be overwritten')
+            pipeline.write_canonical_json(target, artifact['document'])
+            if registry.sha256_file(target) != artifact['sha256']:
+                raise ValueError('Blackburn/City source artifact write/hash differs')
+        if assignment_plan.get('schema') == alty_2001_roles.SCHEMA:
+            artifact = alty_2001_roles.source_artifact(assignment_plan)
+            target = workspace / artifact['filename']
+            if target.exists():
+                raise ValueError('existing Altrincham role source artifact must not be overwritten')
+            pipeline.write_canonical_json(target, artifact['document'])
+            if registry.sha256_file(target) != artifact['sha256']:
+                raise ValueError('Altrincham role source artifact write/hash differs')
         if assignment_plan.get('schema') == alty_2001.SCHEMA:
             artifact = alty_2001.source_artifact(assignment_plan)
             target = workspace / artifact['filename']
@@ -1115,6 +1151,22 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
             removed_target_roster_links=[], fixed_duplicate_case_ids=[],
             players_written=19, allowed_write=assignment_plan['scope'])
+    elif assignment_plan is not None and assignment_plan.get("schema") == shuker_move.SCHEMA:
+        receipt.update(compilation_mode=shuker_move.MODE,
+            original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
+            removed_target_roster_links=[dict(club_carrier_id=382,player_carrier_id=32945)],
+            fixed_duplicate_case_ids=[], players_written=len(assignment_plan["startup_order_changes"]),
+            allowed_write=assignment_plan["scope"])
+    elif assignment_plan is not None and assignment_plan.get('schema') == blackburn_city.SCHEMA:
+        receipt.update(compilation_mode=blackburn_city.MODE,
+            original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
+            removed_target_roster_links=[], fixed_duplicate_case_ids=[],
+            players_written=2, allowed_write=assignment_plan['scope'])
+    elif assignment_plan is not None and assignment_plan.get('schema') == alty_2001_roles.SCHEMA:
+        receipt.update(compilation_mode=alty_2001_roles.MODE,
+            original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
+            removed_target_roster_links=[], fixed_duplicate_case_ids=[],
+            players_written=18, allowed_write=assignment_plan['scope'])
     elif assignment_plan is not None and assignment_plan.get('schema') == alty_2001.SCHEMA:
         receipt.update(compilation_mode=alty_2001.MODE,
             original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
@@ -1235,6 +1287,10 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             artifacts.append(pipeline.external_artifact_descriptor(artifact_id=amavisca_tx.artifact_id(assignment_plan), path=workspace / amavisca_tx.SOURCE_PLAN_FILENAME, role='input'))
         if assignment_plan.get('schema') == alty_joint.SCHEMA:
             artifacts.append(pipeline.external_artifact_descriptor(artifact_id='altrincham-macc-inner-source-plan', path=workspace / alty_joint.SOURCE_PLAN_FILENAME, role='input'))
+        if assignment_plan.get('schema') == blackburn_city.SCHEMA:
+            artifacts.append(pipeline.external_artifact_descriptor(artifact_id=blackburn_city.artifact_id(assignment_plan), path=workspace / blackburn_city.SOURCE_PLAN_FILENAME, role='input'))
+        if assignment_plan.get('schema') == alty_2001_roles.SCHEMA:
+            artifacts.append(pipeline.external_artifact_descriptor(artifact_id='altrincham-2001-role-source-v3', path=workspace / alty_2001_roles.INNER_FILENAME, role='input'))
         if assignment_plan.get('schema') == alty_2001.SCHEMA:
             artifacts.append(pipeline.external_artifact_descriptor(artifact_id='altrincham-2001-inner-source-plan-v2', path=workspace / alty_2001.SOURCE_PLAN_FILENAME, role='input'))
     if saved_ownership_plan is not None:

@@ -62,6 +62,14 @@ def prepare(base,input_path):
     if request.get('kind') == HEIGHT_KIND:
         return prepare_height(base, path, request)
     if request.get('kind') == KNOWN_WRONG_KIND:
+        # The 11v11 policy is a typed source branch of the existing byte-only
+        # nationality change. Keep the common schema, binder, native mask and
+        # SOURCE replay contract; only source admission is provider-specific.
+        if any(isinstance(change.get('source'), dict)
+               and change['source'].get('provider') == '11v11'
+               for change in request.get('changes', []) if isinstance(change, dict)):
+            from scripts import season_11v11_profile_nationality_v1 as elevenv
+            return elevenv.prepare(base, path)
         from scripts import season_known_wrong_profile_nationality_v1 as known_wrong
         return known_wrong.prepare(base, path, request)
     if request.get('kind') == DOB_DISAGREEMENT_KIND:
@@ -190,6 +198,11 @@ def validate_mask(plan):
         from scripts import season_adjudicated_player_facts_v1 as adjudicated
         return adjudicated.validate_mask(plan)
     if plan.get('kind') == KNOWN_WRONG_KIND:
+        if any(isinstance(row.get('source_identity'), dict)
+               and row['source_identity'].get('provider') == '11v11'
+               for row in plan.get('updates', []) if isinstance(row, dict)):
+            from scripts import season_11v11_profile_nationality_v1 as elevenv
+            return elevenv.validate_plan(plan)
         from scripts import season_known_wrong_profile_nationality_v1 as known_wrong
         return known_wrong.validate_plan(plan)
     if plan.get('kind') == DOB_DISAGREEMENT_KIND:

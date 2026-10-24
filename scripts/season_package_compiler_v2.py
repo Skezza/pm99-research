@@ -2165,6 +2165,12 @@ def compile_package_to_tree(
         coady_role.reject_factory_recipe(package)
         from scripts import season_batth_wolves_opening_transfer_v1 as batth_wolves
         batth_wolves.reject_factory_recipe(package)
+        from scripts import season_shuker_city_reserve_move_v1 as shuker_move
+        shuker_move.reject_factory_recipe(package)
+        from scripts import season_blackburn_ostenstad_etuhu_atomic_v1 as blackburn_city
+        blackburn_city.reject_factory_recipe(package)
+        from scripts import season_altrincham_2001_role_overlay_v3 as alty_2001_roles
+        alty_2001_roles.reject_factory_recipe(package)
         from scripts import season_altrincham_2001_whole_club_v2 as alty_2001
         alty_2001.reject_factory_recipe(package)
         from scripts import season_altrincham_macc_joint_exchange_v1 as alty_joint

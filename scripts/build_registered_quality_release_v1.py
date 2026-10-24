@@ -420,6 +420,18 @@ def build(season: str, *, release_id: str, resume: bool = False) -> dict[str, An
     reconstructed = batth_wolves.reconstruction(previous, release_id)
     if reconstructed is not None:
         return reconstructed
+    from scripts import season_shuker_city_reserve_move_v1 as shuker_move
+    reconstructed = shuker_move.reconstruction(previous, release_id)
+    if reconstructed is not None:
+        return reconstructed
+    from scripts import season_blackburn_ostenstad_etuhu_atomic_v1 as blackburn_city
+    reconstructed = blackburn_city.reconstruction(previous, release_id)
+    if reconstructed is not None:
+        return reconstructed
+    from scripts import season_altrincham_2001_role_overlay_v3 as alty_2001_roles
+    reconstructed = alty_2001_roles.reconstruction(previous, release_id)
+    if reconstructed is not None:
+        return reconstructed
     from scripts import season_altrincham_2001_whole_club_v2 as alty_2001
     reconstructed = alty_2001.reconstruction(previous, release_id)
     if reconstructed is not None:

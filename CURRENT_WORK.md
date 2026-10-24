@@ -1,5 +1,63 @@
 # PM99: current work
 
+## v150 installed and verified — 2026-10-24 08:19 UTC
+
+Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+
+Checkpoint v150 is complete: **103 disposed / 2706 review-or-confirmed-open** of
+the original 2809. Exactly 17 former Kidderminster-clone cases were replaced by
+the dated Altrincham squad in the actual 2001/02 game. Real Kidderminster 370,
+all 25 other preferred games and the original 2015 backup are preserved.
+Preferred 2001 is `sourced-altrincham-2001-continuity-20261024-r221e`.
+Actual player profiles, independent native readback, full SOURCE replay, fresh
+Stoke startup, runtime attestation and playable validation passed. Installer
+recovery reused sealed evidence after the recipe-ID bookkeeping error; no native
+build or publication was repeated. Remaining candidates are not all proven bugs.
+Evidence: `parallel-rc-20261023/altrincham-2001-delivery-v4/` beneath the audit root.
+
+Next: SOURCE-build 11v11-backed NOR corrections, starting with held r222a 2000,
+then current 2001 r221e and 2002 r183a. Workers are integrating provider tests,
+calendar source-hash continuity pilot and the two-slot Gimmelli/Serena repair.
+The global RC milestone remains open; do not equate this delivered batch with
+complete historical certification.
+
+## Delivery checks resumed — 2026-10-24 08:12 UTC
+
+Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+
+Altrincham r221e/f are built and full SOURCE game/recipe equality passed. Lead
+inspected actual Hawes/right-back and Gallagher/right-midfield frames and the
+fresh Stoke 1 August 2001 startup; native skill-digit/profile checks passed.
+The four correct role codes are 1/2/6/10. Rejected c/d used wrong code 8 for
+Gallagher and remain unpublished negatives; the canonical enum test catches it.
+
+The v150 installer advanced preferred 2001 to r221e and runtime/playable gates
+passed, then failed while writing case dispositions because it assumed the real
+Kidderminster recipe ID was `club-370`; its actual ID is `english-club-370`.
+Native counterpart preservation already passed. Recovery now checks the club's
+actual carrier ID 370 and reuses exact completed publication proof; it does not
+rebuild or republish the game. Controller 43314 is completing the checkpoint.
+Until that succeeds v149 remains the latest checklist (86 disposed / 2723 open),
+while preferred 2001 is already r221e. This distinction is intentional.
+
+Berkovic/Ostenstad/Etuhu r222a/b are built with complete SOURCE equality but held:
+runner exposed inherited ENG for Egil Ostenstad. Three exact-name/DOB preferred
+cases need NOR. Two Viking source-name-only rows are separately unresolved, not
+silently included. The current country candidate has five passing focused tests;
+Disk worker integrates its reviewed 11v11 provider into existing common field
+changes, with no new native writer. Hayes advances the guarded calendar 2017
+partial-draft pilot. Release worker implements the bounded Gimmelli/Serena
+same-club two-slot repair after the one-slot name-fit refusal. Lead owns runner,
+build and publication. Shuker transfer remains ready for rebase after r222/NOR.
+
+Evidence: `.local/consolidated-audit-20261009/parallel-rc-20261023/`, especially
+`altrincham-2001-delivery-v4/` and `blackburn-city-delivery-v1/`. All old shared
+Wine prefixes, original 2015 backup and unaffected games remain preserved.
+Free disk approximately 8.3 GiB; no competing captures/builds. Exact next action:
+finish v150 checkpoint recovery, then integrate and SOURCE-test nationality
+corrections before publishing the held 2000 game. Global RC completion remains
+false; calendar-source repairs and remaining historical candidates remain open.
+
 ## v149 delivered; Altrincham candidate held by role QA — 2026-10-24 07:03 UTC
 
 Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
