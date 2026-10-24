@@ -123,8 +123,14 @@ def _profile_context(source, full_name, date_value, official_sources):
 
 def verify(witness):
     """Validate annual-row identity. No match ID, owner mutation or write occurs."""
-    if witness.get('identity_policy') != 'annual-source-row-person-identity-v1':
+    policy = witness.get('identity_policy')
+    allowed_policies = {'annual-source-row-person-identity-v1',
+                        'annual-source-row-with-opening-fixture-provider-id-v1'}
+    if policy not in allowed_policies:
         raise ValueError('annual row identity policy is not explicit')
+    fixture = witness.get('historical_fixture')
+    if (policy == 'annual-source-row-with-opening-fixture-provider-id-v1') != (fixture is not None):
+        raise ValueError('fixture evidence is required only by the explicit annual-fixture identity policy')
     annual = witness.get('annual_identity')
     if not isinstance(annual, dict):
         raise ValueError('annual row identity witness is required')
@@ -146,6 +152,12 @@ def verify(witness):
             or intake.get('season', {}).get('label') != season_label):
         raise ValueError('annual source artifacts target a different season')
     selector = annual['selector']
+    source_birth_date = witness['values']['birth_date']
+    if fixture is not None:
+        source_birth_date = annual.get('source_birth_date')
+        if not isinstance(source_birth_date, str):
+            raise ValueError('fixture DOB exception requires an explicit old annual-source DOB')
+        datetime.strptime(source_birth_date, '%Y-%m-%d')
     selected = []
     for doc in (pre, intake):
         rows = [(club, row) for club in doc.get('source_clubs', []) for row in club.get('players', [])
@@ -155,7 +167,7 @@ def verify(witness):
         club, row = rows[0]
         if row.get('source_row_index') != annual['source_row_index']:
             raise ValueError('annual source row index differs')
-        if row.get('facts', {}).get('name') != witness['full_name'] or row.get('facts', {}).get('birth_date') != witness['values']['birth_date']:
+        if row.get('facts', {}).get('name') != witness['full_name'] or row.get('facts', {}).get('birth_date') != source_birth_date:
             raise ValueError('annual source row full name/DOB differs')
         observed = club.get('selector', {})
         if any(observed.get(k) != selector.get(k)
@@ -164,6 +176,10 @@ def verify(witness):
         selected.append(row)
     if selected[0] != selected[1]:
         raise ValueError('preallocation/source-intake copies of annual identity row differ')
+    fixture_result = None
+    if fixture is not None:
+        from scripts import season_annual_fixture_identity_bridge_v1 as fixture_bridge
+        fixture_result = fixture_bridge.verify_opening_fixture(fixture, annual, witness['full_name'])
     person_id = _source_person_id(selected[0])
     if witness.get('person_id') != person_id:
         raise ValueError('recipe person identity does not derive from the exact annual row')
@@ -178,7 +194,7 @@ def verify(witness):
             or actor.get('proof') != {'artifact_id': source_artifact_id, 'grade': 'source-captured'}):
         raise ValueError('recipe actor proof must bind its exact annual preallocation artifact')
     if (actor.get('person_id') != person_id or actor.get('source_name') != witness['full_name']
-            or actor.get('facts', {}).get('birth_date') != witness['values']['birth_date']
+            or actor.get('facts', {}).get('birth_date') != source_birth_date
             or actor.get('facts', {}).get('nationality') != {'policy': 'preserve-existing-mode1'}
             or actor.get('club_id') != annual['club_id']):
         raise ValueError('recipe actor/name/DOB/country fallback differs from annual identity')
@@ -193,7 +209,7 @@ def verify(witness):
         raise ValueError('native indexed profile carrier absent')
     record = native_player(entry.decode_payload(jug), annual['carrier_id'])
     facts = native_facts(jug, annual['carrier_id'])
-    if normalise(record['name']) != normalise(actor['name']) or facts['birth_date'] != witness['values']['birth_date']:
+    if normalise(record['name']) != normalise(actor['name']) or facts['birth_date'] != source_birth_date:
         raise ValueError('native full-name projection/DOB does not agree with recipe/source identity')
     if ownership.native_owners(eq_path.read_bytes()).get(annual['carrier_id']) != {clubs[0]['carrier_id']}:
         raise ValueError('native EQ owner differs; this is an unchanged preimage only')
@@ -211,4 +227,5 @@ def verify(witness):
         'native_display_name': record['name'], 'native_country_byte': country_byte,
         'native_country_label': next(k for k, v in country_table.items() if v == country_byte),
         'club_owner_preimage': clubs[0]['carrier_id'], 'source_contexts': parsed_contexts,
-        'fixture_provider_player_id': None, 'ownership_claim': 'none'}
+        'fixture_provider_player_id': (fixture_result['provider_player_id'] if fixture_result else None),
+        'historical_fixture': fixture_result, 'ownership_claim': 'none'}

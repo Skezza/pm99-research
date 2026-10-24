@@ -31,9 +31,10 @@ def checked(value):
 
 def verify_historical_identity(witness):
     """Reproduce a retained identity witness; legacy fixture path is unchanged."""
-    if witness.get('identity_policy') == 'annual-source-row-person-identity-v1':
-        annual_identity.verify(witness)
-        return None
+    if witness.get('identity_policy') in ('annual-source-row-person-identity-v1',
+                                            'annual-source-row-with-opening-fixture-provider-id-v1'):
+        result = annual_identity.verify(witness)
+        return result.get('fixture_provider_player_id')
     historical = witness['historical_identity']
     allocation = pipeline.read_json_file(checked(historical['preallocation']))
     candidates = [(club, row) for club in allocation['source_clubs'] for row in club['players']
@@ -94,7 +95,8 @@ def _adjudicate_official_sources(witness):
     for source in sources:
         body = checked(source)
         receipt = pipeline.read_json_file(checked(source['receipt']))
-        if witness.get('identity_policy') == 'annual-source-row-person-identity-v1':
+        if witness.get('identity_policy') in ('annual-source-row-person-identity-v1',
+                                                'annual-source-row-with-opening-fixture-provider-id-v1'):
             receipt_rows = [receipt] + (receipt.get('sources', []) if isinstance(receipt, dict) else [])
             if not any(isinstance(item, dict)
                        and (item.get('url') or item.get('final_url')) == source['url']
@@ -227,7 +229,8 @@ def adjudicate(witness):
 
 def verify_annual_request_binding(base, carrier, actor, witness):
     """Bind the opt-in annual witness to this exact selected actor and parent."""
-    if witness.get('identity_policy') != 'annual-source-row-person-identity-v1':
+    if witness.get('identity_policy') not in ('annual-source-row-person-identity-v1',
+                                                'annual-source-row-with-opening-fixture-provider-id-v1'):
         return
     annual = witness.get('annual_identity')
     if not isinstance(annual, dict) or any((
@@ -321,9 +324,12 @@ def prepare(base, path, request):
             'annual-row-source-person-ID-before-official-independent-facts-v1'
             if any(row['witness'].get('identity_policy') == 'annual-source-row-person-identity-v1'
                    for row in request['changes']) else
+            ('annual-row-plus-opening-fixture-provider-ID-before-official-independent-facts-v1'
+             if any(row['witness'].get('identity_policy') == 'annual-source-row-with-opening-fixture-provider-id-v1'
+                    for row in request['changes']) else
             ('historical-row-provider-ID-before-official-plus-independent-named-reference-facts-v1'
              if any('independent_sources' in row['witness'] for row in request['changes'])
-             else 'historical-row-provider-ID-before-independent-official-facts-v1')))
+             else 'historical-row-provider-ID-before-independent-official-facts-v1'))))
     result['transaction_id'] = changes.digest(packages.canonical_json_bytes(result))[:24]
     validate_mask(result)
     return result
