@@ -1,5 +1,55 @@
 # PM99: current work
 
+## v162 installed; space recovered; ownership runner active — 2026-10-24 18:49 UTC
+
+Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+
+Installed2002/03 r247a:20 stock-kit mappings, full A/B/SOURCE, independent archive
+QA, actual Zanetti/profile and Stoke/startup checks passed. Root24909 installation
+passed; other25 releases and original2015 preserved. Authoritative checklistv162,
+criticalledgerv14. Counts: frozen2809 /109 disposed /2700 review-or-confirmed-open;
+stock327 /58 delivered /269 pending; critical15 groups /12 delivered /3 open.
+Zanetti's observed ITALY is separately pending, not fixed by the kit transaction.
+Evidence `.local/season-stock-kit-seed-remaps-v1/2002-03-r247-candidate-v1/`.
+
+Storage recovery COMPLETE26775:1152 media paths relinked,144 asset groups,
+estimated659415040 allocated bytes reclaimed (~629MiB). All file bytes, names,
+size/mode/uid/gid/mtime preserved; inode/nlink/ctime/atime effects recorded.
+Pi volume UUID, archive39fd6a...99d66 and all144 members verified again. Exact
+locator/inventory/catalog bindings and postflight path closure passed. Ledger
+`resume-qa/storage-dedup-r239-factory-media-v1/{r235-relink-completion-v1.json,r235-relink-journal-v1.jsonl}`.
+No proprietary/native data deleted. Original archive reused because every member
+matches; no duplicate upload. Earlier read-only verification failures are retained.
+Free space rose~8.2→8.8GiB before the next runtime copy. The temporary gitHEAD
+catalog guard has finished; catalog commits are safe again.
+
+RUNNING39860: r245 Turner13586/Bolger13450/Stoke2017 serial runner capture using
+`turner-bolger-dob-delivery-v4/reciprocal-identity-exchange-v6/capture_r245_after_build_v2.py`.
+Actual A/B and independent full461-file QA passed, JUG only; correct source
+identities, DOBs and roles/skills follow people, EQ/startup/unselected records
+exact. New pair is not installed. No rebuild of completed r244 birthday outputs.
+
+RUNNING28765: first generic stock-kit candidate2003/04 r248a/b (24 mappings).
+The request is additive `v161-remaining23-dry-requests-v1/2003-04/request-root-approved-v2.json`,
+SHA24475821028e77cee9aec711d05c4f16f9c3d4b81a26639c044f1ecdadb6ff0a.
+Root moved its approval sidecar outside the nonexistent output root; otherwise
+creating approval would trip the builder's new-output guard. Source/checklist/
+parent/plan/case IDs unchanged. Other23 requests must get the same additive path
+fix, not a repeated data scan. Budget keeps8GiB reserve alongside one runner.
+Do not change the preferred catalog until this immutable candidate build ends.
+
+Workers: Disk prepares a larger storage-only proposal; Release sources Limerick
+13497 and prepares the next stock batch; Hayes prepares a generic annual-row
+identity witness for matching native/full-name/DOB country corrections. Exact
+birthday conflicts stay excluded; no fabricated fixture ID or raw-source replay
+claim. Legacy source admission and native writers remain intact. No worker
+publishes or captures.
+
+Next: inspect actual r245 profile frames as they finish, bind native/digit/age
+proofs, then Stoke; finish r248 SOURCE proof. Install validated r245 only when no
+candidate build holds a catalog snapshot. Continue prepared stock cascade and
+source-country/role cases. No global RC completion claim.
+
 ## v161 installed; kits validated; ownership build resumes — 2026-10-24 18:17 UTC
 
 Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
