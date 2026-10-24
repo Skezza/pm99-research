@@ -1,5 +1,58 @@
 # PM99: current work
 
+## v157 installed and verified; calendar and next ownership batches active — 2026-10-24 13:53 UTC
+
+Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+
+INSTALLED/VERIFIED2000/01 preferredr237a replaces only wrongVicenzaDalCanto4482
+withChristianMaggio andwrongZanchi24478 withFabioViviani. Nativepublishedfamilies
+Maggio/Viviani fit unchangedwindows; bothcompletefullsource_names retained. No
+capacityrecoveryused. RealBologna4065/Juventus1997payloads andowners unchanged.
+Allotherplayers/clubs/managers/EQ/tactics/kits exact; r235stockkitfixpreserved.
+SourceunknownVivianiheight remains declarednativefallback; bothselectedportraits
+native-no-photo. Do notclaimperfectsecondaryfacts or authoredforeignAI XI.
+
+ROOT inspectedactual Maggioprofile45 (18ITALYDEFENDERRIGHTBACK), Vivianiprofile46
+(34ITALYMIDFIELDERDEF.MIDFIELDER) andfreshStoke022 (legible1Aug2000,no crash).
+All10skills/agebitmapdigits and nativecountry/broad/sixfine roles/sourceinputs/
+compilerprovenance match. ActualA/B recipes/all276gamefiles identical; onlyJUG
+records4482/24478 change. Deterministicindependent checker+QA receipts under
+`parallel-rc-20261023/vicenza-maggio-viviani-delivery-v1/qa/`, finalv1SHA b434f2a6...23bae,
+v2SHA16aed410...463af. Initialcheckerimportfailurelogretained, fixedinvocation.
+SOURCE replay is exactwithcurrentparent, not a clean-machine rebuild.
+
+ROOT corrected privateinstaller assumedreviewfields(status/disposition_committed
+werenotpresent); insteadbindsfrozen_identity/read_only and rehashesactualoriginals.
+Negativepreflightretained. Finalpreflight45082PASS, install45935PASS, playablegatePASS.
+Completionproof: `vicenza-maggio-viviani-delivery-v1/v157-installer-draft/completion-proof-v157.json`.
+Currentchecklistv157, criticalledgerv9SHAe3ae19bf...6102f. Frozenbaseline2809 unchanged:
+107disposed /2702review-or-confirmed-open, +2 actualdeliveredcases. Criticalgroups
+remain14total/12delivered/2pending(calendar-countrygames andstock18/309). No new
+group orsource/test/build countcredit. Other25preferredreleases+original2015exact.
+Play `./pm99-season play 2000-01`;2017r236a andallotherplaycommands unchanged.
+
+Gitb45d460pushed sharedreusable squadrowcomposition/DOB/P734displaychanges/docs,
+119focusedregressiontestsPASS; v157catalog/handoffpendingcheckpointcommit.
+Localcapture15797finished. Verified disposable237runtimecopy retirement97500
+COMPLETE; onlygamecopyremoved, sealedsource/screens/sharedprefixpreserved.
+
+Nextworkers: Hayesresearchesremaining6first8frozen casesagainstcurrentr237,
+choosing2-4sourcepositive/reserve-onlynextcorrections andwhole-worlduniqueness.
+Diskprepares PRIVATEconsolidated2017countryinput from14classifieddiagnostic cases
++2tailcandidates; Releaseadversariallyreviewsdates/identity/baselinepreservation.
+14sourceclassifications include2Brazilhomonyms andlegitimate2017transfers/loan
+parentregistration; no automaticcaseclosureornewgamefixcount. Root mustreview
+beforeintegration. Confirmedstaleoldclubclaims distinguishfromsame-yearsequences.
+Positiveopeningcapacitycandidates: KosukeKinoshitaHalmstad andTokmacCholNguen
+Stromsgodset. DO NOTaddSeadHaksabanovic: existingEnglish9928WestHam mustremain;
+AlexanderRuudTveteralready20013Sarpsborg. JeromeOnguene28699 isNOTTokmac.
+Evidence `resume-qa/calendar-tail-two-clubs-v1/positive-opening-candidates-v2.json`
+SHA32075da3...36be andthree14case datedreviewreceiptsundercalendarpartialdraft.
+Do notreinterpretoldcarrier955/1355asnewclubownership; currenttheyareHammarby/Tromso.
+Countryinput mustpreserveallr236knownfixesincludingSigurdarsonFeb26DOB/ratings,
+StokeSouttar/Verlinden andRubin/Rostovidentities. Exactnextaction: checkpointv157,
+reviewsource-backednextinputs, delivernextactualgamebatch (no unrelatededitorwork).
+
 ## r237 Vicenza actual A/B build active — 2026-10-24 13:32 UTC
 
 Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
