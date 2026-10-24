@@ -371,3 +371,95 @@ def test_retained_gary_parkinson_row_and_soccerbase_birthday_when_available():
     assert result["published_shirt_number"] == 12
     assert result["linked_profile_url"] == "https://www.transfermarkt.com/gary-parkinson/profil/spieler/163589"
     assert result["profile_page_captured"] is False
+
+
+def _wikidata_witness(tmp_path, *, player_id=PLAYER_ID, name=PLAYER_NAME,
+                      birthday='+1968-01-10T00:00:00Z'):
+    import json
+    def claim(value):
+        return {'rank': 'normal', 'mainsnak': {'snaktype': 'value', 'datavalue': {'value': value}}}
+    entity = {'id': 'Q123', 'labels': {'en': {'value': name}}, 'claims': {
+        'P2446': [claim(str(player_id))],
+        'P569': [claim({'time': birthday, 'timezone': 0, 'before': 0, 'after': 0,
+                       'precision': 11, 'calendarmodel': 'http://www.wikidata.org/entity/Q1985727'})]}}
+    witness = _bind(tmp_path, 'entity.json', json.dumps({'entities': {'Q123': entity}}).encode(),
+                    'https://www.wikidata.org/wiki/Special:EntityData/Q123.json')
+    witness.update(format=subject.WIKIDATA_BIRTHDAY, wikidata_id='Q123',
+                   transfermarkt_player_id=PLAYER_ID, label_language='en')
+    return witness, entity
+
+
+def test_wikidata_witness_identifies_the_same_numeric_person_and_exact_day(evidence, tmp_path):
+    value, _ = evidence
+    value['birth_date_witness'], _ = _wikidata_witness(tmp_path)
+    assert _read(value)['published_birth_date'] == '1968-01-10'
+
+
+@pytest.mark.parametrize('defect', ['wrong-id', 'wrong-name', 'wrong-month', 'approximate',
+                                  'non-gregorian', 'conflicting-dob', 'wrong-url', 'changed-body'])
+def test_wikidata_witness_cannot_clear_another_identity_or_ambiguous_date(evidence, tmp_path, defect):
+    import json
+    value, _ = evidence
+    witness, entity = _wikidata_witness(tmp_path)
+    value['birth_date_witness'] = witness
+    if defect == 'wrong-id': entity['claims']['P2446'][0]['mainsnak']['datavalue']['value'] = '999'
+    elif defect == 'wrong-name': entity['labels']['en']['value'] = 'Another Player'
+    elif defect == 'wrong-month': entity['claims']['P569'][0]['mainsnak']['datavalue']['value']['time'] = '+1968-10-10T00:00:00Z'
+    elif defect == 'approximate': entity['claims']['P569'][0]['mainsnak']['datavalue']['value']['precision'] = 10
+    elif defect == 'non-gregorian': entity['claims']['P569'][0]['mainsnak']['datavalue']['value']['calendarmodel'] = 'http://www.wikidata.org/entity/Q1985786'
+    elif defect == 'conflicting-dob': entity['claims']['P569'].append(entity['claims']['P569'][0])
+    elif defect == 'wrong-url': witness['url'] += '?other=1'
+    elif defect == 'changed-body':
+        (tmp_path / 'entity.json').write_bytes(b'changed')
+    if defect not in ('wrong-url', 'changed-body'):
+        raw = json.dumps({'entities': {'Q123': entity}}).encode()
+        (tmp_path / 'entity.json').write_bytes(raw)
+        witness['sha256'] = hashlib.sha256(raw).hexdigest()
+    with pytest.raises(ValueError): _read(value)
+
+
+def test_explicit_unavailable_height_stays_unknown(evidence, tmp_path):
+    value, _ = evidence
+    raw = _squad(rows=_row(height='N/A'))
+    (tmp_path / value['path']).write_bytes(raw)
+    value['sha256'] = hashlib.sha256(raw).hexdigest()
+    assert _read(value)['published_height_cm'] is None
+
+
+def test_reviewed_club_label_alias_does_not_apply_to_another_numeric_club():
+    assert subject._club_key('LR Vicenza') in subject.club_label_keys(2655, 'Vicenza')
+    assert subject._club_key('Vicenza Calcio') in subject.club_label_keys(2655, 'Vicenza')
+    assert subject._club_key('LR Vicenza') not in subject.club_label_keys(99, 'Vicenza')
+
+
+def _family_sources(tmp_path):
+    import json
+    witness, entity = _wikidata_witness(tmp_path)
+    entity['claims']['P734'] = [{'rank': 'normal', 'mainsnak': {'snaktype': 'value',
+        'datavalue': {'value': {'id': 'Q456'}}}}]
+    raw = json.dumps({'entities': {'Q123': entity}}).encode()
+    (tmp_path / 'entity.json').write_bytes(raw)
+    witness['sha256'] = hashlib.sha256(raw).hexdigest()
+    family = _bind(tmp_path, 'family.json', json.dumps({'entities': {'Q456': {
+        'id': 'Q456', 'labels': {'en': {'value': 'Parkinson'}}}}}).encode(),
+        'https://www.wikidata.org/wiki/Special:EntityData/Q456.json')
+    selection = dict(squad_biography='squad', provider_player_id=PLAYER_ID,
+                     name=PLAYER_NAME, birth_date='1968-01-10',
+                     native_display_name='Parkinson', family_name_witness='family')
+    return selection, {'squad': {'birth_date_witness': witness}, 'family': family}
+
+
+def test_explicit_published_family_is_complete_and_preserves_full_source_identity(evidence, tmp_path):
+    selection, sources = _family_sources(tmp_path)
+    assert subject.published_family_display(selection, sources) == 'Parkinson'
+    assert selection['name'] == 'Gary Parkinson'
+
+
+@pytest.mark.parametrize('defect', ['truncated-family', 'wrong-entity', 'wrong-person', 'changed-family'])
+def test_family_display_rejects_guesses_or_another_person(evidence, tmp_path, defect):
+    selection, sources = _family_sources(tmp_path)
+    if defect == 'truncated-family': selection['native_display_name'] = 'Park'
+    elif defect == 'wrong-entity': sources['family']['url'] = 'https://www.wikidata.org/wiki/Special:EntityData/Q999.json'
+    elif defect == 'wrong-person': selection['provider_player_id'] = 999
+    elif defect == 'changed-family': (tmp_path / 'family.json').write_bytes(b'changed')
+    with pytest.raises(ValueError): subject.published_family_display(selection, sources)

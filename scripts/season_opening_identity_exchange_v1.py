@@ -239,6 +239,7 @@ def match_people(value):
 
 def verify_match_club(value, native_name):
     from scripts.capture_transfermarkt_opening_lineups_v1 import _club_key
+    from scripts.season_transfermarkt_squad_biography_v1 import club_label_keys
     page = BeautifulSoup(original(value).read_bytes(), 'html.parser')
     links = page.select('a[href*="/startseite/verein/' + str(value['provider_club_id']) + '"]')
     labels = {published_name_key(text) for a in links
@@ -248,7 +249,8 @@ def verify_match_club(value, native_name):
     structural = {_club_key(text) for a in links
                   for text in (a.get('title', ''), a.get_text(' ', strip=True)) if text}
     if (published_name_key(native_name) not in labels
-            and (not _club_key(native_name) or _club_key(native_name) not in structural)):
+            and (not _club_key(native_name)
+                 or not club_label_keys(value['provider_club_id'], native_name) & structural)):
         raise ValueError('published match club does not identify the destination native club')
 
 
@@ -286,14 +288,18 @@ def _canonical_new_person(selection, evidence):
     pid = selection['provider_player_id']
     squad_biography = 'squad_biography' in selection
     if squad_biography:
-        if 'profile' in selection or 'native_display_name' in selection or not selection.get('opening_contract'):
+        if ('profile' in selection
+                or ('native_display_name' in selection and 'family_name_witness' not in selection)
+                or not (selection.get('opening_contract') or selection.get('match'))):
             raise ValueError('squad biography needs dated membership, no fabricated profile/family heading')
         from scripts import season_transfermarkt_squad_biography_v1 as biographies
-        claim = selection['opening_contract']
-        year = date.fromisoformat(claim['opening_date']).year
+        claim = selection.get('opening_contract')
+        fixture = evidence[selection['match']] if claim is None else None
+        year = date.fromisoformat(claim['opening_date'] if claim else fixture['date']).year
         profile = evidence[selection['squad_biography']]
         parsed = biographies.read(profile, pid, season=f'{year}-{str(year+1)[-2:]}',
-            club_name=claim['club_name'], provider_club_id=claim['provider_club_id'])
+            club_name=claim['club_name'] if claim else selection['club_name'],
+            provider_club_id=claim['provider_club_id'] if claim else fixture['provider_club_id'])
     else:
         profile = evidence[selection['profile']]
         parsed = read_transfermarkt_profile(profile, pid)
@@ -701,6 +707,10 @@ def prepare(base, input_path):
             if 'admission_policy' in row:
                 decision.update(display_name=replacement['raw_evidence']['published_display_name'],
                                 display_policy='original-official-roster-published-given-and-family-name-v1')
+            elif 'squad_biography' in row:
+                from scripts import season_transfermarkt_squad_biography_v1 as biographies
+                decision.update(display_name=biographies.published_family_display(row, evidence),
+                                display_policy='original-Wikidata-explicit-entire-family-with-source-squad-name-v1')
             else:
                 decision.update(display_name=published_profile_family_display(row, evidence),
                                 display_policy='original-profile-explicit-entire-family-heading-v1')

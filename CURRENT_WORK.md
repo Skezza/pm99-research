@@ -1,5 +1,56 @@
 # PM99: current work
 
+## r237 Vicenza actual A/B build active — 2026-10-24 13:32 UTC
+
+Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+
+Installed checkpoint remainsv156/r236a2017 andr235a2000. No new frozen dispositions
+credited yet:105/2704. Criticalledgerv8 still12delivered/2pending of14.
+Git860ec28 pushedv156catalog/handoff. Verified r236disposable runner game-copy
+retired(controller86048); sealedgames, screenshots andsharedWineprefix preserved,
+ledger `.local/cleanup-20261024/verified-inactive-2017-18-sourced-stoke-rubin-rostov-molde-opening-20261024-r236a-runtime/`. Freeabout9.6GiB.
+
+ROOT found the originalTMVicenza report/schedule and detailedsquad WERE cached;
+older missingbody statements were boundedcachemisses, not unavailableevidence.
+Use existing raw report1153405 SHA1132f6fa...e385, originalfirst-leaguecapture
+6d318852...6414a, scheduleb6f2f430...00e2e and detailedsquadbd2ff288...9082d.
+Originalreport reparses XI11+bench7 including21151Maggio/166541Viviani. Opening
+fixture1Oct2000 independently verified, no inventedAugustdate. No newfixture
+admissionroute or privateWikidatafullprototype integrated.
+
+Shared minimal source changes: existing squadbiography can compose with existing
+raw first-fixturebench guard; same-person/P2446/fullname/exactGregorianP569 DOB
+witness; explicitN/Aheightunknown; numeric-ID-scopedVicenza source-label aliases;
+exactP734familyJSON display with fullsource_name retained.119focusedregressions
+passed. Source-level adversarial review passed. ROOT implementedsharedchanges;
+workers editedprivateinputs/research only. Code uncommitted pendingactualA/B.
+
+Fullnames hitactualnativewindowguards in v5/v6; no gamefileswritten onfailure.
+Factorycapacity cannot fit fullnames; v7 uses publishedentirefamilies Maggio and
+Viviani, notguessed/truncatednames, and removes unnecessarycapacityrecovery.
+Privatev7plan SHA0577b72f...c91f5,request2fd3c8a6...d6e8e,transaction43b0a9bd9435d23f52c907b4.
+Standardprepare/bind/applyinmemoryPASS: only4482/24478change, JUGpost10570a97...b3833,
+EQunchanged,allunselectedplayers/photos/kits exact. Maggio1982-02-11ITA D1height184;
+Viviani1966-09-29ITA M14heightdeclaredpreservefallback. Bothnative-no-photo.
+KnownBolognaDalCanto4065/JuveZanchi1997mustremainexact.
+
+ROOT actualbuildcontroller28806:2000r235a→r237a/b,
+`resume-qa/vicenza-two-replacements-v1/build_r237_v1.py` andbuild-r237.log.
+Stage `parallel-rc-20261023/vicenza-maggio-viviani-delivery-v1/`.
+A/B build COMPLETE: rawrecipe and fullgameinventory identical; NOT installed and
+NOT runtime-verified. Source/native-scope/build receipts exist in actualstage.
+Root localcapturecontroller15797 now serialMaggio/Viviani+freshStoke (v2driver).
+Initialv1capturecorrectly refused8GiBbudget becausewrongseasonprefixpath; no
+runnerstarted/gamecopycreated. Preservednegativecapture-r237.log, correctedv2
+prefix and removedonlyemptywrongworkspace/symlink (sharedprefixpreserved).
+Releaseworker actualA/BindependentQA; Hayesdraftsgatedprivatev157installer2frozen
+cases105→107ONLYafterruntime/install; Diskresearchestwopositiveopening-month
+capacityadditionsforHalmstad/Stromsgodset. All14countrydiagnostic duplicateidentity
+groupsnow source-classified withdatedreceipts incl2Brazilhomonyms; no casecredit
+or nativecorrectionyet. Do notmistakeoldnativecarrierlabelsforproposednewclubs.
+Exactnextaction:finishA/B, source/nativeQA, captureMaggio/Viviani+freshStoke,
+theninstallaffected2000releaseonlyafterROOTreview.
+
 ## v156 installed and verified; next Vicenza ownership batch — 2026-10-24 13:07 UTC
 
 Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
