@@ -1,5 +1,59 @@
 # PM99: current work
 
+## Reusable kit patch checked across26; Pi archive verifying — 2026-10-24 10:53 UTC
+
+Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+
+Installed state remains v154: preferred2000r224a,2017r230a, other24 preserved,
+original2015 preserved; frozen105 disposed /2704 review-or-confirmed-open.
+Critical ledger v6 remains14 groups /11 delivered /3 pending. No new disposal
+is claimed for a dry run, test or source capture.
+
+Reusable `scripts/apply_stock_kit_seed_remap_v1.py` now passes ROOT's14 focused
+tests. ROOT caught a submitted-plan mutation gap and required exact fresh-plan
+comparison before any writes; a negative test proves rejection before allocation.
+Raw file and semantic plan SHA fields are separate. Removed an unnecessary donor
+uniqueness rule: immutable clean donors can serve multiple unique target slots.
+All26 current-preferred dry runs now pass in ONE batch per season,327 candidates.
+Proof under `parallel-rc-20261023/resume-qa/kit-seed-misassignment-review-v1/`:
+`all26-current-preferred-stock-kit-remap-dryrun-v1.json` (45f1de8a...), checklist
+`combined26-stock-kit-remap-candidate-checklist-v2-r230-rebind-corrected.json`
+(cd1e277d...). r218/r230 PACKAGE hashes differ; kit archives and selected club/kit
+rows remain identical. Older incorrect/partial diagnostic inputs are preserved.
+
+Canonical command's2000 private kit outputs match existing r235a byte for byte;
+initial extend_kit call completed its files then failed only on a missing return
+metadata field. Reused and independently checked completed outputs, preserving
+negative evidence, instead of rerunning the game build. Its2015 five-case private
+bundle also materialised (~8MiB); no2015 game change. Actual2000r235A/B still
+BUILT, SOURCE-verified and independently byte-verified, NOT installed/runtime-
+approved. Need genuine Inter kit profile plus Stoke startup after space recovery.
+Bulk kit promotion waits for club-identity correctness where country repairs may
+rename clubs; current-label seed mapping is not historical club authentication.
+
+Disk worker streamed selected already-trashed Ductor files to verified Pi HDD;
+remote78,891-file verification active. Local copies remain until final SHA/open-
+file/registry/UUID rechecks pass. Three unrelated diynas Trash entries are excluded.
+Ledger: `.local/cleanup-20261024/trash-to-pi-v1/`. Free about7.6GiB, so no runner
+below its8GiB-plus-copy reserve. No current/source games or Wine prefix removed.
+
+Hayes rebased41-country source continuity onr230 and the old Derry/Ballymena Tom
+collision no longer reproduced. Partial-source builder's405 unassigned and full-
+world completeness warnings are EXPECTED outside the41 selected clubs, not new
+confirmed game defects. Next bounded source task is Molde2017 XI/bench and capacity-
+fitting cohort, preserving Haaland, to unblock the Stoke/Rostov late-arrival chain.
+No partial foreign-only draft is a release. ROOT also retained3 missing original
+primary responses (Bologna DalCanto, Udinese Zanchi, Vicenza Maggio) under
+`resume-qa/vicenza-two-replacements-v1/raw-primary-v2/`; museum403 retained as such.
+No next8 candidate automatically approved, disposed or natively changed.
+
+Git: source-bound Inter/Ballymena fixes and v154 catalog pushed as9f76ead. Actual
+adapter regression24 PASS; prepared-workspace extra guard10 PASS. Stock command
+is newly reviewed, not yet committed. Exact next action: complete verified Trash
+retirement, capture actualr235 Inter+Stoke serially, manually inspect originals,
+then ROOT-review and run gated v155 installer; advance Molde source cohort meanwhile.
+
+
 ## v154 installed; kit A/B passed independent QA — 2026-10-24 10:33 UTC
 
 Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
