@@ -1,5 +1,18 @@
 # Pi archive ledger
 
+## Completed Madrid runtime copy — 2026-10-24 00:22 UTC
+
+Machine `joe-Vostro-3350`; source session
+`01a0592d-fcd5-7262-a637-743a8253d9b4`. No Pi transfer. Retired ONLY the
+inactive disposable `game/` for 2005 r208 after checking the sealed source
+inventory, recording every copied file/hash and checking no active Docker
+mount referenced it. Bytes retired358307699; all original profile/startup
+screenshots, release/source/replay trees and initialized shared prefix retained.
+Receipts `.local/cleanup-20261024/verified-inactive-final-ruben-r208-runtime/`.
+Recreate through the registered local capture helper if needed; no installed
+release was deleted. This volume reuses capture space, not an extra net-gain
+claim above the earlier retired copies.
+
 ## Verified inactive runner copies — 2026-10-24 00:06 UTC
 
 Machine `joe-Vostro-3350`; source session

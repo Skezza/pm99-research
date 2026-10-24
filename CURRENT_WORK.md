@@ -1,5 +1,40 @@
 # PM99: current work
 
+## 2005 full chain installed; role runner continuing — 2026-10-24 00:23 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`; commitf5f0f49 pushed.
+Controller19171 terminal0: current2005 is r208a, checked exact r194→r199→r203→
+r204→r208 chain, fresh StokeAug1 2005 screenshot ROOT inspected and current-
+bound runtime attestation passed. One actual Madrid EQ flag1→0 made genuine
+Rubén DE LA RED accessible; independent profile digits/nativeinputs/kitpixels
+pass, all other game bytes unchanged relative to r204. Riera/Croft r204
+profiles reused only with explicit actor/club/assets native equivalence.
+Pandiani frozen case independently rederived and source reviewed, no copied
+proposal-only IDs. Controller77052 terminal0 saved v137 checklist:65disposed/2744REVIEW from
+fixed2809 baseline. These are candidate review counts, not confirmed bug totals.
+Evidence `parallel-rc-20261023/madrid-ruben-visibility-delivery-v1/`.
+
+Controller19001 serially captures O'Hara2018r206a profile and finalStoke;
+actual r206a/b SOURCE identical and independent3byte/readback proof confirms
+all11648otheractorpayloads exact. Barrow2016r209a/b wholeSOURCE identical;
+independent1byte/readback proof likewise preserves allotheractors/files,
+pending runner. Kilkenny2013r205a/b preserves expected2bytes/otheractors but
+currentnative/recipe name '#88 Neil Kilkenny' is a visible numeric-label gap;
+Luna prepares existing source-bound names-v2 plan before publishing/capturing
+finalchild, no immutable r205 changes. Horne374facts worker preparesr210.
+
+Controller22787 terminal0 retired only inactive r208 disposablegame358307699
+bytes with sealed-source/fullcopy/no-active-mount ledger; all final captures,
+source/releases/initializedprefix retained. `.local/cleanup-20261024/verified-inactive-final-ruben-r208-runtime/`.
+Luna source review confirms atomic3310→Altrincham feasible, all18oldactors
+represented at374, but DannyAdams must be transferred coherently from late
+Macclesfield32951 rather than duplicated. Sourceworker researches opening
+Macc replacement; oldR201Alty input must rebase after Horne correction.
+Missingsecondaryfacts remain explicit gaps, not inventedfacts. Foreignkit
+TEAMRATING route still pending genuine proof, existing profilepixels are not
+that proof. Next finishrole runtime, numericname child andHorne; then atomic
+club package/foreignkitviews and consolidated all26 regression.
+
 ## v136 installed; Rubén causal profile proved — 2026-10-24 00:15 UTC
 
 Machine `joe-Vostro-3350`; source session
