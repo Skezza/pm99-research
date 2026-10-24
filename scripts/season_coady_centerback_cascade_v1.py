@@ -298,15 +298,16 @@ def apply(jug, eq, plan):
     verify(base, plan)
     if _sha(eq) != plan["parent"]["native_files"]["EQ98030.FDI"]:
         raise ValueError("Coady cascade exact EQ parent differs")
-    if _sha(jug) != plan["parent"]["native_files"]["JUG98030.FDI"]:
-        raise ValueError("Coady cascade requires exact parent JUG; postimage input is not accepted")
+    original_jug = (base.game_path / "DBDAT/JUG98030.FDI").read_bytes()
     update = {"carrier_id": plan["target"]["carrier_id"], "before_player": plan["target"]["before_player"],
               "before_native": plan["target"]["before_native"], "primary_position": "D", "fine_roles": [4]}
     lower = {"schema": native_writer.SCHEMA, "season": plan["season"], "release_id": plan["release_id"],
              "package_sha256": plan["parent"]["package_sha256"],
              "jug_sha256": plan["parent"]["native_files"]["JUG98030.FDI"],
              "eq_sha256": plan["parent"]["native_files"]["EQ98030.FDI"], "updates": [update]}
-    postimage, eq_out = native_writer.apply(jug, eq, lower)
+    postimage, eq_out = native_writer.apply(original_jug, eq, lower)
+    if jug not in (original_jug, postimage):
+        raise ValueError("Coady cascade requires its exact parent or exact verified postimage")
     if eq_out != eq:
         raise ValueError("Coady cascade unexpectedly changed EQ")
     return postimage, eq_out

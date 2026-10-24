@@ -1,5 +1,36 @@
 # PM99: current work
 
+## Active final batch — 2026-10-24 04:33 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+v145 current:2018r215 INSTALLED/VERIFIED; baseline81disposed/2728 REVIEW.
+Code/catalog/handoff pushed as `feb8aa0`. Rawle/Forbesr216 and combined
+Evers/McCluner217a/b BUILT with whole game+recipe SOURCE equality; independent
+Luna actualnativeQA passed both. r217 NOT installed: genuine final three-profile
+plus Stoke captures active controller79254. Initial attempt55007 stopped BEFORE
+runner/evidence at8GiB reserve guard (only~5MiB short); no game failure. Verified
+duplicate capacity-pilot game removed after wholeinventory equality to retained
+sealedr214, no active mount, ledger `.local/cleanup-20261024/verified-capacity-pilot-equivalent-to-sealed-r214/`.
+All capacity screenshots/inventories/provenance and actualr214 recovery retained.
+Coady2017/2019 first actual publisher attempt41839 stopped before registration:
+canonical adapter rejected its own exact postimage, violating publisher's required
+idempotence contract. Lead fixed apply to derive sealed-source postimage and accept
+only exact source/postimage, rejecting other JUG/EQ bytes. Both seasons passed
+explicit idempotence/tamper/two-byte tests controller56684; receipt
+`resume-qa/coady-centerback-correction-v1/canonical-idempotence-integration-fix-v1.json`.
+Failed staged plans preserved; neither release had been registered. Corrected
+build/SOURCE active24606, separate immutable trees; no competing native builds. Next review r217 original frames,
+verify digits/native/kit, install chain[r211,r216,r217] then capture/verify/install
+Coady17/19. Private installer being prepared by Hayes. Disk worker prepares
+all26 finalregression and bounded20-candidate evidence review; release worker
+clarified exactly4 named pending corrections, broader candidate counts notbugs.
+Onoh decision: preserve prior native data and explicit unavailable DOB gap;
+no invalid mode1-policy bypass and no invented date. Reconciliation proposal at
+`parallel-rc-20261023/resume-qa/final-checklist-reconciliation-v1/clarification-v2.json`.
+Known unreviewed duplicate backlog remains explicit; no global historical
+certification or all2809reviewed claim. Evidence roots relative to
+`.local/consolidated-audit-20261009/` unless absolute.
+
 ## Resumed delivery — 2026-10-24 04:25 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
