@@ -1,5 +1,89 @@
 # PM99: current work
 
+## Integration update — 2026-10-24 21:59 UTC
+
+Canonical annual/fixture regression:38PASS then103PASS with legacywriter/
+adjudicator tests. Commits4a5e6cc(manager evidence wording),0de758c(strict
+annualfixture identity), push21312pending/result inspect. Actualcanonical
+2000/2001 in-memory prepare/verify/bind/apply both PASS (2JUGbytes each;EQand
+unselectedactors exact); evidence annual-fixture-bridge-v5/, no actualgamefix
+for these two yet. LunaHayes now bounded2007Seedorf4051 editorialCMroleproof.
+
+2003r275 originalROOTprofile seen:ClarenceSEEDORF/Milan/27/HOLLAND/centralmid;
+native inputs,unchangedkitpixels,all10independentbitmapdigits/age PASS32433.
+Stoke31557stillactive. ROOTBUILD25430 nowruns2001Zurich/Molde r278A/B after
+storagefreezeended; free9.3GiB/availableRAM2.9GiB, onebuild/onerunner only.
+No newpreferred games installed. Do notrerun eithercontroller.
+
+Lunaoriginalannualpages check disproved its own 'Irishroutingcorrect' claim:
+threeadditional existinglabelcandidates useend-yearcalendarrosters vsAugstart.
+Itsv2conclusion is retracted; additiveproof/all26IR1calendarselector audit in
+progress, withinexistingcalendargroup. No automaticrenames approved forwrong-
+yearcohorts. UserAugusttargetrule governs, notproviderIDfolders.
+
+## Space recovered; 2003 fact runtime active — 2026-10-24 21:53 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. Preferred checkpoint v164
+unchanged. Storage16139 TERMINAL0, verified2,148,392,960 allocated bytes reclaimed
+519inodes/14,361paths; allbytes/size/mode/uid/gid/inventories preserved, mtime
+keeper adoption recorded. Completion7f721c98… under
+`resume-qa/storage-dedup-current-20261024-v1/`; Pi ledger updated.
+
+ROOT runner31557 ACTIVE serial2003r275 profile+Stoke startup. Existing built
+r274/r275/r273 A/B pairs must NOT be rebuilt. After2003 original frame review,
+native/digit/age proof, retire onlydisposable copy, then2012r273 same checks,
+then guardedv165installation. Root private installer v2 corrects worker draft
+fallback-removal and2012club assumption (actualBotafogo, notMilan); original
+draft retained. No newpreferred releases claimed.
+
+Canonical annual+opening-fixture strict fact admission integrated after ROOT
+rejected matchday substring and dropped negative tests. First actual combined
+suite38PASS; old-source-writer/adjudicator suite33052 running after portable
+missing-corpus guard adjustment. Actual canonical2000/2001 APIproof worker
+Hayes active, no game writes. Manager/cohort provenance method now truthfully
+claimsdatedmanager evidence rather than firstfixture where notsourced.
+
+Luna disk→six existing label candidates original annual HTML/date lookup;
+Hayes→canonical read-only two-person fact proof; release→Irish v2 package
+composer/nativeownership closure, source-positive NIbackfills. All no runner/
+publication/build. Basel/Zürich driver corrected v2 is private unexecuted;
+r278 likewise unbuilt after initial spaceassert. Preserve this order.
+
+Counts still109/2809 disposed,2700 review-or-confirmed-open, stock58/327
+installed, critical16/12/4, confirmedlabels1/8delivered. They are notpercentages.
+
+## Resumed: space recovery gate, then three built fact corrections — 2026-10-24 21:40 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Preferred/checklist remain v164; no new installation claimed. All three fact
+A/B pairs r274/r275/r273 are BUILT and SOURCE-identical; independent native QA
+passed. 2002 Zanetti ARG profile and fresh Stoke startup are ROOT-reviewed,
+native/digit/age checked. 2003 and 2012 runner captures still pending. Do not
+rerun these builds. Private v165 installer is syntax-checked, NOT executed;
+its missing-runtime gates deliberately prevent publication.
+
+Current archive-media recovery: v1 verifier stopped on an irrelevant missing
+retired-game binding; v2 narrowed bindings to all selected locators plus every
+preferred release, retaining full audit, then stopped at lsof argv E2BIG. No
+mutation occurred in either failed pass. ROOT reviewed new v3 executor, same
+519-inode/14,361-path/2,148,392,960-byte plan, with exact lsof checks batched256;
+read-only verification controller65096 is running. Builds/captures/publication
+paused until ROOT completes verified relink. Evidence under
+`resume-qa/storage-dedup-current-20261024-v1/`; all failures preserved.
+
+Luna assignments: disk→private Basel Gross / Zürich Gress composed correction
+script (r277 uninstalled intermediate, r281 final); Hayes→adversarial annual/
+fixture bridge review (ROOT spotted matchday substring weakness); release→Irish
+v2 package composer preserving exact provider-ID actors, scoped two NI moves
+and positive backfills. No worker build/publication/runner. Existing photos
+remain deferred; no unmatched actor may inherit an unrelated face.
+
+Exact next action: inspect storage65096 result; verify receipt and ROOT execute
+relink if all gates pass, then serial 2003/2012 fact captures, actual frame
+review/readback and guarded three-season installation. Counts remain frozen
+109/2809 disposed,2700 review-or-confirmed-open; stock58/327 installed; critical
+16total/12delivered/4open; labels1/8 delivered. These are not completion percent.
+
 ## v164 installed: Alverca identity/manager delivered; next3 fact pairs building — 2026-10-24 20:38 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.

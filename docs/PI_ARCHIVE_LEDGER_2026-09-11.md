@@ -1684,3 +1684,25 @@ member through an atomic replacement; restore its recorded metadata as needed.
 Do not modify a shared immutable asset in place. Current recipes, native
 DBDAT files, mutable game state and original2015 backup were not deduplicated
 by this operation.
+
+## Current registered media dedup — 2026-10-24 21:53 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Reused verified 144-member factory-media archive on Pi UUID
+`1f364414-880d-4f96-8619-3bd8c9954cc0`,
+`/srv/hdd/pm99-archive/research/storage-dedup/20261024/r239-factory-media-v1/factory-media.tar.gz`,
+SHA256 `39fd6a662b3d30e4df54e45414a25c564024f66fcc14b0e2eef8d52dd7e99d66`.
+No new upload or source/game deletion. ROOT relinked 519 closed duplicate media
+inodes across14,361 paths:2,148,392,960 allocated bytes reclaimed by plan.
+All actual SHA/size/mode/uid/gid and locator/inventory hashes preserved; target
+mtime explicitly adopts keeper mtime. Original metadata is journaled.
+Scope only SIMULDAT/,SFX/,IMG.PKF,RECURSOS.PKF; no DBDAT/EXE/config/saves.
+Evidence `.local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/storage-dedup-current-20261024-v1/`.
+Completion `current-relink-completion-v3.json` SHA256
+`7f721c98c472568d08d84f8aa133bfe73838f38065be7e2390543b86b2ab199e`;
+verification `fc4678f7f8bbe59931ce0452ae3c11255faef1286e0c77867aabdcd05865374a`.
+Failed read-only v1/v2 checks preserved: irrelevant cold missing-game binding,
+then lsof argv limit. Corrected v3 checks all selected paths in57 batches;
+no open descriptors or overlapping active container mount. All links and
+current bindings rechecked after completion. Free space approximately9.8GiB
+before next capture; changes in free space also reflect unrelated processes.
