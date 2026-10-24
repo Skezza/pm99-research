@@ -392,6 +392,10 @@ def build(season: str, *, release_id: str, resume: bool = False) -> dict[str, An
     reconstructed = horne_facts.reconstruction(previous, release_id)
     if reconstructed is not None:
         return reconstructed
+    from scripts import season_vokes_crouch_opening_exchange_v2 as vokes_crouch
+    reconstructed = vokes_crouch.reconstruction(previous, release_id)
+    if reconstructed is not None:
+        return reconstructed
     from scripts import season_riera_postownership_country_role_v1 as riera_country_role
     reconstructed = riera_country_role.reconstruction(previous, release_id)
     if reconstructed is not None:

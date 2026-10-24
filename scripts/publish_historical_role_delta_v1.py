@@ -600,6 +600,9 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         from scripts import season_horne_26979_facts_v1 as horne_facts
         if assignment_plan.get('schema') == horne_facts.SCHEMA:
             assignments = horne_facts
+        from scripts import season_vokes_crouch_opening_exchange_v2 as vokes_crouch
+        if assignment_plan.get('schema') == vokes_crouch.SCHEMA:
+            assignments = vokes_crouch
         from scripts import season_2015_english_fifa_roles_v1 as english_roles
         if assignment_plan.get('schema') == english_roles.SCHEMA:
             assignments = english_roles
@@ -972,6 +975,11 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
             removed_target_roster_links=[],fixed_duplicate_case_ids=[],
             players_written=len(assignment_plan['updates']),allowed_write=assignment_plan['scope'])
+    elif assignment_plan is not None and assignment_plan.get('schema') == vokes_crouch.SCHEMA:
+        receipt.update(compilation_mode=vokes_crouch.MODE,
+            original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
+            removed_target_roster_links=[], fixed_duplicate_case_ids=[],
+            players_written=2, allowed_write=assignment_plan['scope'])
     elif assignment_plan is not None and assignment_plan.get('schema') == madrid_activation.SCHEMA:
         receipt.update(compilation_mode=madrid_activation.MODE,
             original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),

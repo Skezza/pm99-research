@@ -1,5 +1,37 @@
 # PM99: current work
 
+## Verified v141 current releases; ownership integration — 2026-10-24 02:15 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+2013 r212a and 2000 r210a now installed and runner-verified, superseding the
+pending state below. Kilkenny profile has no numeric prefix; actual Horne26979
+profile is MID/CENTRAL MID, age38/Wales. Rejected shadow10955 capture retained
+as negative evidence. Latest checklist v141:65 disposed /2744 REVIEW from
+fixed2809 candidates; REVIEW does not mean confirmed bug. Consolidated current
+26-release regression passed (`parallel-rc-20261023/all26-v141-regression.json`),
+zero releases regenerated. Global historical RC remains false.
+
+2018 Vokes/Crouch r213a/b built and whole SOURCE-identical, NOT installed.
+Eight native bytes exchange existing owner links/order and dated opening shirt
+numbers, preserving identities/ratings/photos. Actual native readback passed.
+Canonical adapter QA passed; runtime profiles and final startup remain next.
+Batth private typed proposal rebased to r213a passed tests; Wolves26-player
+engine capacity remains unverified, therefore not approved for publication.
+
+Altrincham/Macclesfield private joint native compile passed three tests:19
+actors, EQ3310 and ENT807 only, retained Kidder374 players unchanged. No actual
+game build/publication yet. Hayes Luna prepares standard adapter/ENT seam;
+disk Luna independently checks source identities/postimages. Release Luna
+checks Batth capacity evidence and source alternatives. Root owns integration
+and serial runner. Evidence below `parallel-rc-20261023/resume-qa/`.
+
+Foreign Palermo TEAM RATING probe v5 running controller44266; earlier navigation
+probes explicitly unapproved. Existing all26 Stoke compact-kit pixel audit
+passed within its stated Stoke-only scope. Next inspect actual Palermo match
+route, integrate Alty adapter, capture Vokes/Crouch actual clubs, then publish
+only validated affected releases. Pi archive verified and completed as below;
+local disk currently8.3GiB free, no further deletion authorized by assumption.
+
 ## v139 installed; verified Pi archive completed — 2026-10-24 00:56 UTC
 
 Machine `joe-Vostro-3350`; session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
