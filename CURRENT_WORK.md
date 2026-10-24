@@ -1,5 +1,56 @@
 # PM99: current work
 
+## r217 delivered; remaining source-backed findings — 2026-10-24 04:54 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Latest completed checkpoint **v146**: 2000r217 INSTALLED and VERIFIED after
+three original profiles, independent digits/native/kit checks, whole SOURCE and
+fresh StokeAug1 startup. Actual frozen baseline83disposed/2726remaining REVIEW
+or confirmed-open; do not call those2726 proven bugs. Full evidence
+`parallel-rc-20261023/evers-mcclune-delivery-v1/`, completion-proof-v146.json.
+Original2015 and other25 preferred releases preserved. Inactive r217 runtimecopy
+retired ONLY after source/copy fullinventory and noactivemount proof; source,
+all screenshots/prefixes/receipts retained, cleanup ledger exactreleaseID.
+McClune firstcapture had correct frame but OCR `micclune` failed token; negative
+transport retained. Fresh retry with explicit OCR alias passed; ROOT inspected
+literal McClune/StJohnstone/SCOTLAND/DEFENDER/RIGHTBACK/age17; exact native name
+and independent digits still required and passed. No database change for OCR.
+
+2017/2019 Coady r218a/b BUILT, whole SOURCE game+recipe-identical, preflight
+both PASS; NOT installed. Serial2017 profile+Stoke capture active42380. Then
+retire its verified runtimecopy, capture2019, install both via v147 exactguards.
+2018r215 remains installed/verified. Canonical idempotence fix/code pushedf65228c.
+
+Additional bounded research must not be mistaken for a finished RC:
+- Original first40 assignments now ROOT-generated with canonical case hash at
+`parallel-rc-20261023/resume-qa/lead-exact-unresolved-frozen-first40-v145.json`.
+Disk worker initially used wrong hash normalizer and re-reviewed disposedcases;
+rejected draft preserved, corrected exactrows0:20 receipt saved. Release worker
+rows20:40 independently match authoritative assignment. No spurious closures.
+- Anelka2001 case c5a123fc06fa70b75b75625c46fe94dc84bae0c1d9597756f6d42c4222ccbbf3:
+UEFA21Dec2001 official loan proves wrong openingLiverpool8080; PSG12616 retained.
+ROOT inspected original Liverpool-WestHam18Aug and Lens-Lyon28July HTMLs:
+sourcebench DjimiTraore#30CB and BrunoRodriguez#23CF. Atomic proposed correction
+Liverpool8080→Traore, Lens31819→Bruno; no foreign/native family transplantation.
+Luna release prepares private sourcebound adapter and complete bench orders.
+ROOT independently opened FCMetz official Bruno profile:25Nov1972,180/79,striker;
+SkyOctDOB/PL175height conflicts remain explicit; no primary-source absence block.
+- Disk Luna dated review identifies further2000 wrongowners requiring ROOT
+originalevidence approval: WhittakerMacc32952→retainSouthport11069;
+BrannanWigan33162→retainMotherwell12147; DalmatInter14660→retainPSG7275;
+BerkovicBlackburn9501→retainCeltic7878. These are existingfrozen cases, not new
+baseline additions. Do not claim corrections delivered yet.
+- Hayes independently confirms populated2001Kidder370/3310 duplicateclubcohort:
+18mode1 actorsduplicate24-player realclub. Targetalternateclubsource notyet
+established; do not silentlydispose/invent replacement or callmode1 inactive.
+Luna source findings/limits kept separate from actual game fixes.
+
+Next exact action: complete Coady runtime/install, review/integrate approved
+ownership source packages, reconcile stale checklist states, consolidated26
+regression only after affected preferred games are final. Onoh stays explicitly
+allowed unavailable secondary fact with known recipe/native fallback discrepancy.
+All relative evidence paths above under `.local/consolidated-audit-20261009/`.
+
 ## Active final batch — 2026-10-24 04:33 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
