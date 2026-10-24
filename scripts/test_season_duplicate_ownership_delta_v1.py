@@ -258,3 +258,21 @@ def test_native_delta_preserves_other_records_and_is_deterministic(family, playa
     assert delta.compile_players(original, result, {'player-02'}, {'ENGLAND': 30, 'XXX': 0}) == patched
     # An already-correct delta is a native no-op, not another wide rewrite.
     assert delta.compile_players(patched, result, {'player-02'}, {'ENGLAND': 30, 'XXX': 0}) == patched
+
+
+@pytest.mark.parametrize('family', ['dd6360', 'dd6361'])
+def test_unknown_replacement_country_preserves_exact_native_byte(family):
+    package, plan = fixture(family)
+    result = delta.updated_package(package, plan)
+    result['players'][1]['facts']['nationality'] = {'policy': 'preserve-existing-mode1'}
+    maker = _dd6360_player_payload if family == 'dd6360' else _dd6361_player_payload
+    original = _indexed_fdi([(1, '', maker(1)), (2, '', maker(2))])
+    delta.fit_display_names(original, result, plan)
+    patched = delta.compile_players(original, result, {'player-02'}, {'ENGLAND': 30, 'XXX': 0})
+    before = {e.record_id: e.decode_payload(original) for e in IndexedFDIFile.from_bytes(original).entries}
+    after = {e.record_id: e.decode_payload(patched) for e in IndexedFDIFile.from_bytes(patched).entries}
+    old_end = delta.roster.native_player(before[2], 2)['name_end']
+    new_end = delta.roster.native_player(after[2], 2)['name_end']
+    assert before[2][old_end+8] == after[2][new_end+8]
+    assert after[1] == before[1]
+    assert delta.compile_players(patched, result, {'player-02'}, {'ENGLAND': 30, 'XXX': 0}) == patched

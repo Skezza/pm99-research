@@ -327,3 +327,15 @@ def test_moving_person_retains_fallback_facts_in_canonical_order(tmp_path, monke
             f for f in actors[source]['fact_fallbacks'] if f['field'] != 'shirt_number']
         assert actor['carrier_id'] == actors[destination]['carrier_id']
         assert actor['club_id'] == actors[destination]['club_id']
+
+
+@pytest.mark.parametrize('roles', [[], [98]*6, [3], [3, 98, 8, 98, 98, 98],
+    [3, 3, 98, 98, 98, 98], [18, 98, 98, 98, 98, 98],
+    [-1, 98, 98, 98, 98, 98], [True, 98, 98, 98, 98, 98]])
+def test_preserved_source_roles_reject_ambiguous_or_unwritable_sets(roles):
+    with pytest.raises(ValueError):
+        subject._packed_native_role_candidates(roles)
+
+
+def test_preserved_source_role_candidates_keep_preference_order():
+    assert subject._packed_native_role_candidates([3, 8, 14, 98, 98, 98]) == [3, 8, 14]

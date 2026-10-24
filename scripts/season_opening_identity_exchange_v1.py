@@ -27,6 +27,7 @@ from scripts.capture_2015_source_tail_squads_v1 import NATIONALITY_CODES
 from scripts.prepare_duplicate_whole_club_native_v1 import preserve_other_records
 from scripts.build_woking_owned_opening_20261011 import skills
 from app.fdi_indexed import IndexedFDIFile
+from app.indexed_jug_roles import read_indexed_native_roles
 from app.player_initial_order import read_initial_order, replace_initial_order
 from app.xor import xor_decode
 
@@ -37,6 +38,20 @@ MODE = 'known-good-baseline-source-bound-opening-identity-exchange-v1'
 SCOPE = 'Selected source-bound reserve identities, portraits and explicit complete owned bench ordering only; fixed club membership/counts, starters, tactics, managers, kits and unrelated records preserved.'
 FOREIGN_IDENTITY_ONLY_POLICY = 'foreign-mode1-profile-identities-with-opaque-opening-controls-preserved-v1'
 SOURCE_COUNTRIES = {**NATIONALITY_CODES, 'Benin': 'BEN'}
+PRESERVE_SOURCE_NATIVE_ROLES_POLICY = 'preserve-moved-source-native-roles-without-historical-fine-role-claim-v1'
+
+
+def _packed_native_role_candidates(six_roles):
+    """Validate six native slots and return nonempty packed values for writer."""
+    if (not isinstance(six_roles, list) or len(six_roles) != 6
+            or any(type(role) is not int for role in six_roles)
+            or any(role not in (*range(18), 98) for role in six_roles)):
+        raise ValueError('moved source native roles must be six supported integer slots')
+    active = [role for role in six_roles if role != 98]
+    if (not active or len(active) != len(set(active))
+            or six_roles != active + [98] * (6 - len(active))):
+        raise ValueError('moved source native roles must be nonempty, unique, and packed before empty slots')
+    return active
 
 
 def digest(raw):
@@ -621,6 +636,20 @@ def prepare(base, input_path):
             dated_source(evidence[key])
         decision = dict(carrier_id=row['destination'], preserved_source_carrier=row['source'],
                         before=target, moved_before=source)
+        if (foreign_identity is not None
+                and source['club_id'] in foreign_identity_ids
+                and target['club_id'] in foreign_identity_ids
+                and source['facts'].get('fine_roles') == {'policy': 'preserve-existing-mode1'}):
+            source_entry = next(e for e in IndexedFDIFile.from_bytes(jug).entries
+                                if e.record_id == row['source'])
+            source_payload = source_entry.decode_payload(jug)
+            _, source_roles = read_indexed_native_roles(source_payload, row['source'])
+            source_role_candidates = _packed_native_role_candidates(source_roles)
+            decision['preserved_source_native_roles'] = dict(
+                source_carrier=row['source'], six_roles=source_roles,
+                writer_candidates=source_role_candidates,
+                policy=PRESERVE_SOURCE_NATIVE_ROLES_POLICY,
+                historical_fine_role_claim=False)
         if row.get('source_birth_date_correction'):
             decision['source_birth_date_correction'] = official_biography_birth_date(
                 source, row['source_birth_date_correction'], evidence, season=base.season)
@@ -938,7 +967,43 @@ def apply(jug, eq, plan):
             raise ValueError('empty compilation only allowed for explicit source-bound order-only plan')
         candidate = prepared
     else:
-        candidate = delta.compile_players(prepared, package, {players[c]['id'] for c in selected}, codes)
+        compile_package = package
+        source_role_rows = [row for row in plan['decisions']
+                            if row.get('preserved_source_native_roles') is not None]
+        if source_role_rows:
+            compile_package = copy.deepcopy(package)
+            compile_players = {p['carrier_id']: p for p in compile_package['players']}
+            original_entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(original_jug).entries}
+            for row in source_role_rows:
+                proof = row['preserved_source_native_roles']
+                source_carrier = row.get('preserved_source_carrier')
+                if (proof.get('policy') != PRESERVE_SOURCE_NATIVE_ROLES_POLICY
+                        or proof.get('historical_fine_role_claim') is not False
+                        or proof.get('source_carrier') != source_carrier
+                        or source_carrier not in original_entries):
+                    raise ValueError('moved source role preservation declaration differs')
+                source_payload = original_entries[source_carrier].decode_payload(original_jug)
+                _, actual_source_roles = read_indexed_native_roles(source_payload, source_carrier)
+                writer_candidates = _packed_native_role_candidates(actual_source_roles)
+                if (proof.get('six_roles') != actual_source_roles
+                        or proof.get('writer_candidates') != writer_candidates):
+                    raise ValueError('moved source role bytes do not match their exact original native preimage')
+                target = compile_players[row['carrier_id']]
+                if target['facts'].get('fine_roles') != {'policy': 'preserve-existing-mode1'}:
+                    raise ValueError('native role override is limited to recipe-preserved foreign mode1 roles')
+                # This is an ephemeral compiler view only. The bound package
+                # keeps its source-level preserve-existing marker and makes no
+                # historical fine-role assertion.
+                target['facts']['fine_roles'] = writer_candidates
+        candidate = delta.compile_players(prepared, compile_package, {players[c]['id'] for c in selected}, codes)
+        if source_role_rows:
+            candidate_entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(candidate).entries}
+            for row in source_role_rows:
+                expected = row['preserved_source_native_roles']['six_roles']
+                payload = candidate_entries[row['carrier_id']].decode_payload(candidate)
+                _, actual = read_indexed_native_roles(payload, row['carrier_id'])
+                if actual != expected:
+                    raise ValueError('moved identity role bytes differ from captured source preimage')
     patched_eq = original_eq
     order_carriers = set()
     if plan.get('complete_mode1_opening') is not None:

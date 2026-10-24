@@ -315,7 +315,10 @@ def compile_players(original, package, changed_ids, country_codes):
         facts = player['facts']
         if actual['position'] != facts['primary_position']:
             raise ValueError('replacement native broad position readback failed')
-        if payload[end + 8] ^ 0x61 != compiler._country_code(facts['nationality'], dict(country_codes)):
+        if facts['nationality'] == {'policy': 'preserve-existing-mode1'}:
+            if payload[end + 8] != old_payload[old_end + 8]:
+                raise ValueError('declared unpublished replacement nationality changed native fallback byte')
+        elif payload[end + 8] ^ 0x61 != compiler._country_code(facts['nationality'], dict(country_codes)):
             raise ValueError('replacement native nationality readback failed')
         for field, offset in [('height_cm', 16), ('weight_kg', 17)]:
             if isinstance(facts[field], int) and payload[end + offset] ^ 0x61 != facts[field]:
