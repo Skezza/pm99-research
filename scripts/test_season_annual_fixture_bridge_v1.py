@@ -116,13 +116,12 @@ def test_wrong_native_dob_preimage_is_rejected_optional_corpus(tmp_path):
     if not source.is_file(): pytest.skip('retained current-parent corpus request unavailable')
     request=json.loads(source.read_text())
     request['changes'][0]['native_before_birth_date']='1976-11-02'
-    temp=root/'.tmp-wrong-native-dob-input.json'
-    temp.write_text(json.dumps(request,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n')
-    try:
+    import tempfile
+    with tempfile.TemporaryDirectory(prefix='.native-preimage-', dir=root) as folder:
+        temp=Path(folder)/'wrong-native-dob-input.json'
+        temp.write_text(json.dumps(request,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n')
         with pytest.raises(ValueError,match='native preimage'):
-            prepare(registry.load_preferred_release('2000-01'),temp)
-    finally:
-        temp.unlink(missing_ok=True)
+            prepare(registry.load_registered_release(request['season'],request['release_id']),temp)
 
 
 # Additive v3 exact-matchday and annual-row source-binding regressions.
