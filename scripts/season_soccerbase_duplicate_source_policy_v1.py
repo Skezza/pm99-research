@@ -199,6 +199,10 @@ def extend_original_people(people, document):
 
 def person_id(person):
     id=person['source_player_id']
+    if person.get('source_provider') == '11v11':
+        from scripts import season_11v11_squad_admission_v1 as elevenv_admission
+        if person.get('identity_policy') == elevenv_admission.POLICY:
+            return elevenv_admission.person_id(person)
     if person.get('source_provider') == 'fifa':
         from scripts import season_fifa_dated_roster_admission_v1 as fifa_admission
         return fifa_admission.person_id(person)

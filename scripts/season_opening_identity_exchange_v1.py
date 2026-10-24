@@ -362,6 +362,11 @@ def _uses_reviewed_new_person_provider(selection):
 def new_person(selection, evidence, *, season=None, club=None):
     """Keep ordinary admissions; route only explicit reviewed provider shapes."""
     if 'admission_policy' in selection:
+        from scripts import season_11v11_squad_admission_v1 as elevenv_admission
+        if selection['admission_policy'] == elevenv_admission.POLICY:
+            if not season or club is None:
+                raise ValueError('11v11 admission requires exact target season and club')
+            return elevenv_admission.new_person(selection, evidence, season, club)
         from scripts import season_fifa_dated_roster_admission_v1 as fifa_admission
         if not season or club is None:
             raise ValueError('dated FIFA admission requires explicit season and destination club')
@@ -673,9 +678,14 @@ def prepare(base, input_path):
         if _uses_reviewed_new_person_provider(row) and base.season != '2005-06':
             raise ValueError('reviewed new-person source provider belongs only to 2005-06')
         if 'admission_policy' in row:
-            from scripts import season_fifa_dated_roster_admission_v1 as fifa_admission
-            opening_date = fifa_admission.roster_membership(
-                row, evidence, base.season, clubs[actor['club_id']])['date']
+            from scripts import season_11v11_squad_admission_v1 as elevenv_admission
+            if row['admission_policy'] == elevenv_admission.POLICY:
+                opening_date = elevenv_admission.new_person(
+                    row, evidence, base.season, clubs[actor['club_id']])['opening_date']
+            else:
+                from scripts import season_fifa_dated_roster_admission_v1 as fifa_admission
+                opening_date = fifa_admission.roster_membership(
+                    row, evidence, base.season, clubs[actor['club_id']])['date']
         elif row.get('opening_contract'):
             from scripts import season_dated_reserve_membership_v1 as contracts
             opening_date = contracts.verify(row, evidence, season=base.season, club=clubs[actor['club_id']])
@@ -705,8 +715,12 @@ def prepare(base, input_path):
                         fine_roles=fine_roles)
         if 'native_display_name' in row:
             if 'admission_policy' in row:
-                decision.update(display_name=replacement['raw_evidence']['published_display_name'],
-                                display_policy='original-official-roster-published-given-and-family-name-v1')
+                if replacement['source_person'].get('source_provider') == '11v11':
+                    decision.update(display_name=replacement['source_person']['name'],
+                                    display_policy='original-11v11-published-complete-name-v1')
+                else:
+                    decision.update(display_name=replacement['raw_evidence']['published_display_name'],
+                                    display_policy='original-official-roster-published-given-and-family-name-v1')
             elif 'squad_biography' in row:
                 from scripts import season_transfermarkt_squad_biography_v1 as biographies
                 decision.update(display_name=biographies.published_family_display(row, evidence),
@@ -727,6 +741,11 @@ def prepare(base, input_path):
         bindings=dict(snapshot=dict(project_url='https://www.transfermarkt.com/')),
         source_title='Dated opening bench identities and August ownership exchanges',
         proof_covers=['bounded-reserve-ownership-and-original-bench-only'], scope=SCOPE)
+    if updates and not moves and all(
+            row['replacement']['source_person'].get('source_provider') == '11v11' for row in updates):
+        plan['bindings']['snapshot']['project_url'] = 'https://www.11v11.com/'
+        plan['source_title'] = 'Dated 11v11 career membership and independently reparsed annual squad rows'
+        plan['proof_covers'] = ['source-bound-August-contract-membership-not-matchday-appearance']
     if omitted_birth_date_preimages:
         plan['unverified_displaced_slot_birth_date_preimages'] = sorted(
             omitted_birth_date_preimages, key=lambda row: row['carrier_id'])
@@ -735,11 +754,18 @@ def prepare(base, input_path):
         plan['scope'] = ('Source-bound profile identity exchange; English starters unchanged, foreign mode1 '
                          'opening controls preserved without assigning their unproved AI-XI meaning. '
                          'All EQ, tactics, managers, kits and unrelated player records preserved.')
-    if any('admission_policy' in row for row in request['new_people']):
+    admission_providers = {row['replacement']['source_person'].get('source_provider') for row in updates}
+    if (any('admission_policy' in row for row in request['new_people'])
+            and admission_providers != {'11v11'}):
         plan.update(bindings=dict(snapshot=dict(project_url='https://www.premierleague.com/')),
                     source_title='Dated official opening squad membership and exact period FIFA identities',
                     proof_covers=['dated-official-August-squad-membership-not-opening-XI-or-appearance-claim',
                                   'exact-target-edition-FIFA-identity-roles-and-abilities'])
+        if '11v11' in admission_providers:
+            plan.update(source_title='Explicit per-person dated 11v11 and period FIFA source admissions',
+                        proof_covers=['per-person-source-bound-August-membership-not-match-appearance',
+                                      'FIFA-abilities-only-for-explicit-FIFA-source-people',
+                                      '11v11-biographies-and-independent-annual-roster-rows-for-11v11-people'])
     if any(row.get('source_birth_date_correction') for row in decisions):
         plan['scope'] += ' Explicit named original-biography DOB corrections only; moved abilities remain unchanged.'
         plan['proof_covers'].append('explicit-original-named-biography-DOB-correction')
@@ -832,6 +858,12 @@ def bind(package, plan):
             if target['facts']['primary_position'] != 'G':
                 values['handling'] = max(1, min(20, values['handling']))
             replacement = next(u['replacement'] for u in plan['updates'] if u['carrier_id'] == row['carrier_id'])
+            if replacement['source_person'].get('source_provider') == '11v11':
+                published = replacement.get('published_shirt_number_not_admitted_by_this_writer')
+                for fallback in target.get('fact_fallbacks', []):
+                    if fallback['field'] == 'shirt_number':
+                        fallback['reason'] = ('Published annual-roster shirt number ' + str(published)
+                            + ' retained in source evidence; this bounded identity writer preserves the destination shirt byte. Not an unavailable-source claim.')
             if replacement['source_person'].get('source_provider') == 'fifa':
                 values = copy.deepcopy(replacement['raw_evidence']['fifa_values'])
                 target['ratings'] = dict(profile='pm99-visible-skills-v1', values=values,
