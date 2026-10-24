@@ -268,7 +268,7 @@ def apply(plan_path, materialisation_root, output_game, *, source_release=None):
         if sha(release.game_path / name) != digest:
             raise ValueError('kit patch base changed')
     before, runtime_config = source_inventory(release)
-    portraits._copy_game_cow(release.game_path, output_game)
+    copy_proof = portraits.copy_game_with_factory_media_links(release.game_path, output_game)
     for name in receipt["outputs"]:
         (output_game / name).parent.mkdir(parents=True, exist_ok=True)
         (output_game / name).write_bytes((materialisation_root / name).read_bytes())
@@ -286,6 +286,8 @@ def apply(plan_path, materialisation_root, output_game, *, source_release=None):
               "materialisation_path": str((materialisation_root / 'receipt.json').resolve()),
               "plan_sha256": sha(plan_path), "materialisation_sha256": sha(materialisation_root / "receipt.json"),
               "base_inventory_fingerprint": before["files_fingerprint"], "output_inventory": after,
+              "copy_strategy": "shared-immutable-factory-media-independent-mutable-files-v1",
+              "copy_proof": copy_proof,
               "registered_base_inventory_fingerprint": release.locator["game_inventory_fingerprint"],
               "existing_runtime_config_difference": runtime_config,
               "included_visual_patch_plan_sha256s": plan.get('included_visual_patch_plan_sha256s', []),

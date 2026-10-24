@@ -443,6 +443,105 @@ def materialise(*, plan_path: Path, minifoto_path: Path, cache_root: Path, outpu
     }
 
 
+FACTORY_MEDIA_LINK_DIRS = ("SIMULDAT/", "SFX/")
+FACTORY_MEDIA_LINK_FILES = {"RECURSOS.PKF", "IMG.PKF"}
+
+
+def _is_factory_media_path(relative_path: str) -> bool:
+    return relative_path in FACTORY_MEDIA_LINK_FILES or relative_path.startswith(FACTORY_MEDIA_LINK_DIRS)
+
+
+def _reject_factory_media_copy_symlinks(source: Path) -> None:
+    for parent, dirs, files in os.walk(source, followlinks=False):
+        base = Path(parent)
+        for name in dirs + files:
+            candidate = base / name
+            if candidate.is_symlink():
+                raise ValueError(f"game copy does not accept symlinks: {candidate}")
+
+
+def copy_game_with_factory_media_links(source: Path, target: Path) -> dict:
+    """Copy a game tree, hardlinking only SIMULDAT/, SFX/, RECURSOS.PKF, IMG.PKF.
+
+    All DBDAT, DAT, executable, configuration, save and other files are regular
+    copies. A hardlink failure aborts; there is deliberately no fallback that
+    could make the space estimate silently invalid.
+    """
+    source = Path(source)
+    target = Path(target)
+    if not source.is_dir() or source.is_symlink():
+        raise ValueError("copy source must be a real directory")
+    if target.exists() or target.is_symlink():
+        raise FileExistsError(f"output game already exists: {target}")
+    if source.resolve() == target.resolve(strict=False) or source.resolve() in target.resolve(strict=False).parents:
+        raise ValueError("output game cannot be inside its source tree")
+
+    _reject_factory_media_copy_symlinks(source)
+    before = pipeline_v2.build_tree_inventory(source)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if source.stat().st_dev != target.parent.stat().st_dev:
+        raise OSError("factory-media hardlinks require source and output on the same filesystem")
+    linked_rows = [row for row in before["files"] if _is_factory_media_path(row["path"])]
+    regular_rows = [row for row in before["files"] if not _is_factory_media_path(row["path"])]
+    linked_bytes = sum(row["size"] for row in linked_rows)
+    regular_bytes = sum(row["size"] for row in regular_rows)
+    reserve_bytes = 1024**3
+    free_bytes = shutil.disk_usage(target.parent).free
+    if free_bytes < regular_bytes + reserve_bytes:
+        raise OSError("regular game files plus 1 GiB reserve do not fit")
+
+    linked_paths: list[str] = []
+
+    def copy_one(src: str, dst: str) -> str:
+        rel = Path(src).relative_to(source).as_posix()
+        if _is_factory_media_path(rel):
+            os.link(src, dst)
+            linked_paths.append(rel)
+            return dst
+        return shutil.copy2(src, dst)
+
+    try:
+        shutil.copytree(source, target, copy_function=copy_one, symlinks=False)
+        copied = pipeline_v2.build_tree_inventory(target)
+        pipeline_v2.assert_tree_matches_inventory(target, before)
+        source_after = pipeline_v2.build_tree_inventory(source)
+        if source_after != before:
+            raise RuntimeError("source game changed while the visual copy was being made")
+        linked_set = set(linked_paths)
+        if len(linked_paths) != len(linked_set):
+            raise RuntimeError("factory-media path was linked more than once")
+        for rel in linked_paths:
+            src_stat = (source / rel).stat()
+            dst_stat = (target / rel).stat()
+            if (src_stat.st_dev, src_stat.st_ino) != (dst_stat.st_dev, dst_stat.st_ino):
+                raise RuntimeError(f"factory-media hardlink did not persist: {rel}")
+        regular_paths = {row["path"] for row in before["files"]} - linked_set
+        for rel in regular_paths:
+            src_stat = (source / rel).stat()
+            dst_stat = (target / rel).stat()
+            if (src_stat.st_dev, src_stat.st_ino) == (dst_stat.st_dev, dst_stat.st_ino):
+                raise RuntimeError(f"mutable/non-media file was unexpectedly hardlinked: {rel}")
+        return {
+            "source_inventory_fingerprint": before["files_fingerprint"],
+            "output_inventory_fingerprint": copied["files_fingerprint"],
+            "total_logical_bytes": before["total_bytes"],
+            "linked_media_paths": sorted(linked_paths),
+            "linked_media_logical_bytes": linked_bytes,
+            "regular_copy_paths": sorted(regular_paths),
+            "regular_copy_logical_bytes": regular_bytes,
+            "free_bytes_before_copy": free_bytes,
+            "reserve_bytes": reserve_bytes,
+            "required_regular_copy_bytes": regular_bytes + reserve_bytes,
+            "source_inventory_unchanged": True,
+            "same_filesystem": True,
+            "hardlink_failure_fallback": False,
+        }
+    except BaseException:
+        if target.exists():
+            shutil.rmtree(target)
+        raise
+
+
 def _copy_game_cow(source: Path, target: Path) -> None:
     if target.exists() or target.is_symlink():
         raise PortraitPipelineError(f"output game already exists: {target}")
