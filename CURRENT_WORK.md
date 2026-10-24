@@ -1,5 +1,43 @@
 # PM99: current work
 
+## v136 installed; Rubén causal profile proved — 2026-10-24 00:15 UTC
+
+Machine `joe-Vostro-3350`; source session
+`01a0592d-fcd5-7262-a637-743a8253d9b4`. Commit813e724 pushed.
+`release-delivery-checklist-v136.json` now binds current2000r207a and unchanged
+other25. Frozen baseline2809:64disposed/2745REVIEW, globalhistoricalRC false.
+Two Walsall case IDs independently rederived from original candidate preimages
+(`horne/walsall-case-id-rederivation-v1.json`), then linked to separate actual
+source/native/runtime completion proof. No immutable compiler receipt mutated;
+no claim to close broader Kidderminster374/3310 duplicate cohort.
+
+r208 Rubén original48_profile_only_ruben_done.png ROOT inspected:
+Rubén DE LA RED / Real Madrid / SPAIN /20 /MIDFIELDER /CENTRAL MID.
+One EQ flag change made him accessible; all other game files identical.
+Controller92856 confirms independent age/ten-skill bitmap digits/native inputs/
+kit pixels PASS, and now captures final Stoke startup. Strict automatic phrase
+gate rejected OCR `rub n dela redo 2`; original exit0/success summary preserved.
+Separate explicit manual-name review plus exact native/digit/pixel checks
+approve genuine identity; no regex weakened or false screenshot relabelled.
+Riera/Croft r204 original profiles reused through explicit actor/club/assets
+native-equivalence proof, never misrepresented as new r208 captures.
+2005 remains r194 until final startup and checked chain promotion.
+
+O'Hara2018r206 actual build complete; controller96358 SOURCE replay underway.
+Kilkenny2013r205 actual two-byte native readback passed, pending runtime.
+Barrow canonical adapter integrated; production API/native/publisher seam QA
+5passed152.20s (controller86523), not yet built. Canonical read-only authored
+visibility gate integrated, tests controller76907 and exact-r208 audit85190
+running; explicitly limited to recognized exchange schemas, not globalproof.
+
+Luna source pass resolved many Altrincham18 profiles and exclusive manager807
+mapping; source matrix 'Scott' must NOT be treated as Scott Wilson appearance
+proof. Positive August2friendly source remains valid. Horne374 actor26979
+known fallbackDOB/ENG now has PL/11v11 source support; worker prepares narrow
+correction from currentr207, separate from replaced Walsall21064.
+Next finish2005 startup/publish, then role runtime and foreign kit selection
+screens; preserve original2015 and all unchanged current releases.
+
 ## Walsall installed; Madrid causal runtime underway — 2026-10-24 00:11 UTC
 
 Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`.

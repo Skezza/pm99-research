@@ -384,6 +384,10 @@ def build(season: str, *, release_id: str, resume: bool = False) -> dict[str, An
     reconstructed = annual_roles.reconstruction(previous, release_id)
     if reconstructed is not None:
         return reconstructed
+    from scripts import season_barrow_winger_fine_role_v1 as barrow_roles
+    reconstructed = barrow_roles.reconstruction(previous, release_id)
+    if reconstructed is not None:
+        return reconstructed
     from scripts import season_riera_postownership_country_role_v1 as riera_country_role
     reconstructed = riera_country_role.reconstruction(previous, release_id)
     if reconstructed is not None:
