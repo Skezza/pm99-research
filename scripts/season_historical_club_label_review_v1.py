@@ -23,6 +23,7 @@ from scripts import season_historical_opening_review_v1 as opening
 from scripts.capture_ntf_historical_carrier_squads_v1 import CALENDAR_YEAR_COUNTRIES
 from scripts.reconcile_opening_date_identities_v1 import _normalise
 from scripts.audit_2015_world_release_semantics_v1 import _manager_graph
+from scripts import season_historical_club_label_full_cohort_optin_v2 as full_cohort_optin
 
 SCHEMA = 'pm99-independent-historical-club-label-review-v1'
 
@@ -66,7 +67,7 @@ def unanimous_claim(club, players, artifact_id, index, sources):
     return source, None
 
 
-def review(season, source_root, opening_root, reused_root, output, *, source_release_id=None, carrier_ids=None):
+def review(season, source_root, opening_root, reused_root, output, *, source_release_id=None, carrier_ids=None, full_cohort_witness_path=None):
     release = (registry.load_registered_release(season, source_release_id)
         if source_release_id is not None else registry.load_preferred_release(season))
     package = json.loads(release.package_path.read_text())
@@ -105,6 +106,18 @@ def review(season, source_root, opening_root, reused_root, output, *, source_rel
         for p in package['players']: by_club[p['club_id']].append(p)
         holders, names = _manager_graph(eq_path=release.game_path / 'DBDAT/EQ98030.FDI', ent_path=release.game_path / 'DBDAT/ENT98030.FDI')
         native_managers = {c['carrier_id']: (id, names.get(id), len(owned)) for id, owned in holders.items() for c in owned}
+        full_cohort_rows = {}
+        if full_cohort_witness_path is not None:
+            optin_doc = json.loads(full_cohort_witness_path.read_text())
+            if optin_doc.get('schema_version') != 'pm99-private-full-cohort-label-manager-optin-candidates-v2':
+                raise ValueError('wrong explicit full-cohort opt-in document')
+            for candidate in optin_doc.get('candidates', []):
+                optin_row = candidate['review_row']; carrier = optin_row['full_cohort_witness']['target']['carrier_id']
+                if candidate['review_row']['full_cohort_witness']['season'] != season:
+                    continue
+                if carrier in full_cohort_rows:
+                    raise ValueError('duplicate full-cohort opt-in row for selected season')
+                full_cohort_rows[carrier] = optin_row
         rows = []; checked = {}; counts = collections.Counter()
         for club in package['clubs']:
             if selected is not None and club['carrier_id'] not in selected: continue
@@ -140,6 +153,24 @@ def review(season, source_root, opening_root, reused_root, output, *, source_rel
                             manager_after=proof['manager'], raw_original_bytes_rechecked=True)
                     except (OSError, KeyError, ValueError) as exc:
                         row.update(status='club-label-first-fixture-evidence-gap', reason=str(exc))
+            if source is None and club['carrier_id'] in full_cohort_rows:
+                optrow = full_cohort_rows[club['carrier_id']]
+                full_cohort_optin.verify_manager_sources(optrow)
+                witness = full_cohort_optin.verify_witness(optrow['full_cohort_witness'], source_root=source_root)
+                if (witness['release_id'], witness['package_sha256'], witness['eq_sha256']) != (
+                        release.release_id, registry.sha256_file(release.package_path),
+                        registry.sha256_file(release.game_path / 'DBDAT/EQ98030.FDI')):
+                    raise ValueError('full-cohort witness does not bind the reviewed release')
+                native_id, native_name, owner_count = native_managers.get(club['carrier_id'], (None, None, 0))
+                if (native_id, native_name, owner_count) != (optrow['native_manager_carrier_id'],
+                        optrow['native_manager'], optrow['native_manager_owner_count']):
+                    raise ValueError('full-cohort witness manager preimage/owner changed')
+                for raw in optrow['evidence']['raw_sources']:
+                    path = ROOT / raw['path']
+                    if path not in checked: checked[path] = registry.sha256_file(path)
+                    if checked[path] != raw['sha256']: raise ValueError('dated manager source bytes changed')
+                row.update(optrow, club_id=club['id'], source_selector=witness['source_selector'],
+                    raw_original_bytes_rechecked=True)
             counts[row['status']] += 1; rows.append(row)
         result = {'schema_version': SCHEMA, 'season': season, 'historical_verification_complete': False,
             'bindings': {'release_id': release.release_id, 'package_sha256': registry.sha256_file(release.package_path),
@@ -161,10 +192,12 @@ def main():
     parser.add_argument('season'); parser.add_argument('--source-root', type=Path, required=True)
     parser.add_argument('--opening-root', type=Path, required=True); parser.add_argument('--reuse-root', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True); parser.add_argument('--jobs', type=int, choices=(1, 2), default=1)
+    parser.add_argument('--full-cohort-witness', type=Path, help='explicit opt-in roster-identity proof; not an XI certificate')
     args = parser.parse_args(); summaries = []
     seasons = registry.supported_seasons() if args.season == 'all' else [args.season]
     with concurrent.futures.ProcessPoolExecutor(max_workers=args.jobs) as pool:
-        futures = [pool.submit(review, s, args.source_root, args.opening_root, args.reuse_root, args.output) for s in seasons]
+        futures = [pool.submit(review, s, args.source_root, args.opening_root, args.reuse_root, args.output,
+            full_cohort_witness_path=args.full_cohort_witness) for s in seasons]
         for future in concurrent.futures.as_completed(futures):
             result = future.result(); summaries.append(result); print(json.dumps(result), flush=True)
     pipeline.write_canonical_json(args.output / 'summary.json', {'seasons': sorted(summaries, key=lambda x: x['season']), 'historical_verification_complete': False})

@@ -396,12 +396,25 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             for field in ('source_row', 'original_capture'):
                 if registry.sha256_file(ROOT / source_bindings[field + '_path']) != source_bindings[field + '_sha256']:
                     raise ValueError('club original source bytes changed')
-            supported = {r['club_id']: r for r in audit['clubs'] if r['status'] == 'source-supported-club-label-mismatch'}
+            supported = {r['club_id']: r for r in audit['clubs'] if r['status'] in (
+                'source-supported-club-label-mismatch', 'source-supported-full-cohort-club-label-mismatch')}
+            from scripts import season_historical_club_label_full_cohort_optin_v2 as full_cohort_optin
             paired = json.loads(manager_plan_path.read_text())['updates'] if manager_plan_path else []
             for row in club_plan['updates']:
                 proof = supported.get(row['club_id'])
                 if proof is None or any(row[k] != proof[k] for k in ('carrier_id', 'before', 'after', 'evidence', 'source_selector')):
                     raise ValueError('club label is not supported by the bound source-row audit')
+                if proof['status'] == 'source-supported-full-cohort-club-label-mismatch':
+                    full_cohort_optin.verify_manager_sources(proof)
+                    witness = proof.get('full_cohort_witness')
+                    if not isinstance(witness, dict) or row.get('full_cohort_witness') != witness:
+                        raise ValueError('typed full-cohort witness is absent or differs from plan')
+                    source_root = (ROOT / witness['preallocation_path']).parent.parent
+                    fresh = full_cohort_optin.verify_witness(witness, source_root=source_root)
+                    if (fresh['release_id'], fresh['package_sha256'], fresh['eq_sha256']) != (
+                            release.release_id, registry.sha256_file(release.package_path),
+                            registry.sha256_file(release.game_path / DATABASES[1])):
+                        raise ValueError('typed full-cohort witness no longer binds publisher parent')
                 if not any(r['club_id'] == row['club_id'] and r['after'] == row['evidence']['manager'] for r in paired):
                     raise ValueError('club rename lacks its paired sourced manager')
             patched_eq, club_changes = rewrite_club_labels(original_eq, club_plan['updates'])

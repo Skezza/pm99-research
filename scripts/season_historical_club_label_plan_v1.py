@@ -21,6 +21,7 @@ from scripts import season_pipeline_v2 as pipeline
 from scripts import season_source_package_builder_v1 as builder
 from scripts import season_package_compiler_v2 as compiler
 from scripts import season_historical_club_label_review_v1 as review
+from scripts import season_historical_club_label_full_cohort_optin_v2 as full_cohort_optin
 from scripts.season_historical_roster_audit_v1 import club_group
 from scripts.build_2015_english92_release import _rebuild_indexed
 
@@ -77,7 +78,25 @@ def plan(season, audit_path, *, source_release_id=None):
             registry.sha256_file(release.game_path / 'DBDAT/ENT98030.FDI')):
         raise ValueError('club label audit is stale')
     clubs = {c['id']: c for c in package['clubs']}; managers = {m['id']: m for m in package['managers']}
-    candidates = {r['club_id']: r for r in audit['clubs'] if r['status'] == 'source-supported-club-label-mismatch'}
+    candidates = {}
+    for row in audit['clubs']:
+        if row['status'] == 'source-supported-club-label-mismatch':
+            candidates[row['club_id']] = row
+        elif row['status'] == 'source-supported-full-cohort-club-label-mismatch':
+            full_cohort_optin.verify_manager_sources(row)
+            witness = row.get('full_cohort_witness')
+            if not isinstance(witness, dict) or row.get('identity_basis') != 'complete_source_bound_roster_cohort':
+                raise ValueError('opt-in full-cohort row lacks typed identity witness')
+            bound_preallocation = ROOT / witness['preallocation_path']
+            source_root = bound_preallocation.parent.parent
+            full_cohort_optin.verify_witness(witness, source_root=source_root)
+            if (witness['release_id'], witness['package_sha256'], witness['eq_sha256']) != (
+                    release.release_id, registry.sha256_file(release.package_path),
+                    registry.sha256_file(release.game_path / 'DBDAT/EQ98030.FDI')):
+                raise ValueError('full-cohort witness is stale for selected release')
+            if row['club_id'] in candidates:
+                raise ValueError('duplicate label review row')
+            candidates[row['club_id']] = row
     unresolved = []
     # Reject collisions repeatedly: rejecting one rename restores its original
     # name and can expose a second conflict elsewhere. Never guess a winner.
