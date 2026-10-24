@@ -1,5 +1,114 @@
 # PM99: current work
 
+## Dated owner review: Rawle/Evers — 2026-10-24 02:49 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Two existing frozen REVIEW candidates now have confirmed wrong opening owners,
+not two new baseline cases. Root inspected original retained career-page text:
+Rawle Boston through23Feb2001, Southend from23Feb2001; Evers Reading through
+8Mar2001, StJohnstone loan13Oct2000, Plymouth from8Mar2001. Full evidence at
+`resume-qa/crossclub-firsttwo-research-v1/firsttwo-disposition-review.json`.
+CaseIDs Rawle8cfe8f69faa45a117a807405dd03127e32b4b12425dbaab95d58762cc8860a4f;
+Evers5b527700c33ec126fc613f44f9ef3f9a7236d57f282f68e1811d5e8f1972af18.
+NOT corrected/closed yet; original2809 and65disposed/2744REVIEW unchanged.
+Luna disk finds sourced Southend replacement for33254 while retaining Boston11027.
+Luna release finds StJohnstone/Plymouth opening replacements and a coherent
+single Reading representation of Evers. No further new case expansion assigned.
+
+Altrincham actualr211a/b built and SOURCE-identical (controller97858 terminal0);
+Hayes independently checks actual natives. Targeted runtime follows current
+Wolves pilot; no installed Alty claim. v143 current checkpoint includes both
+foreign selection kit proofs and all26 current Stoke compact-kit measurements.
+Completed inactive Atalanta disposable copy retired after inventory/mount checks;
+ledger `.local/cleanup-20261024/verified-inactive-atalanta-selection-r195-runtime/`.
+Free8.8GiB. Preserve all canonical Alty module bytes now pinned by actual plan.
+
+## Altrincham built/replayed; kit targets verified — 2026-10-24 02:46 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Controller97858 terminal0 built actual 2000 r211a/b; entire game inventory and
+recipe SOURCE-identical. NOT installed or runtime-approved. Stage
+`parallel-rc-20261023/altrincham-macc-delivery-v1/`. Canonical three modules
+promoted together; publisher/ENT/inner-artifact/reconstruction hooks integrated.
+Canonical API tests passed251.51s, then exact parent-file SHA guard (same known
+canonical bytes) passed94.07s. Independent returned-plan/package/artifact mutation
+QA passed; no mutable generic compiler/publisher whole-file hash pinned.
+
+Latest checklist v143 retains65disposed/2744REVIEW: both Palermo/Atalanta actual
+kit SELECTION targets now independently pixel/input verified, not TEAM RATING
+screens or global historical-design approval. All26 current Stoke compact-kit
+bindings checked in `resume-qa/current-stoke-kit-audit-v2.json`; only changed2000
+and2018 comparisons refreshed. Initial v143 metadata draft omitted work_items
+state update; draft preserved and corrected before downstream handoff.
+
+Wolves capacity pilot selector v1 was wrong: actual old point271,323 selected
+Burnley. Root stopped that owned test deliberately; exit1/negative frames retained,
+no capacity claim. Luna independently matched current Wolves NANO333 to actual
+menu row20 at457,360, zero interior-pixel error. Corrected selector v2 is running
+controller40886. Profile slot26 still pending its successful identity/roster check.
+Pilot isolated/unregistered; current 2018 r213 remains unchanged.
+
+Workers: Hayes independently checks actual r211 natives and rebinds runtime spec;
+disk Luna researches dated Rawle/Evers dispositions (no new approved fixes);
+release Luna prepares corrected profile command and expected26 roster table.
+Root owns all actual builds, publication and serialized runtime. Next complete
+Wolves capacity proof, capture actual r211 Landon/Bettney+Stoke, install validated
+Alty correction and dispose only source/native-proven frozen cases (7+9; Horne
+already disposed, do not count again). Then Batth actual source-bound delivery.
+
+## r213 installed and verified — 2026-10-24 02:32 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Controller15230 terminal0 installed 2018 r213a after source/native/SOURCE,
+both original profiles, final Stoke startup and independent digit/kit checks.
+Latest checklist v142; original2809 stays65disposed/2744REVIEW. Vokes/Crouch
+additional confirmed finding is now repaired and runtime-verified. Batth remains
+unresolved and separate. Other25 preferred releases and original2015 unchanged.
+Evidence `parallel-rc-20261023/vokes-crouch-opening-delivery-v2/final-delivery-summary.json`.
+Atalanta selection controller33080 terminal0; ROOT reviewed selected Atalanta,
+independent pixel/input proof still pending. No other completion inferred.
+
+## Ownership corrections and kit proof — 2026-10-24 02:30 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Code/default checkpoint pushed as `16afa6a`. Latest saved checklist remains v141
+until controller15230 completes reviewed r213 publication; do not assume install.
+
+Both actual r213 profiles now verified: Crouch at Stoke, Vokes at Burnley.
+Original screenshot review, independent ten-skill/age digits, exact native input
+hashes and displayed profile-kit pixels all pass. Final Stoke Aug1 2018 frame
+`local_stoke_startup_2018_19_r213a_20261024_startup/screens/024_line_up_inspect.png`
+reviewed: Crouch bench13; Batth15 remains a separate unresolved correction.
+Outer controller9295 exited143 after native child completed. Original child
+lease and container exit file both prove exit0 and complete successful route;
+recovery proof retains outer143 failure, unknown cause, and no capture repeated.
+Evidence: `parallel-rc-20261023/vokes-crouch-opening-delivery-v2/`.
+
+Palermo actual foreign kit SELECTION now independently verified: screenshot
+`local_palermo_2005_06_r208a_20261024_team_rating_v5/screens/19_select_target_shirt_body.png`
+shows selected Palermo; NANO223 at155,405 has189 interior pixels, zero RGB565
+error. This meets selection-or-TEAM-RATING acceptance; not a TEAM RATING capture
+or global historical-design approval. Receipt `resume-qa/palermo-selection-screen-kit-proof-v1.json`.
+Atalanta selection controller33080 is serially running after Stoke, not yet passed.
+
+Batth isolated capacity pilot materialized by controller23867: Wolves26/Stoke24,
+only approved EQ/JUG postimages; parent/current defaults unchanged. Not run or
+published. Private runner command v1 has a non-Stoke proof-mode issue under
+review; do not launch it. Release Luna prepares corrected v2.
+
+Hayes Luna finishing Alty adapter tests and explicit inner source-artifact seam.
+Disk Luna independently rederived seven original duplicate IDs plus nine more
+resolved by the same conversion; counts unchanged until actual game delivery.
+Confirmed cached-plan alias bug found in QA and sent to Hayes for correction.
+Promote all three source/compiler/adapter modules together; do not pin mutable
+whole generic publisher/compiler hashes or weaken Soccerbase source guards.
+
+Retired only verified inactive r212/r210 and recreated Palermo r208 disposable
+runner game copies; source releases, screenshots and shared prefix retained.
+Ledgers `.local/cleanup-20261024/verified-inactive-*/`. Current free8.2GiB after
+Atalanta and pilot copies. Next finish r213 publication, Alty canonical integration
+and SOURCE replay, then private Wolves26 runtime. No all-RC completion claim.
+
 ## Verified v141 current releases; ownership integration — 2026-10-24 02:15 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.

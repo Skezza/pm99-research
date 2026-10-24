@@ -546,6 +546,9 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         from scripts import season_madrid_mode1_activation_v1 as madrid_activation
         if assignment_plan.get('schema') == madrid_activation.SCHEMA:
             assignments = madrid_activation
+        from scripts import season_altrincham_macc_joint_exchange_v1 as alty_joint
+        if assignment_plan.get('schema') == alty_joint.SCHEMA:
+            assignments = alty_joint
         from scripts import season_woking_2003_owned_opening_v1 as woking_owned
         if assignment_plan.get('schema') == woking_owned.SCHEMA:
             assignments = woking_owned
@@ -660,6 +663,13 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
             portrait_archive, portrait_offsets = portrait_delta.no_photo_archive(original_archive,
                 haladas_keeper.selected_carriers(assignment_plan))
+        elif assignment_plan.get('schema') == alty_joint.SCHEMA:
+            patched_ent = alty_joint.apply_ent(original_ent, assignment_plan)
+            if alty_joint.apply_ent(patched_ent, assignment_plan) != patched_ent:
+                raise ValueError('Altrincham sourced manager is not idempotent')
+            original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
+            if alty_joint.apply_minifoto(original_archive, assignment_plan) != original_archive:
+                raise ValueError('Altrincham composition unexpectedly changes the photo archive')
         elif assignment_plan.get('schema') == woking_owned.SCHEMA:
             patched_ent = woking_owned.apply_ent(original_ent, assignment_plan)
             if woking_owned.apply_ent(patched_ent, assignment_plan) != patched_ent:
@@ -669,7 +679,7 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             portrait_archive, portrait_offsets = portrait_delta.no_photo_archive(original_archive,
                 woking_owned.selected_carriers(assignment_plan))
         predicted = (len(patched) if patched != original else 0) + len(patched_eq) + len(package_v2.canonical_json_bytes(result)) + len(pipeline.canonical_json_bytes(assignment_plan)) + 32 * 1024**2
-        if assignment_plan.get('schema') == woking_owned.SCHEMA:
+        if assignment_plan.get('schema') in (woking_owned.SCHEMA, alty_joint.SCHEMA):
             predicted += len(patched_ent)
         if portrait_archive is not None and portrait_archive != original_archive:
             predicted += len(portrait_archive)
@@ -840,6 +850,11 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         pipeline.write_canonical_json(workspace / assignments.filename(assignment_plan), assignment_plan)
         if assignment_plan.get('schema') == amavisca_tx.SCHEMA:
             _write_amavisca_source_artifact(workspace, assignment_plan)
+        if assignment_plan.get('schema') == alty_joint.SCHEMA:
+            artifact = alty_joint.source_artifact(assignment_plan)
+            pipeline.write_canonical_json(workspace / artifact['filename'], artifact['document'])
+            if registry.sha256_file(workspace / artifact['filename']) != artifact['sha256']:
+                raise ValueError('Altrincham source artifact write/hash differs')
     saved_ownership_plan = None
     if ownership_plan is not None:
         saved_ownership_plan = workspace / ownership.plan_filename(ownership_plan)
@@ -1001,6 +1016,11 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
             removed_target_roster_links=[], fixed_duplicate_case_ids=[],
             players_written=len(assignment_plan['decisions']), allowed_write=assignment_plan['scope'])
+    elif assignment_plan is not None and assignment_plan.get('schema') == alty_joint.SCHEMA:
+        receipt.update(compilation_mode=alty_joint.MODE,
+            original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
+            removed_target_roster_links=[], fixed_duplicate_case_ids=[],
+            players_written=19, allowed_write=assignment_plan['scope'])
     elif assignment_plan is not None and assignment_plan.get('schema') == woking_owned.SCHEMA:
         receipt.update(compilation_mode=woking_owned.MODE,
             original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
@@ -1114,6 +1134,8 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         artifacts.append(pipeline.external_artifact_descriptor(artifact_id='original-profile-assignment-pruning-plan', path=workspace / assignments.filename(assignment_plan), role='input'))
         if assignment_plan.get('schema') == amavisca_tx.SCHEMA:
             artifacts.append(pipeline.external_artifact_descriptor(artifact_id=amavisca_tx.artifact_id(assignment_plan), path=workspace / amavisca_tx.SOURCE_PLAN_FILENAME, role='input'))
+        if assignment_plan.get('schema') == alty_joint.SCHEMA:
+            artifacts.append(pipeline.external_artifact_descriptor(artifact_id='altrincham-macc-inner-source-plan', path=workspace / alty_joint.SOURCE_PLAN_FILENAME, role='input'))
     if saved_ownership_plan is not None:
         artifacts.append(pipeline.external_artifact_descriptor(artifact_id='duplicate-ownership-plan', path=saved_ownership_plan, role='input'))
     if keeper_plan is not None:

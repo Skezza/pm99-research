@@ -2151,6 +2151,8 @@ def compile_package_to_tree(
         barrow_roles.reject_factory_recipe(package)
         from scripts import season_horne_26979_facts_v1 as horne_facts
         horne_facts.reject_factory_recipe(package)
+        from scripts import season_altrincham_macc_joint_exchange_v1 as alty_joint
+        alty_joint.reject_factory_recipe(package)
         from scripts import season_vokes_crouch_opening_exchange_v2 as vokes_crouch
         vokes_crouch.reject_factory_recipe(package)
         from scripts import season_madrid_mode1_activation_v1 as madrid_activation
