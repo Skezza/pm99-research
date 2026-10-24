@@ -18,6 +18,7 @@ from scripts import season_source_package_builder_v1 as builder
 from scripts.season_within_club_reserve_repair_v1 import native_facts
 from scripts.season_historical_roster_audit_v1 import native_player
 from scripts.capture_2015_source_tail_squads_v1 import NATIONALITY_CODES
+from scripts import season_annual_row_identity_guard_v1 as annual_identity
 
 KIND = 'adjudicated-source-player-facts'
 FIELDS = ['birth_date', 'nationality']
@@ -29,7 +30,10 @@ def checked(value):
 
 
 def verify_historical_identity(witness):
-    """Reproduce the exact original row -> dated fixture -> provider identity."""
+    """Reproduce a retained identity witness; legacy fixture path is unchanged."""
+    if witness.get('identity_policy') == 'annual-source-row-person-identity-v1':
+        annual_identity.verify(witness)
+        return None
     historical = witness['historical_identity']
     allocation = pipeline.read_json_file(checked(historical['preallocation']))
     candidates = [(club, row) for club in allocation['source_clubs'] for row in club['players']
@@ -90,7 +94,16 @@ def _adjudicate_official_sources(witness):
     for source in sources:
         body = checked(source)
         receipt = pipeline.read_json_file(checked(source['receipt']))
-        if receipt.get('url') != source['url'] or receipt.get('raw_sha256') != source['sha256']:
+        if witness.get('identity_policy') == 'annual-source-row-person-identity-v1':
+            receipt_rows = [receipt] + (receipt.get('sources', []) if isinstance(receipt, dict) else [])
+            if not any(isinstance(item, dict)
+                       and (item.get('url') or item.get('final_url')) == source['url']
+                       and (item.get('raw_sha256') or item.get('sha256')) == source['sha256']
+                       for item in receipt_rows):
+                raise ValueError('official source original URL/SHA receipt differs')
+        elif receipt.get('url') != source['url'] or receipt.get('raw_sha256') != source['sha256']:
+            # Keep legacy receipt semantics byte-for-byte: only the opt-in annual
+            # witness accepts the established multi-source receipt envelope.
             raise ValueError('official source original URL/SHA receipt differs')
         if source.get('provider') == 'premier-league-sdp-player-api':
             from scripts.season_premier_league_profile_facts_v1 import parse_player_json
@@ -212,6 +225,20 @@ def adjudicate(witness):
     return _adjudicate_official_sources(witness)
 
 
+def verify_annual_request_binding(base, carrier, actor, witness):
+    """Bind the opt-in annual witness to this exact selected actor and parent."""
+    if witness.get('identity_policy') != 'annual-source-row-person-identity-v1':
+        return
+    annual = witness.get('annual_identity')
+    if not isinstance(annual, dict) or any((
+            annual.get('season') != base.season,
+            annual.get('release_id') != base.release_id,
+            annual.get('carrier_id') != carrier,
+            annual.get('club_id') != actor.get('club_id'),
+            witness.get('person_id') != actor.get('person_id'))):
+        raise ValueError('annual identity witness differs from selected request actor or exact registered parent')
+
+
 def prepare(base, path, request):
     from scripts import season_source_verified_player_changes_v1 as changes
     if (request.get('schema') != changes.INPUT_SCHEMA or request.get('season') != base.season
@@ -234,6 +261,7 @@ def prepare(base, path, request):
         seen.add(carrier)
         actor = actors[carrier]
         witness = selection['witness']
+        verify_annual_request_binding(base, carrier, actor, witness)
         values = adjudicate(witness)
         if set(values) != set(selection['field_mask']):
             raise ValueError('adjudicated values must exactly match the selected field mask')
@@ -289,9 +317,13 @@ def prepare(base, path, request):
         source_input=changes.binding(path), package_sha256=registry.sha256_file(base.package_path),
         jug_sha256=changes.digest(jug), eq_sha256=changes.digest(eq),
         textos_sha256=registry.sha256_file(base.game_path / 'DBDAT/TEXTOS.PKF'),
-        updates=updates, scope=SCOPE, source_policy=('historical-row-provider-ID-before-official-plus-independent-named-reference-facts-v1'
-            if any('independent_sources' in row['witness'] for row in request['changes'])
-            else 'historical-row-provider-ID-before-independent-official-facts-v1'))
+        updates=updates, scope=SCOPE, source_policy=(
+            'annual-row-source-person-ID-before-official-independent-facts-v1'
+            if any(row['witness'].get('identity_policy') == 'annual-source-row-person-identity-v1'
+                   for row in request['changes']) else
+            ('historical-row-provider-ID-before-official-plus-independent-named-reference-facts-v1'
+             if any('independent_sources' in row['witness'] for row in request['changes'])
+             else 'historical-row-provider-ID-before-independent-official-facts-v1')))
     result['transaction_id'] = changes.digest(packages.canonical_json_bytes(result))[:24]
     validate_mask(result)
     return result
