@@ -1,5 +1,62 @@
 # PM99: current work
 
+## v151 installed; Shuker runtime active; source-byte repair complete — 2026-10-24 08:57 UTC
+
+Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+
+**Installed and verified:** checkpoint v151, **104 disposed /2705 review-or-
+confirmed-open** from original2809. Preferred2000 r225a,2001 r226a,2002 r227a
+(`sourced-ostenstad-norway-20261024-*`). Each corrects exactly one native country
+byte to NOR and recipe actor nationality, with full game/raw-recipe SOURCE replay,
+independent QA and genuine original Egil/NOR profiles plus fresh Stoke startups.
+The exact frozen Berkovic9b case is closed by the earlier r222 ownership exchange
+and final r225 runtime proof; Celtic7878 is retained. Country flags alone were
+not counted as an ownership correction. Original2015 and other23 preferred games
+were preserved. Evidence: `resume-qa/ostenstad-nationality-v3/completion-proof-v151.json`.
+
+**Built, not installed:** Shuker r223a/b fromr225a has exact full SOURCE equality.
+Independent QA passes exclusive Macc→City ownership, City25/Macc24, Macc bench7→6,
+13 narrow order writes and two EQ records; identity/ratings/XI/tactics preserved.
+Lead saw actual profile ChrisSHUKER,18,ENGLAND,ManchesterCity,CentralMidfield;
+profile native/digit verification controller48745 runs. Capture89532 is now doing
+fresh Stoke startup. Gated v152 installer is prepared; no frozen count change is
+claimed for additional case ef447....
+
+**Delivered source-byte integrity repair:** the four2025r123a report artifacts
+were not revised historical data. Their exact declared SHA values equal existing
+compact JSON bytes minus ONE trailing LF. Root independently proved this and
+reviewed generic helper/tests(7PASS). Atomic replacements restored only the four
+current directory entries; backups/intent/completion ledgers and sibling-inode
+checks are retained. Nativegame, recipe, manifest, compilerreceipt and inventory
+are unchanged and verified. Evidence `.local/cleanup-20261024/r123a-source-json-byte-binding-repair-v1/completion-proof.json`. Private earlier Onoh QA's claim
+of source-content revision is superseded; its proposed no-op DOB adapter is NOT
+approved or delivered. Onoh's DOB remains unavailable/unverified, not a repaired
+historical date. This does not increment246/247 birthday corrections.
+
+**Candidate rejected before build:** Inter Gimmelli/Serena v1/v2 plan transferred
+Serena's retained personID/physical facts/ratings from old Dalmat14660, not old
+Serena4211. Lead caught it in code review; Releaseworker is correcting distinct
+source/target references and adding an adversarial donor assertion. No playable
+game received this candidate. Retain old private plans as negative evidence.
+
+Workers: Disk audits current all26 JSON artifact-byte bindings using the same
+narrow LF proof(no mutations); Hayes implements source-positive TomMcDermott→
+MatthewShevlin Ballymena reserve correction and advances41-country draft inputs;
+Release fixes/retests Inter candidate. Root independently read retained archive
+profiles/match/arrival rows: Shevlin August11starter, Tom January2018arrival.
+This is additional NorthernIreland1904 scope; not a frozen-case disposal and
+not a full Ballymena XI/tactics rewrite. Calendar 41-club draft remains unbuilt;
+26 continuity proofs passed, other15 candidate allocations now derived by the
+existing capacity allocator, not mislabeled as canonical source order.
+
+Disk: inactive Playwright browser cache1248 moved to verified Pi tar,292 entries,
+288448512bytes freed. Ledger `.local/cleanup-20261024/playwright-headless-shell-1248-to-pi/retirement-receipt.json`. Shared Wineprefix and current games preserved.
+Runtimecopiesr225/r226/r227 were retired only after complete captures/inventory
+checks; evidence and sealed source games remain. Native build queue is idle;
+runner89532 is serial. Exact next action: finish Shuker visual/runtime gates,
+installv152, review corrected Inter source transfer and build only its next A/B.
+The full26-season historical RC remains OPEN; no global completion claim.
+
 ## Norway correction replay and safe disk pause — 2026-10-24 08:23 UTC
 
 Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
