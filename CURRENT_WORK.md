@@ -1,5 +1,95 @@
 # PM99: current work
 
+## v158 installed and verified; calendar August slice continues — 2026-10-24 15:26 UTC
+
+Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+
+INSTALLED / VERIFIED: 2000/01 now prefers `sourced-parma-bonazzoli-opening-20261024-r238a`.
+Only Parma4108 incorrect Roberto Sensini replaced with Emiliano Bonazzoli;
+real Lazio2001 Sensini and prior Maggio/Viviani corrections preserved. Native
+family display Bonazzoli; full source_name retained. Published first-league
+bench is positive membership evidence, not a played-appearance/order claim.
+Only JUG changes, only selected native payload4108; all276 A/B game files and
+recipes exact. No claim of a clean-machine reconstruction of the parent.
+
+ROOT original Bonazzoli profile + fresh Stoke lineup reviewed; native country,
+roles, DOB/age and independent10-skill bitmap readback pass. Gated installer
+root84539 completed, preferred playable gate passes; other25 and original2015
+backup unchanged. First root preflight correctly refused overwriting existing
+identical evidence; private installer now compares exact prior content before
+reuse. Root review also caught/fixed missing current-release binding update in
+worker draft BEFORE installation. Actual checklist v158 binds r238 correctly.
+
+Evidence root `.local/consolidated-audit-20261009/parallel-rc-20261023/parma-bonazzoli-delivery-v1/`:
+`v158-installer-draft/completion-proof-v158.json`, `root-install.log`,
+`playable-validation-v158.json`, independent QA v2, ROOT visual/digit/age proofs.
+Frozen baseline2809 unchanged:108 disposed /2701 review-or-confirmed-open.
+Not2701 proven bugs. Critical ledger v10 SHA64cdfa33...cb123 remains14groups /
+12delivered /2pending: calendar-country actual games, stock kits18/327 delivered
+(309 pending). No source-row/test/build count substituted for corrections.
+
+Shared importer guard fixes committed/pushed `62d684d`;131focusedtestsPASS,
+log `resume-qa/final-importer-exchange-regression-20261024.log`. Independent
+final41body completeness receipt v2 SHAd0c809ce...b0de5 verifies1622rows /
+1557global IDs, no known legacy secondary-fact loss. Those are source rows,
+not native corrections. Docs `docs/HISTORICAL_SQUAD_IMPORT_GUARDS.md`.
+
+Next: Disk PRIVATE calendar v4 with end-August owners and final combined-world
+identity gates; Release independently binds dated sources/QA and prepares small
+stock-kit cascade using existing APIs; Hayes researches remainingfirst8cases
+against r238 (Galli/Coppola remains ambiguous). Root independently read retained
+July Ciaran loan-return/Bohemians bodies and28Sep Cicero SãoPaulo rescission;
+August ownership decisions approved, original provider identity still must bind.
+Do not publish older v3: it can reinsert Sead and lose Sigurdarson DOB/ratings.
+Keep31Aug snapshot distinct from earlier foreign first-fixture reference XIs.
+Exact next action: review/source-bind v4 and apply only validated corrections;
+prepare serial next kit-only batch without exceeding local capacity. Workers
+never publish, mutate shared recipes or operate runner. Root owns integration.
+
+## Resumed: r238 runtime verified, installation pending; August input guards — 2026-10-24 15:22 UTC
+
+Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+
+Installed checkpoint remains v157: 107 disposed / 2702 review-or-confirmed-open
+of the original 2809 candidates. These are NOT 2702 confirmed defects.
+Critical ledger v9 remains 14 groups / 12 delivered / 2 pending.
+
+BUILT / SOURCE / RUNTIME VERIFIED, NOT INSTALLED: 2000/01 r238a replaces only
+Parma carrier4108 Sensini with source-positive Emiliano Bonazzoli. True Lazio
+Sensini2001 and all other actors/EQ/kits/managers unchanged. Independent actual
+A/B QA v2 passes all276 files and selected native scope. ROOT saw the genuine
+Bonazzoli profile and Stoke lineup022 (1Aug2000), recorded separate visual
+reviews; native/digit/age proofs pass. Evidence:
+`.local/consolidated-audit-20261009/parallel-rc-20261023/parma-bonazzoli-delivery-v1/`.
+Do not count the frozen case closed until gated installation/checklist update.
+
+Calendar candidate v3 is NOT merge-ready: profile additions reinsert Sead at
+Halmstad although verified English West Ham9928 must stay; moving Sigurdarson
+must carry verified DOB1991-02-26 and ratings. First Feb/April fixture membership
+is not end-August ownership. Apply the user's August-squad rule using2017-08-31
+for this slice; keep earlier fixture XIs as dated references. Retain explicit
+user-approved exceptions (including Owen); do not reopen settled decisions.
+
+Root fixed parser partial-row loss and exact-ID preallocation, then adversarial
+QA caught unsafe unidentified namesake suppression and ID/name fallback. Those
+are now fixed with3 additional negative tests: parser/preallocator28PASS.
+Earlier combined exchange/biography/parser/preallocator113PASS. Country IMN
+stays source IMN, native unsupported XXX; never substitute England. No game
+correction credit for parser tests or newly recovered source rows.
+
+Worker assignments: Hayes prepares PRIVATE gated v158 installer; Root owns
+integration/registration/runner. Disk prepares PRIVATE additive calendar v4
+with August ownership and combined-world identity guards. Release independently
+QA-checks importer fixes, original transfer-date evidence and later prepares a
+small safe stock-kit cascade driver. Workers do not edit shared recipes,
+publish or operate runner. Free space about9GiB; no competing builds/captures.
+
+Exact next action: review Hayes installer and run preflight/install r238,
+validate preferred playable gate, checkpoint108/2701 only after actual delivery.
+Then integrate source-bound calendar corrections without losing verified facts,
+and continue the stock-kit cascade (18 delivered /309 pending). Other25 current
+releases and original2015 backup remain protected.
+
 ## v157 installed and verified; calendar and next ownership batches active — 2026-10-24 13:53 UTC
 
 Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
