@@ -307,3 +307,19 @@ def test_actual_review_to_plan_for_registered_r240_r239_and_mixed_season_bundle(
         assert {p:registry.sha256_file(p) for p in game_paths} == before_hashes
         # The bundle intentionally contains the other season's row too; review
         # must filter it by season while rejecting duplicate selected carriers.
+
+
+def test_named_source_manager_proof_does_not_claim_a_first_xi():
+    from scripts import publish_historical_role_delta_v1 as publisher
+    from scripts.test_season_package_v2 import _valid_package
+    package = _valid_package()
+    before = package['managers'][0]
+    manager = {'source_method': 'dated-source-cohort-manager-evidence-v1',
+               'updates': [{'club_id': 'club-100', 'club_carrier_id': 100,
+                            'manager_id': before['id'], 'carrier_id': before['carrier_id'],
+                            'before': before['name'], 'before_policy': before.get('policy'),
+                            'after': 'Source Coach', 'native_after': 'Coach'}]}
+    result = publisher.updated_package(package, {'season': '2015-16', 'updates': []}, manager_plan=manager)
+    proof = next(row for row in result['proofs'] if row['id'].startswith('proof-historical-managers-'))
+    assert proof['covers'] == ['dated-named-manager-source-and-exclusive-native-owner']
+    assert result['players'] == package['players'] and result['clubs'] == package['clubs']

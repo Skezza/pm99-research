@@ -172,8 +172,10 @@ def plan(season, audit_path, *, source_release_id=None):
     common = {'season': season, **{k: binding[k] for k in ('release_id', 'package_sha256', 'eq_sha256', 'ent_sha256')},
         'audit_path': registry.relative_workspace_path(audit_path), 'audit_sha256': registry.sha256_file(audit_path),
         'historical_verification_complete': False}
+    manager_evidence_policy = ({'source_method': 'dated-source-cohort-manager-evidence-v1'}
+        if any(row.get('status') == 'source-supported-full-cohort-club-label-mismatch' for row in updates) else {})
     return ({**common, 'schema_version': SCHEMA, 'source_bindings': binding, 'updates': updates, 'unresolved': unresolved},
-        {**common, 'schema_version': 'pm99-historical-manager-plan-v1', 'updates': paired, 'unresolved': [],
+        {**common, **manager_evidence_policy, 'schema_version': 'pm99-historical-manager-plan-v1', 'updates': paired, 'unresolved': [],
             'summary': {'source_verified_exclusive_managers': len(paired),
                 'native_name_corrections': sum(r['native_before'] != r['native_after'] for r in paired)}})
 

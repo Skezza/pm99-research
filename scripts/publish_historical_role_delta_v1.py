@@ -186,6 +186,8 @@ def updated_package(package, plan, nationality_plan=None, manager_plan=None, clu
                 if manager_plan.get('source_method')=='dated-original-newspaper-first-fixture-manager-v1'
                 else ['raw-reparsed-dated-closed-manager-tenure']
                 if manager_plan.get('source_method')=='dated-closed-manager-tenure-v1'
+                else ['dated-named-manager-source-and-exclusive-native-owner']
+                if manager_plan.get('source_method')=='dated-source-cohort-manager-evidence-v1'
                 else ['raw-reparsed-first-fixture-manager-names'])}], key=lambda p: p['id'])
     if club_plan is not None:
         clubs = {c['id']: c for c in result['clubs']}
