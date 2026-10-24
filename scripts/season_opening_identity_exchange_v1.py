@@ -849,6 +849,7 @@ def bind(package, plan):
             target['fact_fallbacks'].append(dict(field='shirt_number', method='preserve-existing-mode1',
                 proof=dict(artifact_id=aid, grade='source-receipt'), value={'policy': 'preserve-existing-mode1'},
                 reason='Destination native shirt byte retained; not a sourced number claim.'))
+            target['fact_fallbacks'].sort(key=lambda fallback: fallback['field'])
         else:
             if row.get('display_name'):
                 target['name'] = row['display_name']

@@ -288,3 +288,42 @@ def test_classic_played_substitutes_cannot_authorise_complete_bench_order(tmp_pa
 
     with pytest.raises(ValueError, match='not a complete published bench'):
         subject.prepare(base, input_path)
+
+
+def test_moving_person_retains_fallback_facts_in_canonical_order(tmp_path, monkeypatch):
+    """A sourced DOB must not make a moved shirt fallback invalidate the recipe."""
+    actors = []
+    for cid, name, birthday in ((1, 'Ian Turner', '1989-04-19'), (2, 'Greg Bolger', '1987-09-09')):
+        actors.append(dict(id=f'p{cid}', carrier_id=cid, carrier_family='indexed',
+            club_id=f'club-{cid}', name=name, source_name=name,
+            facts=dict(birth_date=birthday, shirt_number={'policy': 'preserve-existing-mode1'}),
+            ratings={'quality': cid}, fact_fallbacks=[
+                dict(field='fine_roles', value='retained-role'),
+                dict(field='shirt_number', value='old-slot-number'),
+                dict(field='weight_kg', value=70+cid)]))
+    package = dict(players=actors, artifacts=[dict(id='old', relative_path='old-plan.json')],
+                   sources=[], proofs=[], assets={'portraits': []})
+    plan = dict(season='2017-18', release_id='parent', package_sha256='bound',
+                source_input={'path': 'request.json', 'sha256': 'bound'}, transaction_id='test',
+                request={}, decisions=[dict(carrier_id=1, preserved_source_carrier=2),
+                                       dict(carrier_id=2, preserved_source_carrier=1)])
+    monkeypatch.setattr(subject.registry, 'load_registered_release', lambda *a: SimpleNamespace(package_path=tmp_path/'package.json'))
+    monkeypatch.setattr(subject.registry, 'sha256_file', lambda *a: 'bound')
+    monkeypatch.setattr(subject.pipeline, 'read_json_file', lambda *a: deepcopy(package))
+    monkeypatch.setattr(subject.delta, 'updated_package', lambda *a: deepcopy(package))
+    monkeypatch.setattr(subject.delta, 'plan_filename', lambda *a: 'old-plan.json')
+    def validate_sorted_fallbacks(result):
+        for actor in result['players']:
+            fields = [fallback['field'] for fallback in actor['fact_fallbacks']]
+            assert fields == sorted(set(fields))
+    monkeypatch.setattr(subject.packages, 'validate_package', validate_sorted_fallbacks)
+    result = subject.bind(package, plan)
+    for destination, source in ((0, 1), (1, 0)):
+        actor = result['players'][destination]
+        assert actor['name'] == actors[source]['name']
+        assert actor['ratings'] == actors[source]['ratings']
+        assert actor['facts']['birth_date'] == actors[source]['facts']['birth_date']
+        assert [f for f in actor['fact_fallbacks'] if f['field'] != 'shirt_number'] == [
+            f for f in actors[source]['fact_fallbacks'] if f['field'] != 'shirt_number']
+        assert actor['carrier_id'] == actors[destination]['carrier_id']
+        assert actor['club_id'] == actors[destination]['club_id']
