@@ -1,5 +1,51 @@
 # PM99: current work
 
+## v165 remains installed; disk gate before next captures — 2026-10-24 22:51 UTC
+
+MachineVostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. ROOT61715
+2000r279 Seedorf profile completed/PASS, Fischer capture NOTstarted because
+8GiB+runtimebudget gate. Originalframe49 shows C.SEEDORF/Internazionale/24/
+HOLLAND/RIGHTMID; native/kit/independentglyph+age PASS38708. Initialmanual4skill
+transcriptionmistake wascaughtandpreserved; correctedreviewusesexactoriginal
+bitmapglyphdecoder pluspixel-faithfulROI, no gamebyteschanged. Evidence under
+`seedorf-visible-identity-correction-v1/annual-fixture-composed-delivery-v1/2000-01/`.
+Retiredonlydisposablecopy35354; sourceA/B,sharedprefix,allproofs kept.
+
+r2792000 andr2802001 completeA/B SOURCE, notpreferred. ROOTindependentBasel/
+ZurichnativeQA PASS:EQ1111 only,ENT1002/2043 only,Alverca/Ferreira andallJUG/
+otherrecordtails exact. r278nativeQA similarlyonly2club/2managerrecords.
+No newpreferred changesafterv165. r2832007 rolebuilder91876 stoppedBEFORE
+publication onreserve guard (free8662077440,planned254580694); no output
+locators/gamescreated. Originalfailurelog retained. ResumeONLYafterspace.
+
+Free~8.4GiBaftercopyretirement. UnrelatedGo cache3.5GiBisactivelyusedbyanother
+project; leftalone. LunaDiskpreparesfresh1GiBarchive-backed identicalfactory-
+media plan onv165/currentregisteredparents; ROOTwillverify/relinkonlyafter
+allbuild/capture/catalogwritersfrozen. Prior2GiBcompletion remainsverified.
+
+Calendarclarification: originalcriticalgroupALREADYbounds931source rows in
+BRA1/IR1/NO1/SE1; canonicalrouting/title/provenancegates alreadyfixed/34tests.
+CurrentIR1/NO1auditsrefinepreferredmanifest bindings andcorrect-inputcache
+availability; theyareNOTanewmechanism or931confirmedindividualactorbugs.
+Reuseexisting865schedule/reportpairs/23plans;don'trepeatcompletedresearch.
+Countrygamepatches stillpending;2017Irishsliceisthecommonlayerpilot.
+
+IrishnativeQAexistingwriters:14EQrecords only,216allowedJUGorderbytes,
+132no-photo deactivations,12managerpostimages proposed; allINMEMORYdiagnostic.
+Global132freecarriermatchingwithin14clubclosure preserves100knownactors and
+fits131publishedfull/familydisplays;1TobiAdebayo-Rowlingcapacitycase pending.
+Noinitial-onlyaliasesapproved. ReleaseLunatestsfull-familyletters-preserving
+punctuationnormalisation/strictsame-carrier recovery. NoIrishgamebuilt.
+
+Hayesprivateexplicitroleidentitycomposition for2001r280 and2012r273: preserve
+oldstrictguard; consumeapprovedofficialDOBfactplanandactualtarget-date evidence.
+ROOTreplayedFolha+GloboAug26,2012BotafogostartingXI/midfieldparagraph; no2013
+fixturepretendedas2012. Global98kscreen remainsreview, NOTbugs orreleasecount.
+
+Exactnext:ROOTnewarchiveverify/relink, resumeONLYFischer2000capture(no repeat
+Seedorf), r283build; QA/mergetypedrolehelperandIrishnativeproposal; guarded
+composedstaff/factinstall. Counts andv165SHAaboveunchanged, original2015safe.
+
 ## v165 installed and verified: three fact corrections delivered — 2026-10-24 22:27 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
