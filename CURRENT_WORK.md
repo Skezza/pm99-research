@@ -1,5 +1,91 @@
 # PM99: current work
 
+## v165 installed and verified: three fact corrections delivered — 2026-10-24 22:27 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Authoritative checklistv165 SHA256
+`07ffa044b42de9c28777db802fb42e4ffe4a0b4112ea323bfa8f0fd65612c0ca`;
+criticalledgerv17 `2126c64fc2b41978913beeb4df658110dcb4aafbbbcd276e9f89a1568b91a521`.
+ROOTinstall48887 TERMINAL0. Preferred2002r274a(Zanetti4158 ARG),2003r275a
+(Seedorf20953 NED),2012r273a(Seedorf16905 1976-04-01/NED). Exactly1/1/3JUG
+byteschanged; unselectedactors,rosters,roles,ratings,tactics,allassets preserved.
+All3completeA/B SOURCE recipes/gameinventories equal; all3originalprofiles
+ROOTseen/nativeinputs/kitpixels/10independentdigits/age PASS. Fresh2002Stoke
+machineattested; extra2003Stokelegible ROOTseen butOCRunknown/TERMINAL1 raw
+failure preserved, NOTmachineattested. Other23preferred rows andoriginal2015
+preserved; actualeditable recipe selectorcorrectinall3. Completionproof
+`resume-qa/adjudicated-three-season-facts-batch-v1/v165-installer-draft/completion-proof-v165.json`
+SHA256 `4f4e0c7b66cacdf21dab1d90944542789a90730e9f67a5693680c5d3e901cc35`.
+Play `./pm99-season play 2002-03` / `2003-04` / `2012-13`.
+
+Stillopenknown2012Seedorffine-roleSWEEPER vsbroadM, unchangedbyfactdelta;
+thisisrecordedinv165,notclaimedfixed. LunaHayes fullguard/read-onlynarrow
+factoryidentityreview;98,816broad/fine compatibilitycandidates are NOTconfirmed
+bugs (first5authoredhybrid examples do NOTqualifyasstale-factory errors).
+No blanketrolecorrection approved. Source/binding/factoryexceptionsmustremain.
+
+ROOT r2782001Zurich/Molde A/B completeSOURCE, independentdecodedEQonly1111/
+1352 andENTonly1002/2110, allJUG/otherrecords/controltails exact. r277Basel
+manager-only A/B thenr281Zurichlabel/Gress A/B completeSOURCE, notpreferred.
+Root2001composedSeedorf DOB/countryr280A/B BUILT/SOURCE exact onr278 parent,
+notpreferred/runnerverified. Root85205 currentlybuilds2000composedr279A/B
+onr281 parent; doNOTreruncompletedbuilds. Staff/factchainskeepAlverca andall
+priorfixes. These areNOTinstalleduntilnewnative/runtimeacceptance.
+
+Luna diskboundIR1+NO1audits:each20seasonsuseone-year-late calendar-squad
+source,217/304selectors; correct-yearcache156/219available,61/85missing in
+boundedlookup. Actualtitles/sourceSHA/fixtureyears/catalogbindings reviewed;
+providerIDfolder alone cannotestablishtargetseason. Existingcalendargroup
+mustextendthismeasuredscopeexplicitly; no automaticclubrenamesbasedwrongyear.
+Remainingcalendarcountriesnotyetaudited. Do notclaimall26RCsclosed.
+
+Luna release implementsPRIVATEIrishRSSSForder/no-photo SOURCElayer onexisting
+nativewriters; explicitNIRnationalteamevidenceforFallon/Donnellyreceived,
+V3fixedinputremainsimmutable, additivenewproposal. Nativecompiler stable-name
+window rejects104/132newfullnames; inspectexistingvariable-length/namealias
+APIsandusealready-authorizedpublishedsurnameswhere needed, nevertruncatefull
+sourceidentity. Hayes isindependentQA. NoIrishgamebuildordeliveryyet.
+
+Counts frozen109/2809disposed,2700review-or-confirmed-open; stock58/327
+installed(+3identitymappingreviews), critical16/12/4, labels1/8installed.
+Newcalendar androleinvestigations mustnotbesilentlyfoldedintoexistingcase
+counts. Actualthreefactcorrectionsdelivered despitegroupremainingopen.
+
+Exactnext:finishr279;capturefinalr280/r279 targetfactsandoneclubidentityUI
+where needed; guardedcomposedstaff/factpublication, narrowSeedorfrolefixes,
+thenIrishcommonlayer/sourcecalendarrepairs. Keeponebuild/onerunnerbounded
+by8GiBreserve, original2015protected. Free~9GiB;2GiBmediadedup verified.
+
+## 2003 profile verified; 2012 targeted profile active — 2026-10-24 22:05 UTC
+
+MachineVostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. No preferred
+changes: v164 stillauthoritative. ROOT31557 TERMINAL1 onlybecause additional
+2003Stoke route OCR classified a legible original lineup asunknown. Actual
+requestedStoke matched, phase return_from_line_up, sourceinventory preserved,
+no debugger; rawfailedsummary/transport keptunmodified. ROOT inspected022
+lineup:Stoke,2003-08-01. This is NOT automatedstartupattestation. The separate
+Seedorf2003 profile transport/native/digits/age/kit proof PASS and unchanged.
+Retiredonlydisposable2003copy26809;sourceA/B,sharedprefix,evidence retained.
+
+ROOT89903 ACTIVE2012r273 profileonly viaadditivecapture_fact_profile_only_v2.py;
+onlySeedorf3factbyteschanged, existingstartup evidence reused. v165installer
+alreadyrequiredfreshStokeonlyfor2002; no guardrelaxation. Rootactualframes,
+10digits/native/age proofstillrequired for2012 beforepublication. r278A/B
+BUILD25430active, no reinstall/regenerationofcompletedpairs. Codecommit
+0de758c andhandoff1f53fcb pushed/result65693inspect. 103legacy+newtestsPASS.
+
+LunaHayes actualcanonicalSeedorf2000/2001DOB+countryproofsPASS;2007editorial
+CMprojection2bytesPASS, allstillinmemory,notgamefixes. NowindependentIrishV3
+packageQA. ReleaseLuna frozenIrishV3packagevalid230targetactors/132AugustXI,
+100matchedoldactorspreserved/130continuity-unresolvedsourcesauthored,2NI
+backfills; nativeintegration NOTdone. DiskLuna checksall26IR1/NO1calendar
+selectors/bodytitles afterproof oflateIrish3seasonsandMolde2001→2002. Existing
+calendargroup staysopen; matchingproviderIDs alone cannotcertifycorrectyear.
+
+Nextfinish2012originalprofile,rootv165preflight/installthreealreadybuiltfact
+pairs,thencomposestaff/remainingSeedorfcorrections whileIrishnativeproposal
+getsindependentQA. Neveroverwritefailedcaptures orclaimprototypeasdelivery.
+
 ## Integration update — 2026-10-24 21:59 UTC
 
 Canonical annual/fixture regression:38PASS then103PASS with legacywriter/
