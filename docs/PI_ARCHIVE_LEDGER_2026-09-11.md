@@ -1,6 +1,6 @@
 # Pi archive ledger
 
-## Verified inactive runner copies — 2026-10-23 22:35 UTC
+## Verified inactive runner copies — 2026-10-24 00:06 UTC
 
 Machine `joe-Vostro-3350`; source session
 `01a0592d-fcd5-7262-a637-743a8253d9b4`. No Pi transfer. Retired only disposable
@@ -17,12 +17,25 @@ raw sources, all screenshots and the shared initialized Wine prefix remain.
 | Hayes r197 | 358437901 | `verified-inactive-final-hayes-r197-runtime/` |
 | Plymouth r198 | 358437901 | `verified-inactive-final-plymouth-r198-runtime/` |
 | FTC r201 | 358437899 | `verified-inactive-final-ftc-r201-runtime/` |
+| Maccabi r202 | 360905205 | `verified-inactive-final-maccabi-r202-runtime/` |
+| Riera r204 | 358307699 | `verified-inactive-private-riera-r204-runtime/` |
+| Walsall r207 | 358437905 | `verified-inactive-final-walsall-r207-runtime/` |
 
 Each receipt retains `before-removal.json` and `removed.json`. The cumulative
-2508734745 bytes are retired-copy volume, not an additional current free-space
+3586385554 bytes are retired-copy volume, not an additional current free-space
 claim: later captures reuse that capacity. Free space is about8.5GiB with the
 completed disposable copies removed. Recovery is the existing registered local capture
 helper, which recreates the exact game copy from its retained sealed release.
+
+## Unused full Playwright browser cache — 2026-10-24 00:06 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`; no Pi transfer.
+Removed only `/home/joe/.cache/ms-playwright/chromium-1248` after checking no
+active process executable used that browser. Headless shell1248 and ffmpeg
+retained; PM99 games, source evidence and screenshots untouched. Net free-space
+gain424456192 bytes. Receipts and owning-package metadata:
+`.local/cleanup-20261023/unused-full-playwright-chromium-1248/{before,after}.json`.
+Recovery: reinstall Chromium with the recorded owning Playwright version.
 
 ## Local regenerable compiler cache — 2026-10-23 19:22 UTC
 

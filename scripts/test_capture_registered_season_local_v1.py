@@ -23,6 +23,28 @@ def test_startup_uses_current_driver_and_exact_release_binding(release):
     assert '--capture-route' in args and args[-1] == '302'
 
 
+def test_profile_can_search_published_surname_without_changing_identity(release, monkeypatch):
+    monkeypatch.setattr(subject.pipeline, 'read_json_file', lambda _: {
+        'players': [dict(carrier_id=19, name='Rubén de la Red')]})
+    args = subject.driver_args(release, carrier=19, label='ruben', token='Red',
+                               search_text='DE LA RED')
+    steps = [args[i + 1] for i, value in enumerate(args[:-1]) if value == '--post-step']
+    assert len([step for step in steps if step.startswith('name_ruben_')]) == len('DE LA RED')
+    assert not any('CP1252:' in step for step in steps)
+    assert args[args.index('--expected-profile-token') + 1] == 'Red'
+
+
+@pytest.mark.parametrize('text', ['', 'x\n', 'x' * 65])
+def test_profile_search_rejects_empty_controls_or_overlong_text(release, text):
+    with pytest.raises(ValueError, match='printable player-search'):
+        subject.driver_args(release, carrier=19, label='ruben', token='Red', search_text=text)
+
+
+def test_search_override_cannot_change_a_startup_route(release):
+    with pytest.raises(ValueError, match='profile carrier'):
+        subject.driver_args(release, search_text='DE LA RED')
+
+
 def plymouth_selector():
     return dict(club_carrier_id=385, team_name='Plymouth Argyle',
                 division_select_x=562, division_select_y=302,
@@ -128,8 +150,19 @@ def test_startup_summary_requires_exact_release_phase_and_visible_stoke(release,
 
 @pytest.mark.parametrize('success,matched', [(True, True), (False, True), (True, False)])
 def test_profile_summary_requires_success_and_identity_token(release, success, matched):
-    summary = dict(success=success, player_profile={'expected_name_token_satisfied': matched})
+    summary = dict(success=success, player_profile={'expected_name_token_satisfied': matched,
+        'expected_name_token': 'riera', 'player_name_ocr_normalized': 'albert riera'})
     assert subject.summary_matches(summary, release, profile=True) is (success and matched)
+
+
+@pytest.mark.parametrize('expected,name,accepted', [
+    ('red', 'frederik v', False), ('red', 'brede hangeland', False),
+    ('de la red', 'ruben de la red', True), ('haim', 'ben haim', True),
+    ('', 'frederik v', False)])
+def test_profile_match_requires_complete_name_words(release, expected, name, accepted):
+    summary = dict(success=True, player_profile=dict(expected_name_token_satisfied=True,
+        expected_name_token=expected, player_name_ocr_normalized=name))
+    assert subject.summary_matches(summary, release, profile=True) is accepted
 
 
 def test_low_disk_refuses_before_copy_or_workspace_writes(release, monkeypatch, tmp_path):

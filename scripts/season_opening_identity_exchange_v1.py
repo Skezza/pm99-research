@@ -435,6 +435,9 @@ def filename(plan):
 
 def prepare(base, input_path):
     request = pipeline.read_json_file(input_path)
+    if request.get('schema') == 'pm99-walsall-opening-two-person-v4':
+        from scripts import season_walsall_two_new_person_v4 as walsall_v4
+        return walsall_v4.prepare(base, input_path)
     if request.get('schema') == 'pm99re.hajnal-ftc-whole-roster-admission.v3':
         from scripts import season_tempofradi_whole_roster_v1 as tempofradi_roster
         return tempofradi_roster.prepare(base, input_path)
@@ -681,6 +684,13 @@ def bind(package, plan):
         club['roster_player_ids'] = [players[c]['id'] for c in row['full_order']]
         club['opening']['substitute_player_ids'] = [players[p['carrier_id']]['id'] for p in row['bench_mapping']]
         club['opening']['proof'] = dict(artifact_id=aid, grade='source-receipt')
+    if plan['request'].get('schema') == 'pm99-walsall-opening-two-person-v4':
+        from scripts import season_walsall_two_new_person_v4 as walsall_v4
+        base = registry.load_registered_release(plan['season'], plan['release_id'])
+        original_jug = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+        original_eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+        walsall_v4.validate_plan_bench(plan, package, original_jug, original_eq)
+        walsall_v4.bind_bench(result, plan)
     if plan.get('complete_mode1_opening') is not None:
         complete = plan['complete_mode1_opening']
         club = next(c for c in result['clubs'] if c['carrier_id'] == complete['club_carrier_id'])
@@ -753,6 +763,10 @@ def apply(jug, eq, plan):
         patched_eq = delta.compiler._rebuild_indexed(patched_eq, ix,
             {row['club_carrier_id']: xor_decode(delta.compiler._rewrite_roster_tail(payload, row['full_order']))})
         order_carriers.update(row['full_order'])
+    if plan['request'].get('schema') == 'pm99-walsall-opening-two-person-v4':
+        from scripts import season_walsall_two_new_person_v4 as walsall_v4
+        candidate, patched_eq = walsall_v4.apply_bench(candidate, patched_eq, plan)
+        order_carriers.update(plan['request']['bench']['full_order'])
     if eq not in (original_eq, patched_eq) or jug not in (original_jug, candidate):
         raise ValueError('opening exchange accepts only complete exact pre/postimages')
     if (jug == original_jug) != (eq == original_eq) and (original_eq != patched_eq and original_jug != candidate):
@@ -764,7 +778,10 @@ def apply(jug, eq, plan):
         before = old_entries[carrier].decode_payload(original_jug)
         after = new_entries[carrier].decode_payload(candidate)
         verify_order_only_record(before, after)
-    preserve_other_records(original_eq, patched_eq, {row['club_carrier_id'] for row in plan['request'].get('orders', [])})
+    preserved_eq_clubs = {row['club_carrier_id'] for row in plan['request'].get('orders', [])}
+    if plan['request'].get('schema') == 'pm99-walsall-opening-two-person-v4':
+        preserved_eq_clubs.add(364)
+    preserve_other_records(original_eq, patched_eq, preserved_eq_clubs)
     for row in plan['decisions']:
         if row['preserved_source_carrier'] is not None and skills(candidate, row['carrier_id']) != skills(original_jug, row['preserved_source_carrier']):
             raise ValueError('moved person native skills changed')

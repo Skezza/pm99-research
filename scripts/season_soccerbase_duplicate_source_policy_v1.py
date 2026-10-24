@@ -199,6 +199,35 @@ def extend_original_people(people, document):
 
 def person_id(person):
     id=person['source_player_id']
+    if person.get('identity_policy') == 'original-11v11-player-949-profile-explicit-DOB-conflict-v1':
+        from bs4 import BeautifulSoup
+        expected = {
+            'policy': 'source-profile-explicit-DOB-conflict-v1',
+            'path': '.local/consolidated-audit-20261009/parallel-rc-20261023/reconcile/originals-v1/alfie-carter-11v11-identity-candidate.html',
+            'sha256': '45949e0e147b7654570f7841efc562e71f5f184e48c957fb89029cc7edc7945e',
+            'url': 'https://www.11v11.com/players/alfie-carter-949/',
+            'published_name': 'Alfie Carter',
+            'published_birth_date': '1980-08-23',
+            'selected_birth_date': '1980-09-30',
+            'selected_birth_date_status': 'target-year-annual-source-prioritised-but-disputed-not-verified',
+        }
+        if (person.get('source_provider') != '11v11' or id != '11v11:949'
+                or person.get('source_profile_url') != expected['url']
+                or person.get('source_profile_sha256') != expected['sha256']
+                or person.get('name') != 'Alfie Carter' or person.get('birth_date') != '1980-09-30'
+                or person.get('identity_evidence') != expected):
+            raise ValueError('11v11 Carter identity namespace or disclosed DOB conflict differs')
+        path = registry.ROOT / expected['path']
+        registry.relative_workspace_path(path)
+        if registry.sha256_file(path) != expected['sha256']:
+            raise ValueError('retained 11v11 Carter profile changed')
+        page = BeautifulSoup(path.read_bytes(), 'lxml')
+        title = page.title.get_text(' ', strip=True) if page.title else ''
+        text = ' '.join(page.get_text(' ', strip=True).split())
+        if (title != 'Alfie Carter Football Player Statistics | 11v11.com'
+                or not all(v in text for v in ('Alfie Carter', '23 August 1980', 'Nationality English'))):
+            raise ValueError('11v11 Carter original profile differs')
+        return 'person-11v11-949'
     if person.get('identity_policy') == 'tempofradi-profile-plus-dated-match-archive-identity-v1':
         from datetime import date
         from urllib.parse import urlsplit

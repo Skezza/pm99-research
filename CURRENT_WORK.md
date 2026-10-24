@@ -1,5 +1,148 @@
 # PM99: current work
 
+## Walsall installed; Madrid causal runtime underway — 2026-10-24 00:11 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Controller43694 terminal0: 2000 current now r207a, checked r201→r207 promotion,
+final current-bound Stoke Aug1 2000 screenshot viewed and runtime attested.
+Both Carter/Siggi actual profiles and complete SOURCE replay passed. Evidence
+`parallel-rc-20261023/walsall-opening-ownership-delivery-v4/`; frozen duplicate
+disposition linkage is being reviewed separately before adding the two counts.
+Do not call frozen counts updated until next checklist is saved.
+
+Madrid r208a/b whole SOURCE replay passed. Controller2978 terminal0 proves
+exactly EQ offset14945 1→0, all other282 game files unchanged (283 files checked). Controller25468
+now serially captures actual Rubén (`de la red` whole phrase, not substring)
+and final Stoke startup. Current2005 remains r194 pending that proof.
+Controller96358 builds O'Hara2018 r206a/b from its exact registered parent;
+only one build and one runner operate. Kilkenny r205 remains private.
+
+Controller9085 terminal0 retired ONLY inactive Walsall r207 disposable game
+copy358437905bytes after source inventory, complete copy ledger and no-active
+Docker mounts checks; current installed game, screenshots and shared prefix
+retained. Receipt `.local/cleanup-20261023/verified-inactive-final-walsall-r207-runtime/`.
+Luna visibility check initially misjoined HLSZ8514; canonical person_key proves
+Rob Kornél is the same sourced person. No native bug indicated; isolated audit
+is being corrected, earlier checker uncertainty is not an outstanding player bug.
+Next: complete Madrid runtime, source-linked Walsall checklist, then role/kit
+runtime batches; do not regenerate unaffected releases.
+
+## Resume: two private batches in final validation — 2026-10-24 00:06 UTC
+
+Machine `joe-Vostro-3350`; source session
+`01a0592d-fcd5-7262-a637-743a8253d9b4`. Published baseline remains v135:
+26 playable contracts passed; 62 frozen cases disposed / 2747 REVIEW.
+Review candidates are not confirmed bugs; global historical RC remains false.
+
+Walsall 2000 private `sourced-walsall-opening-ownership-20261023-r207a/b`
+is BUILT and whole-game/recipe SOURCE-identical. Actual native readback passed:
+two new identities, 25 orders, source-backed weights, preserved other owners,
+all 25 roster flags zero; no unrelated actor changes. Lead inspected original
+Carter and Siggi profiles; independent age/ten-skill digits, native inputs and
+kit pixels passed for both. Siggi given-name OCR failure retained; surname
+retry shows Siggi EYJOLFSSON / Walsall / Iceland / 27. Carter birthday remains
+explicitly disputed secondary data, not verified from the screenshot.
+Controller23351 captures final Stoke startup; do not compete for the runner.
+Evidence `parallel-rc-20261023/walsall-opening-ownership-delivery-v4/`.
+Not installed yet: next inspect startup, promote r201→r207 and attest.
+
+Private 2005 ownership r203 and Riera country/role child r204 have complete
+SOURCE-identical replays and actual native checks. Riera and Croft genuine
+profiles passed; Rubén de la Red exposed a real inherited hidden-row issue:
+Madrid player19 flag1, EQ offset14945. Rejected Frederik substring match and
+empty full-name search retained as negative evidence, never approved.
+Private `sourced-ruben-madrid-active-row-20261023-r208a` is BUILT; r208b SOURCE
+replay active (PID2368298 controller not recovered). Exact existing native
+writer changes only that flag to0; no general foreign flag clearing. Next
+complete SOURCE, independently read back one EQ byte, then capture genuine
+Rubén profile (whole phrase `de la red`) and final Stoke startup. Current2005
+remains r194 until the complete checked chain is approved and installed.
+Evidence `parallel-rc-20261023/madrid-ruben-visibility-delivery-v1/`.
+
+Kilkenny private2013 r205a/b BUILT/SOURCE-identical, pending native/runtime
+approval; O'Hara r206 ready but not built. Barrow r209 proposal private, not
+integrated. Luna release worker researches Altrincham18 source profiles and
+Horne fact correction; Hayes worker reviews Barrow frozen bindings/Walsall;
+disk worker authored-visibility gate passed7 isolated tests, awaiting lead
+integration. No worker may build, edit shared recipes or operate runner.
+
+Disk reserve retained. Only inactive derived game copies and unused full
+Playwright Chromium cache removed with receipts; sources, all screenshots,
+current releases, initialized prefix and original2015 backup preserved.
+Next actions: finish Walsall runtime/promotion and Madrid visibility proof;
+advance role batches without regenerating unaffected games.
+
+## v135 published and all26 playable gate passed — 2026-10-23 22:57 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. Controller70134
+TERMINAL0: current2015 `sourced-maccabi-fine-roles-20261023-r202a`, both
+players' original profiles/independent ten-skill and age digits/native inputs/
+actual kit pixels passed. ROOT viewed defender33/Israel/DEF/INS.CENT.LEFT and
+winger26/Israel/MID/LEFTMID; no portraits added/approved. Same final Stoke
+Aug1 2015 lineup inspected, current-bound attestation and promotion retained.
+`parallel-rc-20261023/maccabi-fine-role-delivery-v1/all26-v135-regression.json`
+checks all26 ACTUAL current bindings/playable contracts; zero regenerations.
+Original2015 actual fun backup verified again after active2015 promotion.
+`release-delivery-checklist-v135.json` retains62disposed/2747REVIEW; these two
+role repairs are not new duplicate disposals. Global historicalRC FALSE.
+
+Controller22692 TERMINAL0: private2005 r203a/b ownership BUILT/wholeSOURCE
+identical. Root actual readback `espanyol-city-madrid-ownership-delivery-v1/actual-native-readback.json`:
+three selected actors exact expected source DOBs/roles/countries, Riera ratings
+exact source copy, BirminghamPandiani1858 and all other native actors exact,
+EQ same asr199, displaced photos blank. Native full family `de la Red` verified,
+not truncated toRed. Current2005 remainsr194: still require Riera8928 ENG→ESP
+and CM9→LM10, then actual final profiles/startup before any promotion.
+
+Riera canonical adapter promoted uncommitted; root caught publisher proposal
+genericreceipt len(updates)KeyError (plan has no updates), replaced it with
+dedicated single-player receipt branch and added UNIQUE-mode SOURCE dispatch.
+Worker re-QAs actual canonical API/publisher seam before private r204a/b.
+No build started yet. Ownership source request/plan frozen; never edit those
+completed inputs. Both two-byte field change and compatible/editorial LM
+classification must survive actual SOURCE replay; skills unchanged.
+
+Adversarial Walsall review rejected unbound TM Carter966778 before any game
+publication. v2 test is NOT accepted as production QA. Worker v3 uses retained
+historical11v11 profile949, disputed annualDOB preserved as uncertainty;
+strict namespace/nonrecursive typedbench integration patch being prepared.
+Annual rows sayM while profile-derivedF is editorial; do not falsely label it
+target-annualF. Siggi positiveAugust22cup source bodies/receipts retained.
+Role worker prepares Kilkenny/O'Hara corrections; actual owners BristolCity
+and Peterborough confirmed by lead, later Preston/Lincoln rows only role
+corroboration, never August owner evidence.
+
+Free~8.7GiB. Controller12739 TERMINAL0 removed only completed r202 runtime
+game copy360905205bytes after exact source/no-active-mount proof; all three
+original screenshots/prefix/release/source files retained, ledger updated.
+No active runner/build now; all26 completed check must not be rerun without
+another preferred change. Next integrate verified Riera child/buildr204,
+then source-backed Walsall/roles and bounded Kidder/Italian kit views.
+
+## Maccabi SOURCE passed/capturing; 2005 ownership building — 2026-10-23 22:42 UTC
+
+Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`; source02e2494 pushed.
+v134/current2000r201 installed, prior section/evidence remains authoritative.
+Controller37522 TERMINAL0: private2015 r202a/b complete SOURCE-identical game
+and recipe. Independent actual readback proves EXACTLY6 physical fine-role
+bytes for2027/32232; every other game byte/file/fact/skill/owner/photo unchanged.
+Controller75066 now serially captures defender2027, winger32232 and same final
+Stoke startup. Evidence `parallel-rc-20261023/maccabi-fine-role-delivery-v1/`.
+Lead must view original images/record independent digits/native kit proof,
+promote only after runtime success; 2015 current is stillr129. Original2015
+fun backup preserved. FTC completed disposable copy cleanup11788 TERMINAL0:
+358437899bytes retired, ledger updated; every frame/source/prefix preserved.
+
+Lead explicitly allows ONE build of a DIFFERENT season alongside ONE capture
+after checking8CPUthreads/~3.9GiBavailableRAM/~8.3GiBfree and the publisher's
+8GiB reserve gate. No competing runner jobs and no same-season mutation.
+This supersedes earlier self-imposed build/capture mutual exclusion to improve
+throughput safely. Controller22692 now builds private2005 ownership r203a/b
+fromr199 using frozen canonical plan. Game publication remains blocked until
+Riera8928 ENG→ESP/CM→LM follow-up; build does not change preferred catalogue.
+Sources, screenshots and original2015 remain immutable. Luna source batches
+continue (Walsall2 replacements, Riera facts, Kilkenny/O'Hara positions).
+
 ## v134 FTC installed and runner verified; Maccabi building — 2026-10-23 22:35 UTC
 
 Vostro/session `01a0592d-fcd5-7262-a637-743a8253d9b4`. Controller39019

@@ -23,7 +23,13 @@ def summary_matches(summary, release, *, profile=False, selector=None):
     if summary.get('success') is not True:
         return False
     if profile:
-        return summary.get('player_profile', {}).get('expected_name_token_satisfied') is True
+        observed = summary.get('player_profile', {})
+        expected = observed.get('expected_name_token')
+        name = observed.get('player_name_ocr_normalized')
+        return (observed.get('expected_name_token_satisfied') is True
+                and isinstance(expected, str) and bool(expected.strip())
+                and isinstance(name, str)
+                and re.search(r'(?<!\w)' + re.escape(expected.strip()) + r'(?!\w)', name) is not None)
     team = summary.get('route_summaries', {}).get('line_up', {}).get('team_identity', {})
     if selector is not None:
         coordinates = {key: selector[key] for key in (
@@ -63,7 +69,12 @@ def validate_selector(release, selector):
         raise ValueError('club selector must match one exact registered recipe club')
 
 
-def driver_args(release, *, carrier=None, label=None, token=None, search_result_row=1, selector=None):
+def driver_args(release, *, carrier=None, label=None, token=None, search_result_row=1, selector=None, search_text=None):
+    if search_text is not None:
+        if (carrier is None or not isinstance(search_text, str) or not search_text.strip()
+                or len(search_text) > 64 or any(ord(c) < 32 for c in search_text)):
+            raise ValueError('explicit printable player-search text requires a profile carrier')
+        search_text.encode('cp1252')
     if type(search_result_row) is not int or not 1 <= search_result_row <= 10:
         raise ValueError('explicit visible search result row must be 1..10')
     if selector is not None:
@@ -101,7 +112,7 @@ def driver_args(release, *, carrier=None, label=None, token=None, search_result_
              'open_offers_button|native_double_click|564,372,1|2.5',
              'open_player_name_search|native_input_click|565,360,1|2.5',
              'focus_search_name_field|native_input_click|238,141,1|0.8']
-    for i, char in enumerate(matches[0]['name']):
+    for i, char in enumerate(matches[0]['name'] if search_text is None else search_text):
         key = ('Space' if char == ' ' else char.upper() if char.isascii() and char.isalnum()
                else 'CP1252:' + char.encode('cp1252').hex().upper())
         steps.append(f'name_{label}_{i:02d}|native_key|{key}|0.1')
@@ -115,11 +126,11 @@ def driver_args(release, *, carrier=None, label=None, token=None, search_result_
     return args
 
 
-def capture(season, release_id, tag, *, carrier=None, label=None, token=None, search_result_row=1, selector=None):
+def capture(season, release_id, tag, *, carrier=None, label=None, token=None, search_result_row=1, selector=None, search_text=None):
     if not re.fullmatch(r'[a-z][a-z0-9_]{0,95}', tag):
         raise ValueError('safe unique capture tag required')
     release = registry.load_registered_release(season, release_id)
-    driver = driver_args(release, carrier=carrier, label=label, token=token, search_result_row=search_result_row, selector=selector)
+    driver = driver_args(release, carrier=carrier, label=label, token=token, search_result_row=search_result_row, selector=selector, search_text=search_text)
     inventory = pipeline.read_json_file(release.inventory_path)
     pipeline.assert_tree_matches_inventory(release.game_path, inventory)
     workspace = registry.ROOT / '.local/local-runner-v1' / season / release_id
@@ -196,8 +207,10 @@ if __name__ == '__main__':
     parser.add_argument('--label')
     parser.add_argument('--token')
     parser.add_argument('--search-result-row', type=int, default=1)
+    parser.add_argument('--search-text')
     parser.add_argument('--selector-json', type=Path)
     args = parser.parse_args()
     print(capture(args.season, args.release_id, args.tag,
                   carrier=args.carrier, label=args.label, token=args.token, search_result_row=args.search_result_row,
-                  selector=pipeline.read_json_file(args.selector_json) if args.selector_json else None), flush=True)
+                  selector=pipeline.read_json_file(args.selector_json) if args.selector_json else None,
+                  search_text=args.search_text), flush=True)

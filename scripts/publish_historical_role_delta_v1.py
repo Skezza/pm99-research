@@ -540,6 +540,12 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         from scripts import season_opening_identity_exchange_v1 as opening_exchange
         if assignment_plan.get('schema') == opening_exchange.SCHEMA:
             assignments = opening_exchange
+        from scripts import season_riera_postownership_country_role_v1 as riera_country_role
+        if assignment_plan.get('schema') == riera_country_role.SCHEMA:
+            assignments = riera_country_role
+        from scripts import season_madrid_mode1_activation_v1 as madrid_activation
+        if assignment_plan.get('schema') == madrid_activation.SCHEMA:
+            assignments = madrid_activation
         from scripts import season_woking_2003_owned_opening_v1 as woking_owned
         if assignment_plan.get('schema') == woking_owned.SCHEMA:
             assignments = woking_owned
@@ -585,6 +591,9 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         from scripts import season_source_bound_maccabi_role_r129_v1 as maccabi_roles
         if assignment_plan.get('schema') == maccabi_roles.SCHEMA:
             assignments = maccabi_roles
+        from scripts import season_annual_position_role_candidate_v1 as annual_roles
+        if assignment_plan.get('schema') == annual_roles.SCHEMA:
+            assignments = annual_roles
         from scripts import season_2015_english_fifa_roles_v1 as english_roles
         if assignment_plan.get('schema') == english_roles.SCHEMA:
             assignments = english_roles
@@ -952,11 +961,21 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             fixed_duplicate_case_ids=(['2c01311314826e92f838732f4049bdbb8a1f3f3dab539de196dd43de8bfed553']
                 if assignment_plan['schema'] == stevenage.SCHEMA else assignment_plan['fixed_duplicate_case_ids']),
             players_written=len(assignment_plan['orders']), allowed_write=assignment_plan['scope'])
-    elif assignment_plan is not None and assignment_plan.get('schema') in (owned_roster.SCHEMA, source_changes.SCHEMA, quality_only.SCHEMA, exact_roles.SCHEMA, conservative_roles.SCHEMA, english_roles.SCHEMA, donor_roles.SCHEMA, primary_positions.SCHEMA, alias_primary_positions.SCHEMA, country_policy.SCHEMA, resolved_country.SCHEMA, shirt_numbers.SCHEMA, commons_number.SCHEMA, alias_countries.SCHEMA, birthday_disagreements.SCHEMA, maccabi_roles.SCHEMA):
+    elif assignment_plan is not None and assignment_plan.get('schema') in (owned_roster.SCHEMA, source_changes.SCHEMA, quality_only.SCHEMA, exact_roles.SCHEMA, conservative_roles.SCHEMA, english_roles.SCHEMA, donor_roles.SCHEMA, primary_positions.SCHEMA, alias_primary_positions.SCHEMA, country_policy.SCHEMA, resolved_country.SCHEMA, shirt_numbers.SCHEMA, commons_number.SCHEMA, alias_countries.SCHEMA, birthday_disagreements.SCHEMA, maccabi_roles.SCHEMA, annual_roles.SCHEMA):
         receipt.update(compilation_mode=assignments.MODE,
             original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
             removed_target_roster_links=[],fixed_duplicate_case_ids=[],
             players_written=len(assignment_plan['updates']),allowed_write=assignment_plan['scope'])
+    elif assignment_plan is not None and assignment_plan.get('schema') == madrid_activation.SCHEMA:
+        receipt.update(compilation_mode=madrid_activation.MODE,
+            original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
+            removed_target_roster_links=[], fixed_duplicate_case_ids=[],
+            players_written=1, allowed_write=assignment_plan['scope'])
+    elif assignment_plan is not None and assignment_plan.get('schema') == riera_country_role.SCHEMA:
+        receipt.update(compilation_mode=riera_country_role.MODE,
+            original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
+            removed_target_roster_links=[], fixed_duplicate_case_ids=[],
+            players_written=1, allowed_write=assignment_plan['scope'])
     elif assignment_plan is not None and assignment_plan.get('schema') == amavisca_tx.SCHEMA:
         receipt.update(compilation_mode=amavisca_tx.MODE,
             original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),

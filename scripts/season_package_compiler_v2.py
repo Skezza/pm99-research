@@ -2145,6 +2145,10 @@ def compile_package_to_tree(
         country_policy.reject_factory_recipe(package)
         from scripts import season_source_verified_player_changes_v1 as source_changes
         source_changes.reject_factory_recipe(package)
+        from scripts import season_annual_position_role_candidate_v1 as annual_roles
+        annual_roles.reject_factory_recipe(package)
+        from scripts import season_madrid_mode1_activation_v1 as madrid_activation
+        madrid_activation.reject_factory_recipe(package)
         from scripts import season_verified_owned_roster_transaction_v1 as owned_roster
         owned_roster.reject_factory_recipe(package)
         from scripts import season_owned_club_composition_v1 as retained_composition
