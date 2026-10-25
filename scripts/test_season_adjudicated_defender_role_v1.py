@@ -189,3 +189,42 @@ def test_fact_parent_warm_replay_rejects_same_content_symlink(monkeypatch, tmp_p
         assert replay_calls == {"verify": 2, "bind": 2, "apply": 2}
 
 
+@pytest.mark.parametrize("factory_broad,target_broad,roles,null_identity,expected", [
+    ("M", "D", [15, 98, 98, 98, 98, 98], True, True),
+    ("M", "D", [15, 98, 98, 98, 98, 98], False, False),
+    ("D", "M", [15, 98, 98, 98, 98, 98], False, False),
+    ("D", "M", [15, 98, 98, 98, 98, 98], True, False),
+    ("D", "M", [4, 98, 98, 98, 98, 98], False, True),
+    ("D", "D", [15, 98, 98, 98, 98, 98], True, False),
+    ("M", "D", [], True, False),
+])
+def test_factory_seed_exception_is_only_for_verified_null_dob_defender(
+        factory_broad, target_broad, roles, null_identity, expected):
+    assert role._factory_role_seed_guard_ok(
+        "Jerren NIXON", "Urs Fischer", factory_broad, target_broad,
+        roles, null_identity) is expected
+    assert not role._factory_role_seed_guard_ok(
+        "Urs FISCHER", "Urs Fischer", factory_broad, target_broad,
+        roles, null_identity)
+
+
+def test_real_corrected_fischer_parent_has_an_incompatible_factory_seed():
+    season = "2000-01"
+    release_id = "sourced-fischer-official-facts-20261025-r286a"
+    if not role.registry.locator_path(season, release_id).is_file():
+        pytest.skip("local registered game corpus unavailable")
+    base = role.registry.load_registered_release(season, release_id)
+    jug = (base.game_path / "DBDAT/JUG98030.FDI").read_bytes()
+    eq = (base.game_path / "DBDAT/EQ98030.FDI").read_bytes()
+    entry = next(e for e in role.IndexedFDIFile.from_bytes(jug).entries
+                 if e.record_id == 14454)
+    current = role.native_player(entry.decode_payload(jug), 14454)
+    factory = role._factory_roles(14454)
+    assert current["position"] == "D"
+    assert current["roles"] == factory[4] == [15, 98, 98, 98, 98, 98]
+    assert factory[6]["position"] == "M"
+    assert not role.compatible("M", 15)
+    assert role._exclusive_owner(eq, 14454, 1111)
+    assert role.native_facts(jug, 14454)["birth_date"] == "1966-02-20"
+    assert role._factory_role_seed_guard_ok(
+        factory[5]["name"], "Urs Fischer", "M", "D", factory[4], True)

@@ -26,6 +26,14 @@ incompatible inherited forward role with the existing editorial defender default
 That default is not presented as a published historical fine position. Parent
 replay caches rehash source bindings and reject symlink substitution before reuse.
 
+The real Fischer parent also exposed an inconsistent factory slot: Jerren Nixon
+has broad position M with primary fine role 15 (Right Forward). The verified
+null-birthday defender path can correct that retained seed without requiring
+the factory's own broad/fine pair to be compatible. Exact seed bytes, different
+identity, changed broad position, corrected birthday, exclusive ownership and
+the official defender evidence remain required. The earlier midfield policy
+keeps its original factory-compatibility requirement.
+
 The first case is Urs Fischer at Zürich in 2000/01. DFB gives his birthday and
 Swiss nationality; UEFA corroborates those facts and his Zürich playing spell.
 Sources are credited in the retained receipts and here:

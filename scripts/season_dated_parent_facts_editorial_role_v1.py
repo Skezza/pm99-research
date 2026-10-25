@@ -392,6 +392,17 @@ def _exclusive_owner(eq: bytes, carrier: int, expected_owner: int) -> bool:
     return native_owners(eq).get(carrier) == {expected_owner}
 
 
+def _factory_role_seed_guard_ok(factory_name: str, actor_source_name: str,
+                                factory_broad: str, target_broad: str,
+                                factory_roles: list[int], null_annual_identity: bool) -> bool:
+    """Keep legacy M checks; permit the verified D path's incompatible seed."""
+    if (not distinct_factory_identity(factory_name, actor_source_name)
+            or factory_broad == target_broad or not factory_roles):
+        return False
+    official_null_d_seed = null_annual_identity and target_broad == "D"
+    return official_null_d_seed or compatible(factory_broad, factory_roles[0])
+
+
 def _assert_role_byte_mask(before: bytes, after: bytes, masks: list[dict]) -> None:
     allowed = {m["file_offset"] for m in masks if m["before"] != m["after"]}
     actual = {i for i, (a, b) in enumerate(zip(before, after)) if a != b}
@@ -498,9 +509,9 @@ def prepare(base, request_path: Path):
     factory, factory_entry, factory_payload, factory_end, factory_roles, factory_native, factory_facts = _factory_roles(carrier)
     if (observed["position"] != role_broad or observed_facts["position"] != role_broad
             or before_roles != factory_roles
-            or not distinct_factory_identity(factory_native["name"], actor["source_name"])
-            or factory_facts["position"] == role_broad
-            or not compatible(factory_facts["position"], factory_roles[0])
+            or not _factory_role_seed_guard_ok(
+                factory_native["name"], actor["source_name"], factory_facts["position"],
+                role_broad, factory_roles, null_annual_identity)
             or observed_facts["birth_date"] == factory_facts["birth_date"]
             or observed_facts["birth_date"] != actor["facts"]["birth_date"]
             or observed["name"].casefold() != actor["name"].casefold()):
