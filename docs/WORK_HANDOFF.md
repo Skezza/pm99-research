@@ -1,5 +1,99 @@
 # PM99 worker handoff
 
+## v172 installed and verified — 2026-10-25 21:40 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Authoritative checklist v172 and critical ledgerv24:22 groups/16 delivered/6 open.
+Original17 baseline remains14/3. Originalcrossclub2809 now110dispositions/2699
+review-or-confirmed-open; these2699 are not confirmed bugs. Stable McKennacase
+f0140c41b038db1c19c55b0bcf8e96b6a960dcd3103cd19fdd6d25b073c6867a closed.
+
+2000/01 preferred r321a INSTALLED and VERIFIED: McKennaCottbus8084 unchanged,
+GaryLocke→Hearts12232, PeterBeagrie→Bradford1994. R322 July30originalXI/order
+layer included; actualA/B fullrecipe/inventory SOURCE equality and nativepair
+scope passed. Both genuine profiles ROOTreviewed and independently bound to
+10skillglyphs, ages25/35 and nativekitpixels. NativeEQ/managers/assets unchanged;
+allunselecteddata exact, other25preferredbindings and original2015backup exact.
+Completion: `resume-qa/hearts-locke-order-correction-v1/r321-paired-delivery-v1/completion-proof-v172.json`.
+Corrected stale private golden transactionID only; canonical contenthash and
+fullnativepostimages identical, preserved earlierprivateproof. No rebuildof
+unaffectedgames. R321disposablecapturegame retired withverifiedledger v5.
+
+Patacas genericcanonicalcountry/profile-role admission is commit25be1fd.
+Existingfactoryguards/defaults unchanged; newexactsourcepolicy editsprimaryfine
+byteonly and preserves5secondaryrolebytes. DynamicUEFAnationalitynoPORhardcode.
+69legacy/parser tests passed; expandedportable suite15pass. Actualr318canonical
+preflight passes onePORcountrybyte +oneRightBack1finebyte, all otherfacts/assets
+unchanged. R323country/finalA/B NOTbuilt yet; Root-onlystageddriver under
+`resume-qa/patacas-r323-root-driver-v1/build_patacas_r323_root_v1.py`.
+Rootindependently verified indexedTM14243DOB/rightbackclaims; sourceheightconflict
+175/176 remains unchanged. Next:publishr323f, repreparefineagainstactualr323f,
+finalr323A/B SOURCE, serialrunner andinstall. Do notreuse provisionalroleparent.
+
+AllLunaworkersquota-exhausted; lead owns remainingintegration fromsavedpackets.
+Do not waitforworkers. Membershipprivatepacket still needscanonicalpromotion,
+providerroutehardening andproductpurepayload boundary; wrongG5/sourceXI/handling
+and RobLee duplicate remainopen. Irish3labelcases tiedtowrong2018cohorts: use
+correctprovider2016/year2017 slices andjointallocation, neverrelaxyearguard.
+13Nacional kitcandidates are unpublishedUruguay-donor errors whilecurrent art
+self-stock; classifyonlyafterRootreview, do notbuildbad/no-opcandidates. Bath16
+Augustclubmemberships+managerdatedsource retained, fullXIstillunavailable.
+
+Diskfellto~6GiBdueanotheractiveGo test/cache; noGo cachedeleted. PiSSHonline,
+UUID1f364414-880d-4f96-8619-3bd8c9954cc0 mounted, ~232GiBavailable. Root99116
+archivesunuseddefault `/home/joe/.wine` toPi via `archive_default_wine_prefix_to_pi.py`;
+exactallmember verification/source rehash precedesremoval. CurrentPM99prefixes
+allindependentlyresolveunder `.local/local-runner-v1/2000-01/...r173a/wine-prefix`,
+notdefaultWineprefix; noWineprocessactive. Ledger `.local/cleanup-20261025/default-wine-prefix-to-pi/`.
+Do notclaimarchivecomplete untilcompletion-v1.json exists. Current26/sourcegames,
+requiredsourcecaches/screens and original2015 remainlocal. Nextaction:finisharchive,
+startboundedr323countrypublication, review remainingpackets whilebuildruns.
+
+## Lead takeover after Luna quota limits — 2026-10-25 20:51 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Installed checklist remains v171 /critical ledgerv23:22 groups,15 delivered,7 open.
+All three Luna workers hit provider usage limits; Root continues with their saved
+packets. No worker publication or runner was performed. Mixed-worker limitation
+is recorded; do not wait for these agents or claim their unfinished work delivered.
+
+Commit570a848 promotes generic profile crosswalk+minimal exchange integration and
+reviewed sixGiB reserve forwarding;96 targeted tests passed. R321 canonical
+preflight ROOT59295 uses `hearts-locke-order-correction-v1/r321-paired-delivery-v1/prepare_r321_locke_beagrie_root_v2.py`.
+The private golden differed ONLY by stale transaction_id: canonical full plan
+body hashes to a75462f625ad50d7981bf404; all other fields identical. Root explicit
+review accepts content-derivedID, requires identical full native postimage to
+privateproof, fixes invalid private base.manifest_path property. No R321 build yet.
+
+Patacas canonical packet and Root-onlyr323 driver ready but NOT promoted/built:
+`resume-qa/patacas-r318-generic-country-role-integration-v2/` and
+`resume-qa/patacas-r323-root-driver-v1/build_patacas_r323_root_v1.py`.
+UEFA POR plus indexedTM14243RightBack→native1; actualr318 commoninmemory9tests pass.
+Root must review/promote minimal generic country/role dispatch, preflight, then
+countryr323f +finalr323A/B, realrunner andinstallation. Preserveheight175/DOB/skills.
+
+Membership packet frozen private: `opening-xi-west-ham-brentford-2003-first-fixture-v1/promotion-proposal-v2/`.
+Providerhash2df7edf43e36d006b0b8134c9613f1b3b439d8e4f25522ea402c6a0f99c8fade;
+requires Root HTTPS/provider-route hardening before promotion and upstream pure
+payload boundary. Original pre-freeze10pass/1fixturefail, focusedfinal4pass;
+not a claim all final code passed the expensive whole suite. RobLee duplicate
+remains open, not accepted exception. Irishlabel3cases are coupled wrong2018
+source slices: SourceVerifier rejectionCORRECT. Correctprovider2016 pages title2017
+and fixture hashes retained; joint allocation required, do not rename2018cohorts.
+Crosswalk `calendar-2017-irish-carrier-crosswalk-v1/...-proposal-v2.json`.
+
+All13 remaining Nacional kit proposals are unpublished wrong-Uruguay donors;
+preimage audit reports current artself-stock all3archives. Do not buildbadplans
+or claim13nativebugs fixed. Verify logicalidentity/readiness record beforeclosing
+as rejectedproposal/currentdeclaredfallback. Bath16Augustclubmemberships anddated
+manager source retained; fullXI evidencegap remains. KeepRoot adjudication separate.
+R318 disposable runner game retired afterverified source/evidence preservation:
+`resume-qa/retired-r318-runner-copy-20261025-v4.json`;361373696bytes reclaimed.
+Freeabout6.9GiB; default8GiBunchanged, reviewedboundedjobs6GiBfloor. Preservecurrent
+releases, originals, Wineprefixes, raw evidence. Next:finishR321canonicalpreflight,
+startactualA/B SOURCE, thenrunner/install, while reviewingPatacaspacket read-only.
+
+
 ## v171 installed and verified — 2026-10-25 20:08 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
