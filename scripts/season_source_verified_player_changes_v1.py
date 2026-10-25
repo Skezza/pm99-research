@@ -7,6 +7,7 @@ edit kinds must acquire their own source and native guards before admission.
 import copy
 from datetime import date
 from pathlib import Path
+from scripts import season_disk_budget_v1 as disk_budget
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import season_package_v2 as packages,season_package_compiler_v2 as compiler
 from app.fdi_indexed import IndexedFDIFile
@@ -308,7 +309,8 @@ def reject_factory_recipe(package):
     if any(a['id'].startswith(PREFIX) for a in package.get('artifacts',[])):
         raise ValueError('source-backed field recipe requires exact SOURCE reconstruction')
 
-def reconstruction(previous,release_id):
+def reconstruction(previous,release_id,*,minimum_free_bytes=disk_budget.DEFAULT_RESERVE):
+    disk_budget.validate_reserve(minimum_free_bytes)
     relative=getattr(previous,'locator',{}).get('sourced_profile_assignment_plan_path')
     if not relative:return None
     path=registry.ROOT/relative;plan=pipeline.read_json_file(path)
@@ -325,7 +327,7 @@ def reconstruction(previous,release_id):
             package_sha256=plan['package_sha256'],jug_sha256=plan['jug_sha256'],updates=[],unresolved=[]):
         raise ValueError('exact inert SOURCE descriptor required')
     from scripts import publish_historical_role_delta_v1 as publisher
-    publisher.publish(previous.season,descriptor,release_id=release_id,source_release_id=base.release_id,profile_assignment_plan_path=path)
+    publisher.publish(previous.season,descriptor,release_id=release_id,source_release_id=base.release_id,profile_assignment_plan_path=path,minimum_free_bytes=minimum_free_bytes)
     rebuilt=registry.load_registered_release(previous.season,release_id)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path,pipeline.read_json_file(previous.inventory_path))
     if rebuilt.package_path.read_bytes()!=previous.package_path.read_bytes():raise ValueError('whole SOURCE recipe differs')

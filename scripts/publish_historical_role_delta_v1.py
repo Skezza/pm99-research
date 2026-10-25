@@ -24,6 +24,7 @@ sys.path.insert(0, str(ROOT / 'upstream/pm99-skezmod-patcher'))
 from player_birth_year_guard import patch_native_birth_year_guard
 from scripts import season_release_registry_v1 as registry
 from scripts import season_package_v2 as package_v2
+from scripts import season_disk_budget_v1 as disk_budget
 from scripts import season_pipeline_v2 as pipeline
 from scripts.season_visual_patch_v1 import source_inventory
 from scripts.attest_registered_season_runtime_v1 import _atomic_replace_json
@@ -255,7 +256,8 @@ def _verify_prepared_donor_workspace(workspace, release, before, patched, packag
     return after
 
 
-def publish(season, plan_path, *, release_id, register=False, modern_birth_dates=False, nationality_plan_path=None, manager_plan_path=None, club_plan_path=None, ownership_plan_path=None, visibility_plan_path=None, mode1_keeper_plan_path=None, birth_year_plan_path=None, mode1_opening_plan_path=None, italian_opening_plan_path=None, source_release_id=None, trabzon_opening_plan_path=None, name_only_plan_path=None, profile_assignment_plan_path=None, resume_unregistered_assignment=False):
+def publish(season, plan_path, *, release_id, register=False, modern_birth_dates=False, nationality_plan_path=None, manager_plan_path=None, club_plan_path=None, ownership_plan_path=None, visibility_plan_path=None, mode1_keeper_plan_path=None, birth_year_plan_path=None, mode1_opening_plan_path=None, italian_opening_plan_path=None, source_release_id=None, trabzon_opening_plan_path=None, name_only_plan_path=None, profile_assignment_plan_path=None, resume_unregistered_assignment=False, minimum_free_bytes=disk_budget.DEFAULT_RESERVE):
+    disk_budget.validate_reserve(minimum_free_bytes)
     if not re.fullmatch(r'[a-z0-9][a-z0-9.-]{0,127}', release_id):
         raise ValueError('invalid release ID')
     release = (registry.load_registered_release(season, source_release_id)
@@ -784,24 +786,24 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             predicted += len(patched_ent)
         if portrait_archive is not None and portrait_archive != original_archive:
             predicted += len(portrait_archive)
-        if shutil.disk_usage(release.game_path).free - predicted < 8 * 1024**3:
-            raise ValueError('reserve assignment pruning would breach the 8 GiB reserve')
+        disk_budget.require_space(release.game_path, predicted,
+            minimum_free_bytes=minimum_free_bytes, context="season publication")
     if name_plan is not None:
         result = names.bind(package, name_plan)
         patched = names.apply(original, name_plan)
         if names.apply(patched, name_plan) != patched:
             raise ValueError('name-only native delta is not idempotent')
         predicted = len(patched) + len(package_v2.canonical_json_bytes(result)) + len(pipeline.canonical_json_bytes(name_plan)) + 32 * 1024**2
-        if shutil.disk_usage(release.game_path).free - predicted < 8 * 1024**3:
-            raise ValueError('name-only delta would breach the 8 GiB reserve')
+        disk_budget.require_space(release.game_path, predicted,
+            minimum_free_bytes=minimum_free_bytes, context="season publication")
     if trabzon_plan is not None:
         result = trabzon_opening.bind(package, trabzon_plan)
         patched, patched_eq = trabzon_opening.apply(original, original_eq, trabzon_plan)
         if trabzon_opening.apply(patched, patched_eq, trabzon_plan) != (patched, patched_eq):
             raise ValueError('Trabzon full-XI delta is not idempotent')
         predicted = len(patched) + len(patched_eq) + len(package_v2.canonical_json_bytes(result)) + 32 * 1024**2
-        if shutil.disk_usage(release.game_path).free - predicted < 8 * 1024**3:
-            raise ValueError('Trabzon full-XI delta would breach the 8 GiB reserve')
+        disk_budget.require_space(release.game_path, predicted,
+            minimum_free_bytes=minimum_free_bytes, context="season publication")
     if italian_plan is not None:
         result = italian_opening.bind(package, italian_plan)
         patched_eq = italian_opening.prune(original_eq, italian_plan)
@@ -809,8 +811,8 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         if italian_opening.prune(patched_eq, italian_plan) != patched_eq or italian_opening.order(patched, patched_eq, italian_plan) != patched:
             raise ValueError('Italian original-XI delta is not idempotent')
         predicted = len(patched) + len(patched_eq) + len(package_v2.canonical_json_bytes(result)) + len(pipeline.canonical_json_bytes(italian_plan)) + 32*1024**2
-        if shutil.disk_usage(release.game_path).free - predicted < 8*1024**3:
-            raise ValueError('Italian original-XI delta would breach the 8 GiB reserve')
+        disk_budget.require_space(release.game_path, predicted,
+            minimum_free_bytes=minimum_free_bytes, context="season publication")
     if keeper_plan is not None:
         result = keeper_slot.bind(package, keeper_plan)
         if keeper_slot.apply(patched, original_eq, keeper_plan) != patched:
@@ -820,8 +822,8 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         if birth_years.apply(patched, birth_year_plan) != (patched, []):
             raise ValueError('sourced birth-year delta is not idempotent')
         predicted = len(patched) + len(package_v2.canonical_json_bytes(result)) + len(pipeline.canonical_json_bytes(birth_year_plan)) + 32*1024**2
-        if shutil.disk_usage(release.game_path).free - predicted < 8*1024**3:
-            raise ValueError('birth-year delta would reduce free space below the 8 GiB reserve')
+        disk_budget.require_space(release.game_path, predicted,
+            minimum_free_bytes=minimum_free_bytes, context="season publication")
     if opening_plan is not None:
         from scripts import season_duplicate_ownership_delta_v1 as portrait_delta
         from scripts.season_package_compiler_v2 import _extract_country_codes_from_textos
@@ -834,8 +836,8 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         stale = {r['carrier_id'] for r in opening_plan['replacements'] if r['kind'] == 'wrong-person-facts'}
         portrait_archive, portrait_offsets = portrait_delta.no_photo_archive(original_archive, stale)
         predicted = len(patched) + len(pipeline.canonical_json_bytes(result)) + len(pipeline.canonical_json_bytes(opening_plan)) + (len(portrait_archive) if portrait_archive != original_archive else 0) + 32 * 1024 ** 2
-        if shutil.disk_usage(release.game_path).free - predicted < 8 * 1024 ** 3:
-            raise ValueError('full original-XI delta would reduce free space below the 8 GiB reserve')
+        disk_budget.require_space(release.game_path, predicted,
+            minimum_free_bytes=minimum_free_bytes, context="season publication")
     updated_english = None
     if assignment_plan is not None and assignment_plan.get('schema') == english_roles.SCHEMA:
         updated_english = english_roles.updated_english(assignment_plan)
@@ -856,8 +858,8 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
         portrait_archive, portrait_offsets = ownership.no_photo_archive(original_archive, carriers)
         predicted = len(patched) + (len(portrait_archive) if portrait_archive != original_archive else 0) + 32 * 1024 * 1024
-        if shutil.disk_usage(release.game_path).free - predicted < 8 * 1024 ** 3:
-            raise ValueError('ownership delta would reduce free space below the 8 GiB reserve')
+        disk_budget.require_space(release.game_path, predicted,
+            minimum_free_bytes=minimum_free_bytes, context="season publication")
     visibility_plan, visibility_changes = None, []
     if visibility_plan_path is not None:
         from scripts import season_roster_visibility_v1 as visibility
@@ -865,8 +867,8 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         visibility.verify_bound(release, visibility_plan)
         patched_eq, visibility_changes = visibility.apply(patched_eq, visibility_plan, exact_before=True)
         result = visibility.bind(result, visibility_plan)
-        if shutil.disk_usage(release.game_path).free - len(patched_eq) - len(package_v2.canonical_json_bytes(result)) - 32*1024**2 < 8*1024**3:
-            raise ValueError('visibility delta would breach the 8 GiB disk reserve')
+        disk_budget.require_space(release.game_path, len(patched_eq) + len(package_v2.canonical_json_bytes(result)) + 32*1024**2,
+            minimum_free_bytes=minimum_free_bytes, context="season publication")
     destination = registry.locator_path(season, release_id).parent
     workspace = ROOT / '.local/historical-role-deltas-v1' / season / release_id
     prepared=workspace.exists() and resume_unregistered_assignment

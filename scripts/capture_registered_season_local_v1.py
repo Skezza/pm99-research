@@ -11,6 +11,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from scripts import season_disk_budget_v1 as disk_budget
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts.capture_registered_season_runtime_v1 import _selector
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
@@ -126,7 +127,7 @@ def driver_args(release, *, carrier=None, label=None, token=None, search_result_
     return args
 
 
-def capture(season, release_id, tag, *, carrier=None, label=None, token=None, search_result_row=1, selector=None, search_text=None):
+def capture(season, release_id, tag, *, carrier=None, label=None, token=None, search_result_row=1, selector=None, search_text=None, minimum_free_bytes=RESERVE):
     if not re.fullmatch(r'[a-z][a-z0-9_]{0,95}', tag):
         raise ValueError('safe unique capture tag required')
     release = registry.load_registered_release(season, release_id)
@@ -144,8 +145,8 @@ def capture(season, release_id, tag, *, carrier=None, label=None, token=None, se
     copy_budget = sum((release.game_path / row['path']).stat().st_size
                       for row in inventory['files']) if not game.exists() else 0
     budget = max(INITIAL_BUDGET if first else 0, copy_budget + 128 * 1024 ** 2)
-    if shutil.disk_usage(registry.ROOT).free < RESERVE + budget:
-        raise ValueError('local capture would breach 8GiB reserve plus runtime budget')
+    capacity = disk_budget.require_space(registry.ROOT, budget,
+        minimum_free_bytes=minimum_free_bytes, context="local capture")
     workspace.mkdir(parents=True, exist_ok=True)
     retained(workspace / 'release-binding.json', marker)
     if not game.exists():
@@ -191,7 +192,7 @@ def capture(season, release_id, tag, *, carrier=None, label=None, token=None, se
     passed = completed.returncode == 0 and summary_matches(summary, release, profile=carrier is not None, selector=selector)
     retained(evidence / 'local-transport.json', dict(**marker, exit_code=completed.returncode,
         evidence=registry.relative_workspace_path(evidence), source_inventory_preserved=True,
-        summary_validation_passed=passed, visually_approved=False,
+        summary_validation_passed=passed, visually_approved=False, disk_capacity=capacity,
         **({'team_selector': selector} if selector is not None else {})))
     if not passed:
         raise ValueError('local runner failed; original evidence preserved at ' + str(evidence))

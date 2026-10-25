@@ -177,7 +177,7 @@ def test_low_disk_refuses_before_copy_or_workspace_writes(release, monkeypatch, 
         'files': [{'path': 'DBDAT/JUG98030.FDI'}]})
     monkeypatch.setattr(subject.pipeline, 'assert_tree_matches_inventory', lambda *a: None)
     monkeypatch.setattr(subject.shutil, 'disk_usage', lambda _: SimpleNamespace(free=subject.RESERVE))
-    with pytest.raises(ValueError, match='8GiB'):
+    with pytest.raises(ValueError, match=r'8\s?GiB'):
         subject.capture('2000-01', 'release', 'safe_tag')
     assert not (tmp_path / '.local').exists()
     assert (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes() == b'sealed'
