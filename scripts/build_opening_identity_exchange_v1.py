@@ -11,17 +11,20 @@ from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 a
 from scripts import season_opening_identity_exchange_v1 as source
 from scripts import season_duplicate_ownership_delta_v1 as delta
 from scripts import publish_historical_role_delta_v1 as publisher
+from scripts import season_disk_budget_v1 as disk_budget
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
 from scripts.prepare_duplicate_whole_club_native_v1 import preserve_other_records
 from scripts.season_within_club_reserve_repair_v1 import native_facts
 
 
-def reserve_space():
-    if shutil.disk_usage(registry.ROOT).free < 8 * 1024 ** 3:
-        raise ValueError('8GiB reserve required; no new build/replay started')
+def reserve_space(minimum_free_bytes=disk_budget.DEFAULT_RESERVE):
+    disk_budget.validate_reserve(minimum_free_bytes)
+    if shutil.disk_usage(registry.ROOT).free < minimum_free_bytes:
+        raise ValueError(f'{minimum_free_bytes / 1024**3:g}GiB reserve required; no new build/replay started')
 
 
-def deliver(request_path, release_id, replay_id, evidence_dir):
+def deliver(request_path, release_id, replay_id, evidence_dir, *, minimum_free_bytes=disk_budget.DEFAULT_RESERVE):
+    disk_budget.validate_reserve(minimum_free_bytes)
     if (release_id == replay_id or any(not re.fullmatch(r'[a-z0-9][a-z0-9._-]{0,95}', value)
                                       for value in (release_id, replay_id))):
         raise ValueError('distinct lowercase release/replay IDs required')
@@ -50,9 +53,9 @@ def deliver(request_path, release_id, replay_id, evidence_dir):
         package_sha256=registry.sha256_file(base.package_path),
         jug_sha256=registry.sha256_file(base.game_path / 'DBDAT/JUG98030.FDI'), updates=[], unresolved=[]))
     if not registry.locator_path(base.season, release_id).exists():
-        reserve_space()
+        reserve_space(minimum_free_bytes)
         publisher.publish(base.season, inert, release_id=release_id, source_release_id=base.release_id,
-                          profile_assignment_plan_path=plan_path)
+                          profile_assignment_plan_path=plan_path, minimum_free_bytes=minimum_free_bytes)
     child = registry.load_registered_release(base.season, release_id)
     before = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
     eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
@@ -119,8 +122,8 @@ def deliver(request_path, release_id, replay_id, evidence_dir):
     if not replay_path.exists():
         if registry.locator_path(base.season, replay_id).exists():
             raise ValueError('unreceipted replay exists; inspect without regeneration')
-        reserve_space()
-        retained(replay_path, source.reconstruction(child, replay_id))
+        reserve_space(minimum_free_bytes)
+        retained(replay_path, source.reconstruction(child, replay_id, minimum_free_bytes=minimum_free_bytes))
     else:
         receipt = pipeline.read_json_file(replay_path)
         if (receipt.get('season') != base.season or receipt.get('release_id') != replay_id

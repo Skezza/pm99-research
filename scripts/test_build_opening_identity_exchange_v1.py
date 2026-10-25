@@ -74,6 +74,30 @@ def test_exact_eight_gibibyte_reserve_is_admitted(monkeypatch):
     subject.reserve_space()
 
 
+def test_reviewed_six_gibibyte_reserve_reaches_actual_publisher(tmp_path, monkeypatch):
+    request = {'season': '2000-01', 'release_id': 'source-release', 'orders': []}
+    _stub_pre_publish_delivery(tmp_path, monkeypatch, request=request)
+    monkeypatch.setattr(subject.shutil, 'disk_usage', lambda _: SimpleNamespace(free=7 * GiB))
+    seen = {}
+
+    def intercept(*args, **kwargs):
+        seen.update(kwargs)
+        raise RuntimeError('publication boundary reached')
+
+    monkeypatch.setattr(subject.publisher, 'publish', intercept)
+    with pytest.raises(RuntimeError, match='publication boundary'):
+        subject.deliver(tmp_path / 'request.json', 'child-release', 'replay-release',
+                        tmp_path / 'evidence', minimum_free_bytes=6 * GiB)
+    assert seen['minimum_free_bytes'] == 6 * GiB
+
+
+def test_reserve_below_six_gibibytes_cannot_start_preparation(tmp_path, monkeypatch):
+    monkeypatch.setattr(subject.source, 'prepare', lambda *_: pytest.fail('preparation started'))
+    with pytest.raises(ValueError, match='at least 6 GiB'):
+        subject.deliver(tmp_path / 'missing.json', 'child', 'replay', tmp_path / 'evidence',
+                        minimum_free_bytes=5 * GiB)
+
+
 def test_order_changing_request_refuses_before_any_publisher_or_evidence_write(tmp_path, monkeypatch):
     request = {
         'season': '2000-01', 'release_id': 'source-release',

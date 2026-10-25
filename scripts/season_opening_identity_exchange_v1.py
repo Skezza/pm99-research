@@ -382,6 +382,11 @@ def new_person(selection, evidence, *, season=None, club=None):
             if not season or club is None:
                 raise ValueError('11v11 admission requires exact target season and club')
             return elevenv_admission.new_person(selection, evidence, season, club)
+        from scripts import season_opening_profile_crosswalk_admission_v3 as profile_admission
+        if selection['admission_policy'] == profile_admission.POLICY:
+            if not season or club is None:
+                raise ValueError('profile crosswalk admission requires exact target season and club')
+            return profile_admission.new_person(selection, evidence, season, club)
         from scripts import season_fifa_dated_roster_admission_v1 as fifa_admission
         if not season or club is None:
             raise ValueError('dated FIFA admission requires explicit season and destination club')
@@ -705,16 +710,23 @@ def prepare(base, input_path):
         if actor['club_id'] != row['club_id']:
             raise ValueError('new person destination club differs')
         if _uses_reviewed_new_person_provider(row) and base.season != '2005-06':
-            raise ValueError('reviewed new-person source provider belongs only to 2005-06')
+            from scripts import season_opening_profile_crosswalk_admission_v3 as profile_admission
+            if row.get('admission_policy') != profile_admission.POLICY:
+                raise ValueError('reviewed new-person source provider belongs only to 2005-06')
         if 'admission_policy' in row:
             from scripts import season_11v11_squad_admission_v1 as elevenv_admission
             if row['admission_policy'] == elevenv_admission.POLICY:
                 opening_date = elevenv_admission.new_person(
                     row, evidence, base.season, clubs[actor['club_id']])['opening_date']
             else:
-                from scripts import season_fifa_dated_roster_admission_v1 as fifa_admission
-                opening_date = fifa_admission.roster_membership(
-                    row, evidence, base.season, clubs[actor['club_id']])['date']
+                from scripts import season_opening_profile_crosswalk_admission_v3 as profile_admission
+                if row['admission_policy'] == profile_admission.POLICY:
+                    opening_date = profile_admission.opening_date(
+                        row, evidence, base.season, clubs[actor['club_id']])
+                else:
+                    from scripts import season_fifa_dated_roster_admission_v1 as fifa_admission
+                    opening_date = fifa_admission.roster_membership(
+                        row, evidence, base.season, clubs[actor['club_id']])['date']
         elif row.get('opening_contract'):
             from scripts import season_dated_reserve_membership_v1 as contracts
             opening_date = contracts.verify(row, evidence, season=base.season, club=clubs[actor['club_id']])
@@ -784,8 +796,17 @@ def prepare(base, input_path):
                          'opening controls preserved without assigning their unproved AI-XI meaning. '
                          'All EQ, tactics, managers, kits and unrelated player records preserved.')
     admission_providers = {row['replacement']['source_person'].get('source_provider') for row in updates}
+    from scripts import season_opening_profile_crosswalk_admission_v3 as profile_admission
+    profile_policy_rows = [row for row in request['new_people']
+                           if row.get('admission_policy') == profile_admission.POLICY]
+    if profile_policy_rows:
+        plan.update(bindings=dict(snapshot=dict(project_url='https://www.premierleague.com/')),
+                    source_title='Exact official PL/Sky profile crosswalk plus numeric first-league fixture admission',
+                    proof_covers=['exact-cross-source-name-DOB-country-and-broad-position',
+                                  'exact-Transfermarkt-person-ID-used-substitute-in-target-first-league-fixture',
+                                  'editorial-fine-role-explicitly-not-a-historical-fact'])
     if (any('admission_policy' in row for row in request['new_people'])
-            and admission_providers != {'11v11'}):
+            and admission_providers != {'11v11'} and not profile_policy_rows):
         plan.update(bindings=dict(snapshot=dict(project_url='https://www.premierleague.com/')),
                     source_title='Dated official opening squad membership and exact period FIFA identities',
                     proof_covers=['dated-official-August-squad-membership-not-opening-XI-or-appearance-claim',
@@ -1068,7 +1089,9 @@ def reject_factory_recipe(package):
         raise ValueError('opening exchange recipe requires exact source reconstruction')
 
 
-def reconstruction(previous, release_id):
+def reconstruction(previous, release_id, *, minimum_free_bytes=8 * 1024**3):
+    from scripts import season_disk_budget_v1 as disk_budget
+    disk_budget.validate_reserve(minimum_free_bytes)
     compiler_path = getattr(previous, 'compiler_receipt_path', None)
     if compiler_path is None:
         return None
@@ -1087,7 +1110,8 @@ def reconstruction(previous, release_id):
     if bind(pipeline.read_json_file(base.package_path), plan) != pipeline.read_json_file(previous.package_path):
         raise ValueError('edited opening exchange recipe cannot be silently reconstructed')
     publisher.publish(previous.season, previous.package_path.parent / 'role-delta-input.json',
-        release_id=release_id, source_release_id=base.release_id, profile_assignment_plan_path=path)
+        release_id=release_id, source_release_id=base.release_id, profile_assignment_plan_path=path,
+        minimum_free_bytes=minimum_free_bytes)
     rebuilt = registry.load_registered_release(previous.season, release_id)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path, pipeline.read_json_file(previous.inventory_path))
     if rebuilt.package_path.read_bytes() != previous.package_path.read_bytes():
