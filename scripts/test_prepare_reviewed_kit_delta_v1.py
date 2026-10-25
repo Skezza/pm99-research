@@ -148,3 +148,42 @@ def test_complete_extension_rejects_unbounded_or_stale_change(tmp_path, monkeypa
         catalogue = tmp_path / 'wrong-catalogue.json'
     with pytest.raises(ValueError):
         kits.extend_complete_receipt(release, catalogue, patch, tmp_path / 'out')
+
+
+def test_v5_without_full_audit_uses_sealed_actual_parent_without_historical_approval(tmp_path, monkeypatch):
+    release, catalogue, patch, before, after, audit, original = complete_fixture(tmp_path, monkeypatch)
+    old = tmp_path / 'legacy-v5.json'
+    kits.pipeline.write_canonical_json(old, {'schema_version': 'pm99-season-kit-runtime-overlay-v1'})
+    monkeypatch.setattr(kits.build, '_kit_receipt', lambda *a, **k: old)
+    release.inventory_path = tmp_path / 'inventory.json'
+    kits.pipeline.write_canonical_json(release.inventory_path, kits.pipeline.build_tree_inventory(release.game_path))
+    release.package_path = tmp_path / 'package.json'
+    kits.pipeline.write_canonical_json(release.package_path, {'clubs': [{'carrier_id': 223, 'name': 'Atalanta'}]})
+    completed = kits.extend_complete_receipt(release, catalogue, patch, tmp_path / 'out')
+    result = kits.pipeline.read_json_file(tmp_path / 'out/complete-kit-audit.json')
+    assert result['records'][42]['status'] == 'existing-native-historically-unreviewed'
+    assert result['records'][223]['status'] == 'source-bound-rerendered'
+    assert result['historical_accuracy_certified'] is False
+    assert result['prior_audit'] is None
+    assert completed.is_dir()
+
+
+def test_unknown_receipt_without_audit_is_rejected(tmp_path, monkeypatch):
+    release, catalogue, patch, *_ = complete_fixture(tmp_path, monkeypatch)
+    unknown = tmp_path / 'unknown.json'
+    kits.pipeline.write_canonical_json(unknown, {'schema_version': 'unknown'})
+    monkeypatch.setattr(kits.build, '_kit_receipt', lambda *a, **k: unknown)
+    with pytest.raises(ValueError, match='unsupported kit receipt'):
+        kits.extend_complete_receipt(release, catalogue, patch, tmp_path / 'out')
+
+
+def test_v5_baseline_rejects_parent_changed_since_sealing(tmp_path, monkeypatch):
+    release, catalogue, patch, *_ = complete_fixture(tmp_path, monkeypatch)
+    legacy = tmp_path / 'legacy-v5.json'
+    kits.pipeline.write_canonical_json(legacy, {'schema_version': 'pm99-season-kit-runtime-overlay-v1'})
+    monkeypatch.setattr(kits.build, '_kit_receipt', lambda *a, **k: legacy)
+    release.inventory_path = tmp_path / 'inventory.json'
+    kits.pipeline.write_canonical_json(release.inventory_path, kits.pipeline.build_tree_inventory(release.game_path))
+    (release.game_path / 'DBDAT/NANOESC.PKF').write_bytes(b'changed-after-sealing')
+    with pytest.raises(kits.pipeline.PipelineError):
+        kits.extend_complete_receipt(release, catalogue, patch, tmp_path / 'out')

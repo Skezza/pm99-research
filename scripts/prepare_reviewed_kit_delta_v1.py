@@ -22,10 +22,31 @@ def extend_complete_receipt(release, catalogue_path, patch_root, output):
         raise ValueError('empty or duplicate reviewed kit scope')
     previous = build._kit_receipt(release.season, source_release=release)
     complete = pipeline.read_json_file(previous)
-    audit_path = Path(complete['audit_path'])
-    if registry.sha256_file(audit_path) != complete['audit_sha256']:
-        raise ValueError('previous all-record kit audit changed')
-    audit = copy.deepcopy(pipeline.read_json_file(audit_path))
+    audit_path = Path(complete['audit_path']) if 'audit_path' in complete else None
+    if audit_path is not None:
+        if registry.sha256_file(audit_path) != complete['audit_sha256']:
+            raise ValueError('previous all-record kit audit changed')
+        audit = copy.deepcopy(pipeline.read_json_file(audit_path))
+    else:
+        # Older V5 receipts cover only the authored English overlay. Later
+        # stock-copy layers can preserve that receipt without an all-record
+        # historical audit. Inventory the sealed actual parent; never turn
+        # missing review into approval or restore the older overlay's bytes.
+        if complete.get('schema_version') != 'pm99-season-kit-runtime-overlay-v1':
+            raise ValueError('unsupported kit receipt without an all-record audit')
+        pipeline.assert_tree_matches_inventory(
+            release.game_path, pipeline.read_json_file(release.inventory_path))
+        records = render._record_index(release.game_path / 'DBDAT/NANOESC.PKF')
+        clubs = {int(c['carrier_id']): c['name']
+                 for c in pipeline.read_json_file(release.package_path)['clubs']}
+        audit = dict(blockers=0, all_records=len(records),
+            historical_accuracy_certified=False,
+            baseline_scope='sealed actual parent bitmap inventory; historical designs unreviewed',
+            baseline_inventory_sha256=registry.sha256_file(release.inventory_path),
+            records=[dict(carrier_id=carrier, club=clubs.get(carrier, str(carrier)),
+                          after_sha256=render.sha256_bytes(record.raw_bitmap),
+                          status='existing-native-historically-unreviewed')
+                     for carrier, record in sorted(records.items())])
     if (audit['blockers'] or audit['all_records'] != 544 or len(audit['records']) != 544
             or len({row['carrier_id'] for row in audit['records']}) != 544):
         raise ValueError('previous all-record kit audit is incomplete')
@@ -56,7 +77,8 @@ def extend_complete_receipt(release, catalogue_path, patch_root, output):
     audit.update(release_id=release.release_id, renderer=cascade.factory.RENDERER_ID,
         historical_accuracy_certified=False, runtime_verified=False,
         reviewed_design_carriers=sorted(rows),
-        prior_audit=dict(path=str(audit_path), sha256=registry.sha256_file(audit_path)))
+        prior_audit=(dict(path=str(audit_path), sha256=registry.sha256_file(audit_path))
+                     if audit_path is not None else None))
     output.mkdir(parents=True, exist_ok=True)
     target = output / 'complete-kit-audit.json'
     pipeline.write_canonical_json(target, audit)
