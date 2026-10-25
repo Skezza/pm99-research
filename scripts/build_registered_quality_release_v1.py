@@ -27,6 +27,7 @@ from scripts import season_package_v2 as package_v2  # noqa: E402
 from scripts import season_package_compiler_v2 as compiler  # noqa: E402
 from scripts import season_pipeline_v2 as pipeline  # noqa: E402
 from scripts import season_release_registry_v1 as registry  # noqa: E402
+from scripts import season_disk_budget_v1 as disk_budget  # noqa: E402
 
 
 DATABASE_FILES = ("DBDAT/JUG98030.FDI", "DBDAT/EQ98030.FDI", "DBDAT/ENT98030.FDI")
@@ -193,13 +194,15 @@ def _static_gates(package: dict[str, Any], game: Path, *, season: str) -> dict[s
     }
 
 
-def _build_manager_reconstruction(previous, *, release_id):
+def _build_manager_reconstruction(previous, *, release_id,
+                                  minimum_free_bytes=disk_budget.DEFAULT_RESERVE):
     """Reapply an exact manager-only layer to its immutable known-good source.
 
     Extra recipe edits are refused, never discarded. Existing Italian lineup
     layers stay in the baseline recipe and every non-manager game file must
     remain identical. This is not a full factory compilation.
     """
+    disk_budget.validate_reserve(minimum_free_bytes)
     from scripts import publish_historical_role_delta_v1 as publisher
     receipt_path = getattr(previous, 'compiler_receipt_path', None)
     if receipt_path is None:
@@ -264,7 +267,8 @@ def _build_manager_reconstruction(previous, *, release_id):
     publisher.publish(previous.season, descriptor_path, release_id=release_id,
                       register=False, manager_plan_path=manager_path,
                       club_plan_path=club_path,
-                      source_release_id=baseline.release_id)
+                      source_release_id=baseline.release_id,
+                      minimum_free_bytes=minimum_free_bytes)
     rebuilt = registry.load_registered_release(previous.season, release_id)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path, pipeline.read_json_file(previous.inventory_path))
     if package_v2.canonical_json_bytes(pipeline.read_json_file(rebuilt.package_path)) != package_v2.canonical_json_bytes(package):
@@ -274,7 +278,8 @@ def _build_manager_reconstruction(previous, *, release_id):
             'release_manifest_sha256': registry.sha256_file(rebuilt.release_manifest_path),
             'compilation_mode': ('source-bound-club-and-manager-reconstruction-not-factory-compile'
                 if club_path is not None else 'source-bound-manager-only-reconstruction-not-factory-compile'),
-            'complete_game_inventory_identical': True, 'complete_recipe_identical': True, 'reused': False}
+            'complete_game_inventory_identical': True, 'complete_recipe_identical': True,
+            'minimum_free_bytes': minimum_free_bytes, 'reused': False}
 
 
 def _build_italian_reconstruction(previous, *, release_id):
