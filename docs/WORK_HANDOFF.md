@@ -5555,3 +5555,8 @@ Original TMannual2002/2003 empty; official2000 article contains only a photo.
 ## 2026-10-25 17:25 UTC continuation
 
 Vostro; source session 01a0592d-fcd5-7262-a637-743a8253d9b4. See CURRENT_WORK.md resume checkpoint for installed versus built status, worker assignments, evidence paths and exact next action. v167 remains installed; r312/r313/r315 built, r317 blocked on now-tested idempotency contract; no unaffected release regenerated. Initial goalkeeper audit used an incorrect byte and is withdrawn pending canonical-field rerun. Kit rollout held for source-cohort label conflicts; candidates are not automatically bugs.
+
+
+## 2026-10-25 18:20 UTC — v168 installed
+
+Vostro; source session01a0592d-fcd5-7262-a637-743a8253d9b4. CURRENT_WORK.md head records authoritative v168/criticalv20, exact installed versus built state, worker assignments and next action. Fischer2001 r312 preferred; other25/original2015 unchanged. R316/R317 A/B SOURCE built but unpreferred, R322 Hearts XI build active. Correct Sarr profile still pending; two wrong-player captures excluded. Known profile findings explicitly added,22 total groups/14 delivered/8 open; not26 historical RC completion. Evidence root `.local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa`.

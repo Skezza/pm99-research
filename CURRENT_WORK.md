@@ -1,5 +1,107 @@
 # PM99: current work
 
+## v168 installed; actual builds continuing — 2026-10-25 18:21 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Fischer 2001/02 r312a is now the preferred playable game. Exact parent→r311→r312
+ancestry, four native bytes, selected actor recipe fields, A/B complete inventory
+and recipe equality, original profile/ten independent digit/age/kit readbacks
+passed. Other25 preferred bindings and original2015 backup unchanged. Evidence:
+`resume-qa/fischer-2001-v168-single-install-v1/completion-proof.json`.
+Checklist v168 is authoritative; critical ledger v20 counts22 groups /14
+delivered /8 open. Original17 baseline is14 delivered /3 open; five additions
+are McKenna/Hearts ownership, GTF/stale Tranmere ownership, Isaksson facts/role,
+five source-proven English outfielders incorrectly broadG, and Patacas country/
+fine role. Counts are not an overall historical completeness percentage.
+
+R316 Nacional actual A/B SOURCE passed, unpreferred. Its genuine Patacas
+profile matches153 native kit pixels with zero channel error. Original OCR
+misread Patacas; failed outer OCR gate is retained, while the independent
+original-frame/native pixel proof passes. This proof does NOT approve player
+facts: actual profile shows ARGENTINA/LEFT WINGER; retained UEFA2009handbook
+proves Patacas POR/Defender/DOB1977-11-30. Source and receipt retained under
+`resume-qa/patacas-2002-runner-country-role-followup-v1`.
+
+R317 Molde/Termalica actual A/B SOURCE completed; no preferred change. Profiles
+Ranmark and Peda pass original ten-digit/age/kit/runtime checks. Toivio's final
+frame manually and independently verified despite original TONVIO OCR failure;
+original exit1 remains unchanged, no fabricated passing transport. Initial Sarr
+captures selected Sarris then Naby Sarr and are NOT target evidence. ROOT2211
+is capturing row5, selected by native carrier ordering, before accepting Sarr.
+All evidence in `resume-qa/molde-termalica-r317-real-build-v1/runtime`.
+
+ROOT74337 is building Hearts source XI/order-only r322 A/B from r287; dated
+July30raw report3838376 maps all11currentactors. McKenna is actually native
+order9, not a reserve: older assumption is withdrawn. The corrected XI must
+precede the Locke→Hearts /Beagrie→Bradford exchange. Preserve CottbusMcKenna8084.
+Luna disk prepares the bounded PL/Sky/datedTMfixture source adapter for Beagrie;
+no extra nationality claim may be inferred from birthplace.
+
+Luna facts has actualr316 in-memory common API integration running for Isaksson
+DOB+sourceSWE (same native country byte)+G0. Period match-programme PDF captured
+by ROOT: `resume-qa/isaksson-programme-2002-source-v1`, SHA
+9cf0c7c04d85d3b970800cf3040101e701910d04df04f59bd149a6058a70f1db.
+It explicitly prints DOB1981-10-03 and Goalkeeper. No r318 build yet.
+Luna Fischer has Alverca+Hayes r319 source/manager preparation, private generic
+cohort-admission extension and legacy r313/r315 compatibility; tests running.
+Rushden label changes HOLD: desired club already exists in English mode0.
+Root requires native JUG name checks as well as recipe/personhash+EQowners.
+
+Next: review correct Sarr frame, finish R322SOURCE, promote tested private
+source-admission diffs after adversarial review, build r318/r319, restore
+identity-bound Djurgården stock kit, then install only validated final children.
+Old two-season v168 proposal is SUPERSEDED and must not run. Current preferred
+catalog change is ONLY2001/02 r285→r312. Free disk approximately9.7GiB; local
+runner test copies are disposable only after source/evidence verification.
+
+## Active continuation — 2026-10-25 17:44 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Preferred releases remain v167. **r316 Nacional actual A/B games are now built
+and SOURCE-identical**, with only carrier602 bitmap records changed in the
+three compact archives; the recipe and every native database are exact. Build
+proof: `resume-qa/nacional-2002-kit-reference-v1/r316-build/build-proof-v1.json`.
+ROOT capture controller20534 is running Bruno Patacas in r316a to verify the
+Nacional kit in the actual renderer. Do not label it runtime-verified yet.
+
+R317 Molde/Termalica controller42484 is resuming its exact staged game via
+`molde-termalica-r317-real-build-v1/build_r317_root_v3_resume.py`.
+The initial attempt exposed a receipt writer reading actors from the envelope
+instead of the hash-bound typed source plan. Commit89c248a fixes this and allows
+exact prepared-stage recovery;12 targeted tests passed, Luna review found no
+flaw. Do not rerun from scratch or treat a staged game as registered/delivered.
+Nacional's older V5 receipt lacked a full audit. Commit1d43082 inventories the
+sealed current parent without promoting unreviewed designs to approval;19
+focused tests passed. Prior receipts and all unselected bitmap bytes retained.
+Both commits pushed to GitHub. Failed attempt evidence is retained separately.
+
+Three Luna workers remain assigned: facts prepares generic official-club source
+admission and source literalG→0 for Isaksson, using final explicit r316 parent
+and reserved r318 A/B; preserve disputed height, native SWE byte unchanged.
+It also classifies the original goalkeeper scan: five explicit English rows
+are source-proven outfielders with wrong broadG, NOT role-zero candidates.
+Fischer prepares bounded club/manager A/B drivers r319 (2001/02, parentr312)
+and r320 (2002/03, final parent explicit), plus identity-bound original-stock
+Djurgården957 kit restoration. Disk traces stale nonleague Tranmere3301's
+intended allocation: all16 dated 2000 opening players already exist at domestic
+Tranmere348, so copying them into3301 would duplicate the club. Also prepares
+GaryLocke as a sourced Hearts replacement for McKenna if ownership permits.
+
+Early first-ten review:3 aliases (Doncaster/Hereford) need no correction;
+7 genuine full-cohort distinct-club mismatches, including already-built r315.
+Two have target-label collisions and require coordinated cohort resolution.
+Dated managers now sourced for Hayes (Brown), Rushden (Talbot) and Alverca
+(Pereira). Evidence: `early-club-manager-source-preparation-v1/dated-manager-source-closure-v1.json`.
+2015's44 recipe/native roster discrepancies are unmaterialized candidate-versus-
+native differences, not44 established historical defects. Original2015 backup
+unchanged. No new queue counts are credited as delivered without installation.
+
+Next action: finish r316 runner original-frame/pixel proof; finish R317 real
+A/B SOURCE and serial profile captures; review/promote minimal generic Isaksson
+source/role extension, build from r316, then stock Djurgården art child and
+club/manager children. Review final combined installation scope before preferred
+catalog updates. Disk approximately11GiB; no cleanup needed now.
+
 ## Resume checkpoint — 2026-10-25 17:25 UTC
 
 Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
