@@ -1,5 +1,69 @@
 # PM99 worker handoff
 
+## v171 installed and verified — 2026-10-25 20:08 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Authoritative checklist `.local/consolidated-audit-20261009/release-delivery-checklist-v171.json`;
+critical ledger `parallel-rc-20261023/confirmed-critical-batch-20261025-v23.json`.
+Counts22 groups/15 delivered/7 open. Original17 baseline remains14 delivered/3
+open; this batch closes added Isaksson group. Label subqueue11 total/8 delivered/
+3 pending; original9 denominator and two later additions remain explicit.
+Crossclub109/2809 dispositions unchanged; unreviewed2700 are NOT confirmedbugs.
+
+2002/03 preferred r318a is INSTALLED and VERIFIED: Isaksson DOB1981-10-03 and
+fineG0, actual profile age21/SWEDEN/GOALKEEPER/KEEPER. Native four-byte mask,
+A/B complete inventory/recipe equality, ten skill glyphs/age/kit and installed
+playable gate passed. Also delivers FCZürich/GeorgesBregy and DjurgårdensIF/
+SörenÅkeby (equalco-managerLukic documented), plus source-derived Nacional kit.
+Other25 preferred bindings and original2015 backup unchanged. Completion:
+`resume-qa/isaksson-r318-canonical-integration-prototype-v1/completion-proof-v171.json`.
+Screenshot `.local/runlogs/pm99_runner/local_2002_03_r318a_isaksson/screens/55_profile_only_isaksson_done.png`.
+
+No rebuild was needed after completed A/B. Private reporting guard incorrectly
+counted intended registered=False as failure; preserved original, recovered
+exact SOURCE/native proof read-only. Promotion then correctly rejected a skipped
+artwork-style receipt edge. Commit3297360 adds strict typed artwork ancestry:
+exact parent chain+manifest, unchanged recipe/compiler, bound application/plan/
+materialisation and asset-only on-disk inventories. Forty-one targeted tests
+passed; Luna adversarial review tightened external descriptor uniqueness. The
+existing compiler three-hash guards remain unchanged. R318 installed through
+explicit current→r313→r315→r316→r318f→r318 chain without intermediate defaults.
+
+Active Luna work (private only): facts freezes generic source-bound variable
+mode0 memberships +sourceXI orders, prepares common SOURCE dispatch and upstream
+purepayload proposal; first actual2003 in-memory test passed, final frozen packet
+pending. Five falseG corrections require source-proven keepers at later native
+clubs, related order/handling repairs; RobLee/RobertLee sameDOB alias remains an
+unresolved duplicate, not a legitimate exception. Nine other annual/native role
+differences need classification; several support current native or utility roles.
+No blanket14-position restore. SourceWH date metaAug9 vsbodyAug8at23:00 retained;
+independent match source supportsAug9 and sameXI.
+
+Luna disk: paired Locke→Hearts12232/Beagrie→Bradford1994 actual r322 common
+prepare/verify/bind/apply passed; McKennaCottbus8084 preserved, onlytwoJUGrecords,
+EQexact. Hardeningprivatev3 generic PL/Sky/fixture provider; Root requested
+portable no-cache tests and minimalv5 integration preserving legacy plan output.
+Next Bath3301 evidence: official May/July/August bodies now16 positiveAugustclub
+members (14firstteam+2reserve) plusJulyfriendlymembers; PaulBodinexplicitdated
+manager. FullopeningXI still unavailable; do not pretend14+2isverifiedstartingXI.
+Receipt `resume-qa/bathcity-2000-opening-cohort-research-v1/august-source-findings-v2.json`.
+
+Luna Fischer: integrate generic UEFA-table country +exactsourceRB1 for Patacas
+againstactual r318a, reservedr323f/r323a/b. AnnualDOB1977-11-30+D; UEFAexplicitPOR;
+TMindexedprofile14243 publishesRightBack. Retainindexedtype, no robot bypass.
+Preserve height175 vsUEFA176 conflict, allDOB/ratings/assets. No Patacas-native
+correction delivered yet. Firstprivateparser18tests pass; final common binding
+must replay complete annualrow, strippingonlyexplicitopeningannotations.
+
+Exact next action: integrate minimal profilecrosswalk provider+portabletests,
+canonical pairedr322 preflight, then actualr321A/B SOURCE and serialrunner;
+review/promote frozen membership packet and Patacas packet, deliver actual games.
+Do not use r288 held stock candidate or regenerate unaffected releases. Current
+r318 disposable runner game still present; retire after source/evidence verification
+before next fresh clone. Free space about7.4GiB; reviewed bounded publications/
+initialized captures use explicit6GiB reserve, default8GiB unchanged. Earlier
+r317/r319 disposable copies retired with ledgers, all source/evidence retained.
+
 ## v170 installed; next corrections actively running — 2026-10-25 19:41 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
