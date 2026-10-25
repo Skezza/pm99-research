@@ -1,5 +1,122 @@
 # PM99 worker handoff
 
+## Resume: SOURCE complete r312; installation guard repair — 2026-10-25 14:34 UTC
+
+Machine `joe-Vostro-3350`; session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Current preferred remains v166: 17 issue groups /12 delivered /5 open.
+R312A/B now BUILT and SOURCE-identical (ROOT77977 completed0); proof
+`resume-qa/fischer-2001-r312-fine-role-v1/build-output-v2/r312-build-proof-v1.json`.
+Not installed/runtime-verified. Prepared capture_profile_root_v1.py; runner
+currently waits for safe capacity (free6.59GB, explicit6GiB floor pluscopy).
+V167 installer V5 passed candidate/native/runtime checks but rejected malformed
+private catalog; V6 canonical wrapper test found returned binding includes season.
+Luna facts_adversarial_v3 owns additive V7 proposal/tests/preflight, NO installation.
+Root owns installation after reviewing preflight SHA; preserve all prior failed logs.
+Luna fischer_role_composition_v2 owns five-actor Molde/Termalica native postimage
+and generic adapter proposal; no shared edits/build/runner. Luna disk_resume_candidates
+owns r313 explicit capacity-forwarding proposal and superseded runtime-copy archive
+assessment; no deletion/build. No competing actual builds/captures currently.
+Canonical capacity option commit be5a1a7 pushed successfully; boundary passed.
+All16 old static qualification game trees verified archived, second archive ledger
+update remains uncommitted. Stock identity269 supported, still58/327 delivered;
+player frozen queue109/2809 disposed unchanged. Original2015 remains preserved.
+Exact next action: review worker V7 tests/preflight, install three ready v167 games;
+then runtime-validate r312, build r313 serially and deliver next bounded corrections.
+
+## Three candidates SOURCE/runtime verified; publication bundle underway — 2026-10-25 13:33 UTC
+
+Machine `joe-Vostro-3350`; session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+r287A/B SOURCE completed46495 preserving previously builtA; ROOT screenshot49
+showsU.FISCHER/FCZürich/34/SWITZERLAND/DEFENDER/INS.CENT.LEFT. Native/kit/
+independent10skilldigits/age passed75278, disposablecopy retired37274. Proofs
+`resume-qa/fischer-role-r287-private-driver-v1/runtime/`; buildproofbuild-output-v2.
+r285 andr284 also SOURCE/runtime verified. Preferred stillv166 pending reviewed
+installerV4+fullbundle fromfacts_adversarial_v3; do not claimv167 installed.
+
+Cascade found2001Fischer14457 DOB1976/fine13wrong;2002Fischer14449DOB1966/SUI/
+fine1alreadycorrectbutZurich1111label+Ponte managerwrong. V167mustcloseONLY
+Seedorfgroup (17/13/4), keepFischergrouppartial; source-labelcases8+1new=9,
+v167delivered4pending5. R311factsROOTv2 correctedworker's false'proof+1'
+assumption(commonfactsbindaddsartifactONLY) but stoppedbeforeoutput on8GiB
+budget. Do NOTrebuildanyr287/r285/r284. Newsharedexplicitcapacityoption pending
+ROOT74570 regression tests: defaults8GiB, minimum6GiB, samepublication/SOURCE/
+capturebudgetpolicy. Nextafterpass:R311factsonechildfromr285 thenr312roleA/B;
+2002r313club+managerinputassigneddiskworker. R311preimagefactoryPascalCastillo
+F/LeftWinger13/DOB1976, distinctidentity, verifiedDguardalreadypasses.
+
+Archivebatch2 all8 retired viaresume21445, first3notrecopied; finalall2200remote
+recheck48424 active. Its frozenNLINKwasadjustedonlyforverifiedownpriorremovals.
+All16oldgametreesarchived; adjacentrecipes/currentreleases/original2015preserved.
+Molde+TermalicaV4 nativepreview haspublishedwholeRanmark/Svendsen/Sarrvia
+capacitycycle, no clippednames, Toivio/Sarrsamepersonfactsskillspreserved,
+no-photoexplicit. GenericcanonicalSOURCEbackendproposalassignedfischerworker.
+Sourceplansremainprivate; noMoldegamepublished. Stockpending269identitiesall
+ROOTsupported, still58/327delivered. Frozenplayerqueue109/2809disposedunchanged.
+
+## r287 build active; archive resumes after expected hardlink change — 2026-10-25 12:50 UTC
+
+Machine `joe-Vostro-3350`; session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+ROOT13648 runs `fischer-role-r287-private-driver-v1/build_fischer_role_r287a_b_root_v3.py --build`,
+using already-reviewed build-output-v2 input/plan. Actual preflight passed:
+Fischer14454 role15->4, ONE JUG byte2912497, EQ/allotheractors unchanged.
+ROOTv2 build49983 stopped BEFORE publication on changing free-space guard.
+ROOT explicitly reviewed bounded6GiB floor for this serial <256MiB-budget
+build only; defaults unchanged. Receipt `root-bounded-capacity-policy-v1.json`.
+Currentfree~8.2GiB; no competing game build/capture. Log root-build-v3.log.
+Do not rerun r286 or duplicate r287 controller. Next final r287 screenshot
+via capture_fischer_r287_root_v2.py, then actualnative/digits/age/kit validation.
+
+Archive batch2 controller25381 stopped after3/8 targets because frozen NLINK
+naturally decremented after own prior removals (no content difference).
+Worker independently verified all825 completed remote hashes and remaining
+content/stat fields, accounting exactly for own removed hardlinks. ROOT21445
+now runs additive `old-static-qualification-output-archive-v2-proposal/resume_static_qualification_archive_v4.py`;
+receiptresume-preflight-v4 SHA23365031...e9d9d0. No recopied completed targets.
+Originalfailedlogs/frozenplan/receipts retained; active v4 has exactnlink accounting.
+
+Luna facts worker prepares installerV4 and concrete evidence bundle: V3 had
+false assumptions about proof grade and full club/manager metadata fields.
+These are canonical SOURCE-layer additions, so validate exact per-edge replay,
+not a loose blanket exemption. Other workers build and independently QA the
+Molde+Termalica2017 ownership proposal (no shared/game writes). Currentdefault
+releases stillv166,17 groups/12delivered/5open. Original2015 preserved.
+
+## Fischer facts built; real-record role guard correction underway — 2026-10-25 12:14 UTC
+
+Update 2026-10-25 12:36 UTC: canonical guard fix promoted/pushed
+`88249b4`;23 canonical tests and11 private real-parent/legacy regression tests
+passed. ROOT79081 now prepares additive r287 driver_v2 / build-output-v2;
+do not start another prepare. Batch2 archive controller25381 is active using
+reviewed frozen-plan-v3 SHA28854db8...9977965; first3 of8 retired, free8.58GiB
+at last check. Fixed-map kit pending269 identities now all ROOT-supported via
+explicit aliases; index `strict-identity-269-case-index-v1/strict-identity-case-index-269-v2-root.json`.
+Still zero additional kit deliveries. Installer evidence producer assigned to
+facts_adversarial_v3; Molde+Termalica Toivio openingownership input assigned to
+fischer_role_composition_v2; disk worker's archive driver now ROOT-executing.
+
+
+Machine `joe-Vostro-3350`; session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+r286 A/B completed SOURCE/native/unchanged-data checks, not preferred; proof
+`resume-qa/fischer-official-facts-r286-private-driver-v1/build-output-v4/r286-build-proof-v1.json`.
+r287 prepare32612 failed before build at canonical line507: actual factory
+JerrenNIXON has broadM but role15 RightForward (already incompatible in factory).
+Current sourcedFischer broadD, identical rolebytes, different verifiedDOB/SUI,
+unique owner. Only obsolete factory-role-compatibility assumption fails.
+Do NOT rebuild r286. facts_adversarial_v3 prepares private minimal null-DOB/D
+branch guard correction plus realr286 regression, retaining oldM guards exactly.
+Failed build-output-v1 retained; additive ROOTdriver_v2 targets build-output-v2,
+unrun until canonical fix reviewed. Next preparev2, inspect masks, buildv2,
+capture_fischer_r287_root_v2.py and validate genuine34/SUI/defender profile.
+
+All eight cold archives now independently reverified remotely (2200 hashes);
+ledger updated, cleanup complete. 2001r285 original screenshot/native/digit/kit
+proofs passed; temporary runtimecopy retired. Current selected releases stayv166.
+Stock269pending have a strictcaseindex:250supported/19held, not deliveries;
+heldpairs Inter(9)/AtleticoNacionalMedellin(10) now assigned primarysource dossier.
+ROOT four explicit aliases approved via originalofficialsourcebody review under
+`stock-kit-2003-current-parent-rebind-v1/four-alias-identity-dossier-v1/`.
+Other workers: Molde-only2017 correction preview; twoalias+distantdiskplan.
+
 ## Archive completed; 2001 runner passed; Fischer build active — 2026-10-25 12:03 UTC
 
 Machine `joe-Vostro-3350`; session `01a0592d-fcd5-7262-a637-743a8253d9b4`.

@@ -1790,3 +1790,26 @@ Remote receipt copies: `/srv/hdd/pm99-archive/receipts/old-static-qualification-
 A concurrent remote preseed optimization collided with the main sync and failed;
 it was stopped, retained in `remote-copy-seed-attempt-v1.json`, and all final
 remote hashes were rechecked. No local source was changed by that attempt.
+
+## Eight further obsolete qualification games — 2026-10-25 13:58 UTC
+
+Machine `joe-Vostro-3350`; session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Archived another eight exact static-qualification `game/` children to
+`joe@192.168.1.133:/srv/hdd/pm99-archive/packages/old-static-qualification-games/20261025-batch2/`
+on the same verified Pi UUID. All2200 original file hashes verified before
+retirement and independently rechecked after completion. Exact paths and
+original mode/timestamp/size/SHA receipts remain in
+`resume-qa/old-static-qualification-output-archive-v2-proposal/receipts/`
+and `/srv/hdd/pm99-archive/receipts/old-static-qualification-games-20261025-batch2/`.
+Only selected game children removed; adjacent source/recipe files, registered
+game paths,26 preferred releases and original2015 retained. Catalog unchanged.
+Closed-inode reclaim estimate **1,855,893,504 bytes**; externally linked340,504,576
+bytes excluded from savings and their surviving hardlinks untouched.
+The original guard stopped safely after3 because its own unlink operations
+reduced NLINK. Additive resumev4 verified825 completed remote hashes, checked
+remaining original content/stat fields with exact own-unlink accounting, and
+finished the remaining5 without recopying completed targets. Copy transfer used
+read-only rsync --copy-dest against independently verified batch1 bytes; no
+remote hardlink seeding or concurrent copy. Final all-archive verification SHA
+`d51fc30e4ea9d67e9d559580433b5ce0c16b1836cab8f82d4971c40ac3bd3331`. Local receipts preserve restoration
+metadata; restore files from the corresponding remote experiment/game directory.
