@@ -57,7 +57,7 @@ def _write_amavisca_source_artifact(workspace, assignment_plan):
 
 
 def _verify_completed_delta_ancestry(season, current, release_id, release_ids):
-    """An explicit chain must pass the existing three-hash guard on EVERY edge.
+    """Check every explicit edge against its compiler or sealed artwork parent.
 
     No intermediate default changes and no automatic parent guessing. The
     caller still supplies source/native/runtime approval; this checks that its
@@ -76,7 +76,9 @@ def _verify_completed_delta_ancestry(season, current, release_id, release_ids):
                 receipt['source_build_chain_sha256']) != (
                 registry.canonical_document_sha256(parent.package_path), registry.sha256_file(parent.compiler_receipt_path),
                 registry.sha256_file(parent.build_chain_path)):
-            raise ValueError('completed delta ancestry has an unverified or skipped immutable parent edge')
+            from scripts.season_visual_patch_reconstruction_v1 import verify_ancestry_edge
+            if not verify_ancestry_edge(parent, child):
+                raise ValueError('completed delta ancestry has an unverified or skipped immutable parent edge')
         parent = child
 
 
