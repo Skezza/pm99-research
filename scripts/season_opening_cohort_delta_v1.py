@@ -597,6 +597,15 @@ def filename(profile_plan: Mapping[str, Any]) -> str:
     return f"opening-cohort-delta-{tx}.json"
 
 
+def publication_identity_changes(profile_plan: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """Read receipt identities from the SHA-bound typed plan, never the envelope."""
+    _package, plan, _recipe_path, _plan_path = _load_profile_plan(profile_plan)
+    return [{"player_id": actor["recipe_player_id"],
+             "pre_carrier_id": actor["pre_carrier_id"],
+             "post_carrier_id": actor["post_carrier_id"]}
+            for actor in plan["actors"]]
+
+
 def verify(parent_release: Any, profile_plan: Mapping[str, Any]) -> dict[str, Any]:
     """Publisher quality-dispatch entry: verify immutable source and recipe pins."""
     _check_profile_parent(parent_release, profile_plan)

@@ -54,3 +54,24 @@ def test_resume_source_assignment_module_preserves_same_fail_closed_guards(tmp_p
     (workspace / 'game/DBDAT/EQ98030.FDI').write_bytes(b'unrelated corruption')
     with pytest.raises(ValueError):
         publisher._verify_prepared_donor_workspace(*args, assignment_module=shevlin)
+
+
+def test_resume_cohort_reuses_exact_stage_and_rejects_unrelated_bytes(tmp_path):
+    from scripts import season_opening_cohort_delta_v1 as cohort
+    args = fixture(tmp_path)
+    workspace = args[0]
+    (workspace / source.filename(args[-1])).rename(workspace / cohort.filename(args[-1]))
+    publisher._verify_prepared_donor_workspace(*args, assignment_module=cohort)
+    (workspace / 'game/DBDAT/EQ98030.FDI').write_bytes(b'changed')
+    with pytest.raises(ValueError):
+        publisher._verify_prepared_donor_workspace(*args, assignment_module=cohort)
+
+
+def test_cohort_receipt_reads_bound_typed_actors_not_envelope(monkeypatch):
+    from scripts import season_opening_cohort_delta_v1 as cohort
+    envelope = {'actors': [{'player_id': 'untrusted-envelope'}]}
+    typed = {'actors': [{'recipe_player_id': 'player-a', 'pre_carrier_id': 17,
+                         'post_carrier_id': 29}]}
+    monkeypatch.setattr(cohort, '_load_profile_plan', lambda actual: ({}, typed, None, None))
+    assert cohort.publication_identity_changes(envelope) == [
+        {'player_id': 'player-a', 'pre_carrier_id': 17, 'post_carrier_id': 29}]

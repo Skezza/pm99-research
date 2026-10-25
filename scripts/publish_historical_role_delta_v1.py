@@ -910,7 +910,7 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
     if prepared:
         from scripts import season_donor_keeper_role_delta_v1 as donor
         from scripts import season_ballymena_shevlin_reserve_v1 as shevlin_resume
-        if (assignment_plan is None or assignment_plan.get('schema') not in (donor.SCHEMA, shevlin_resume.SCHEMA)
+        if (assignment_plan is None or assignment_plan.get('schema') not in (donor.SCHEMA, shevlin_resume.SCHEMA, opening_cohort.PROFILE_SCHEMA)
                 or any((plan['updates'],nationality_plan,manager_plan,club_plan,ownership_plan,
                     visibility_plan_path,keeper_plan,birth_year_plan,opening_plan,italian_plan,trabzon_plan,name_plan))
                 or patched_eq!=original_eq or patched_ent!=original_ent or patched_exe!=original_exe):
@@ -1306,14 +1306,12 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             removed_target_roster_links=[], fixed_duplicate_case_ids=[assignment_plan['fixed_case']['id']],
             players_written=len(assignment_plan['updates']), allowed_write=assignment_plan['scope'])
     elif assignment_plan is not None and assignment_plan.get('schema') == opening_cohort.PROFILE_SCHEMA:
+        identity_changes = opening_cohort.publication_identity_changes(assignment_plan)
         receipt.update(compilation_mode=opening_cohort.MODE,
             original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
             removed_target_roster_links=[], fixed_duplicate_case_ids=[],
-            opening_identity_changes=[{'player_id': row['player_id'],
-                                       'pre_carrier_id': row.get('pre_carrier_id'),
-                                       'post_carrier_id': row['post_carrier_id']}
-                                      for row in assignment_plan['actors']],
-            players_written=len(assignment_plan['actors']),
+            opening_identity_changes=identity_changes,
+            players_written=len(identity_changes),
             allowed_write='Only source-bound selected opening-cohort actors, reviewed facts/ratings, fixed target roster memberships, compatible complete mode-1 orders, and selected native-no-photo deactivations; all other actors, clubs, managers, game files, and assets byte-identical.')
     elif assignment_plan is not None:
         starter_opening = assignment_plan.get('schema') == duplicate_opening.SCHEMA
