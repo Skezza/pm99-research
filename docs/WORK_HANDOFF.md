@@ -1,5 +1,45 @@
 # PM99 worker handoff
 
+## v167 installed; next corrections in progress — 2026-10-25 15:23 UTC
+
+Machine: `joe-Vostro-3350`. Session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+
+The installed checklist is v167: 17 issue groups, 13 delivered and verified,
+4 still open. Preferred games changed only for 2000/01 (r287a), 2001/02
+(r285a), and 2012/13 (r284a). Other 23 games and the original 2015 backup
+passed unchanged-data checks. Completion evidence is in
+`resume-qa/composed-three-season-v167-installer-proposal-v7/completion-proof-v167.json`.
+
+Disk space recovered externally to approximately 17 GiB. Do not delete or
+archive the portrait cache or pilot directories: their archive proposals were
+prepared but NOT executed, and the local offline sources remain intact.
+The earlier 2014/15 kit-test copy was archived and retired successfully.
+
+ROOT is running the 2002/03 Zürich/Bregy r313 A/B build (controller 21929),
+using the default 8 GiB reserve. Next: capture and validate Fischer in r312
+(2001/02), then build the rebased Djurgården/Åkeby r314 A/B correction and
+install the final children together. r312 is SOURCE-identical and its exact
+four-byte native correction passed; it is not installed or runner-verified yet.
+
+Luna assignments: facts_adversarial_v3 prepares r314 against the actual r313
+parent; fischer_role_composition_v2 fixes and tests the reusable Molde cohort
+provider, including actual SOURCE B creation and source-body/recipe masks;
+disk_resume_candidates researches valid August replacements for two confirmed
+existing frozen cases. ROOT rejected two incorrect ownership classifications
+and approved the corrected evidence: McKenna stays at Cottbus, not Hearts in
+August 2000; Taylor-Fletcher stays at Northwich, not legacy Tranmere. Approval:
+`resume-qa/crossclub-first-ten-v167-classification-v1/root-two-ownership-adjudications-v1.json`.
+These two cases are NOT delivered and have not been credited as closed.
+Original frozen baseline remains 2,809, with 109 delivered dispositions;
+stock-kit mapping remains 58/327 delivered. Explain additions when integrating
+the next checklist; do not silently retain the old confirmed-issue count.
+
+Source session code and installed bindings are pushed through commit `16e1709`.
+No shared Molde provider code or game has been published yet. Its V3 proposal
+failed review: SOURCE verified a supplied child rather than creating B,
+unselected recipe data was unguarded, and fixture claims were not parsed from
+the bound bodies. Private V4 must resolve these before promotion.
+
 ## v167 INSTALLED and verified — 2026-10-25 15:08 UTC
 
 Machine `joe-Vostro-3350`; session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
@@ -5510,3 +5550,8 @@ Next eight cases are Becej2000/01/02/03 and Minerven2000/01/02/03. Official
 RadničkiNiš2002 season article contains valid opening11+used3/datedcoach/home,
 but source identities and four extra dated opening reserves remain unapproved.
 Original TMannual2002/2003 empty; official2000 article contains only a photo.
+
+
+## 2026-10-25 17:25 UTC continuation
+
+Vostro; source session 01a0592d-fcd5-7262-a637-743a8253d9b4. See CURRENT_WORK.md resume checkpoint for installed versus built status, worker assignments, evidence paths and exact next action. v167 remains installed; r312/r313/r315 built, r317 blocked on now-tested idempotency contract; no unaffected release regenerated. Initial goalkeeper audit used an incorrect byte and is withdrawn pending canonical-field rerun. Kit rollout held for source-cohort label conflicts; candidates are not automatically bugs.

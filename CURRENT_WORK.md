@@ -1,5 +1,80 @@
 # PM99: current work
 
+## Resume checkpoint — 2026-10-25 17:25 UTC
+
+Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Installed remains v167; no further preferred releases changed. r312 Fischer
+2001/02 is A/B SOURCE-identical and runner/profile/digit/age verified. r313
+Zürich/Bregy and r315 Djurgården/Åkeby 2002/03 are built A/B SOURCE-identical,
+not installed. r314 is a failed unpreferred child, never a publication parent.
+The r315 runner confirms the club label but exposes Isaksson's inherited fine
+role and DOB errors; full player QA is NOT passed. Height sources conflict.
+
+R317 Molde/Termalica actual publication stopped at the publisher's idempotency
+check before registration. A narrowly scoped provider correction now accepts
+only the immutable parent or its independently reconstructed exact postimage;
+the drift rejection and repeat-application test is running. Next: reuse the
+identical descriptor with `molde-termalica-r317-real-build-v1/build_r317_root_v2.py`,
+complete real A/B publication/SOURCE, then serial runner validation.
+Evidence root: `.local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa`.
+
+Stock r288 remains unpreferred and on HOLD: seven source-cohort club-label
+conflicts invalidate blind kit rollout. The separate Nacional country collision
+is confirmed (14 mappings, including one installed); canonical country guards
+are committed. Full-roster audits found 43 early candidates and 70 later
+candidates (including aliases); these are review candidates, not confirmed bugs.
+Luna fischer reviews first ten early identities; Luna disk reviews first ten
+later identities and the 2015 roster comparison; Luna facts rechecks goalkeeper
+counts using canonical field offsets. Its initial broad-position scan used the
+wrong byte and is withdrawn: do not use the 10,249 count or inferred repairs.
+Original frozen duplicate baseline and installed counts remain unchanged.
+
+Disk approximately 12 GiB free. No further deletion or archive executed;
+portrait caches remain local. Original 2015 backup remains untouched.
+Commits 2c627aa and aa07af1 are local pending push; unrelated upstream dirty
+worktrees and untracked viewer must not be staged. No overall RC completion
+claim is justified while these confirmed fixes and classifications remain open.
+
+## v167 installed; next corrections in progress — 2026-10-25 15:23 UTC
+
+Machine: `joe-Vostro-3350`. Session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+
+The installed checklist is v167: 17 issue groups, 13 delivered and verified,
+4 still open. Preferred games changed only for 2000/01 (r287a), 2001/02
+(r285a), and 2012/13 (r284a). Other 23 games and the original 2015 backup
+passed unchanged-data checks. Completion evidence is in
+`resume-qa/composed-three-season-v167-installer-proposal-v7/completion-proof-v167.json`.
+
+Disk space recovered externally to approximately 17 GiB. Do not delete or
+archive the portrait cache or pilot directories: their archive proposals were
+prepared but NOT executed, and the local offline sources remain intact.
+The earlier 2014/15 kit-test copy was archived and retired successfully.
+
+ROOT is running the 2002/03 Zürich/Bregy r313 A/B build (controller 21929),
+using the default 8 GiB reserve. Next: capture and validate Fischer in r312
+(2001/02), then build the rebased Djurgården/Åkeby r314 A/B correction and
+install the final children together. r312 is SOURCE-identical and its exact
+four-byte native correction passed; it is not installed or runner-verified yet.
+
+Luna assignments: facts_adversarial_v3 prepares r314 against the actual r313
+parent; fischer_role_composition_v2 fixes and tests the reusable Molde cohort
+provider, including actual SOURCE B creation and source-body/recipe masks;
+disk_resume_candidates researches valid August replacements for two confirmed
+existing frozen cases. ROOT rejected two incorrect ownership classifications
+and approved the corrected evidence: McKenna stays at Cottbus, not Hearts in
+August 2000; Taylor-Fletcher stays at Northwich, not legacy Tranmere. Approval:
+`resume-qa/crossclub-first-ten-v167-classification-v1/root-two-ownership-adjudications-v1.json`.
+These two cases are NOT delivered and have not been credited as closed.
+Original frozen baseline remains 2,809, with 109 delivered dispositions;
+stock-kit mapping remains 58/327 delivered. Explain additions when integrating
+the next checklist; do not silently retain the old confirmed-issue count.
+
+Source session code and installed bindings are pushed through commit `16e1709`.
+No shared Molde provider code or game has been published yet. Its V3 proposal
+failed review: SOURCE verified a supplied child rather than creating B,
+unselected recipe data was unguarded, and fixture claims were not parsed from
+the bound bodies. Private V4 must resolve these before promotion.
+
 ## v167 INSTALLED and verified — 2026-10-25 15:08 UTC
 
 Machine `joe-Vostro-3350`; session `01a0592d-fcd5-7262-a637-743a8253d9b4`.

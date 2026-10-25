@@ -739,13 +739,15 @@ def apply(parent_jug: bytes, parent_eq: bytes, profile_plan: Mapping[str, Any]
                                                profile_plan["parent"]["release_id"])
     expected_jug = (release.game_path / "DBDAT/JUG98030.FDI").read_bytes()
     expected_eq = (release.game_path / "DBDAT/EQ98030.FDI").read_bytes()
-    if parent_jug != expected_jug or parent_eq != expected_eq:
+    if parent_eq != expected_eq:
         raise core.CohortDeltaError("publisher native preimage differs from immutable registered parent")
     output_jug, _receipt = reconstruct_from_parent(
         release, package, expected_package_sha256=profile_plan["child_recipe"]["sha256"])
     expected = profile_plan.get("expected_post_jug_sha256")
     if expected and _sha(output_jug) != expected:
         raise core.CohortDeltaError("publisher replay JUG differs from planned exact postimage")
+    if parent_jug not in (expected_jug, output_jug):
+        raise core.CohortDeltaError("publisher native preimage differs from immutable registered parent")
     return output_jug, parent_eq
 
 

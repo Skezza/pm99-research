@@ -38,6 +38,10 @@ class OpeningCohortProviderCandidateTests(unittest.TestCase):
         replay,eq=provider.apply(parent_jug,parent_eq,self.profile)
         self.assertEqual(replay,self.preview)
         self.assertEqual(eq,parent_eq)
+        self.assertEqual(provider.apply(replay,eq,self.profile),(replay,eq))
+        drift=bytearray(replay);drift[-1]^=1
+        with self.assertRaisesRegex(ValueError,'native preimage differs'):
+            provider.apply(bytes(drift),eq,self.profile)
         self.assertEqual(replay,provider.reconstruct_from_parent(
             self.release,self.package,expected_package_sha256=self.profile['child_recipe']['sha256'])[0])
 
