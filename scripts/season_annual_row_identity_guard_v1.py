@@ -40,6 +40,43 @@ def _json(binding):
     return path, pipeline.read_json_file(path)
 
 
+def _verified_actor_club(selector_label, package, actor_club_id):
+    """Join the annual source club to one exact selected package club label."""
+    from scripts import season_official_career_context_v1 as career_source
+    selected = [c for c in package.get('clubs', []) if c.get('id') == actor_club_id]
+    if len(selected) != 1:
+        raise ValueError('recipe club carrier is ambiguous')
+    labels = [selected[0].get('name'), selected[0].get('full_name')]
+    if (not isinstance(selector_label, str) or not selector_label.strip()
+            or any(not isinstance(label, str) or not label.strip() for label in labels)):
+        raise ValueError('annual source and selected actor need explicit club labels; review label repair')
+    selector_key = career_source._club_identity_key(selector_label)
+    keys = [career_source._club_identity_key(label) for label in labels]
+    if not selector_key or len(set(keys)) != 1 or keys[0] != selector_key:
+        raise ValueError('annual source club and selected actor package club differ; review label repair')
+    same_label_clubs = [c for c in package.get('clubs', [])
+                        if any(isinstance(c.get(field), str)
+                               and career_source._club_identity_key(c[field]) == selector_key
+                               for field in ('name', 'full_name'))]
+    if len(same_label_clubs) != 1 or same_label_clubs[0].get('id') != actor_club_id:
+        raise ValueError('annual source club label is ambiguous in the selected package')
+    return labels[1]
+
+
+def _require_unique_null_dob_name(row, source_club):
+    """A null-DOB row without a provider ID must be the only same-name row in its club."""
+    provider_id = str(row.get('opening_source_player_id') or '').strip()
+    if provider_id:
+        return
+    name = row.get('facts', {}).get('name')
+    if not isinstance(name, str) or not name.strip():
+        raise ValueError('null-DOB annual identity needs a full source name')
+    same_name = [candidate for candidate in source_club.get('players', [])
+                 if candidate.get('facts', {}).get('name') == name]
+    if len(same_name) != 1:
+        raise ValueError('null-DOB annual name is not unique in its source club; needs another identity fact')
+
+
 def _profile_context(source, full_name, date_value, official_sources):
     path = _read_file(source['body'])
     if hashlib.sha256(path.read_bytes()).hexdigest() != source.get('sha256'):
@@ -125,7 +162,8 @@ def verify(witness):
     """Validate annual-row identity. No match ID, owner mutation or write occurs."""
     policy = witness.get('identity_policy')
     allowed_policies = {'annual-source-row-person-identity-v1',
-                        'annual-source-row-with-opening-fixture-provider-id-v1'}
+                        'annual-source-row-with-opening-fixture-provider-id-v1',
+                        'annual-source-row-person-identity-null-dob-v1'}
     if policy not in allowed_policies:
         raise ValueError('annual row identity policy is not explicit')
     fixture = witness.get('historical_fixture')
@@ -153,6 +191,11 @@ def verify(witness):
         raise ValueError('annual source artifacts target a different season')
     selector = annual['selector']
     source_birth_date = witness['values']['birth_date']
+    null_dob_policy = policy == 'annual-source-row-person-identity-null-dob-v1'
+    if null_dob_policy:
+        if witness.get('native_before_birth_date') is None:
+            raise ValueError('null annual DOB identity still requires an exact native preimage')
+        source_birth_date = None
     if fixture is not None:
         source_birth_date = annual.get('source_birth_date')
         if not isinstance(source_birth_date, str):
@@ -169,6 +212,8 @@ def verify(witness):
             raise ValueError('annual source row index differs')
         if row.get('facts', {}).get('name') != witness['full_name'] or row.get('facts', {}).get('birth_date') != source_birth_date:
             raise ValueError('annual source row full name/DOB differs')
+        if null_dob_policy:
+            _require_unique_null_dob_name(row, club)
         observed = club.get('selector', {})
         if any(observed.get(k) != selector.get(k)
                for k in ('club_name', 'country_catalog', 'competition_catalog', 'source_path', 'source_sha256')):
@@ -194,13 +239,17 @@ def verify(witness):
             or actor.get('proof') != {'artifact_id': source_artifact_id, 'grade': 'source-captured'}):
         raise ValueError('recipe actor proof must bind its exact annual preallocation artifact')
     if (actor.get('person_id') != person_id or actor.get('source_name') != witness['full_name']
-            or actor.get('facts', {}).get('birth_date') != source_birth_date
+            or (actor.get('facts', {}).get('birth_date') != {'policy': 'preserve-existing-mode1'} if null_dob_policy else actor.get('facts', {}).get('birth_date') != source_birth_date)
             or actor.get('facts', {}).get('nationality') != {'policy': 'preserve-existing-mode1'}
             or actor.get('club_id') != annual['club_id']):
         raise ValueError('recipe actor/name/DOB/country fallback differs from annual identity')
     clubs = [c for c in package.get('clubs', []) if c.get('id') == actor['club_id']]
     if len(clubs) != 1:
         raise ValueError('recipe club carrier is ambiguous')
+    verified_source_club = None
+    if null_dob_policy:
+        from scripts import season_official_career_context_v1 as career_source
+        verified_source_club = _verified_actor_club(selector.get('club_name'), package, actor['club_id'])
     jug = jug_path.read_bytes()
     from app.fdi_indexed import IndexedFDIFile
     entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(jug).entries}
@@ -209,19 +258,23 @@ def verify(witness):
         raise ValueError('native indexed profile carrier absent')
     record = native_player(entry.decode_payload(jug), annual['carrier_id'])
     facts = native_facts(jug, annual['carrier_id'])
-    if normalise(record['name']) != normalise(actor['name']) or facts['birth_date'] != source_birth_date:
-        raise ValueError('native full-name projection/DOB does not agree with recipe/source identity')
+    if normalise(record['name']) != normalise(actor['name']) or (facts['birth_date'] != witness.get('native_before_birth_date') if null_dob_policy else facts['birth_date'] != source_birth_date):
+        raise ValueError('native full-name projection/DOB does not agree with exact annual/native preimage')
     if ownership.native_owners(eq_path.read_bytes()).get(annual['carrier_id']) != {clubs[0]['carrier_id']}:
         raise ValueError('native EQ owner differs; this is an unchanged preimage only')
     country_table = compiler._extract_country_codes_from_textos(textos_path)
     country_byte = jug[entry.payload_offset + record['name_end'] + 8]
     if country_byte not in set(country_table.values()):
         raise ValueError('native country preimage does not map through exact parent TEXTOS')
-    contexts = witness.get('official_subject_contexts', [])
-    if len(contexts) < 1:
-        raise ValueError('strict named HTML source-context guards required where HTML facts are used')
-    parsed_contexts = [_profile_context(s, witness['full_name'], witness['values']['birth_date'],
-                                        witness['official_sources']) for s in contexts]
+    if null_dob_policy:
+        parsed_contexts = career_source.verify_official_career_contexts(
+            witness, annual, source_club=verified_source_club)
+    else:
+        contexts = witness.get('official_subject_contexts', [])
+        if len(contexts) < 1:
+            raise ValueError('strict named HTML source-context guards required where HTML facts are used')
+        parsed_contexts = [_profile_context(s, witness['full_name'], witness['values']['birth_date'],
+                                            witness['official_sources']) for s in contexts]
     return {'person_id': person_id, 'full_name': witness['full_name'],
         'birth_date': witness['values']['birth_date'], 'source_row_sha256': annual['source_row_sha256'],
         'native_display_name': record['name'], 'native_country_byte': country_byte,

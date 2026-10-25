@@ -36,7 +36,7 @@ _FACT_REPLAY_CACHE: set[tuple] = set()
 INPUT_SCHEMA = common.INPUT_SCHEMA
 SCHEMA = common.SCHEMA
 PREFIX = common.PREFIX
-EDITORIAL_ROLE_BY_BROAD = {"M": 9}
+EDITORIAL_ROLE_BY_BROAD = {"D": 4, "M": 9, "F": 12}
 SCOPE = ("Only selected recipe fine_roles and the six exact native fine-role bytes. "
          "Source establishes identity, target-period membership and broad role; assigned fine role is editorial. "
          "Preserve DOB, country, names, broad role, ratings, EQ/ownership/orders, tactics, managers, assets and all other bytes.")
@@ -48,7 +48,8 @@ def _sha(path: Path) -> str:
 
 def _path(relative: str) -> Path:
     path = registry.ROOT / relative
-    if Path(relative).is_absolute() or not path.resolve().is_relative_to(registry.ROOT.resolve()) or not path.is_file():
+    if (Path(relative).is_absolute() or path.is_symlink()
+            or not path.resolve().is_relative_to(registry.ROOT.resolve()) or not path.is_file()):
         raise ValueError("evidence path must be an existing retained workspace file")
     return path
 
@@ -235,6 +236,7 @@ def _verification_code_fingerprints() -> tuple[tuple[str, str], ...]:
         "scripts.season_source_verified_player_changes_v1",
         "scripts.season_adjudicated_player_facts_v1",
         "scripts.season_annual_row_identity_guard_v1",
+        "scripts.season_official_career_context_v1",
         "scripts.season_annual_fixture_identity_bridge_v1",
         "scripts.season_opening_identity_exchange_v1",
         "scripts.season_source_package_builder_v1",
@@ -316,9 +318,64 @@ def _fact_witness(fact_plan: dict, carrier: int):
     expected_pid = (witness.get("fixture_provider_player_id")
                     or witness.get("historical_identity", {}).get("provider_player_id")
                     or witness.get("historical_fixture", {}).get("provider_player_id"))
-    if not expected_pid or adjudicated.verify_historical_identity(witness) != int(expected_pid):
+    if witness.get("identity_policy") == "annual-source-row-person-identity-null-dob-v1":
+        # The exact registered facts parent has already been independently replayed
+        # through common.verify/bind/apply. The annual-row policy intentionally has
+        # no provider numeric ID; its stable identity is the exact row hash/person ID.
+        if expected_pid is not None or witness.get("historical_fixture") is not None:
+            raise ValueError("null-annual-DOB identity branch must not invent a provider player ID")
+    elif not expected_pid or adjudicated.verify_historical_identity(witness) != int(expected_pid):
         raise ValueError("approved fact witness failed its original identity/fixture replay")
     return update, witness
+
+
+def _official_annual_role_context(witness: dict, annual_row: dict, annual_club: dict,
+                                  actor: dict, fact_update: dict, row_sha: str,
+                                  target_season: str) -> dict:
+    """Bind broad role to the exact annual row admitted by the verified facts parent."""
+    if witness.get("identity_policy") != "annual-source-row-person-identity-null-dob-v1":
+        raise ValueError("explicit null-annual-DOB identity policy required")
+    annual = witness.get("annual_identity")
+    contexts = witness.get("official_career_contexts")
+    selector = annual_club.get("selector", {})
+    if (not isinstance(annual, dict) or annual.get("source_row_sha256") != row_sha
+            or annual.get("source_row_index") != annual_row.get("source_row_index")
+            or annual.get("season") != target_season
+            or annual.get("club_id") != actor.get("club_id")
+            or not isinstance(annual.get("selector"), dict)
+            or any(annual["selector"].get(key) != selector.get(key)
+                   for key in ("club_name", "country_catalog", "competition_catalog", "source_path", "source_sha256"))
+            or annual_row.get("facts", {}).get("birth_date") is not None
+            or annual_row.get("facts", {}).get("name") != witness.get("full_name")
+            or annual_row.get("facts", {}).get("position") != "D"
+            or witness.get("full_name") != actor.get("source_name")
+            or witness.get("person_id") != actor.get("person_id")
+            or not isinstance(contexts, list) or not contexts):
+        raise ValueError("official-career role branch lacks exact null-DOB annual person and context bindings")
+    for context in contexts:
+        url_value = context.get("url") if isinstance(context, dict) else None
+        url = urlsplit(url_value) if isinstance(url_value, str) else None
+        if (not isinstance(context, dict) or not isinstance(context.get("body"), dict)
+                or not isinstance(context.get("receipt"), dict)
+                or not re.fullmatch(r"[0-9a-f]{64}", str(context.get("sha256", "")))
+                or url is None or url.scheme != "https" or url.hostname != "www.uefa.com"):
+            raise ValueError("official-career context must bind a retained official UEFA body and receipt")
+    if fact_update.get("values", {}).get("birth_date") != actor.get("facts", {}).get("birth_date"):
+        raise ValueError("corrected parent DOB differs from the independently admitted facts layer")
+    # These contexts are accepted only because _verify_fact_parent replayed the
+    # registered source-facts plan. Their exact nested body/receipt bindings are
+    # rehashed before the replay cache is consulted.
+    return {
+        "identity_policy": witness["identity_policy"],
+        "source_row_sha256": row_sha,
+        "source_row_index": annual_row["source_row_index"],
+        "full_name": witness["full_name"],
+        "source_birth_date": None,
+        "corrected_parent_birth_date": fact_update["values"]["birth_date"],
+        "published_broad_role": "D",
+        "official_career_contexts": copy.deepcopy(contexts),
+        "fine_role_status": "editorial-compatible-default-not-published-source-fact",
+    }
 
 
 def _factory_roles(carrier: int):
@@ -329,6 +386,17 @@ def _factory_roles(carrier: int):
     payload = entry.decode_payload(factory)
     end, roles = read_indexed_native_roles(payload, carrier)
     return factory, entry, payload, end, roles, native_player(payload, carrier), native_facts(factory, carrier)
+
+
+def _exclusive_owner(eq: bytes, carrier: int, expected_owner: int) -> bool:
+    return native_owners(eq).get(carrier) == {expected_owner}
+
+
+def _assert_role_byte_mask(before: bytes, after: bytes, masks: list[dict]) -> None:
+    allowed = {m["file_offset"] for m in masks if m["before"] != m["after"]}
+    actual = {i for i, (a, b) in enumerate(zip(before, after)) if a != b}
+    if len(before) != len(after) or actual != allowed:
+        raise ValueError("native role writer changed bytes outside the exact six-role field mask")
 
 
 def prepare(base, request_path: Path):
@@ -376,18 +444,30 @@ def prepare(base, request_path: Path):
     expected_provider_id = (witness.get("fixture_provider_player_id")
                             or (hist or {}).get("provider_player_id")
                             or (witness.get("historical_fixture") or {}).get("provider_player_id"))
+    null_annual_identity = witness.get("identity_policy") == "annual-source-row-person-identity-null-dob-v1"
     row_provider_id = annual_row.get("opening_source_player_id") or expected_provider_id
-    if (_source_person_id(annual_row) != actor.get("person_id")
-            or annual_row.get("facts", {}).get("name") != actor.get("source_name")
-            or annual_row.get("facts", {}).get("position") != actor["facts"].get("primary_position")
-            or actor["facts"].get("birth_date") != fact_update["values"].get("birth_date")
-            or not expected_provider_id or str(row_provider_id) != str(expected_provider_id)
-            or actor["facts"].get("fine_roles") != {"policy": "preserve-existing-mode1"}):
+    common_identity_ok = (_source_person_id(annual_row) == actor.get("person_id")
+            and annual_row.get("facts", {}).get("name") == actor.get("source_name")
+            and annual_row.get("facts", {}).get("position") == actor["facts"].get("primary_position")
+            and actor["facts"].get("birth_date") == fact_update["values"].get("birth_date")
+            and actor["facts"].get("fine_roles") == {"policy": "preserve-existing-mode1"})
+    # Keep the standard-provider path byte-for-byte in its prior semantic shape;
+    # the null-DOB path substitutes only exact annual-row identity and no fake ID.
+    if (not common_identity_ok or
+            (null_annual_identity and (expected_provider_id is not None or row_provider_id is not None)) or
+            (not null_annual_identity and (not expected_provider_id or str(row_provider_id) != str(expected_provider_id)))):
         raise ValueError("corrected source identity, annual broad role or preserved-role preimage differs")
     if selection.get("source_row_sha256") != row_sha:
         raise ValueError("request annual source row hash differs from adjudicated identity proof")
-    if selection.get("evidence_policy") == "dated-lineup-with-adjudicated-parent-facts-v1":
+    if null_annual_identity:
+        if selection.get("evidence_policy") != "official-career-null-annual-dob-with-corrected-parent-facts-v1":
+            raise ValueError("explicit official-career null-annual-DOB role policy required")
+        parsed_dated = _official_annual_role_context(witness, annual_row, annual_club, actor,
+                                                     fact_update, row_sha, base.season)
+        role_broad = "D"
+    elif selection.get("evidence_policy") == "dated-lineup-with-adjudicated-parent-facts-v1":
         parsed_dated = _verify_dated_lineup_pair(request, annual_row, annual_club, int(expected_provider_id), base.season)
+        role_broad = "M"
     else:
         if selection.get("evidence_policy") != "annual-fixture-role-with-corrected-parent-facts-v1":
             raise ValueError("exact annual-fixture corrected-parent role policy required")
@@ -406,28 +486,28 @@ def prepare(base, request_path: Path):
             "corrected_parent_birth_date": fact_update["values"].get("birth_date"),
             "fine_role_status": "editorial-compatible-default-not-published-source-fact",
         }
-    owner_map = native_owners(eq)
+        role_broad = "M"
     club = next(c for c in package["clubs"] if c["id"] == actor["club_id"])
     entry = next((e for e in IndexedFDIFile.from_bytes(jug).entries if e.record_id == carrier), None)
-    if entry is None or owner_map.get(carrier) != {club["carrier_id"]}:
+    if entry is None or not _exclusive_owner(eq, carrier, club["carrier_id"]):
         raise ValueError("selected actor needs one current native record and exclusive owner")
     payload = entry.decode_payload(jug)
     end, before_roles = read_indexed_native_roles(payload, carrier)
     observed = native_player(payload, carrier)
     observed_facts = native_facts(jug, carrier)
     factory, factory_entry, factory_payload, factory_end, factory_roles, factory_native, factory_facts = _factory_roles(carrier)
-    if (observed["position"] != "M" or observed_facts["position"] != "M"
+    if (observed["position"] != role_broad or observed_facts["position"] != role_broad
             or before_roles != factory_roles
             or not distinct_factory_identity(factory_native["name"], actor["source_name"])
-            or factory_facts["position"] == "M"
+            or factory_facts["position"] == role_broad
             or not compatible(factory_facts["position"], factory_roles[0])
             or observed_facts["birth_date"] == factory_facts["birth_date"]
             or observed_facts["birth_date"] != actor["facts"]["birth_date"]
             or observed["name"].casefold() != actor["name"].casefold()):
         raise ValueError("native identity, current role/factory preimage or broad-role guard differs")
-    role = EDITORIAL_ROLE_BY_BROAD["M"]
-    if not compatible("M", role) or compatible("M", before_roles[0]):
-        raise ValueError("target broad-M default must be compatible and must correct an incompatible source-byte primary role")
+    role = EDITORIAL_ROLE_BY_BROAD[role_broad]
+    if not compatible(role_broad, role) or compatible(role_broad, before_roles[0]):
+        raise ValueError("target broad-role default must be compatible and correct an incompatible source-byte primary role")
     postjug, masks = rewrite_indexed_native_roles(jug, {carrier: [role]})
     post_entry = next(e for e in IndexedFDIFile.from_bytes(postjug).entries if e.record_id == carrier)
     post_end, post_roles = read_indexed_native_roles(post_entry.decode_payload(postjug), carrier)
@@ -442,10 +522,7 @@ def prepare(base, request_path: Path):
             raise ValueError("role byte physical boundary does not match decoded native payload")
         role_masks.append({"file": "DBDAT/JUG98030.FDI", "record_offset": offset,
             "file_offset": absolute, "before": jug[absolute], "after": after_value})
-    allowed_changed = {m["file_offset"] for m in role_masks if m["before"] != m["after"]}
-    actual_changed = {i for i, (a, b) in enumerate(zip(jug, postjug)) if a != b}
-    if len(jug) != len(postjug) or actual_changed != allowed_changed:
-        raise ValueError("native role writer changed bytes outside the exact six-role field mask")
+    _assert_role_byte_mask(jug, postjug, role_masks)
     update = {
         "carrier_id": carrier, "before": copy.deepcopy(actor), "values": {"fine_roles": [role]},
         "field_mask": ["fine_roles"], "native_masks": role_masks,
@@ -453,7 +530,8 @@ def prepare(base, request_path: Path):
         "after_native_roles": post_roles,
         "evidence": {"adjudicated_facts_plan": {"path": registry.relative_workspace_path(fact_path), "sha256": _sha(fact_path)},
             "annual_source_row_sha256": row_sha, "person_id": actor["person_id"],
-            "provider_player_id": int(expected_provider_id), "dated_role_evidence": parsed_dated,
+            "provider_player_id": int(expected_provider_id) if expected_provider_id is not None else None,
+            "dated_role_evidence": parsed_dated,
             "factory": {"sha256": hashlib.sha256(factory).hexdigest(), "identity": factory_native["name"],
                 "broad": factory_facts["position"], "fine_roles": factory_roles, "role_end": factory_end},
             "native_preimage": {"name": observed["name"], "birth_date": observed_facts["birth_date"],
@@ -478,16 +556,20 @@ def prepare(base, request_path: Path):
 
 def validate_mask(plan):
     rows = plan.get("updates", [])
+    row = rows[0] if len(rows) == 1 and isinstance(rows[0], dict) else {}
+    role_broad = row.get("evidence", {}).get("dated_role_evidence", {}).get("published_broad_role")
+    role = EDITORIAL_ROLE_BY_BROAD.get(role_broad)
     if (plan.get("schema") != SCHEMA or plan.get("kind") != KIND or len(rows) != 1
-            or not isinstance(rows[0].get("carrier_id"), int) or rows[0].get("field_mask") != ["fine_roles"]
-            or rows[0].get("values") != {"fine_roles": [9]} or len(rows[0].get("native_masks", [])) != 6):
+            or not isinstance(row.get("carrier_id"), int) or row.get("field_mask") != ["fine_roles"]
+            or role is None or row.get("values") != {"fine_roles": [role]}
+            or len(row.get("native_masks", [])) != 6):
         raise ValueError("exact one-player editorial fine-role-only plan required")
-    update = rows[0]
+    update = row
     masks = update["native_masks"]
     before_roles = update.get("before_native_roles")
     after_roles = update.get("after_native_roles")
     if (not isinstance(before_roles, list) or len(before_roles) != 6
-            or not isinstance(after_roles, list) or after_roles != [9, 98, 98, 98, 98, 98]
+            or not isinstance(after_roles, list) or after_roles != [role, 98, 98, 98, 98, 98]
             or [m.get("record_offset") for m in masks] != list(range(masks[0]["record_offset"], masks[0]["record_offset"] + 6))
             or [m.get("file_offset") for m in masks] != list(range(masks[0]["file_offset"], masks[0]["file_offset"] + 6))
             or any(m.get("file") != "DBDAT/JUG98030.FDI" for m in masks)):
@@ -501,8 +583,9 @@ def validate_mask(plan):
                 or mask["file_offset"] in offsets):
             raise ValueError("exact nonoverlapping role-byte masks required")
         offsets.add(mask["file_offset"])
-    if not compatible("M", 9) or update.get("expected_owner") is None:
-        raise ValueError("broad-M role compatibility and exact owner required")
+    if (not compatible(role_broad, role) or compatible(role_broad, before_roles[0])
+            or update.get("expected_owner") is None):
+        raise ValueError("broad-role compatibility, changed inherited role and exact owner required")
 
 
 def filename(plan):
@@ -526,7 +609,7 @@ def bind(package, plan):
     actor = next(p for p in result["players"] if p["carrier_id"] == plan["updates"][0]["carrier_id"])
     if actor != plan["updates"][0]["before"]:
         raise ValueError("selected recipe actor preimage changed")
-    actor["facts"]["fine_roles"] = [9]
+    actor["facts"]["fine_roles"] = list(plan["updates"][0]["values"]["fine_roles"])
     if "fact_fallbacks" in actor:
         actor["fact_fallbacks"] = [item for item in actor["fact_fallbacks"] if item["field"] != "fine_roles"]
     aid = PREFIX + plan["transaction_id"]
@@ -548,7 +631,7 @@ def apply(jug, eq, plan):
     if _sha(base.game_path / "DBDAT/JUG98030.FDI") != plan["jug_sha256"] or _sha(base.game_path / "DBDAT/EQ98030.FDI") != plan["eq_sha256"] or eq != (base.game_path / "DBDAT/EQ98030.FDI").read_bytes():
         raise ValueError("exact corrected-facts native preimage required")
     target = plan["updates"][0]["carrier_id"]
-    after, _ = rewrite_indexed_native_roles(original, {target: [9]})
+    after, _ = rewrite_indexed_native_roles(original, {target: plan["updates"][0]["values"]["fine_roles"]})
     changed = {i for i, (old, new) in enumerate(zip(original, after)) if old != new}
     expected = {m["file_offset"] for m in plan["updates"][0]["native_masks"] if m["before"] != m["after"]}
     if len(original) != len(after) or changed != expected or jug not in (original, after):

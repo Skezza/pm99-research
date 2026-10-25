@@ -19,6 +19,9 @@ from scripts.season_within_club_reserve_repair_v1 import native_facts
 from scripts.season_historical_roster_audit_v1 import native_player
 from scripts.capture_2015_source_tail_squads_v1 import NATIONALITY_CODES
 from scripts import season_annual_row_identity_guard_v1 as annual_identity
+from scripts import season_official_career_context_v1 as career_source
+NULL_ANNUAL_DOB_POLICY = 'annual-source-row-person-identity-null-dob-v1'
+verify_official_source_claims = career_source.verify_official_source_claims
 
 KIND = 'adjudicated-source-player-facts'
 FIELDS = ['birth_date', 'nationality']
@@ -32,7 +35,8 @@ def checked(value):
 def verify_historical_identity(witness):
     """Reproduce a retained identity witness; legacy fixture path is unchanged."""
     if witness.get('identity_policy') in ('annual-source-row-person-identity-v1',
-                                            'annual-source-row-with-opening-fixture-provider-id-v1'):
+                                            'annual-source-row-with-opening-fixture-provider-id-v1',
+                                            NULL_ANNUAL_DOB_POLICY):
         result = annual_identity.verify(witness)
         return result.get('fixture_provider_player_id')
     historical = witness['historical_identity']
@@ -87,6 +91,9 @@ def verify_historical_identity(witness):
 
 def _adjudicate_official_sources(witness):
     """Reproduce historical identity before admitting independent official facts."""
+    if witness.get('identity_policy') == NULL_ANNUAL_DOB_POLICY:
+        verify_historical_identity(witness)
+        return verify_official_source_claims(witness)
     verify_historical_identity(witness)
     sources = witness['official_sources']
     if len(sources) < 2 or len({urlsplit(s['url']).hostname for s in sources}) != len(sources):
@@ -96,7 +103,8 @@ def _adjudicate_official_sources(witness):
         body = checked(source)
         receipt = pipeline.read_json_file(checked(source['receipt']))
         if witness.get('identity_policy') in ('annual-source-row-person-identity-v1',
-                                                'annual-source-row-with-opening-fixture-provider-id-v1'):
+                                                'annual-source-row-with-opening-fixture-provider-id-v1',
+                                            NULL_ANNUAL_DOB_POLICY):
             receipt_rows = [receipt] + (receipt.get('sources', []) if isinstance(receipt, dict) else [])
             if not any(isinstance(item, dict)
                        and (item.get('url') or item.get('final_url')) == source['url']
@@ -230,7 +238,8 @@ def adjudicate(witness):
 def verify_annual_request_binding(base, carrier, actor, witness):
     """Bind the opt-in annual witness to this exact selected actor and parent."""
     if witness.get('identity_policy') not in ('annual-source-row-person-identity-v1',
-                                                'annual-source-row-with-opening-fixture-provider-id-v1'):
+                                                'annual-source-row-with-opening-fixture-provider-id-v1',
+                                            NULL_ANNUAL_DOB_POLICY):
         return
     annual = witness.get('annual_identity')
     if not isinstance(annual, dict) or any((
@@ -322,7 +331,7 @@ def prepare(base, path, request):
         textos_sha256=registry.sha256_file(base.game_path / 'DBDAT/TEXTOS.PKF'),
         updates=updates, scope=SCOPE, source_policy=(
             'annual-row-source-person-ID-before-official-independent-facts-v1'
-            if any(row['witness'].get('identity_policy') == 'annual-source-row-person-identity-v1'
+            if any(row['witness'].get('identity_policy') in ('annual-source-row-person-identity-v1', NULL_ANNUAL_DOB_POLICY)
                    for row in request['changes']) else
             ('annual-row-plus-opening-fixture-provider-ID-before-official-independent-facts-v1'
              if any(row['witness'].get('identity_policy') == 'annual-source-row-with-opening-fixture-provider-id-v1'
