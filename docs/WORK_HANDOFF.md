@@ -1,5 +1,42 @@
 # PM99 worker handoff
 
+## Archive completed; 2001 runner passed; Fischer build active — 2026-10-25 12:03 UTC
+
+Machine `joe-Vostro-3350`; session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Installed v166 unchanged (17 groups/12 delivered/5 open). All eight obsolete
+static qualification game children archived and removed; 2,877,427,712 allocated
+bytes retired, observed net free-space gain1,452,081,152 bytes during concurrent
+unrelated writes. Current recipes/registered games/original2015 excluded.
+Exact inventories/remote paths/receipts: `resume-qa/old-static-qualification-output-archive-v1/`.
+Final independent all-archive remote recheck controller36538 is running.
+A remote preseed attempt raced normal rsync and failed; no local source changes;
+normal member SHA checks passed, final recheck is mandatory. Attempt receipt retained.
+
+2001 r285 capture19223 succeeded. ROOT frame49 shows C.SEEDORF/Internazionale,
+25/HOLLAND/MIDFIELDER/CENTRALMID. Native/kit/ten independent skill digits/age
+passed6723; disposable runtime copy45301 retired with exact inventories. Proofs:
+`resume-qa/seedorf-visible-identity-correction-v1/dated-parent-facts-editorial-role-v1/r285-runtime-v1/runtime/`.
+2012 r284 remains built/SOURCE/runtime verified; neither is preferred yet.
+
+ROOT59631 now runs Fischer r286 facts A/B using reviewed ROOTv4 driver and
+explicit requestSHA3d6164ff...d9eeff; no competing game builds or captures.
+Logs `resume-qa/fischer-official-facts-r286-private-driver-v1/root-build-v4.log`.
+Next actual build is reviewed private r287 defender-role child, then genuine
+Fischer profile. Do not run old v166 installation drafts. Private installer
+v167 v3 now distinguishes actual producer-edge from combined-current changes;
+ROOT observed2001r239->r285 FOUR JUG bytes,2012r273->r284 ONE,2000r276->r279 TWO;
+expected futureFischer adds4facts+1role, must verify actual. The prior installer
+v1/v2 wrong scope/schema assumptions were rejected before any install.
+
+Three Luna workers active: stock private remaining-year plans; independent2003
+stock donor/mask QA; Molde2017 XI identity adjudication. Official NFF2017 source
+bodies substantiate all16 August XIs; cross-provider IDs in initial v2 source
+package included unsupported manual claims, so use corrected additivev3 under
+`resume-qa/calendar-2017-no1-ingress-proposal-v1/`. ROOT preserves seven valid
+current NO1 clubs and rejected arbitrary source-order remapping. Only Start/
+Ranheim flagged wrong-cohort; replacements still require deterministic rule.
+NFF person/source crosswalk candidates are not approved factual matches.
+
 ## Resume: verified builds retained; cold archive running — 2026-10-25 11:40 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.

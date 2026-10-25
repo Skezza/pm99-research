@@ -1769,3 +1769,24 @@ allocated bytes. Every expanded module remained installed; no ZIP had an open
 handle. Module sources, toolchains, checksum metadata and active compiled cache
 were preserved. No unrelated Go cache uploaded to the PM99 Pi archive. Exact
 local manifest/recovery guidance: `.local/cleanup-20261025-installed-module-archives-v1/`.
+
+## Eight obsolete qualification games — 2026-10-25 12:05 UTC
+
+Machine `joe-Vostro-3350`; session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Archived eight exact `game/` children from `.local/season-static-qualification-v1/`
+to `joe@192.168.1.133:/srv/hdd/pm99-archive/packages/old-static-qualification-games/20261025/`,
+on Pi UUID `1f364414-880d-4f96-8619-3bd8c9954cc0`. Each original relative
+experiment name is retained below that remote root, followed by `game/`.
+All 2,200 file hashes verified remotely before local removal; checksum-rsync
+and fresh local inventories also passed. ROOT independently reverified all
+eight archives after completion. Receipts preserve original modes/timestamps
+and provide exact restoration paths. Adjacent recipes/source/receipts remain
+local; all registered game paths,26 preferred releases and original2015 excluded.
+Preferred catalog unchanged. Closed-inode allocation retired **2,877,427,712 bytes**;
+net free-space increase during operation1,452,081,152 bytes due concurrent writes.
+Evidence: `resume-qa/old-static-qualification-output-archive-v1/`; final remote
+verification SHA256 `4fb4a82b11a795e30a1f58e84d28f88e59de3129c0aa3630722ef1a99722b5c0`.
+Remote receipt copies: `/srv/hdd/pm99-archive/receipts/old-static-qualification-games-20261025/`.
+A concurrent remote preseed optimization collided with the main sync and failed;
+it was stopped, retained in `remote-copy-seed-attempt-v1.json`, and all final
+remote hashes were rechecked. No local source was changed by that attempt.
