@@ -89,6 +89,9 @@ def parse_profile_country(raw: bytes, source: dict, *, actor_name: str,
                           birth_date: str) -> dict:
     """Dispatch to exact Soccerbase parser or the one admitted DFB parser."""
     provider = source.get("provider")
+    if provider == 'uefa-player-roster-table-pdf-v1':
+        from scripts.season_uefa_roster_profile_admission_v1 import parse_country
+        return parse_country(raw, source, actor_name=actor_name, birth_date=birth_date)
     if provider == "dfb-kevin-stuhr-ellegaard-canonical":
         return parse_dfb_kevin(raw, url=source["url"], name=actor_name,
                                birth_date=birth_date)
@@ -143,7 +146,12 @@ def profile_receipt(body_path: Path, source: dict) -> tuple[Path, dict]:
         path = original_path(relative)
         if path.is_symlink() or registry.sha256_file(path) != expected:
             raise ValueError("typed receipt file/hash differs")
-    return path, pipeline.read_json_file(path)
+    receipt = pipeline.read_json_file(path)
+    if source.get('provider') == 'uefa-player-roster-table-pdf-v1':
+        if receipt.get('url') != source.get('url') or receipt.get('raw_sha256') != source.get('sha256'):
+            raise ValueError('UEFA original PDF receipt/body binding differs')
+        receipt = {**receipt, 'sha256': receipt['raw_sha256']}
+    return path, receipt
 
 
 def _unique_claim_value(entity: dict, property_id: str):

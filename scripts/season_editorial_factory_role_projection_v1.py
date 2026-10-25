@@ -54,6 +54,9 @@ def _parent(base):
 
 
 def prepare_request(base, request, input_path):
+    if request.get('role_source_policy') == 'indexed-exact-provider-profile-DOB-and-published-detailed-position-v1':
+        from scripts.season_uefa_roster_profile_admission_v1 import prepare_profile_role
+        return prepare_profile_role(base, request, input_path)
     if (request.get("schema") != INPUT_SCHEMA or request.get("kind") != KIND
             or request.get("season") != base.season or request.get("release_id") != base.release_id
             or type(request.get("carrier_id")) is not int or request.get("policy") != POLICY):
@@ -197,6 +200,8 @@ def prepare(base, input_path):
 
 
 def request_from_plan(plan):
+    if plan.get('policy') == 'indexed-exact-provider-profile-DOB-and-published-detailed-position-v1':
+        return pipeline.read_json_file(registry.ROOT / plan['source_input']['path'])
     p = plan["parent"]
     witness=plan["updates"][0]["evidence"]["historical_identity_witness"]
     return dict(schema=INPUT_SCHEMA, kind=KIND, policy=POLICY, season=plan["season"], release_id=plan["release_id"],
@@ -217,6 +222,9 @@ def verify(base, request, plan):
 
 
 def validate_mask(plan):
+    if plan.get('policy') == 'indexed-exact-provider-profile-DOB-and-published-detailed-position-v1':
+        from scripts.season_uefa_roster_profile_admission_v1 import validate_profile_role
+        return validate_profile_role(plan)
     if plan.get("schema") != SCHEMA or plan.get("kind") != KIND or plan.get("policy") != POLICY:
         raise ValueError("explicit reviewed editorial projection policy required")
     base = registry.load_registered_release(plan["season"], plan["release_id"])
