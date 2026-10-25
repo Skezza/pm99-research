@@ -1,5 +1,35 @@
 # PM99 worker handoff
 
+## Resume: verified builds retained; cold archive running — 2026-10-25 11:40 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Installed remains v166; 17 critical groups /12 delivered /5 open. No additional
+preferred releases changed. Original 2015 backup remains preserved.
+
+2012 r284 A/B SOURCE equality and original runner profile passed; 2001 r285
+A/B SOURCE equality passed, capture awaits disk space. Do not rebuild either.
+Evidence: `resume-qa/seedorf-visible-identity-correction-v1/dated-parent-facts-editorial-role-v1/`
+(r284/r285 build-proof and runtime directories). Fischer source admission and
+separate defender-role projection committed `4a83959`; 35 focused and91 legacy
+tests passed. Source tests are not game delivery. r286 ROOTv4 driver is prepared
+but not run; r287 role child is being prepared privately by Luna.
+
+ROOT started verified Pi archive/removal of eight exact obsolete September
+qualification game children (2.68 GiB inode-closed estimate), controller4916.
+No game builds/captures/catalog writers during archive. Plan/reference audit,
+ROOT driver and log: `resume-qa/old-static-qualification-output-archive-v1/`.
+All1502 locators and26 preferred metadata sets excluded. Archive helper requires
+remote member SHA checks, checksum-rsync and fresh local inventory before deletion.
+Current free space approximately7.8GiB; unrelated active Go cache growth consumed
+prior cleanup headroom. Do not delete active unrelated caches or lower8GiB reserve.
+
+Luna assignments restarted with followup_task: disk_resume_candidates checks
+2008/09–2009/10 stock mappings; facts_adversarial_v3 reviews v167 installer;
+fischer_role_composition_v2 prepares private r287 driver. No worker may publish,
+edit shared recipes or operate runner. Existing74 stock mappings are proposed,
+not delivered. Next: finish archive/ledger, capture r285, build r286 thenr287,
+validate final Fischer profile, review/install narrowly scoped v167.
+
 ## v166 installed: 2007/08 Seedorf role fixed in the game — 2026-10-25 09:55 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.

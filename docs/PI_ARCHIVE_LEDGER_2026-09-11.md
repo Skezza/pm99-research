@@ -1746,3 +1746,26 @@ and whitespace in stacked automount UUID output before any successful upload.
 Earlier failed preflights preserved and performed no relink.
 Registered packages are immutable: future edits must create new files/releases
 rather than modifying these shared inodes in place.
+
+## Further identical registered recipes — 2026-10-25 10:57 UTC
+
+ROOT archived54 nonpreferred recipe JSON files plus manifest,55 members, to
+`/srv/hdd/pm99-archive/research/storage-dedup/20261025/registered-identical-recipes-v1/packages.tar.gz`
+on the same verified Pi UUID. Archive69,792,233 bytes, SHA256
+`34554bf28a7ae106a1c057e5c4bf9591dea166c8bfe8c7bf51ec94587d34379d`.
+Every member's original bytes/size/mode/owner/mtime verified remotely before
+local B-only hardlink consolidation. **1,106,120,704 allocated bytes recovered**.
+Two pairs have different game inventories; only byte-identical recipe files
+were consolidated, so no game equivalence is asserted for those pairs. All
+current preferred recipe paths and original2015 package path were excluded,
+including aliases. All locators and current v166 catalog remained unchanged.
+Evidence `resume-qa/storage-dedup-v166-grouped-recipes-v1/`; completionSHA256
+`80b82f94ed98caa5e305f92afc0fe9278e10b8249d7389b0e772032e211b7e23`;
+archive-receiptSHA256 `1a649e4e87cea33db354f51225d39f09a36b3605ad7a8a0ad38d1ff0672cf958`.
+Machine `joe-Vostro-3350`; session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+
+Separate regenerable-cache cleanup: removed204 old Go download ZIPs,787,791,872
+allocated bytes. Every expanded module remained installed; no ZIP had an open
+handle. Module sources, toolchains, checksum metadata and active compiled cache
+were preserved. No unrelated Go cache uploaded to the PM99 Pi archive. Exact
+local manifest/recovery guidance: `.local/cleanup-20261025-installed-module-archives-v1/`.
