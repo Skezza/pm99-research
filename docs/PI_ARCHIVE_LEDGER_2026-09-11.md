@@ -1706,3 +1706,43 @@ then lsof argv limit. Corrected v3 checks all selected paths in57 batches;
 no open descriptors or overlapping active container mount. All links and
 current bindings rechecked after completion. Free space approximately9.8GiB
 before next capture; changes in free space also reflect unrelated processes.
+
+## v165 registered factory-media dedup — 2026-10-25 09:09 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Reused the verified 144-member Pi archive above (UUID and archive SHA unchanged).
+ROOT controller6937 completed: **955 closed duplicate inodes /30,322 paths**,
+**1,074,745,344 allocated bytes reclaimed** by plan. SHA/size/mode/uid/gid and
+locator/inventory hashes preserved; all selected paths point to their verified
+keeper. Mtime adopts keeper, with original metadata retained in the journal.
+No DBDAT, EXE, config, save or recipe content was changed.
+Evidence: `.local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/storage-dedup-v165-1gib-v1/`.
+Completion `v165-relink-completion-v2.json` SHA256
+`9a2de9fc93ea76f88854a6d61f3e554f036593e8449f1d51a5aa9cfd03bb38a9`;
+verification SHA256 `3e0743b6c1f1ac7eaa878d85b93620ebd1a21e7a124f81f316800fa248bf85f9`.
+This operation uploaded nothing and removed no source or complete game tree.
+The earlier verification failure referenced an unrelated retired game and made
+no mutations; corrected binding scope is retained in additive plan-v3.
+
+## Identical nonpreferred SOURCE B recipe packages — 2026-10-25 09:21 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Archived35 exact B packages plus metadata manifest to Pi UUID
+`1f364414-880d-4f96-8619-3bd8c9954cc0`, remote
+`/srv/hdd/pm99-archive/research/storage-dedup/20261025/nonpreferred-source-ab-packages-v1/packages.tar.gz`.
+Archive44,068,948 bytes; SHA256
+`173caace966c9763e354a153fe5085860dc5662ec4792cf8ce6d6770bfc3c00f`.
+All36 members individually hash/size/mode/owner/mtime verified before local
+mutation. ROOT6809 then replaced only nonpreferred B package paths with links
+to byte-identical A keepers: **706,543,616 allocated bytes reclaimed**. All raw
+bytes, locators and preferred catalog preserved; B mtimes adopt A, originals
+saved in archive manifest and journal. No game/source/evidence tree removed.
+Evidence in `resume-qa/storage-dedup-v165-1gib-v1/`; archive receipt SHA256
+`4b70c087ed933f8d774f010eed9d12b16116b12d951f01a4234217461b9639ee`;
+completion `source-ab-package-relink-completion-v1.json` SHA256
+`695ed9ca713f85221b5ef34a989c0fb68cae7a773316ee92556ba2c893046173`.
+Original worker executor retained; ROOTv4 fixed closed-stdin subprocess handling
+and whitespace in stacked automount UUID output before any successful upload.
+Earlier failed preflights preserved and performed no relink.
+Registered packages are immutable: future edits must create new files/releases
+rather than modifying these shared inodes in place.

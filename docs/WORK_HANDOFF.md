@@ -1,5 +1,111 @@
 # PM99 worker handoff
 
+## v166 installed: 2007/08 Seedorf role fixed in the game — 2026-10-25 09:55 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+ROOT93807 installed2007 preferred r283a only; other25 selections and original2015
+backup verified unchanged. Run `./pm99-season play 2007-08`.
+Checklistv166 SHA256 `d037e49dd14953dab145673fb790cfd7ec02a6d1d97da9865937510c82d72d62`;
+criticalledgerv18 SHA256 `1d7b4dd27acfece60ccf8f1e8d5cb66d55cc422a3206d1958e6b51fa59d3d759`;
+completion `seedorf-visible-identity-correction-v1/r283-v166-install-v1/completion.json`
+SHA256 `7ccb7eb74ff01255120aa1b04698f495645e9b36fc0172663e41214d59d0597e`.
+A/B SOURCE entire recipe/inventory equal; exactly2 JUG role bytes changed.
+ROOT originalframe49 shows C.SEEDORF/Milan/31/HOLLAND/MIDFIELDER/CENTRALMID;
+native input, kit pixels, all10 independent digits and age passed34234.
+An initial review expanded nativeMilan toACMilan; rejected review retained,
+corrected literal club transcription passed with no game changes.
+Screenshot `.local/runlogs/pm99_runner/local_2007_08_r283a_seedorf/screens/49_profile_only_seedorf_done.png`.
+Disposablecopy57431 retired after exact inventories; all release/evidence/prefix
+files preserved. 2012r284 builder58517 stopped BEFORE publication on reserve;
+no locator/game outputs. Resume with newlog after sufficient space. r285unbuilt.
+
+Counts: crossclubbaseline2809, dispositions109, remaining2700 unchanged.
+Latest prior critical baseline16 groups (original8+8 additions),12 delivered,
+4open. v166 explicitly adds ONE genuine runtime Fischer group: now17/12/5;
+this is explained discovery, not regression of completed fixes or census inflation.
+Fischer officialDFB/UEFA bodies now support1966-02-20/SUI/Zurichplayingdefender
+through2003. Native still27/TTO/forward; 2000 r279 not preferred, no fix claimed.
+Luna private null-annual-DOB admission passed in-memory but ROOT found potential
+wrong-playing-club/date-context borrowing; ADDITIVEv2 guard/tests requested before
+promotion. Source/body receipts under `resume-qa/fischer-2000-inherited-native-facts-v1/`.
+OnlydiskLuna active; other2 errored usage limits. Always use followup_task to
+restart a completed worker; send_message alone leaves it idle (ROOT corrected
+this coordination mistake during this run).
+
+Space: verified1.66GiB cleanup completed, but activeGo buildcache now5.3GiB
+(upfrom~4GiB). Do not delete active unrelated cache. ROOT prepares exact registered
+recipe duplicate54-pair~1GiB archive-first plan under
+`resume-qa/storage-dedup-v166-grouped-recipes-v1/`; controller79822 read-only.
+No game writers while this archive/relink operates; preserve latestv166 catalog.
+ROOT also terminated obsolete13h read-only Python recursive glob4004495 that
+followedWine links into/sys; zero writeIO. Receipt orphaned-recursive-glob JSON
+inresume-qa. Use bounded searches; never recursiveglob throughWine prefixes.
+
+Exactnext: finish new recipe space plan/relink, resume r284 thenr285 serial
+builds/captures, QA/promote null-DOB official-career admission and Fischer
+facts+editorialD->4 role. The earlier2000v166 installer drafts are now stale and
+MUSTNOT run againstv166; use a later explicitly reviewed version. IrishV5/V6
+remains private/deferred; existingstock/calendar/label queues still open.
+
+## Runner found a real Fischer defect; role builds continue — 2026-10-25 09:28 UTC
+
+Machine `joe-Vostro-3350`; session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Installed releases remain v165. Both cleanup operations completed and verified:
+1,074,745,344 +706,543,616 allocated bytes recovered; Pi archive ledger has
+hashes and recovery paths. The second operation archived35 nonpreferred B
+recipes to44,068,948-byte Pi tar before identical-byte hardlink consolidation.
+Completion SHA `695ed9ca713f85221b5ef34a989c0fb68cae7a773316ee92556ba2c893046173`.
+No preferred/catalog/game bytes changed. Storage freeze is lifted.
+
+Fischer-only capture96469 completed; ROOT inspected original frame49. It shows
+U.FISCHER/FC Zürich, age27, TRINIDADANDTOB, DEFENDER/RIGHTFORWARD. Native input,
+kit pixels, all10 independent skill digits and native-fallback age agree with
+the actual game (**37040 passed**), but this does NOT establish historical
+correctness. A sourced defender with inherited forward fine role is a newly
+confirmed visible bug. Nationality and DOB are now assigned to Luna for direct
+sourced correction; do not silently accept these declared carrier fallbacks.
+Case: `resume-qa/fischer-2000-inherited-native-facts-v1/case-v1.json`.
+Original frame: `.local/runlogs/pm99_runner/local_2000_01_r279a_fischer/screens/49_profile_only_fischer_done.png`.
+The v166 installation draft is HOLD; ROOT additive installer reviewv2 rejects
+known runtime errors. Do not install r279 while claiming Fischer is corrected.
+Disposable runtime copy44727 retired with exact source/copy inventories;
+prefix, source A/B and screenshots/proofs preserved.
+
+ROOT52667 now builds the already-reviewed2007 r283 role A/B (only2 JUG bytes),
+then will build2012r284 and2001r285 using canonical final-code API proof. Serial
+runner profiles planned for each; no preferred selection yet. New typed adapter
+is committed/pushed3d2a32c, seven focused/84 legacy tests and both actual parent
+API replays passed. Original16 critical-group baseline preserved; Fischer is a
+new runtime finding to account for explicitly, not an old candidate invented as
+a bug. Other two Luna workers remain usage-limited; disk worker researches
+Fischer, and Irish V6 remains deferred private work.
+
+## Media cleanup complete; runner reserve still gates capture — 2026-10-25 09:12 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+ROOT6937 completed and postflight passed: 955 duplicate factory-media inodes,
+30,322 paths, 1,074,745,344 allocated bytes reclaimed. Completion SHA256
+`9a2de9fc93ea76f88854a6d61f3e554f036593e8449f1d51a5aa9cfd03bb38a9`;
+Pi archive and all content/locator/inventory hashes preserved. Ledger updated.
+Fischer-only attempt53028 stopped BEFORE capture on the existing reserve guard:
+8GiB +492655601 bytes needed; no screenshot/game copy created. Keep failed log.
+Next storage step is reviewed35-package identical A/B nonpreferred-B-only relink
+(~674MiB) after a new verified Pi archive. Private proposal SHA256
+`dad7919d4567f22afbbe3d58a8de24eeea0b08d05c9b46e3e1401a9d1dae3aa7`;
+Luna disk worker prepares executable proposal only. ROOT owns archive/mutation.
+No game builders/catalog writers active during this operation.
+
+Canonical role adapter and tests committed/pushed as **3d2a32c**; final actual
+canonical replay of both parents passed (ROOT49673), focused7/legacy84 passed.
+Still no new preferred changes after v165. Next game action remains Fischer-
+only capture then guarded v166 installation; do not rerun Seedorf capture.
+
+NI research: missing Bagnall/Curran/Garrett XI positively sourced; McNulty
+joinedMay2018 and must leave Aug2017. RoryDonnellyAug29 remains August eligible.
+ROOT proposes two surplus GKs (Dunne/Mooney) as capacity omissions, NOT claims
+of absence; retain dated startingGK BrettLong plus BrianNeeson backup, preserve
+all sourcedXI/usedsubs. V5 unchanged; V6 private integration still pending.
+
 ## Final adapter QA passed; storage operation continues — 2026-10-25 09:07 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
