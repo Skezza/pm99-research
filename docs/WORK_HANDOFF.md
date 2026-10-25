@@ -1,5 +1,56 @@
 # PM99 worker handoff
 
+## Final adapter QA passed; storage operation continues — 2026-10-25 09:07 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Final canonical adapter replay **49673 passed** for 2001/02 r280 and 2012/13
+r273, through actual common prepare/verify/bind/apply. Native changes are only
+2/1 role bytes; EQ and unselected actors remain identical. Complete postimages
+were in memory only. Code hashes are recorded separately in receipts under
+`resume-qa/seedorf-visible-identity-correction-v1/dated-parent-facts-editorial-role-v1/canonical-api-proof-v2/`.
+Focused tests: **7 passed**; unchanged existing role/facts regression: **84 passed**.
+Independent Luna QA identified the date-window and cache-test gaps; both now
+fixed/tested. Docs: `docs/DATED_PARENT_FACTS_EDITORIAL_ROLE_2026-10-25.md`.
+
+Installed releases still v165. No game correction is claimed from these tests.
+Media relink controller **6937** is active, above 23,000/30,322 paths without
+error at this handoff; do not start competing game writers or rerun it. Inspect
+completion receipt before unfreezing builds/captures/catalog. Next is Fischer-
+only 2000 r279 runtime proof and reviewed v166 installation; prepared r283,
+r284 and r285 role builders remain unexecuted. Luna disk worker continues NI
+opening-XI research; other two Luna workers are usage-limited.
+
+## Resumed: guarded media cleanup and role correction validation — 2026-10-25 09:00 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Installed release state remains **v165**; no new preferred releases selected.
+The Pi archive verification passed for the v165 1 GiB media subset (955 inode
+ groups, 30,322 paths). ROOT relink controller session **6937** is running;
+all game builds, captures and catalog writes remain frozen until it completes.
+Evidence: `.local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/storage-dedup-v165-1gib-v1/`;
+verification receipt `v165-archive-subset-verification-v2.json` SHA256
+`3e0743b6c1f1ac7eaa878d85b93620ebd1a21e7a124f81f316800fa248bf85f9`.
+Inspect `root-relink-v2.log`, journal and completion before any retry.
+
+Two Luna workers (Hayes and release QA) failed with account usage limits.
+ROOT owns their unfinished work; disk worker was assigned bounded read-only
+adversarial QA of the new role adapter. Do not claim those workers are active.
+Canonical dated-parent-facts role adapter is integrated but uncommitted:
+`scripts/season_dated_parent_facts_editorial_role_v1.py` and common dispatch.
+Five focused tests passed, including actual prepare-plan equality across changed
+verification-code fingerprints. Code fingerprints remain cache guards, not
+persisted semantic recipe inputs. Source tampering still rejects.
+Actual canonical API replay (session **64919**) and old role/facts regression
+(session **15267**) are running; these are in-memory validation, not game delivery.
+Their evidence logs are under `seedorf-visible-identity-correction-v1/dated-parent-facts-editorial-role-v1/`.
+
+Next: finish/check cleanup, complete actual canonical replay and regression;
+resume Fischer-only 2000 r279 capture, then reviewed v166 installation; resume
+r283 2007 role build and compose 2001/2012 role children. Irish V5 remains a
+private in-memory proposal, with three NI opening starters still to resolve.
+Counts remain 109/2809 dispositions, 2700 unclassified/open candidates (not bugs);
+16 critical groups, 12 delivered and 4 open. Original 2015 backup preserved.
+
 ## v165 installed and verified: three fact corrections delivered — 2026-10-24 22:27 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.

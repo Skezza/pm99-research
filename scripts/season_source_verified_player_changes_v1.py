@@ -27,14 +27,19 @@ ADJUDICATED_KIND='adjudicated-source-player-facts'
 DATED_ROLE_KIND='dated-roster-compatible-profile-roles'
 PRIMARY_ROLE_KIND='compatible-biography-conflicting-role-set-repair'
 EDITORIAL_FACTORY_ROLE_KIND='reviewed-editorial-compatible-fine-role-projection'
+DATED_PARENT_FACTS_ROLE_KIND='dated-parent-facts-editorial-compatible-fine-role-projection-v3'
 NATIONAL_TEAM_KIND='dated-national-squad-single-game-country'
 DOB_DISAGREEMENT_KIND='source-backed-known-dob-disagreement'
-MULTI_FIELD_KINDS=(ADJUDICATED_KIND,DATED_ROLE_KIND,PRIMARY_ROLE_KIND,NATIONAL_TEAM_KIND,DOB_DISAGREEMENT_KIND,EDITORIAL_FACTORY_ROLE_KIND)
+MULTI_FIELD_KINDS=(ADJUDICATED_KIND,DATED_ROLE_KIND,PRIMARY_ROLE_KIND,NATIONAL_TEAM_KIND,DOB_DISAGREEMENT_KIND,EDITORIAL_FACTORY_ROLE_KIND,DATED_PARENT_FACTS_ROLE_KIND)
 HEIGHT_SCOPE='Only selected adult published-height recipe fields and one height byte per changed native player; names, DOBs, countries, roles, ratings, orders, clubs, managers, photos, kits, EXE and opaque bytes unchanged. Published adult biography height is not a dated target-season measurement claim.'
 SCOPE='Only selected explicit missing nationality recipe fields and one country byte per selected native player; all names, DOBs, roles, ratings, orders, ownership, tactics, managers, photos, kits, EXE and opaque data unchanged.'
 digest=native.digest
 
-def filename(plan):return 'source-backed-player-changes-'+plan['transaction_id']+'.json'
+def filename(plan):
+    if plan.get('kind') == DATED_PARENT_FACTS_ROLE_KIND:
+        from scripts import season_dated_parent_facts_editorial_role_v1 as dated_parent_role
+        return dated_parent_role.filename(plan)
+    return 'source-backed-player-changes-'+plan['transaction_id']+'.json'
 def artifact_id(plan):return PREFIX+plan['transaction_id']
 def binding(path):return dict(path=registry.relative_workspace_path(path),sha256=registry.sha256_file(path))
 
@@ -48,6 +53,9 @@ def prepare(base,input_path):
     path=Path(input_path)
     original_path(registry.relative_workspace_path(path))
     request=pipeline.read_json_file(path)
+    if request.get('kind') == DATED_PARENT_FACTS_ROLE_KIND:
+        from scripts import season_dated_parent_facts_editorial_role_v1 as dated_parent_role
+        return dated_parent_role.prepare(base, path)
     if request.get('kind') == EDITORIAL_FACTORY_ROLE_KIND:
         from scripts import season_editorial_factory_role_projection_v1 as editorial_roles
         return editorial_roles.prepare(base, path)
@@ -184,11 +192,17 @@ def prepare_height(base, path, request):
     return result
 
 def verify(base,plan):
+    if plan.get('kind') == DATED_PARENT_FACTS_ROLE_KIND:
+        from scripts import season_dated_parent_facts_editorial_role_v1 as dated_parent_role
+        return dated_parent_role.verify(base, plan)
     if (plan.get('schema')!=SCHEMA or registry.sha256_file(original_path(plan['source_input']['path']))!=plan['source_input']['sha256']
             or prepare(base,original_path(plan['source_input']['path']))!=plan):
         raise ValueError('source-backed field plan does not independently reproduce')
 
 def validate_mask(plan):
+    if plan.get('kind') == DATED_PARENT_FACTS_ROLE_KIND:
+        from scripts import season_dated_parent_facts_editorial_role_v1 as dated_parent_role
+        return dated_parent_role.validate_mask(plan)
     if plan.get('kind') == EDITORIAL_FACTORY_ROLE_KIND:
         from scripts import season_editorial_factory_role_projection_v1 as editorial_roles
         return editorial_roles.validate_mask(plan)
@@ -241,6 +255,9 @@ def validate_mask(plan):
         offsets.add(mask['file_offset'])
 
 def bind(package,plan):
+    if plan.get('kind') == DATED_PARENT_FACTS_ROLE_KIND:
+        from scripts import season_dated_parent_facts_editorial_role_v1 as dated_parent_role
+        return dated_parent_role.bind(package, plan)
     validate_mask(plan)
     base=registry.load_registered_release(plan['season'],plan['release_id'])
     verify(base,plan)
@@ -261,6 +278,9 @@ def bind(package,plan):
     return result
 
 def apply(jug,eq,plan):
+    if plan.get('kind') == DATED_PARENT_FACTS_ROLE_KIND:
+        from scripts import season_dated_parent_facts_editorial_role_v1 as dated_parent_role
+        return dated_parent_role.apply(jug, eq, plan)
     validate_mask(plan);base=registry.load_registered_release(plan['season'],plan['release_id']);verify(base,plan)
     if digest(eq)!=plan['eq_sha256']:raise ValueError('source-backed exact EQ required')
     before=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
