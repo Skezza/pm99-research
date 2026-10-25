@@ -33,3 +33,12 @@ readback plus runner evidence are still required before selecting a release.
 
 Evidence directory:
 `.local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/seedorf-visible-identity-correction-v1/dated-parent-facts-editorial-role-v1/`.
+
+
+The null-annual-DOB branch also supports a literal source goalkeeper role,
+mapped to native role0. It requires the verified corrected-facts parent, exact
+annual-row identity, period source context and exclusive native owner. The
+existing copied-factory-role guard and exact six-role-byte mask remain active.
+The DOB/country step and role step are separate deterministic layers; neither
+changes height, ratings, ownership, tactics or artwork. The original defender
+and midfielder plans must continue to replay byte-for-byte.

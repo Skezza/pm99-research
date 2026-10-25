@@ -11,6 +11,7 @@ import re
 import shutil
 import subprocess
 import unicodedata
+from datetime import date, datetime
 from collections import OrderedDict
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -252,7 +253,67 @@ def approved_official_fact_publisher(source):
             and re.fullmatch(r'/MultimediaFiles/Download/uefaorg/General/(?:[0-9]{2}/){3}[0-9]{2}/[0-9]+_DOWNLOAD\.pdf', path, re.I)
             and source.get('document_type') == 'application/pdf'):
         return 'uefa-technical-report-pdf'
+    if (parsed.hostname == 'www.dif.se'
+            and re.fullmatch(r'/spelare/herrar/[0-9]{4}-[0-9]{4}/[a-z0-9-]+', path)
+            and source.get('document_type') != 'application/pdf'):
+        return 'dif-current-player-profile'
+    if (parsed.hostname == 'difhistoria.se'
+            and source.get('document_type') == 'application/pdf'
+            and re.fullmatch(r'/wp-content/uploads/Matchprogram-Fotboll-Herr-(?:19|20)[0-9]{2}-[0-9]{2}-[0-9]{2}-[A-Za-z0-9-]+\.pdf', path)):
+        return 'dif-period-match-programme'
     raise ValueError('official fact source publisher/route is not in the reviewed DFB/UEFA families')
+
+
+def _dif_match_programme_person_block(text, fullname):
+    from scripts.season_dif_club_profile_match_programme_v1 import parse_match_programme_player_block
+    return parse_match_programme_player_block(text, fullname)
+
+
+def verify_dif_match_programme_context(source, *, fullname, source_club, target_season):
+    """Verify original dated DIF match-programme identity, date, club and role."""
+    if approved_official_fact_publisher(source) != 'dif-period-match-programme':
+        raise ValueError('DIF period context requires the approved match-programme route')
+    text = source_text(source)
+    parsed = urlsplit(source['url'])
+    filename = parsed.path.rsplit('/', 1)[-1]
+    path_match = re.fullmatch(r'Matchprogram-Fotboll-Herr-(\d{4})-(\d{2})-(\d{2})-(.+)\.pdf', filename)
+    if not path_match:
+        raise ValueError('match-programme URL must bind one dated fixture filename')
+    year, month, day, club_slug = path_match.groups()
+    fixture_date = date(int(year), int(month), int(day))
+    if not int(target_season[:4]) <= fixture_date.year <= int(target_season[:4]) + 1:
+        raise ValueError('match-programme date is outside the target season')
+    date_text = re.findall(r'\b(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),\s+'
+                           r'(\d{1,2})(?:st|nd|rd|th)\s+([A-Z][a-z]+)\s+(\d{4})\b', text)
+    if len(date_text) != 1:
+        raise ValueError('match programme needs one explicit cover/match date')
+    actual_day, actual_month, actual_year = date_text[0]
+    try:
+        visible_date = datetime.strptime(f'{actual_day} {actual_month} {actual_year}', '%d %B %Y').date()
+    except ValueError as exc:
+        raise ValueError('match programme date is invalid') from exc
+    if visible_date != fixture_date:
+        raise ValueError('match-programme filename and printed fixture date differ')
+    opponent = source.get('opponent')
+    if not isinstance(opponent, str) or not opponent.strip():
+        raise ValueError('period programme needs an explicit opponent binding')
+    slugify = lambda value: re.sub(r'[^a-z0-9]+', '-', unicodedata.normalize('NFKD', value)
+                                   .encode('ascii', 'ignore').decode().casefold()).strip('-')
+    expected_slug = slugify(opponent) + '-' + slugify(source_club)
+    if club_slug.casefold() != expected_slug:
+        raise ValueError('match-programme target club slug differs from the selected annual club')
+    page = unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode().casefold()
+    opponent_words = [x for x in _club_key(opponent).split() if len(x) > 3]
+    club_words = [x for x in _club_key(source_club).split() if len(x) > 3]
+    if not all(word in page for word in opponent_words + club_words):
+        raise ValueError('period programme body lacks the selected club identity')
+    actor = _dif_match_programme_person_block(text, fullname)
+    if actor['position_literal'].casefold() != 'goalkeeper':
+        raise ValueError('period source does not label selected person as a goalkeeper')
+    return {'full_name': fullname, 'source_club': source_club, 'target_season': target_season,
+            'fixture_date': fixture_date.isoformat(), 'position_literal': actor['position_literal'],
+            'birth_date': actor['birth_date'], 'source_url': source['url'],
+            'source_sha256': source['sha256'], 'matched_person_block': actor['person_block']}
 
 
 def _pdf_subject_text(extracted_text, fullname, claims):
@@ -384,6 +445,21 @@ def verify_official_career_contexts(witness, annual, *, source_club=None):
     from scripts import season_pipeline_v2 as pipeline
     receipt = pipeline.read_json_file(receipt_path)
     target_club = source_club if source_club is not None else annual['selector']['club_name']
+    if context.get('source_family') == 'dif-period-match-programme-v1':
+        source = {'url': context['url'], 'path': context['body']['path'],
+                  'sha256': context['sha256'], 'document_type': 'application/pdf',
+                  'text_extraction': context['text_extraction'],
+                  'opponent': context['opponent']}
+        parsed = verify_dif_match_programme_context(source, fullname=witness['full_name'],
+            source_club=target_club, target_season=annual['season'])
+        expected_birth_date = witness.get('values', {}).get('birth_date')
+        if not isinstance(expected_birth_date, str) or parsed.get('birth_date') != expected_birth_date:
+            raise ValueError('DIF career-context birthday differs from the adjudicated fact')
+        if (receipt.get('url') != context['url'] or receipt.get('final_url') != context['url']
+                or receipt.get('raw_sha256') != context['sha256'] or receipt.get('http_status') != 200
+                or receipt.get('method') != 'original-network-body-pdf'):
+            raise ValueError('DIF period programme original transport receipt differs')
+        return [parsed]
     return [verify_official_career_context(body, source_url=context['url'],
         source_sha256=context['sha256'], receipt=receipt, fullname=witness['full_name'],
         source_club=target_club, target_season=annual['season'])]
@@ -401,23 +477,54 @@ def verify_official_source_claims(witness):
     if len(hosts) != len(sources) or None in hosts:
         raise ValueError('official DOB/nationality fact sources require distinct hosts')
     families = {approved_official_fact_publisher(source) for source in sources}
-    if families != {'dfb-player-profile', 'uefa-technical-report-pdf'}:
-        raise ValueError('official fact evidence requires one approved DFB profile and one UEFA report')
+    dif_pair = families == {'dif-current-player-profile', 'dif-period-match-programme'}
+    if not dif_pair and families != {'dfb-player-profile', 'uefa-technical-report-pdf'}:
+        raise ValueError('official fact evidence requires one approved source-family pair')
     birthdays, countries = [], []
     for source in sources:
         body_path, _ = _read_binding({'path': source['path'], 'sha256': source['sha256']})
         receipt_path, _ = _read_binding(source['receipt'])
         receipt = pipeline.read_json_file(receipt_path)
-        if receipt.get('url') != source['url'] or receipt.get('raw_sha256') != source['sha256']:
+        if (not dif_pair and
+                (receipt.get('url') != source['url'] or receipt.get('raw_sha256') != source['sha256'])):
             raise ValueError('official fact source raw URL/hash receipt differs')
-        if (receipt.get('final_url') != source['url'] or receipt.get('http_status') != 200
+        if dif_pair:
+            rows = [receipt] + (receipt.get('sources', []) if isinstance(receipt, dict) else [])
+            if len([item for item in rows if isinstance(item, dict)
+                    and item.get('url') == source['url']
+                    and item.get('final_url') == source['url']
+                    and (item.get('raw_sha256') or item.get('sha256')) == source['sha256']
+                    and item.get('http_status') == 200]) != 1:
+                raise ValueError('DIF official source needs one exact successful original-body receipt row')
+        elif (receipt.get('final_url') != source['url'] or receipt.get('http_status') != 200
                 or receipt.get('method') not in {'original-network-body', 'original-network-body-pdf'}):
             raise ValueError('official fact source receipt is not a successful original network body')
         parsed = urlsplit(source['url'])
         if parsed.scheme != 'https' or not parsed.hostname:
             raise ValueError('official fact source must be HTTPS')
-        text = source_text(source)
         claim = source['birth_date']
+        if dif_pair:
+            if source.get('provider') == 'dif-current-player-profile-v1':
+                from scripts.season_dif_club_profile_match_programme_v1 import parse_dif_player_profile
+                parsed = parse_dif_player_profile(body_path.read_bytes(), url=source['url'],
+                    fullname=witness['full_name'])
+                if (claim.get('label') != 'Född' or claim.get('literal') not in parsed['profile_card']
+                        or source.get('nationality') != {'label': 'Nationalitet',
+                            'literal': parsed['nationality_literal'], 'code': 'SWE'}
+                        or parsed['nationality_literal'].casefold() not in {'svensk', 'swedish'}):
+                    raise ValueError('DIF profile typed DOB/nationality claims differ from its unique subject card')
+                birthdays.append(parsed['birth_date'])
+                countries.append('SWE')
+                continue
+            if source.get('provider') == 'dif-period-match-programme-v1':
+                parsed = _dif_match_programme_person_block(source_text(source), witness['full_name'])
+                if (claim.get('label') != 'Date of birth:'
+                        or claim.get('literal') not in parsed['person_block']):
+                    raise ValueError('period programme DOB claim differs from its named player block')
+                birthdays.append(parsed['birth_date'])
+                continue
+            raise ValueError('DIF source pair requires the typed profile and period programme roles')
+        text = source_text(source)
         claims=[claim] + ([source['nationality']] if source.get('nationality') else [])
         if source.get('document_type') == 'application/pdf':
             text = _pdf_subject_text(text,witness['full_name'],claims)

@@ -36,7 +36,7 @@ _FACT_REPLAY_CACHE: set[tuple] = set()
 INPUT_SCHEMA = common.INPUT_SCHEMA
 SCHEMA = common.SCHEMA
 PREFIX = common.PREFIX
-EDITORIAL_ROLE_BY_BROAD = {"D": 4, "M": 9, "F": 12}
+EDITORIAL_ROLE_BY_BROAD = {"D": 4, "M": 9, "F": 12, "G": 0}
 SCOPE = ("Only selected recipe fine_roles and the six exact native fine-role bytes. "
          "Source establishes identity, target-period membership and broad role; assigned fine role is editorial. "
          "Preserve DOB, country, names, broad role, ratings, EQ/ownership/orders, tactics, managers, assets and all other bytes.")
@@ -347,7 +347,7 @@ def _official_annual_role_context(witness: dict, annual_row: dict, annual_club: 
                    for key in ("club_name", "country_catalog", "competition_catalog", "source_path", "source_sha256"))
             or annual_row.get("facts", {}).get("birth_date") is not None
             or annual_row.get("facts", {}).get("name") != witness.get("full_name")
-            or annual_row.get("facts", {}).get("position") != "D"
+            or annual_row.get("facts", {}).get("position") not in {"D", "G"}
             or witness.get("full_name") != actor.get("source_name")
             or witness.get("person_id") != actor.get("person_id")
             or not isinstance(contexts, list) or not contexts):
@@ -355,11 +355,17 @@ def _official_annual_role_context(witness: dict, annual_row: dict, annual_club: 
     for context in contexts:
         url_value = context.get("url") if isinstance(context, dict) else None
         url = urlsplit(url_value) if isinstance(url_value, str) else None
+        approved_uefa = (isinstance(context, dict) and url is not None and url.scheme == "https"
+                         and url.hostname == "www.uefa.com")
+        approved_dif_programme = (isinstance(context, dict) and url is not None and url.scheme == "https"
+            and url.hostname == "difhistoria.se"
+            and context.get("source_family") == "dif-period-match-programme-v1"
+            and annual_row.get("facts", {}).get("position") == "G")
         if (not isinstance(context, dict) or not isinstance(context.get("body"), dict)
                 or not isinstance(context.get("receipt"), dict)
                 or not re.fullmatch(r"[0-9a-f]{64}", str(context.get("sha256", "")))
-                or url is None or url.scheme != "https" or url.hostname != "www.uefa.com"):
-            raise ValueError("official-career context must bind a retained official UEFA body and receipt")
+                or not (approved_uefa or approved_dif_programme)):
+            raise ValueError("official role context must bind one retained approved official source body and receipt")
     if fact_update.get("values", {}).get("birth_date") != actor.get("facts", {}).get("birth_date"):
         raise ValueError("corrected parent DOB differs from the independently admitted facts layer")
     # These contexts are accepted only because _verify_fact_parent replayed the
@@ -372,7 +378,7 @@ def _official_annual_role_context(witness: dict, annual_row: dict, annual_club: 
         "full_name": witness["full_name"],
         "source_birth_date": None,
         "corrected_parent_birth_date": fact_update["values"]["birth_date"],
-        "published_broad_role": "D",
+        "published_broad_role": annual_row["facts"]["position"],
         "official_career_contexts": copy.deepcopy(contexts),
         "fine_role_status": "editorial-compatible-default-not-published-source-fact",
     }
@@ -399,8 +405,8 @@ def _factory_role_seed_guard_ok(factory_name: str, actor_source_name: str,
     if (not distinct_factory_identity(factory_name, actor_source_name)
             or factory_broad == target_broad or not factory_roles):
         return False
-    official_null_d_seed = null_annual_identity and target_broad == "D"
-    return official_null_d_seed or compatible(factory_broad, factory_roles[0])
+    official_null_seed = null_annual_identity and target_broad in {"D", "G"}
+    return official_null_seed or compatible(factory_broad, factory_roles[0])
 
 
 def _assert_role_byte_mask(before: bytes, after: bytes, masks: list[dict]) -> None:
@@ -475,7 +481,7 @@ def prepare(base, request_path: Path):
             raise ValueError("explicit official-career null-annual-DOB role policy required")
         parsed_dated = _official_annual_role_context(witness, annual_row, annual_club, actor,
                                                      fact_update, row_sha, base.season)
-        role_broad = "D"
+        role_broad = parsed_dated["published_broad_role"]
     elif selection.get("evidence_policy") == "dated-lineup-with-adjudicated-parent-facts-v1":
         parsed_dated = _verify_dated_lineup_pair(request, annual_row, annual_club, int(expected_provider_id), base.season)
         role_broad = "M"

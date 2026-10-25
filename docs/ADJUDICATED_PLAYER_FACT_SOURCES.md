@@ -28,3 +28,18 @@ These additions change source admission only. The common native writer,
 explicit field masks, source hashes, unchanged-data checks and SOURCE rebuild
 remain mandatory. A source-ready request or passing parser test is not an
 installed game correction.
+
+
+An additional typed source pair handles a null-DOB annual player row using an
+explicit DIF player-profile card and an original dated match programme mirrored
+by DIF Historia. The profile's single subject card must publish DOB and an
+explicit supported nationality; birthplace is not substituted. The programme
+must bind its filename date to its printed match date, identify the selected
+club/opponent, and contain one exact named position/DOB block in its layout
+column. Body hashes, original capture receipts and reproducible PDF extraction
+remain required. A context DOB conflicting with the adjudicated DOB is rejected.
+
+The retained 2002 case uses DIF's profile and the Shamrock Rovers *Hoops Scene*
+programme for 15 August 2002, archived by DIF Historia. Archive hosting is not
+a claim that DIF published that programme. Sources remain local; the repository
+tracks adapters and tests, not the PDF or game binaries.
