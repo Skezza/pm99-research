@@ -1,15 +1,9 @@
 #!/usr/bin/env python3
-"""Repair invalid opening-XI broad positions from its recorded tactics layout.
+"""Diagnose opening-XI role conflicts without inferring player identity roles.
 
-The historic recipe keeps each opening XI's on-pitch coordinates.  When an
-otherwise sourced XI has zero or multiple goalkeepers, those coordinates are
-the least speculative authoritative input: the sole row on the goalkeeper
-line is ``G``, followed by defence, midfield and attack bands.  This tool
-updates only failed XI rows in the active mirrored recipe snapshots, then
-refreshes exactly those JUG player records in the playable alpha game.
-
-It deliberately does not re-order squads, alter the XI, acquire sources, or
-touch managers, clubs, kits, dates, ratings, or calendars.
+Tactical coordinates describe a lineup slot. They do not establish a named
+player's primary position. Conflicting source positions therefore fail closed
+until an identity-bound role witness is provided.
 """
 
 from __future__ import annotations
@@ -126,25 +120,21 @@ def _plan_package(path: Path) -> tuple[dict[str, Any], dict[str, Any]]:
             raise OpeningLineupPositionRepairError(
                 f"club {club.get('id')!r} tactics do not define exactly one goalkeeper"
             )
-        for player_id, before_position, after_position in zip(xi, current, intended, strict=True):
-            if before_position == after_position:
-                continue
-            player = players_by_id[player_id]
-            facts = player.get("facts")
-            if not isinstance(facts, dict):
-                raise OpeningLineupPositionRepairError(f"player {player_id} facts are malformed")
-            if isinstance(facts.get("primary_position"), Mapping):
-                raise OpeningLineupPositionRepairError(
-                    f"player {player_id} has a preserved primary position and cannot be inferred"
-                )
-            facts["primary_position"] = after_position
-            changes.append({
-                "club_id": str(club["id"]),
-                "club_name": str(club.get("name") or ""),
-                "player_id": player_id,
-                "before": before_position,
-                "after": after_position,
-            })
+        # Keep these slot labels as diagnostics only. Applying them to named
+        # player facts previously converted the first coordinate row into a
+        # goalkeeper even when annual source rows identified an outfielder.
+        implicated = [
+            {"player_id": player_id, "source_position": before_position,
+             "tactical_slot_position": after_position}
+            for player_id, before_position, after_position
+            in zip(xi, current, intended, strict=True)
+            if before_position != after_position
+        ]
+        raise OpeningLineupPositionRepairError(
+            f"club {club.get('id')!r} ({club.get('name')!r}) has a source/tactics role conflict; "
+            f"tactical slots are not player-position evidence: {implicated}; "
+            "no recipe or JUG writes were performed; require an identity-bound source-role witness"
+        )
     change_by_player = {row["player_id"]: row for row in changes}
     if len(change_by_player) != len(changes):
         raise OpeningLineupPositionRepairError("one player is implicated by multiple invalid opening XIs")

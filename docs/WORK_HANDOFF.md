@@ -1,5 +1,41 @@
 # PM99 worker handoff
 
+## v169 installed; causal position repair in progress — 2026-10-25 19:20 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Authoritative checklist: `.local/consolidated-audit-20261009/release-delivery-checklist-v169.json`;
+critical ledger `parallel-rc-20261023/confirmed-critical-batch-20261025-v21.json`.
+Counts remain 22 groups /14 delivered /8 open; original17 baseline14/3. Five
+Molde/Termalica player corrections plus29 order bytes are now INSTALLED in
+2017/18 r317a. A/B inventory/recipe equality, source/native byte masks, five
+actual profiles and installed playable gate passed; other25 preferred games
+and original2015 backup unchanged. Toivio original OCR failure and excluded
+wrong-person Sarr captures remain explicit. Completion evidence:
+`resume-qa/molde-termalica-r317-v169-promotion-preflight-v1/completion-proof-v169.json`.
+
+2001/02 r319 Alverca/Hayes and 2000/01 r322 Hearts XI/order are actual A/B SOURCE
+builds, UNPREFERRED; runner/ownership composition pending. R319 kits already
+match original factory carrier art, so no redundant restoration build needed.
+R318 Isaksson source parser and generic G0 source-role support committed54f3004;
+68 existing tests and new source/DOB guards pass. Actual facts publication
+stopped BEFORE mutation on8GiB reserve. Retire verified disposable r317 runner
+game copy (keep source, prefixes and screenshots), then resume facts publication.
+
+Confirmed causal bug: tactical coordinates were used to change named players'
+source roles, producing five false English goalkeepers and nine additional
+position remaps. Root has applied failclosed producer guard; two negative
+regression tests pass. Do NOT publish five role-only changes: all five selected
+XIs lack their annual-source goalkeeper, requiring dated XI/ownership repair
+and handling restoration too. Luna facts researches West Ham/Brentford2003;
+Luna Fischer researches BristolRovers2004/Barnsley2007/Wycombe2016. Luna disk
+checks bounded disposable game copies. Workers may not publish or run runner.
+
+Exact next action: finish verified r317 test-copy retirement, resume r318f then
+r318A/B; review worker first-fixture evidence while publishing serially. Review
+Beagrie generic PL/Sky/fixture admission, then compose Locke/Beagrie after r322.
+GTF/3301 whole-club stale2015 roster remains open; do not duplicate Tranmere348.
+Current preferred source evidence, current games and original2015 are protected.
+
 ## v167 installed; next corrections in progress — 2026-10-25 15:23 UTC
 
 Machine: `joe-Vostro-3350`. Session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
