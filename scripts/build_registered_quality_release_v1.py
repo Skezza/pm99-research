@@ -335,6 +335,10 @@ def build(season: str, *, release_id: str, resume: bool = False) -> dict[str, An
         if completed is not None:
             return completed
     previous = registry.load_preferred_release(season)
+    from scripts import season_opening_cohort_delta_v1 as opening_cohort
+    reconstructed = opening_cohort.reconstruction(previous, release_id)
+    if reconstructed is not None:
+        return reconstructed
     # This current typed transaction includes its artwork; do not let an
     # inherited ancestor coach/artwork locator reconstruct an older recipe.
     from scripts import season_owned_club_composition_v1 as retained_composition

@@ -2201,6 +2201,8 @@ def compile_package_to_tree(
         numeric_labels.reject_factory_recipe(package)
         from scripts import season_foreign_fixed_roster_delta_v1 as foreign
         foreign.reject_factory_recipe(package)
+        from scripts import season_opening_cohort_delta_v1 as opening_cohort
+        opening_cohort.reject_factory_recipe(package)
     except ValueError as exc:
         raise SeasonCompilerError(str(exc)) from exc
     effective_package_sha256 = package_v2.sha256_bytes(_canonical_json_bytes(package))
@@ -2214,6 +2216,8 @@ def compile_package_to_tree(
     jug_data = jug_path.read_bytes()
     eq_data = eq_path.read_bytes()
     ent_data = ent_path.read_bytes()
+    source_parent_jug = jug_data
+    source_parent_eq = eq_data
     from scripts import season_italian_opening_layer_v1 as italian_opening
     italian_opening_plans = italian_opening.layers(package, package_path)
     for italian_plan in italian_opening_plans:
@@ -2297,6 +2301,13 @@ def compile_package_to_tree(
     compiled_jug, sourced_full_xi_changes = sourced_full_xi.replay(compiled_jug, compiled_eq, package, package_path, country_codes)
     for italian_plan in italian_opening_plans:
         compiled_jug = italian_opening.order(compiled_jug, compiled_eq, italian_plan)
+    from scripts import season_opening_cohort_delta_v1 as opening_cohort
+    if opening_cohort.has_plan(package):
+        compiled_jug, opening_cohort_receipt = opening_cohort.replay(
+            package, compiled_jug=compiled_jug, compiled_eq=compiled_eq,
+            parent_jug=source_parent_jug, parent_eq=source_parent_eq,
+            expected_package_sha256=effective_package_sha256,
+        )
     # Also bind inline contextual slots to the actual compiled JUG order.
     inline_contexts = [{'carrier_id': c['carrier_id'], 'context': c['opening']['tactics_context']}
                        for c in package['clubs'] if 'tactics_context' in c['opening']]

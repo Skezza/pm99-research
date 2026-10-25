@@ -121,6 +121,28 @@ def club_plan_artifact(package, season, club_plan):
         'proof-historical-club-labels-' + season + suffix)
 
 
+def _validate_manager_display_projection(manager_plan):
+    if manager_plan.get('native_name_projection') != 'explicit-published-family-name-v1':
+        return
+    import unicodedata
+    from scripts.season_manager_display_repair_v1 import short_name
+
+    def normalized(value):
+        return ''.join(c for c in unicodedata.normalize('NFKD', value).casefold()
+                       if c.isalnum())
+
+    for row in manager_plan['updates']:
+        full, native = row['after'], row['native_after']
+        family, _ = short_name(full)
+        suffixes = {normalized(' '.join(full.split()[i:]))
+                    for i in range(1, len(full.split()))}
+        if not normalized(native) or (
+                family is None and normalized(native) not in suffixes) or (
+                family is not None and normalized(native) != normalized(family)) or (
+                len(full.split()) > 1 and normalized(native) == normalized(full)):
+            raise ValueError('manager family-name projection does not match the published surname')
+
+
 def updated_package(package, plan, nationality_plan=None, manager_plan=None, club_plan=None):
     result = copy.deepcopy(package)
     by_id = {p['id']: p for p in result['players']}
@@ -157,6 +179,7 @@ def updated_package(package, plan, nationality_plan=None, manager_plan=None, clu
             'id': proof_id, 'grade': 'source-receipt', 'artifact_id': identity,
             'covers': ['source-backed-nationality-corrections']}], key=lambda p: p['id'])
     if manager_plan is not None:
+        _validate_manager_display_projection(manager_plan)
         managers = {m['id']: m for m in result['managers']}
         clubs = {c['id']: c for c in result['clubs']}
         manager_sha = hashlib.sha256(pipeline.canonical_json_bytes(manager_plan)).hexdigest()
@@ -425,6 +448,7 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
     patched_ent, manager_plan, manager_changes = original_ent, None, []
     if manager_plan_path is not None:
         manager_plan = json.loads(manager_plan_path.read_text())
+        _validate_manager_display_projection(manager_plan)
         if (manager_plan['season'], manager_plan['release_id'], manager_plan['package_sha256'], manager_plan['eq_sha256'], manager_plan['ent_sha256']) != (
                 season, release.release_id, registry.sha256_file(release.package_path),
                 registry.sha256_file(release.game_path / DATABASES[1]), hashlib.sha256(original_ent).hexdigest()):
@@ -675,6 +699,9 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         from scripts import season_exact_primary_position_delta_v2 as alias_primary_positions
         if assignment_plan.get('schema') == alias_primary_positions.SCHEMA:
             assignments = alias_primary_positions
+        from scripts import season_opening_cohort_delta_v1 as opening_cohort
+        if assignment_plan.get('schema') == opening_cohort.PROFILE_SCHEMA:
+            assignments = opening_cohort
         assignments.verify(release, assignment_plan)
     if not changes and not nationality_changes and not club_changes and not (nationality_plan and nationality_plan['updates']) and not (manager_plan and manager_plan['updates']) and patched_exe == original_exe and not (ownership_plan and ownership_plan['updates']) and visibility_plan_path is None and keeper_plan is None and not birth_year_changes and opening_plan is None and italian_plan is None and trabzon_plan is None and name_plan is None and assignment_plan is None:
         return {'season': season, 'status': 'no-native-role-changes', 'registered': False}
@@ -781,6 +808,10 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
             portrait_archive, portrait_offsets = portrait_delta.no_photo_archive(original_archive,
                 woking_owned.selected_carriers(assignment_plan))
+        elif assignment_plan.get('schema') == opening_cohort.PROFILE_SCHEMA:
+            original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
+            portrait_archive, portrait_offsets = assignments.apply_profile_minifoto(
+                original_archive, assignment_plan)
         predicted = (len(patched) if patched != original else 0) + len(patched_eq) + len(package_v2.canonical_json_bytes(result)) + len(pipeline.canonical_json_bytes(assignment_plan)) + 32 * 1024**2
         if assignment_plan.get('schema') in (woking_owned.SCHEMA, alty_joint.SCHEMA, alty_2001.SCHEMA, alty_2001_roles.SCHEMA):
             predicted += len(patched_ent)
@@ -1274,6 +1305,16 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
             removed_target_roster_links=[], fixed_duplicate_case_ids=[assignment_plan['fixed_case']['id']],
             players_written=len(assignment_plan['updates']), allowed_write=assignment_plan['scope'])
+    elif assignment_plan is not None and assignment_plan.get('schema') == opening_cohort.PROFILE_SCHEMA:
+        receipt.update(compilation_mode=opening_cohort.MODE,
+            original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
+            removed_target_roster_links=[], fixed_duplicate_case_ids=[],
+            opening_identity_changes=[{'player_id': row['player_id'],
+                                       'pre_carrier_id': row.get('pre_carrier_id'),
+                                       'post_carrier_id': row['post_carrier_id']}
+                                      for row in assignment_plan['actors']],
+            players_written=len(assignment_plan['actors']),
+            allowed_write='Only source-bound selected opening-cohort actors, reviewed facts/ratings, fixed target roster memberships, compatible complete mode-1 orders, and selected native-no-photo deactivations; all other actors, clubs, managers, game files, and assets byte-identical.')
     elif assignment_plan is not None:
         starter_opening = assignment_plan.get('schema') == duplicate_opening.SCHEMA
         assignment_reviews = [assignment_plan['review']] if starter_opening else assignment_plan['reviews']
