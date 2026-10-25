@@ -1,5 +1,56 @@
 # PM99 worker handoff
 
+## v170 installed; next corrections actively running — 2026-10-25 19:41 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Authoritative release checklist v170; critical ledger v22 (both under
+`.local/consolidated-audit-20261009`, ledger in `parallel-rc-20261023`).
+2001/02 preferred r319a now delivers Alverca/Carlos Pereira and Hayes/Terry Brown.
+All40 source identities reparsed against native ownership; exact EQ/ENT changes,
+A/B full inventory and recipe equality, two genuine profiles, independent digit/
+age/kit readbacks and installed playable gate passed. Other25 preferred games
+and original2015 backup unchanged. Quesnel OCR misread retained as a failed
+outer gate; separate original-frame/native proof passed. Evidence:
+`resume-qa/early-club-manager-r319-r320-root-driver-v1/completion-proof-v170.json`.
+Counts22 groups/14 delivered/8 open unchanged. Label subqueue original9 remains
+separate: two newly confirmed and delivered cases added; total11/delivered6/
+pending5. Do not silently compare the expanded total to the original denominator.
+
+R318 Isaksson actual A/B built, manifests1b888e76f0426034194feed79ad0ef3b7d59ad6ef22c51c23138300b735b24a2
+and21b54743fbd11d1ec0421ffcee533699d2f0779804c840244252fdcc091e8051.
+Private driver's reporting guard incorrectly tested all values including the
+intentionally false registered flag; preserve failure, DO NOT rebuild. Root18416
+re-reads inventories/recipes/exact four native bytes; root28458 captures actual
+r318 profile. Both remain unpreferred until validation. Evidence root:
+`resume-qa/isaksson-r318-canonical-integration-prototype-v1`.
+
+Luna facts prototypes generic source-bound existing-player ownership moves.
+Confirmed five falseG cases all have dated opening keepers already at later
+clubs in native data. WestHam also requires Defoe return; RobLee/RobertLee same
+DOB duplicate needs explicit disposition. Current capacity supports one-way
+moves without inventing replacement people. Bristol/Barnsley/Wycombe all33
+starters crossmatch, onlykeepers wrong owners; Wycombe maxpostcount25. Source
+indexed receipts are NOT raw HTML; two blocked direct providers were not bypassed.
+Root independently checked Bristol original indexed report. WestHam cached
+Aug8date is wrong: original raw meta explicitlyAug9; XI itself cross-checks.
+Five G cases confirmed; nine other annual/native position differences remain
+candidates needing role adjudication, not nine automatically confirmed bugs.
+
+Luna disk prepares generic PL/Sky/fixture admission for Beagrie against actual
+r322 Hearts order-only child; v1 person/year hardcoding rejected. Luna Fischer
+prepares generic UEFA-table country admission +source-compatible D4 for Patacas
+(after r318 explicitparent); preserve conflicting height175/176, no height edit.
+Workers research/prototype only; Root owns shared integration, publication and
+serial runner. Require versioned new artifacts after returning SHA bindings.
+
+Disk: r317 and r319 disposable game copies retired after source/evidence checks;
+ledgers `resume-qa/retired-r317-runner-copy-20261025-v2.json` and
+`retired-r319-runner-copy-20261025-v3.json`; all screenshots/prefixes/canonical
+releases retained. Next exact action: verify existing r318 A/B and actual profile,
+install only after proof; review Luna generic ownership and Beagrie integration,
+then deliver actual corrected games. GTF/Bath3301, remaining bounded club labels,
+calendar and stock-kit cases still open. No claim all26RCwork complete.
+
 ## v169 installed; causal position repair in progress — 2026-10-25 19:20 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
