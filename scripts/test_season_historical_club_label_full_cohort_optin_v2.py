@@ -94,15 +94,20 @@ def _synthetic_case(tmp_path, monkeypatch, *, target_country='portugal', target_
     (game_path / 'DBDAT').mkdir(parents=True)
     eq_path = game_path / 'DBDAT/EQ98030.FDI'
     eq_path.write_bytes(b'synthetic indexed EQ placeholder')
+    (game_path / 'DBDAT/JUG98030.FDI').write_bytes(b'synthetic indexed JUG placeholder')
     release = SimpleNamespace(release_id='synthetic-r1', package_path=package_path, game_path=game_path)
 
     owners = owners_override if owners_override is not None else {
         100: [{'team_carrier_id': 623, 'flag': 0}, {'team_carrier_id': 777, 'flag': 1}],
         200: [{'team_carrier_id': 603, 'flag': 0}],
     }
+    native_players = {int(p['carrier_id']): {'name': p['name'], 'self_id': int(p['carrier_id']),
+        'payload_sha256': ('f' * 64)} for p in package['players']}
     monkeypatch.setattr(optin.registry, 'load_preferred_release', lambda _season: release)
+    monkeypatch.setattr(optin.registry, 'load_registered_release', lambda _season, _release_id: release)
     monkeypatch.setattr(optin.registry, 'relative_workspace_path', lambda path: str(path))
-    monkeypatch.setattr(optin, '_native_owner_index', lambda _bytes: (None, owners))
+    monkeypatch.setattr(optin, '_native_owner_index', lambda _bytes: (SimpleNamespace(entries=[]), owners))
+    monkeypatch.setattr(optin, '_native_jug_identity_index', lambda _bytes, _ids: native_players)
     return {'source_root': source_root, 'preallocation': preallocation,
             'target_selector': target_selector, 'prior_selector': prior_selector,
             'target_row': target_row, 'target_person_id': target_person_id,
@@ -113,6 +118,18 @@ def _create(case):
     return optin.create_witness(season='2000-01', source_root=case['source_root'], carrier_id=623,
         expected_source_selector=case['target_selector'],
         prior_label_source_selector=case['prior_selector'], collision_carrier_id=603)
+
+
+def _enable_additive_path(case, monkeypatch):
+    selector = case['target_selector']
+    selector['source_path'] = 'squad/2000/PO1/target-club.txt'
+    pre_path = case['source_root'] / '2000-01/opening-squad-preallocation.json'
+    pre_path.write_text(json.dumps(case['preallocation'], sort_keys=True, separators=(',', ':')))
+    case['package']['artifacts'][0]['sha256'] = hashlib.sha256(pre_path.read_bytes()).hexdigest()
+    case['release'].package_path.write_text(json.dumps(case['package'], sort_keys=True, separators=(',', ':')))
+    monkeypatch.setattr(optin, '_reparse_source_cohort', lambda season, source_selector, source: {
+        'method':'test-bound-raw-reparse','season':season,
+        'source_selector_sha256':optin._selector_identity(source_selector),'raw_sha256':'a' * 64})
 
 
 def test_synthetic_exact_selector_provider_country_person_and_artifact_guards(tmp_path, monkeypatch):
@@ -162,6 +179,35 @@ def test_synthetic_native_owner_and_source_candidate_guards(tmp_path, monkeypatc
     case = _synthetic_case(tmp_path / 'duplicate-selector', monkeypatch, duplicate_exact_selector=True)
     with pytest.raises(ValueError, match='selector has 2 matches'):
         _create(case)
+
+
+def test_synthetic_recipe_name_must_match_decoded_native_jug_name(tmp_path, monkeypatch):
+    case = _synthetic_case(tmp_path, monkeypatch)
+    _enable_additive_path(case, monkeypatch)
+    native = {100: {'name': 'Different Player', 'self_id': 100, 'payload_sha256': 'f' * 64},
+              200: {'name': 'Prior Player', 'self_id': 200, 'payload_sha256': 'f' * 64}}
+    monkeypatch.setattr(optin, '_native_jug_identity_index', lambda _bytes, _ids: native)
+    with pytest.raises(ValueError, match='recipe name differs from decoded native JUG name'):
+        _create(case)
+
+
+def test_synthetic_native_jug_self_id_must_match_recipe_carrier(tmp_path, monkeypatch):
+    case = _synthetic_case(tmp_path, monkeypatch)
+    _enable_additive_path(case, monkeypatch)
+    native = {100: {'name': 'Target Player', 'self_id': 999, 'payload_sha256': 'f' * 64},
+              200: {'name': 'Prior Player', 'self_id': 200, 'payload_sha256': 'f' * 64}}
+    monkeypatch.setattr(optin, '_native_jug_identity_index', lambda _bytes, _ids: native)
+    with pytest.raises(ValueError, match='native JUG self ID is invalid'):
+        _create(case)
+
+
+def test_synthetic_additive_path_binds_native_name_and_self_id(tmp_path, monkeypatch):
+    case = _synthetic_case(tmp_path, monkeypatch)
+    _enable_additive_path(case, monkeypatch)
+    witness = _create(case)
+    assert witness['roster_bindings'][0]['native_decoded_name'] == 'Target Player'
+    assert witness['roster_bindings'][0]['native_self_id'] == 100
+    assert witness['roster_bindings'][0]['native_payload_sha256'] == 'f' * 64
 
 
 def test_synthetic_full_cohort_row_requires_single_owned_manager_and_dated_sources(tmp_path, monkeypatch):

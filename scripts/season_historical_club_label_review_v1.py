@@ -153,7 +153,11 @@ def review(season, source_root, opening_root, reused_root, output, *, source_rel
                             manager_after=proof['manager'], raw_original_bytes_rechecked=True)
                     except (OSError, KeyError, ValueError) as exc:
                         row.update(status='club-label-first-fixture-evidence-gap', reason=str(exc))
-            if source is None and club['carrier_id'] in full_cohort_rows:
+            # Explicit full-cohort admission is a caller-selected policy for
+            # cases where opening-XI evidence is outside scope. Apply it even
+            # when the preallocation has a source selector that lacks the
+            # XI-level proof required by this review's default path.
+            if club['carrier_id'] in full_cohort_rows:
                 optrow = full_cohort_rows[club['carrier_id']]
                 full_cohort_optin.verify_manager_sources(optrow)
                 witness = full_cohort_optin.verify_witness(optrow['full_cohort_witness'], source_root=source_root)

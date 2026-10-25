@@ -15,7 +15,14 @@ Admission requires every current target actor to match its exact source person
 ID, source row, available DOB and preallocation proof. The source selector must
 be unique and in the same country. Every selected actor must have one active
 native EQ owner at that carrier. Competing complete source cohorts are rejected.
-A separate, distinct carrier must anchor the old label's source identity.
+The original numeric-provider route retains its distinct old-label carrier
+anchor. The additional route accepts a complete content-addressed source
+selector without inventing a numeric provider ID or requiring that second
+carrier. It reparses the original dated source body, verifies each current
+actor's decoded JUG name and self-ID, and checks desired-name uniqueness across
+all recipe layers and native EQ records. Same-country collisions and matching
+labels with an unknown country fail closed; genuine cross-country names may
+coexist. Existing numeric witnesses and plans remain byte-identical.
 Provider IDs alone do not adjudicate historical aliases; the caller must review
 that the proposed identities are distinct clubs.
 
@@ -39,7 +46,8 @@ PYTHONPATH=.:upstream/pm99-skezmod-db-editor \
   .local/venvs/season-pipeline/bin/python -m pytest \
   scripts/test_season_historical_club_label_review_v1.py \
   scripts/test_season_historical_club_label_plan_v1.py \
-  scripts/test_season_historical_club_label_full_cohort_optin_v2.py -q
+  scripts/test_season_historical_club_label_full_cohort_optin_v2.py \
+  scripts/test_full_cohort_selector_identity_v2_additions.py -q
 ```
 
 Portable guards use synthetic inputs. The retained-corpus integration test skips
