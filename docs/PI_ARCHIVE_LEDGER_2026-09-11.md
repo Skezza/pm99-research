@@ -1813,3 +1813,26 @@ read-only rsync --copy-dest against independently verified batch1 bytes; no
 remote hardlink seeding or concurrent copy. Final all-archive verification SHA
 `d51fc30e4ea9d67e9d559580433b5ce0c16b1836cab8f82d4971c40ac3bd3331`. Local receipts preserve restoration
 metadata; restore files from the corresponding remote experiment/game directory.
+
+## Superseded 2014/15 kit-test runtime — 2026-10-25 14:56 UTC
+
+Machine `joe-Vostro-3350`, session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Archived and retired only `.local/season-runtime-candidates-v1/2014-15/worldwide-source-backed-r2-kit-v5/game`.
+All275 regular files (358,369,667 logical bytes;361,304,064 allocated) verified
+inside Pi archive before removal; no registered locator referenced this exact
+sibling. Referenced `worldwide-source-backed-r2/game`, adjacent evidence, current
+26 games and original2015 untouched. Fresh local content/inode/ownership checks,
+registered-path checks and Docker bind checks ran before retirement. lsof
+reported no target rows, with unrelated Docker overlay/namespace warnings.
+
+Recovery: `joe@192.168.1.133:/srv/hdd/pm99-archive/runtime-candidates/20261025/2014-15-worldwide-source-backed-r2-kit-v5/game.tar.gz`.
+Archive SHA256 `1631d5876ebb1bd97aadd290f3433fd24325aad4144f41c7fb53986a07db1d27`;
+manifest SHA256 `eea2fdb721936af9673bf1ecccf4c001fb6400e549f0547e1cdc3b7ad4f78271`.
+Pi ext4 UUID `1f364414-880d-4f96-8619-3bd8c9954cc0` verified. Restore archive
+members to recorded game path and compare each manifest SHA before use.
+Evidence: `.local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/cold-r2kit-v5-archive-proposal-v2/`
+contains frozen tree-manifest, reviewed proposal, archive/retirement driver,
+Pi verification and root execution logs. OriginalV1 preserved: tar directory,
+remote-manifest binding and autofs parsing faults corrected/tested inV2 before
+any transfer/deletion. Other-project writes consumed part of the observed gain;
+the closed-inode estimate is not a claim of net workstation free-space change.

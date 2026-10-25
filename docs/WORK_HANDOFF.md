@@ -1,5 +1,46 @@
 # PM99 worker handoff
 
+## v167 INSTALLED and verified — 2026-10-25 15:08 UTC
+
+Machine `joe-Vostro-3350`; session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+ROOT25846 completed0: three preferred games updated atomically, post-install
+all26 inventories/selector/playable gates passed; other23 and original2015 exact.
+2000/01 r287a FischerDOB/SUI/defender plus prior club/manager/Seedorf fixes;
+2001/02 r285a SeedorfCM/Holland/DOB plus Zürich/Molde names and managers;
+2012/13 r284a SeedorfCM. SOURCE A/B and genuine profiles/digits/age/kit proofs
+verified. Completion `resume-qa/composed-three-season-v167-installer-proposal-v7/completion-proof-v167.json`
+SHA9d4c5904f58aa3ad43c0fab88f2e1568841dda7869b91995ab307753314d213b.
+Checklist v167 SHA30c02061d13c4a4c6fca057fac47e73caa4b74eef4f08e2bd7cafca5ac11341c;
+critical ledgerv19 SHA977b1601b7db3ad2ef097bd05f80652ab2795f1b69278abd96a368554d3a471d.
+Counts17 groups/13 delivered/4 open. Seedorf group closed; Fischer stillpartial
+(2001 correction r312A/B built SOURCE, native four-byte readback passed, runner
+and installation pending). Labels9/4delivered/5pending. Crossclub109/2809
+disposed,2700 review-or-confirmed-open; stock58/327 delivered unchanged.
+
+R313 Zürich2002 label/Bregy rootv3driver reviewed, canonical manager SOURCE
+reserve forwarding promoted/pushed6396888.27 focused tests passed;10 older
+fixture failures independently reproduced with old937bd1a module, no new
+regression; logs/root review receipt inresume-qa. R313 notbuilt due diskreserve.
+Additional2002Djurgården957+Åkeby plan (equalLukic source policy) privately
+verified; must rebase afterr313 to avoid losing Zürich/Zanetti.
+
+Cleanup:275file2014r2-kit-v5 cold runtime archived/remote member hashes verified
+then retired; ledger updated, archive SHA1631d5876ebb1bd97aadd290f3433fd24325aad4144f41c7fb53986a07db1d27.
+Current free~5.9GiB; active unrelated DIYNAS Go writes offset gains. Do not touch
+active other-project cache. Luna facts worker prepares verified Pi archival of
+isolated portraitcache+two pilots (~723MBclosed), restore required for optional
+offline portrait pipeline, no current26 package references. No other deletion.
+
+Luna fischer worker promotes private generic Molde/Termalica adapter proposal:
+actual5actor+32allowedorder slots preview, independent QA34changedpayloads
+(5actors+29onebyteorders),11613outsidepayloads exact. Serializedtransfer binding
+gap and missingMathias raw official crosswalk found by adversarialQA nowbeing
+corrected inprivatecandidatev3. No sharedbackend/game publication yet. Luna
+disk worker classifies fixedfirst10 frozen cases, no sharededits/runner.
+Exact next action: finish safe portrait archival to restore capacity, runner
+r312 and buildr313 serially; review canonical generic adapter code/tests and
+then integrate actual ownershipgame fix. Stock24r288 ready exactapproval, notbuilt.
+
 ## Resume: SOURCE complete r312; installation guard repair — 2026-10-25 14:34 UTC
 
 Machine `joe-Vostro-3350`; session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
