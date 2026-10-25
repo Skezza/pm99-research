@@ -1,5 +1,107 @@
 # PM99: current work
 
+## v173 installed and verified — 2026-10-25 22:48 UTC
+
+Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+The authoritative checklist is `release-delivery-checklist-v173.json`; its critical
+ledger is `parallel-rc-20261023/confirmed-critical-batch-20261025-v25.json`.
+There are 22 correction groups: 17 delivered and verified, five open. The original
+17-group baseline remains 14 delivered / three open. Cross-club dispositions remain
+110 / 2,809; unreviewed candidates are not confirmed bugs.
+
+Installed 2002/03 r323a corrects Bruno Patacas to Portugal / Right Back. Actual A/B
+SOURCE recipes and complete inventories match. Exactly two JUG bytes changed from
+r318a; other facts, ratings, owners, assets and other 25 preferred releases are
+unchanged. The original 2015 backup is preserved. Root inspected the genuine runner
+profile and independently verified age, ten skill glyphs, native inputs and kit pixels.
+The exact OCR wrapper rejected PATAGCAS; that failure is retained separately from
+the successful native run and original-frame visual review. Completion evidence:
+`resume-qa/patacas-r323-root-driver-v1/completion-proof-v173.json`.
+Screenshot: `.local/runlogs/pm99_runner/local_2002_03_r323a_patacas/screens/52_profile_only_patacas_done.png`.
+Only the disposable runner game was removed after input/source checks; ledger:
+`resume-qa/retired-r323-runner-copy-20261025-v6.json`. Free space is approximately 6.9 GiB.
+The Pi Wine archive is complete and verified; its restore ledger remains available.
+
+The canonical opening-membership provider, compiler opt-in and regression tests
+passed 50 tests. Its private predecessor passed 20 after Root corrected an unbound
+updated-recipe variable and added source-host/route rejection tests. No roster game
+has been built or installed from this provider yet. The pure native writer is upstream
+commit `44bd639`, pushed to its existing snapshot branch. Focused tests: 10 passed.
+Upstream deterministic: 635 passed / four skipped; full: 639 passed / 47 skipped,
+with the unavailable tkinter GUI module explicitly excluded. The unfiltered
+collection failure is preserved; do not report an unqualified full-suite pass.
+
+Next: integrate the reviewed membership provider with the existing bounded publisher
+and SOURCE replay. Build r324 membership corrections from the exact 2003/04 parent,
+then replace duplicate Robert Lee 13213 with source-qualified Stephen Bywater. Keep
+Rob Lee 12523. Bywater's existing source admission passed using retained opening-day
+Sky bench, annual TM biography and independent Soccerbase DOB; no new admission
+mechanism is required. Complete remaining false-GK role/handling corrections, then
+Irish calendar allocation, Bath/GTF and stock-kit checklist. Do not rebuild unaffected
+games. Luna workers remain unavailable due to their usage limits.
+
+## Patacas SOURCE/runtime verified; installation running — 2026-10-25 22:46 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+R323f country stage resumed from retained pre-reserve-failure plan, no rebuild.
+R323a/b actualSOURCE complete: inventories and recipe bytes equal; exactly2JUG
+bytes2955991/2955997 vsr318a; all otherfacts/skills/owners/EQ/assets exact.
+Amanifest6b9ef1a4ee6bea03af775498699eb9fe3812521bf7598f98911e5f048037e00b.
+Original runner screenshot `local_2002_03_r323a_patacas/screens/52_profile_only_patacas_done.png`
+ROOT visually inspected: BrunoPATACAS,25,PORTUGAL,DEFENDER,RIGHTBACK. Independent
+10glyph/age/native-input/kit-pixel verifiers pass; `patacas-r323-root-driver-v1/runtime/`.
+Actual runner exit0/summarysuccess true, but exact wrapper OCR rejected PATAGCAS.
+Original summary/transport preserved unchanged; separate OCR rejection receipt
+records visual review. Do not claim automated OCR succeeded or recapture.
+Installer `patacas-r323-root-driver-v1/install_r323_v173_root_v1.py` running;
+only completion-proof-v173.json authorizes17/22delivered,5open. Until then v172
+16/22delivered,6open remains authoritative. Other25/original2015 checks included.
+
+Root private membership review v3:20passed after fixing unboundmain_after
+visibility replay order and strictHTTPS/provider/report-route negative tests.
+Original failed logs retained. Canonical source provider/payload core/compiler
+opt-in hook now workingtree, canonical regression running (root-canonical-membership-tests-v1.log).
+No membership game built/installed. Legacy receipts add no field withoutoptin.
+Upstream purewriter addedapp/eq_roster_membership.py plus4tests/docs: focused10pass;
+deterministic635pass/4skip, full639pass/47skip after explicit omission of
+unavailabletkinter GUI module. Original unfiltered collection failure retained;
+these are not unqualified full-suite passes. Existing upstream dirty deletions
+and untracked viewer untouched. Canonical changes notcommitted until regressions.
+
+Positive WestHam duplicate replacement: StephenBywater3873, DOB1981-06-07,
+ENG/G0. Existing COMMON new-person+Sky-August policy passes actualannualTM row,
+originalSky openingAug9 full-namebench and independentlyparsedSoccerbaseDOB.
+No new admission mechanism needed. Packet `westham-2003-duplicate-positive-replacement-v1/bywater-positive-admission-v1.json`.
+Requires membership stage FIRST: moveJames/Smith/Defoe +sourceXIs to make duplicate
+RobertLee13213 areserve, then replace13213 withBywater, retainRobLee12523.
+Do not call duplicate a namesake or correctRobertLee merelytoMthenleaveclone.
+Bywater ratings stillneed actual deterministic projection; originalphoto cleared.
+DonorCity/Southampton/Spurs actualrecipeXIs verified: movedactorsnotstarters.
+Next: completev173install; retireonlydisposablecapturegame withledger; finish
+canonicalmembershiptests, integrateinto existingpublisher andSOURCEdispatch,
+actualr324membershipA/B thenBywater/remainingfalse-GK corrections. No unaffected
+release regeneration; Pi archive done, currentfree~6.7GiB beforecapturecopyretire.
+
+## Resume — 2026-10-25 22:34 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Pi archive completed at21:51: all1800members verified against file SHA256/size/link
+manifest before removing only unused `/home/joe/.wine`. Archive414986216bytes,
+SHA256 b76f3ba026683fd28e0aaf55f93bb4d466450b932018c968f751a26d09667259.
+Ledger `.local/cleanup-20261025/default-wine-prefix-to-pi/completion-v1.json`
+contains remote path and restore command. Current games/sources/project runner
+prefix untouched. Free space recovered to7.2GiB; active Go cache untouched.
+Root resumed exact retained r323f country plan after reserve failure; no restart
+of completed investigation. Running log `resume-qa/patacas-r323-root-driver-v1/root-resume-country-v2.log`.
+No new release installed yet: v172 /22groups /16delivered /6open remains authoritative.
+In parallel, Root reviewing saved mode0 membership proposal in a NEW private
+`opening-xi-west-ham-brentford-2003-first-fixture-v1/promotion-proposal-v3-root-review/`:
+added strict HTTPS/provider host/report-route admission and negative tests;
+original v2 evidence preserved. No shared recipe or product change from this review.
+Exact next action: verify r323f postimage, publish final r323A/B, capture actual
+Patacas profile, install only after complete proof; finish membership review while
+serial builds run. Luna quota limitation remains.
+
 ## v172 installed and verified — 2026-10-25 21:40 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.

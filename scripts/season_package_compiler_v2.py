@@ -2318,6 +2318,13 @@ def compile_package_to_tree(
         compiled_eq = apply_layer(compiled_eq, compiled_jug, {'schema_version': SCHEMA, 'clubs': inline_contexts})
     for layer in contextual_layers:
         compiled_eq = apply_layer(compiled_eq, compiled_jug, layer)
+    # Opt-in SOURCE proof is checked before mutating the clean materialisation.
+    # Packages without the artifact keep their existing native bytes and receipt.
+    from scripts import season_source_bound_fixture_membership_v1 as fixture_membership
+    fixture_membership_receipt = None
+    if fixture_membership.has_plan(package):
+        fixture_membership_receipt = fixture_membership.replay_package(
+            package, package_path, compiled_eq=compiled_eq, compiled_jug=compiled_jug)
     # Build all replacement plans before mutating the clean materialisation.
     # A rejected mode-1 topology/finance request therefore leaves the tree
     # untouched; the outer build-plan can safely discard it and report the
@@ -2362,6 +2369,8 @@ def compile_package_to_tree(
         "team_statuses": sorted(team_statuses, key=lambda row: (int(row["carrier_id"]), str(row["club_id"] or ""))),
         "contextual_tactics_carriers": sorted([c['carrier_id'] for c in inline_contexts] +
                                              [c['carrier_id'] for layer in contextual_layers for c in layer['clubs']]),
+        **({"source_bound_fixture_membership": fixture_membership_receipt}
+           if fixture_membership_receipt is not None else {}),
         "dd6361_visible_handling": handling_receipt,
         "dd6360_visible_handling_written_carrier_ids": sorted(dd6360_handling_written),
         "mode1_dd6360_core_written_carrier_ids": sorted(mode1_dd6360_core_written),

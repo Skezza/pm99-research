@@ -1,5 +1,45 @@
 # PM99 worker handoff
 
+## v173 installed and verified — 2026-10-25 22:48 UTC
+
+Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+The authoritative checklist is `release-delivery-checklist-v173.json`; its critical
+ledger is `parallel-rc-20261023/confirmed-critical-batch-20261025-v25.json`.
+There are 22 correction groups: 17 delivered and verified, five open. The original
+17-group baseline remains 14 delivered / three open. Cross-club dispositions remain
+110 / 2,809; unreviewed candidates are not confirmed bugs.
+
+Installed 2002/03 r323a corrects Bruno Patacas to Portugal / Right Back. Actual A/B
+SOURCE recipes and complete inventories match. Exactly two JUG bytes changed from
+r318a; other facts, ratings, owners, assets and other 25 preferred releases are
+unchanged. The original 2015 backup is preserved. Root inspected the genuine runner
+profile and independently verified age, ten skill glyphs, native inputs and kit pixels.
+The exact OCR wrapper rejected PATAGCAS; that failure is retained separately from
+the successful native run and original-frame visual review. Completion evidence:
+`resume-qa/patacas-r323-root-driver-v1/completion-proof-v173.json`.
+Screenshot: `.local/runlogs/pm99_runner/local_2002_03_r323a_patacas/screens/52_profile_only_patacas_done.png`.
+Only the disposable runner game was removed after input/source checks; ledger:
+`resume-qa/retired-r323-runner-copy-20261025-v6.json`. Free space is approximately 6.9 GiB.
+The Pi Wine archive is complete and verified; its restore ledger remains available.
+
+The canonical opening-membership provider, compiler opt-in and regression tests
+passed 50 tests. Its private predecessor passed 20 after Root corrected an unbound
+updated-recipe variable and added source-host/route rejection tests. No roster game
+has been built or installed from this provider yet. The pure native writer is upstream
+commit `44bd639`, pushed to its existing snapshot branch. Focused tests: 10 passed.
+Upstream deterministic: 635 passed / four skipped; full: 639 passed / 47 skipped,
+with the unavailable tkinter GUI module explicitly excluded. The unfiltered
+collection failure is preserved; do not report an unqualified full-suite pass.
+
+Next: integrate the reviewed membership provider with the existing bounded publisher
+and SOURCE replay. Build r324 membership corrections from the exact 2003/04 parent,
+then replace duplicate Robert Lee 13213 with source-qualified Stephen Bywater. Keep
+Rob Lee 12523. Bywater's existing source admission passed using retained opening-day
+Sky bench, annual TM biography and independent Soccerbase DOB; no new admission
+mechanism is required. Complete remaining false-GK role/handling corrections, then
+Irish calendar allocation, Bath/GTF and stock-kit checklist. Do not rebuild unaffected
+games. Luna workers remain unavailable due to their usage limits.
+
 ## v172 installed and verified — 2026-10-25 21:40 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
