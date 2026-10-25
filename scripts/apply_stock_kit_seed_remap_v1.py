@@ -242,7 +242,7 @@ def _seed_map_for(checklist: Mapping[str, Any], row: Mapping[str, Any]) -> tuple
     return _root_path(inputs[key_path], label="stock carrier map"), inputs[key_sha]
 
 
-def _check_stock_map(checklist: Mapping[str, Any], row: Mapping[str, Any], source_id: int) -> None:
+def _check_stock_map(checklist: Mapping[str, Any], row: Mapping[str, Any], source_id: int) -> dict[str, Any]:
     path, expected_sha = _seed_map_for(checklist, row)
     if sha256_file(path) != expected_sha:
         raise StockKitRemapError("fixed stock carrier map no longer matches the checklist hash")
@@ -254,6 +254,40 @@ def _check_stock_map(checklist: Mapping[str, Any], row: Mapping[str, Any], sourc
     stock_name = row.get("target_stock_seed_name", row.get("target_stock_seed_club_name"))
     if baseline.get("name") != stock_name or baseline.get("full_name") != row.get("target_stock_seed_full_name"):
         raise StockKitRemapError("stock carrier name/full-name mapping differs from the checklist")
+    return matches[0]
+
+
+def _check_stock_country_identity(source: Mapping[str, Any], target: Mapping[str, Any]) -> None:
+    """A unique short name is insufficient across countries (e.g. Nacional).
+
+    The two explicit exceptions are the same clubs changing competition
+    families: Vaduz in the Swiss system, and Colwyn Bay returning from the
+    English pyramid to Wales in 2019. They are bounded by sealed source ID,
+    target country and complete published club-name variants.
+    """
+    from scripts.season_historical_roster_audit_v1 import club_group
+
+    source_id = int(source["carrier_id"])
+    source_group = ("england" if source.get("record_mode") == 0 else club_group({
+        "carrier_id": source_id, "division": "preserve-existing-mode1-membership"}))
+    target_group = club_group(dict(target))
+    if source_group is None or target_group is None:
+        raise StockKitRemapError("stock remap requires known source and target country families")
+    if source_group == target_group:
+        return
+    normalized_names = {re.sub(r"[^a-z0-9]", "", str(target.get(key, "")).casefold())
+                        for key in ("name", "full_name")}
+    exceptions = {
+        1805: ("switzerland", {"vaduz", "fcvaduz"}),
+        3331: ("wales", {"colwynb", "colwynbay", "colwynbayfc"}),
+    }
+    exception = exceptions.get(source_id)
+    if exception and target_group == exception[0] and normalized_names & exception[1]:
+        return
+    raise StockKitRemapError(
+        f"stock remap crosses club country families: source {source_id} "
+        f"({source_group}) versus target {target['carrier_id']} ({target_group}); "
+        "matching short names do not establish the same club")
 
 
 def _verify_original_audit(checklist: Mapping[str, Any], row: Mapping[str, Any]) -> None:
@@ -388,7 +422,8 @@ def _validate_live_binding(checklist: Mapping[str, Any], rows: Sequence[Mapping[
         if original_case is None:
             raise StockKitRemapError("selected case is absent from the bound checklist")
         _verify_original_audit(checklist, original_case)
-        _check_stock_map(checklist, original_case, row["source_carrier_id"])
+        source_club = _check_stock_map(checklist, original_case, row["source_carrier_id"])
+        _check_stock_country_identity(source_club, clubs_by_carrier[row["target_carrier_id"]])
     if "current_package_kit_policy" in source_cases[rows[0]["case_id"]]:
         protected = _protected_legacy_carriers(checklist)
         if any(row["target_carrier_id"] in protected for row in rows):
