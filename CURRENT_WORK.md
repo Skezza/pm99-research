@@ -1,5 +1,38 @@
 # PM99: current work
 
+## Barnsley2007 installed; Wycombe original lineup running — 2026-10-26 02:55 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Installed checklist v176 / ledger `confirmed-critical-batch-20261026-v28.json`.
+22 groups /17 delivered /five open; wrong-GK group now4/5 installed. Original
+baseline17 remains14/3; crossclub110/2809 unchanged. Barnsley preferred
+`sourced-barnsley-handling-cap-20261026-r326e`: Colgan keeper ownership/source XI,
+Hassell broadD/Handling20; nine other skills, other25 seasons/original2015 intact.
+Completion evidence `resume-qa/coupled-wrong-gk-opening-xi-v1/two-membership-crossmatches-root-v1/2007-08/completion-proof-v176.json`.
+Original lineup classifier failed solely unknown-screen; original summaryFalse/
+transport exit1 preserved. Independent original-frame/source-XI review, exactnative
+input hashes and four pixel-identical UI regions against successful Bristol frame
+passed. Typed `runtime/lineup-layout-recovery.json` is recomputed at promotion,
+not a rewritten runner pass. Public verifier13tests passed; commit998a769 pushed.
+Disposable Barnsley runnergame removed after exactinventory/idle checks, saved
+361369600bytes; registeredrelease/sharedprefix/originalcaptures retained.
+
+Wycombe profile original/digits/native/age checks PASSED; lineup first attempt
+stopped BEFORE launch at6GiBreserve. Retained selector reused unchanged, no build
+rerun. Current capture `local_2016_17_jombati_lineup_r327e`, controller16883, log
+`root-wycombe-lineup-capture-v2-resume.log`. Original-frame review then installer
+2016v177 remains; do not claim groupclosure before actualpromotion.
+
+NEW confirmed separate issue not yet delivered or added to fixed group denominator:
+2007-08 DanielNardiello9834 belongsQPR339 atAugust11, currentlyBarnsley331 reserve.
+Retained raw TM3536 chronology hasentryJuly1,2007 andexitJan24,2008; Skyfullname/
+DOB corroborates identity and June27 announcement (date variation immaterial to
+Augustowner). QPR21/Barnsley24, both XIs preservable; no replacementperson needed.
+Adjudication `resume-qa/nardiello-2007-opening-owner-v1/root-opening-owner-adjudication-v1.json`.
+Next afterWycombe: actual narrow reserveownership correction, SOURCE/native/runtime,
+with explicit newcase accounting; then Irish/calendar, Bath/GTF, stockkits and
+one consolidated all26 regression. Luna quota unavailable; lead continues.
+
 ## Bristol2004 installed; final two runner checks active — 2026-10-26 02:13 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
