@@ -1,5 +1,186 @@
 # PM99: current work
 
+## INSTALLED v183: 26 keeper repairs +12 label cases — 2026-10-26 18:28 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Authority:`.local/consolidated-audit-20261009/release-delivery-checklist-v183.json`,
+`parallel-rc-20261023/confirmed-critical-batch-20261026-v35.json`.
+All26 defaults now `sourced-reviewed-keeper-consistency-20261026-r370a`..`r395a`
+(sorted2000..2025). Play commands unchanged:`./pm99-season play YYYY-YY`.
+9220 actual native primary fine-role corrections (0 already-exact cases), recipe
+fine_roles[0], only six native role-byte windows. All other data exact relative
+to approved parents.12 source-label/coach cases in8seasons integrated as parents;
+all8 parent startups/12profiles reviewed, pixel error0. All26 independent SOURCE
+recipe+complete game inventories equal; all26 installed playable checks PASS.
+Genuine corrected Gillet2009 and Suzuki2025 cards viewed: KEEPERS, replacing
+DEF.MIDFIELDER / RIGHT FORWARD. Two corrected startups also viewed. Additional
+2025 runtime evidence:`native-keeper-fine-role-mismatch-v1/all26-reviewed-consistency-v2/2025-original-runtime-proof-v1.json`.
+This is targeted runtime coverage, NOT the pending consolidated final26 sweep.
+Original2015 fun backup full inventory reverified unchanged. Groups24/20delivered/
+4open (one explicit new compilation issue; original frozen17 remains15/2).
+Source-cohort cases38/27delivered/11pending. Original2809/110/2699 untouched.
+
+LIVE next: Portuguese2023 coupled repair BUILT+SOURCE-equal, not installed.
+Root`resume-qa/portuguese-2023-coupled-source-review-v1/`: r396Arouca/Petit→
+DanielRamos; r397RioAve606→Boavista/Petit; Arouca616→RioAve/LuísFreire.
+Original dated August reports and unanimous source-club joins, not guessed names.
+`r396/build-proof.json`, `r397/build-proof.json`; no player/role/kit/photo changes.
+Runner controller `capture_after_build_root_v1.py` tool session35341 waits until
+2025 capture ends (now complete), then serial Stoke +3club profiles. Review
+original frames/native manager graph, prove source/pixels, promote narrow2023
+chain only, advance checklist. No recapture of completed originals.
+
+Remaining:11identity dependencies (this2023case in progress), calendar actual-
+game repairs, Bath sourced opening-XI gap and remaining stockkit candidates;
+then final26 regression. Do not claim all26RC complete. Bath prior unanswered
+editorial-XI question remains pending; do not invent approval. New Vaduz2019
+primary official raw reports saved under`resume-qa/vaduz-2019-duplicate-cohort-backfill-v1/`;
+first-leagueXI corroborated by dated opponent article. Secondary-fact candidates
+from original retained inputs, not2019 membership approval. TM probe got an
+implausibly-small response, no data inferred, no game credit. Continue original
+sources before composing bounded Swiss club corrections.
+Disk~7GiB; v7 retired only2 verified disposable clones (~693MiB), v8 compiled
+Go cache cleanup~768MiB, all evidence/recovery retained. Pi archives untouched.
+Code724dae6 pushed. Luna quota unavailable; no idle/failed workers counted.
+
+
+## ACTIVE: original runner reviews complete; 26-season repair building — 2026-10-26 18:03 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Installed authority remains v182. No candidate defaults changed.
+Eight-season label batch: all8 SOURCE/native builds and8 startups/12profiles
+complete. Lead viewed original12 club frames and8 startup frames; saved perclub
+runtime proofs (actual RIDIESC pixels max error0) and startup visual reviews.
+Root `.local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/source-confirmed-labels-eight-season-batch-v1/`.
+KeeperV2 global builder LIVE PID3607301; tool session51077. Root below same
+resume-qa:`native-keeper-fine-role-mismatch-v1/all26-reviewed-consistency-v2/`;
+`build-all26-serial.log` has16 SOURCE-equal seasons through2015,2016building.
+Pilot r379 source/native proof COMPLETE; original NEW Gillet frame viewed:
+GOALKEEPER + KEEPER, replacing inherited DEF.MIDFIELDER. Exact-input hashes,
+native slots0/98 and unchanged kit pixel proof saved`pilot-original-runtime-proof-v1.json`.
+New pilot Stoke startup original also viewed. Runner idle, capture controllers done.
+No recapture required. Labels12 integrate as8 parents of final keeper candidates.
+All26build marker required before catalog mutation. Then validate/promote exact
+ancestor chains, update fixed checklist, continue remaining11identity dependencies,
+calendar/Bath/kits. Do NOT call this all26RC completion. Old17/duplicate baseline
+counts untouched. Keeper9220 is one mechanical compilation issue, not9220
+independent historical verifications. Pending proof/namespacing code committed
+724dae6; existing test proof66pass/2skip and real r379 SOURCE reproduction.
+Disk6.46GiB; preserve6GiB reserve. Retire only verified disposable runner copies
+if needed, retaining sealed games, originals and shared Wineprefix. Luna quota
+still unavailable; lead continues, no unsupported worker progress claimed.
+
+
+## ACTIVE: eight label seasons + all26 goalkeeper consistency — 2026-10-26 17:31 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+INSTALLED authority remains v182/r335(2019); no new batch defaults promoted.
+Eight-season root`parallel-rc-20261023/resume-qa/source-confirmed-labels-eight-season-batch-v1/`
+under`.local/consolidated-audit-20261009/`: ALL8 A/SOURCE B builds complete,
+12label/coach cases; all8 native byte-scope proofs complete. Runner controller
+PID3505344`capture_serial_root_v2.py` still serially capturing;6seasons complete,
+2024 profiles in progress,2025 next. Builder3499002 finished; do not rerun it.
+All original frames need lead visual/native/pixel QA before promotion. Disposable
+copies are retired only with original evidence and sealed candidates retained.
+
+A genuine2009Bari/Gillet frame revealed existing broadG + DEF MIDFIELDER fine
+role. JUG bytes were unchanged by label fix: original data defect, not regression.
+Fixed census `native-keeper-fine-role-mismatch-v1/all26-native-role-census.json`
+finds9220 matching existing recipe/nativeG declarations whose fine roles still
+inherit the old carrier. All9220 also qualify for the narrow preserved-fine-role
+consistency rule; this is ONE mechanical input/compilation issue, NOT9220new
+historical research decisions. Explicit roles/whole-person fallbacks are closed.
+New source ingress literalG now emits[0]; outfield fine roles remain unchanged.
+Existing repair changes only six role bytes and fine_roles field. Names, DOB,
+abilities, roster/tactics/kit/photo data stay exact. No new historical-position
+or ownership approval claimed. Tests97pass/2skip (incl actual country replay),
+then66pass/2skip for explicit proof-grade/append-only provenance refinements.
+
+CURRENT keeper work root `resume-qa/native-keeper-fine-role-mismatch-v1/all26-reviewed-consistency-v2/`.
+`prepared-all26-consistency-index.json`:26exact plans /9220cases, childrenr370..395
+(sorted seasons);2009pilot isr379. Parents incorporate the12already-built label
+fixes across8seasons, preserving all other current parents. V2 records reviewed-
+editorial proof grade and hash-namespaced role receipts, retaining prior role
+sources/proofs. No parent/default mutation or renewed scrape.
+LIVE pilot builder PID3599683:`build_serial_root_v2.py --season 2009-10`,
+log`pilot-2009-build.log`. Wait for its build-proof, then run SAME v2 builder
+WITHOUT --season: it reuses verified completed pilot, builds other25 serially.
+Do not mutate preferred catalog until global build completes (binding guard).
+Current keeper semantics/bytes were already proven by earlier Irish keeper
+runtime0roles; genuine NEW keeper-label pilot frame is still required before
+promoting these corrected games. Queue after the running8season capture job,
+never compete for shared Wineprefix/runner. Then targeted native/provenance/
+SOURCE proof plus appropriate runtime, followed by remaining checklist work.
+
+Old keeper v1r344a/b was an uninstalled native/SOURCE prototype; r345a and a
+partial SOURCE attempt were safely interrupted BEFORE any publication to refine
+proof labelling. Old builderPID3580417 terminated, NOT merely paused. DO NOT run
+`build_all26_serial_root_v1.py` or promote r344/r345. Legacy unflagged receipts
+remain reproducible; their native bytes were valid, no current games affected.
+New V2 is the promotion path. Single-club adapter055d8d9 now allows bounded
+club repair within one country; actual Derry20-player read-only corpus projection
+PASS under`club-scope-mechanics-corpus-v2/`, all other native records exact.
+V1 absolute-path attempt failed safely and remains retained; no game published.
+
+NEXT: finish keeper pilot, launch other25 SOURCE builds; review existing12 club
+frames as they arrive; arrange NEW Gillet/r379 capture after current runner idle;
+validate before promoting composed corrections. Label38/15/23 remains installed
+count; staged12 would make38/27/11. Keeper9220 not delivered yet; separate scope,
+not historical correctness claims or frozen duplicate progress credit. Remaining
+calendar, Bath, kits and11identity dependencies still block finalRC closure.
+Disk~7.3GiB, reserve6GiB; Pi online231GiB, cachev6 cleanup ledger retained. No
+SOURCE twin archiving/deletion performed. Luna quota unavailable; lead continues.
+
+
+## ACTIVE eight-season batch — 2026-10-26 16:39 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Current installed checkpoint remains v182; no batch candidate promoted yet.
+Evidence root`parallel-rc-20261023/resume-qa/source-confirmed-labels-eight-season-batch-v1/`
+under`.local/consolidated-audit-20261009/`.
+`prepared-eight-season-index.json`:12 exact source-admitted label/coach cases,
+8seasons, immutable parents, existing typed plans, explicit native aliases.
+Childrenr336(2009),r337(2010),r338(2017),r339(2018),r340(2021),r341(2022),
+r342(2024),r343(2025), A+SOURCE B each. All players/ratings/orders/tactics/kits/
+photos remain byte-identical.12 other rejected renames were NOT smuggled in.
+Currently7/8 built+SOURCE-equal; native scope7/8 independently verified. Consult
+per-season`build-proof.json`/`native-scope-proof.json`; do not regenerate them.
+
+LIVE builder PID3499002:`build_serial_root_v1.py`,log`build-serial.log`.
+It serialises builds and requires the preferred catalog stay unchanged until
+`all-eight-build-complete.json` exists. DO NOT publish while it is still running.
+LIVE runner controller PID3505344:`capture_serial_root_v2.py`,
+log`capture-serial-v2.log`; single shared Wineprefix, one runner at a time.
+2009 Stoke startup complete, Bari/Gillet profile in progress. The earlier v1
+selection failed BEFORE any capture because original report displays surnames,
+not full names. V2 joins exact original preallocation person hashes and literal
+provider player IDs to the report XI; no surname expansion or fuzzy matching.
+V1/log retained. Do not rerun either capture controller blindly after a partial
+restart: v2 reuses existing transports, but its final per-season completion JSON
+is immutable. Continue from exact recorded per-season evidence if interrupted.
+
+After each season's original captures finish, controller retires ONLY its
+independent disposable runner GAME copy, with preflight/completion ledger.
+This is not visual approval: sealed candidate, all original screenshots/input
+bindings, summaries and shared Wineprefix are retained. Lead must still VIEW
+and validate startup plus every corrected-club profile and kit pixels; no
+automatic promotion from OCR. Final`all-eight-captures-complete.json` means
+transport complete, NOT installed/approved. Candidate and SOURCE games stay local.
+Next: finish missing native proofs only; review original frames as they arrive;
+produce per-profile source/native/input/pixel evidence; validate each candidate;
+promote only after all build jobs finish and approved evidence is ready. Preserve
+other18 preferred bindings and original2015. Update fixed v182 ledger into a new
+checkpoint;12case delivery would change cohort scope38/15/23→38/27/11, not erase
+11 dependency cases or calendar/Bath/kit blockers. No all26 RC-complete claim.
+
+Disk8.1GiB after safe cleanupv6 freed2147479552B old unused compiled Go cache;
+ledger`.local/cleanup-20261026/old-unused-go-cache-entries-v6/`. Same installed-Go
+markUsed1h-lag policy,5h recency barrier, active FD/exe/maps exclusion and exact
+mtime/inode recheck. No PM99 or other project source data deleted. Pi remains
+online with231GiBfree; no B-twin archive/deletion performed (44MiB only).
+Luna unavailable; lead continues, no repeated failing spawns. Bath question pending.
+
+
 ## v182 INSTALLED: Portuguese pair and Clinceni manager — 2026-10-26 16:22 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
