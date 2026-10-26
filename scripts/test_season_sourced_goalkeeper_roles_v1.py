@@ -83,13 +83,21 @@ def test_consistency_plan_reproduces_and_writes_only_the_native_role_window(tmp_
     original = jug.read_bytes()
     plan = module.prepare_position_consistency(release)
     assert len(plan['updates']) == 1 and plan['updates'][0]['fine_roles'] == [0]
+    assert plan['proof_grade'] == 'reviewed-editorial'
     assert plan['updates'][0]['birth_date'] == {'policy': 'preserve-existing-mode1'}
     module.verify(release, plan)
+    legacy = copy.deepcopy(plan)
+    legacy.pop('proof_grade')
+    module.verify(release, legacy)
     patched, changes = rewrite_indexed_native_roles(original, {1: [0]})
     changed = {i for i, (a, b) in enumerate(zip(original, patched)) if a != b}
     assert changed and changed <= set(changes[0]['allowed_offsets'])
     assert jug.read_bytes() == original
     plan['updates'][0]['fine_roles'] = [12]
+    with pytest.raises(ValueError, match='does not reproduce'):
+        module.verify(release, plan)
+    plan['updates'][0]['fine_roles'] = [0]
+    plan['proof_grade'] = 'source-receipt'
     with pytest.raises(ValueError, match='does not reproduce'):
         module.verify(release, plan)
 

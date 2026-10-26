@@ -44,6 +44,19 @@ def test_empty_delta_does_not_replace_the_historical_role_input():
     assert publish.updated_package(previous,empty)==previous
 
 
+def test_derived_keeper_proof_is_labelled_editorial_consistency():
+    package = _native_package()
+    package['players'][1]['facts']['primary_position'] = 'G'
+    plan = plan_for(package)
+    plan.update(policy='declared-and-native-G-preserved-fine-role-to-keeper-zero-v1',
+                proof_grade='reviewed-editorial')
+    plan['updates'][0]['fine_roles'] = [0]
+    result = publish.updated_package(package, plan)
+    proof = next(p for p in result['proofs'] if p['id']=='proof-historical-roles-2014-15')
+    assert proof['grade'] == 'reviewed-editorial'
+    assert proof['covers'] == ['declared-native-goalkeeper-position-consistency']
+
+
 @pytest.mark.parametrize('canonical,surname', [('Luigi Del Neri', 'Del Neri'),
                                               ('Stefano Colantuono', 'Colantuono')])
 def test_manager_identity_change_refreshes_existing_native_aliases(canonical, surname):

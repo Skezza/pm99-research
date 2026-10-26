@@ -72,6 +72,7 @@ def prepare_position_consistency(release):
     return {'schema_version': 'pm99-historical-role-plan-v1', 'season': release.season,
         'release_id': release.release_id, 'package_sha256': hashlib.sha256(raw).hexdigest(),
         'jug_sha256': hashlib.sha256(jug).hexdigest(), 'policy': CONSISTENCY_POLICY,
+        'proof_grade': 'reviewed-editorial',
         'updates': updates, 'unresolved': unresolved,
         'summary': {'declared_keeper_role_corrections': len(updates),
                     'native_identity_or_position_conflicts': len(unresolved)}}
@@ -170,7 +171,12 @@ def prepare(release, reparse_report):
 
 def verify(release, plan):
     if plan.get('policy') == CONSISTENCY_POLICY:
-        if prepare_position_consistency(release) != plan:
+        expected = prepare_position_consistency(release)
+        # Retain reproducibility for the initial, uninstalled pilot receipt.
+        # New plans explicitly distinguish derived consistency from history.
+        if 'proof_grade' not in plan:
+            expected.pop('proof_grade')
+        if expected != plan:
             raise ValueError('declared goalkeeper consistency plan does not reproduce')
         return
     binding = plan['original_reparse_report']

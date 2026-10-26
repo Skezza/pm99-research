@@ -246,6 +246,11 @@ def updated_package(package, plan, nationality_plan=None, manager_plan=None, clu
         proof = next(p for p in result['proofs'] if p['id']=='proof-historical-roles-'+plan['season'])
         proof['grade']='reviewed-editorial'
         proof['covers']=['source-backed-broad-position-conservative-central-role']
+    if (plan.get('policy') == 'declared-and-native-G-preserved-fine-role-to-keeper-zero-v1'
+            and plan.get('proof_grade') == 'reviewed-editorial' and plan['updates']):
+        proof = next(p for p in result['proofs'] if p['id']=='proof-historical-roles-'+plan['season'])
+        proof['grade'] = 'reviewed-editorial'
+        proof['covers'] = ['declared-native-goalkeeper-position-consistency']
     package_v2.validate_package(result)
     return result
 
