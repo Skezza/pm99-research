@@ -1,5 +1,110 @@
 # PM99 worker handoff
 
+## v180 installed: Irish2017 country, ownership and opening XI — 2026-10-26 14:43 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+VERIFIED + INSTALLED: 2017-18 now `sourced-irish-2017-counterpart-corrections-20261026-r330a`,
+manifest `4d1e9dbbb678fd14b4fc628eac651f9f5f4b9afc363985ad50b3c1fddb6d2164`. Play: `./pm99-season play 2017-18`.
+Other25 preferred bindings and original2015 backup verified unchanged.
+Authoritative checklist `.local/consolidated-audit-20261009/release-delivery-checklist-v180.json`;
+ledger `parallel-rc-20261023/confirmed-critical-batch-20261026-v32.json`.
+23 groups / 20 delivered / 3 open. Not a completion percentage.
+Original17 baseline15 delivered/2 open. Original crossclub baseline2809 and
+110 disposed remain unchanged; four new country-correction counterpart cases
+are recorded separately and must not be counted as frozen dispositions without
+an ID crosswalk. Stale-label group now11/11 delivered, including1854/1857/1859.
+
+Evidence root `.local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/calendar-2017-irish-august-v1`. Final immutable inputs:
+`country-recipe-r329-v6/` and `counterpart-owner-evidence-v1/counterpart-recipe-r330-v2/`.
+A/SOURCE B for BOTH layers have identical complete recipes and game inventories.
+230 Irish people across12clubs have source/native DOB, nationality, role and
+10skill checks; original person responses independently replayed. Twelve source
+opening XIs, dated managers and labels installed. All230 Irish native records
+survive the subsequent four counterpart corrections unchanged.
+
+Four dated January2018 copies removed from incorrect2017 clubs, replaced by
+positively published August members: McMillan/StJohnstone→O'Halloran;
+McEleney/Oldham→Obadeyi; Delaney/Rochdale→Gillam; Ogbene/Brentford→Canós.
+Original API histories date the wrong arrivals1Jan/1Jan/9Jan/30Jan2018.
+Three person sources reused; Gillam472061 original API confirms DOB1998-10-04.
+Original passport names permit exact FIFA18 joins for Obadeyi/Gillam; preserve
+published canonical names, never infer full given names from initials.
+
+Native readback caught McMillan was actual startup7 despite opening-preserve
+recipe; he was NOT a reserve. Reparsed retained original Aug5 report2903700,
+restored StJohnstone's actual eleven and represented published bench. New
+O'Halloran is order15, RM/RW. Other22 StJohnstone records changed ONLY their
+startup byte; every other player field, all EQ/ENT/tactics/kits unchanged by
+this second layer. Source bench Gilchrist/Craig absent from bounded selection
+is explicitly recorded; no claim of exhaustive StJohnstone squad verification.
+Foreign tactic grids/shirt numbers remain declared native-preserve surfaces.
+
+Genuine profile evidence: r329 Schlingermann/Sligo and Gallagher/FinnHarps;
+r330 O'Halloran/StJohnstone and Canós/Brentford. `runtime/` and
+`counterpart-runtime/` contain original image, bitmap digits/age, input hashes
+and kit pixel proofs. Full-frame paths are in each native-runtime proof.
+OCR word-boundary false refusals for one-letter initials are adjudicated against
+original successful frames, never changed summaries or repeated captures.
+The initial Gallagher manual-digit transcription was rejected and retained;
+corrected enlarged-frame reading passes the independent decoder. No game bug.
+
+Source API406 was content negotiation: original requests with Acceptapplication/json
+succeeded. Do not repeat blocked403 pages. Final producers are frozen V3(country)
+and V2(counterpart); do not modify successful files bound in receipts.
+Latest narrow adapter regressions:50passed/2skipped in
+`country-counterpart-publisher-regression-v3.log`, including real230-player and
+mixed4-player/first-XI immutable-parent replay checks. Boundary/diff checks pass.
+
+NEXT: calendar-country actual-native comparison using existing correct-year
+source index (865 retained fixture pairs), starting outside the now-fixed Irish2017
+slice. 931 wrong-year source rows are candidates, not931 native bugs. Remaining
+release blockers/workstreams are calendar routing, Bath2000 sourced opening XI
+and kit mappings. Bath editorial-XI question remains pending; do not assume yes.
+Stock baseline327:58 installed,13 Nacional no-op exceptions,256 untreated.
+FinnHarps/Bray/Limerick have no same-club Irish factory carrier; preserve this
+fact when selecting kit sources. FinnHarps still displays inherited red/white,
+not a verified period kit. Do not mark the stock workstream closed.
+Luna quota remains unavailable; lead continues, no repeated failed spawns.
+Disk cleanup v5 freed2GiB compiled cache only, with ledger; runner clones are
+disposable, shared Wine prefix and evidence/current releases must be retained.
+
+
+## Advisory: editor safety checked against real player records — 2026-10-26 14:04 UTC
+
+Machine `joe-Vostro-3350`; source session `01a034fe-e683-7390-8e54-e1fce10b5446`.
+User requested an analysis of REA's potential editor/name-safety value. This is
+separate advisory work; season delivery priorities, preferred releases and RC
+counts are unchanged. No product fix was built or installed; no game was run.
+
+Read-only in-memory comparison used pinned factory JUG SHA256
+`95641e9d7fc0adb673045d43223d0ce7cfca531cd451f2f33e43425b05452844`,
+Guardiola34, Belsue70 and Kluivert1802. Name-only browser edits preserve the
+entire suffix and actual six roles for all three tested records. Separate
+editor defect `EDITOR-COMPACT-ROLE-001`: browser `playerBinary.ts:194` starts
+compact fine-role reads/writes at native name-end, whereas the corrected
+loader contract and Python writer use name-end+2. All three browser role-edit
+probes overwrite an opaque control and leave all actual roles unassigned when
+requesting role8. Browser's synthetic test uses the same incorrect offset.
+This is a reproduced source/data defect, not evidence that installed season
+games use this browser writer or are broken. Do not add it to the game RC count.
+
+Also reproduced: Kluivert -> A B -> original-name is refused by the browser;
+payload remains70bytes. This is conservative capacity loss, not proof of a
+crash or permission for arbitrary growth. Python already has an exact
+same-carrier shrink-inverse capacity recovery with trusted original input.
+Focused Python regression:28passed/1skipped. Browser suite unavailable locally
+(no node_modules); imported its actual TypeScript module directly with Node.
+
+Reproducer and source hashes:
+`.local/research-probes/rea-editor-safety-20261026/check_native_player_contracts.py`;
+`results.json` SHA256 `50a8964009f791021122d8117d7b185cda4522cefaee17196d7e1d6073f5db69`.
+No proprietary payload is retained in these outputs. REA was not installed or
+used; its proposed benefit is executable-derived reference contracts, not a
+claim of demonstrated REA performance. Proposed next editor work: correct
+browser role parity with real fixtures, expose trusted capacity recovery, then
+check name/role/profile/tactics consumers through the loader and runtime.
+
+
 ## FullRC milestone remains active; Irish identity join measured — 2026-10-26 11:42 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.

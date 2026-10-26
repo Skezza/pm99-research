@@ -54,10 +54,21 @@ def verify_recipe_mask(before, after, request):
     selected = set(request['club_carrier_ids'])
     oldclubs = {c['carrier_id']: c for c in before['clubs']}
     newclubs = {c['carrier_id']: c for c in after['clubs']}
-    if set(oldclubs) != set(newclubs) or selected != {cid for cid,c in oldclubs.items() if club_group(c)==request['country']}:
-        raise ValueError('country delta must select exactly the existing country club graph')
-    people = {pid for cid in selected for pid in oldclubs[cid]['roster_player_ids']}
-    managers = {oldclubs[cid]['manager_id'] for cid in selected}
+    players_only=request.get('selection_kind') in ('players-only','players-and-openings')
+    if request.get('selection_kind') not in (None,'players-only','players-and-openings'):
+        raise ValueError('unsupported reviewed recipe selection kind')
+    if set(oldclubs)!=set(newclubs):
+        raise ValueError('reviewed recipe cannot add or remove clubs')
+    if players_only:
+        people=set(request.get('player_ids',[]));managers=set()
+        oldplayers={a['id']:a for a in before['players']}
+        if (request.get('selection_kind')=='players-only' and selected) or not people or len(people)!=len(request['player_ids']) or not people<=oldplayers.keys():
+            raise ValueError('player-only selection needs unique existing players and no clubs')
+    else:
+        if selected != {cid for cid,c in oldclubs.items() if club_group(c)==request['country']}:
+            raise ValueError('country delta must select exactly the existing country club graph')
+        people={pid for cid in selected for pid in oldclubs[cid]['roster_player_ids']}
+        managers={oldclubs[cid]['manager_id'] for cid in selected}
     for key in before.keys()-{'package_id','players','clubs','managers','artifacts','proofs','sources','assets'}:
         if before[key] != after[key]:
             raise ValueError('closed package field changed: '+key)
@@ -67,15 +78,17 @@ def verify_recipe_mask(before, after, request):
         changed = {key for key in club.keys()|newclubs[cid].keys() if club.get(key)!=newclubs[cid].get(key)}
         if cid not in selected and changed:
             raise ValueError('unselected club row changed')
+        if players_only and changed-({'opening'} if cid in selected else set()):
+            raise ValueError('reviewed player/opening changes cannot alter club metadata or rosters')
         if cid in selected and changed-{'name','full_name','identity_id','proof','ground_policy','ground_name','opening','roster_player_ids'}:
             raise ValueError('country correction changed club links, tactics or fixed roster')
     newpeople=[pid for cid in selected for pid in newclubs[cid]['roster_player_ids']]
-    if len(newpeople)!=len(set(newpeople)) or set(newpeople)!=people:
+    if not players_only and (len(newpeople)!=len(set(newpeople)) or set(newpeople)!=people):
         raise ValueError('country roster exchange must preserve the complete unique carrier partition')
     for cid in selected:
         if len(oldclubs[cid]['roster_player_ids'])!=len(newclubs[cid]['roster_player_ids']):
             raise ValueError('country roster exchange cannot resize a club')
-    newowners={pid:newclubs[cid]['id'] for cid in selected for pid in newclubs[cid]['roster_player_ids']}
+    newowners=({pid:oldplayers[pid]['club_id'] for pid in people} if players_only else {pid:newclubs[cid]['id'] for cid in selected for pid in newclubs[cid]['roster_player_ids']})
     for section, allowed in [('players',people),('managers',managers)]:
         old={row['id']:row for row in before[section]};new={row['id']:row for row in after[section]}
         if set(old)!=set(new):
@@ -127,6 +140,33 @@ def _reconstruct(base, request):
     before=p.read_json_file(base.package_path);after=p.read_json_file(childpath)
     selected,people,managers=verify_recipe_mask(before,after,request)
     oldeq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes();oldjug=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes();oldent=(base.game_path/'DBDAT/ENT98030.FDI').read_bytes()
+    if request.get('selection_kind') in ('players-only','players-and-openings'):
+        from scripts import season_duplicate_ownership_delta_v1 as native_players
+        from scripts.season_opening_order_repair_v1 import native_owners
+        ownership=native_owners(oldeq);oldplayers={a['id']:a for a in before['players']}
+        clubs={c['id']:c for c in before['clubs']};entries={e.record_id:e for e in IndexedFDIFile.from_bytes(oldjug).entries}
+        for id in people:
+            actor=oldplayers[id];carrier=actor['carrier_id'];club=clubs[actor['club_id']]
+            if ownership.get(carrier)!={club['carrier_id']} or ((read_initial_order(entries[carrier].decode_payload(oldjug)).order<=11 or id in club.get('opening',{}).get('starting_xi_player_ids',[])) and club['carrier_id'] not in selected):
+                raise ValueError('reviewed reserve replacement needs exclusive ownership and a native nonstarter')
+        codes=compiler._extract_country_codes_from_textos(base.game_path/'DBDAT/TEXTOS.PKF')
+        jug=native_players.compile_players(oldjug,after,people,codes)
+        newclubs={c['carrier_id']:c for c in after['clubs']};newactors={a['id']:a for a in after['players']}
+        if set(request.get('complete_order_carriers',{}))!={str(cid) for cid in selected}:
+            raise ValueError('reviewed opening orders must cover exactly the selected clubs')
+        for cid in sorted(selected):
+            club=newclubs[cid];opening=club['opening'];order=opening['starting_xi_player_ids']+opening['substitute_player_ids'];order += [id for id in club['roster_player_ids'] if id not in set(order)]
+            carriers=[newactors[id]['carrier_id'] for id in order]
+            if carriers!=request['complete_order_carriers'][str(cid)] or len(carriers)!=len(set(carriers)) or set(order)!=set(club['roster_player_ids']):
+                raise ValueError('reviewed complete opening order differs from its visible recipe')
+            index={e.record_id:e for e in IndexedFDIFile.from_bytes(jug).entries};changes=[]
+            for position,pid in enumerate(carriers,1):
+                field=read_initial_order(index[pid].decode_payload(jug));changes.append(OrderReplacement(pid,field.name,field.order,position))
+            jug=patch_owned_mode1_complete_orders(jug,oldeq,club_record_id=cid,replacements=changes)
+        result=dict(package=after,jug=jug,eq=oldeq,ent=oldent,selected_players=sorted(oldplayers[id]['carrier_id'] for id in people),selected_clubs=sorted(selected),selected_managers=[])
+
+        _CACHE.clear();_CACHE[key]=copy.deepcopy(result)
+        return result
     rosters,owners=cohort._owner_rosters(oldeq)
     oldclubs={c['carrier_id']:c for c in before['clubs']};newclubs={c['carrier_id']:c for c in after['clubs']};newplayers={a['id']:a for a in after['players']}
     for cid in selected:
@@ -210,6 +250,10 @@ def _reconstruct(base, request):
 def prepare(base,input_path):
     path=paths._source_path(r.relative_workspace_path(Path(input_path).resolve()));request=p.read_json_file(path);_reconstruct(base,request)
     plan=dict(schema=SCHEMA,season=base.season,release_id=base.release_id,parent=request['parent'],source_input=dict(path=r.relative_workspace_path(path),sha256=r.sha256_file(path)),package_sha256=r.sha256_file(base.package_path),jug_sha256=r.sha256_file(base.game_path/'DBDAT/JUG98030.FDI'),scope='Reviewed country recipe only: fixed country carrier totals and club capacities, explicit selected-country carrier exchanges, selected facts/skills/names and startup orders; selected club/coach names, grounds and contextual tactics; all other native records, memberships and kits preserved.')
+    if request.get('selection_kind') in ('players-only','players-and-openings'):
+        plan['scope']='Reviewed source-bound reserve identities/facts/skills/names and their stale portraits only; complete country/club memberships, startup orders, all club/manager/tactics records, kits and unrelated actors preserved.'
+    if request.get('selection_kind')=='players-and-openings':
+        plan['scope']='Reviewed identity replacements and explicitly source-bound complete opening orders for selected existing clubs; EQ/ENT, roster memberships, tactics grids, kits and all unselected facts/skills/names preserved.'
     plan['transaction_id']=digest(packages.canonical_json_bytes(plan))[:24]
     return plan
 

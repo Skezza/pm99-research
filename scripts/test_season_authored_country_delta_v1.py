@@ -71,6 +71,42 @@ def test_country_carrier_exchange_preserves_sizes_and_explicit_owners(recipes):
         d.verify_recipe_mask(before,after,request)
 
 
+def test_player_only_selection_keeps_every_club_and_owner_closed(recipes):
+    before,after,request=recipes
+    after['clubs']=copy.deepcopy(before['clubs'])
+    request.update(selection_kind='players-only',club_carrier_ids=[],player_ids=['p1'])
+    after['players'][0]['name']='Correct identity'
+    assert d.verify_recipe_mask(before,after,request)==(set(),{'p1'},set())
+    after['players'][0]['club_id']='c2'
+    with pytest.raises(ValueError,match='owner'):
+        d.verify_recipe_mask(before,after,request)
+
+
+@pytest.mark.parametrize('mutation',[
+    lambda p:p['clubs'][0].update(name='Changed club'),
+    lambda p:p['managers'][0].update(name='Changed manager'),
+    lambda p:p['players'][1].update(name='Unselected identity'),
+])
+def test_player_only_scope_cannot_expand_to_clubs_or_other_people(recipes,mutation):
+    before,after,request=recipes
+    after['clubs']=copy.deepcopy(before['clubs'])
+    request.update(selection_kind='players-only',club_carrier_ids=[],player_ids=['p1'])
+    mutation(after)
+    with pytest.raises(ValueError):
+        d.verify_recipe_mask(before,after,request)
+
+
+def test_explicit_opening_selection_does_not_authorise_other_club_edits(recipes):
+    before,after,request=recipes
+    after['clubs']=copy.deepcopy(before['clubs'])
+    request.update(selection_kind='players-and-openings',club_carrier_ids=[1],player_ids=['p1'])
+    after['clubs'][0]['opening']={'starting_xi_player_ids':['p1']}
+    assert d.verify_recipe_mask(before,after,request)==({1},{'p1'},set())
+    after['clubs'][0]['name']='Unrelated metadata'
+    with pytest.raises(ValueError,match='metadata'):
+        d.verify_recipe_mask(before,after,request)
+
+
 def test_factory_compilation_cannot_drop_country_layer():
     with pytest.raises(ValueError,match='SOURCE'):
         d.reject_factory_recipe(dict(artifacts=[dict(id=d.PREFIX+'abc')]))
@@ -105,3 +141,35 @@ def test_native_country_rejects_mixed_preimages_and_unrelated_assets(native_coun
         d.apply_ent(b'unrelated archive',plan)
     with pytest.raises(ValueError,match='portrait archive'):
         d.apply_minifoto(b'unrelated archive',plan)
+
+
+@pytest.fixture(scope='module')
+def native_counterparts():
+    from scripts import season_release_registry_v1 as r, season_pipeline_v2 as p
+    path=r.ROOT/'.local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/calendar-2017-irish-august-v1/counterpart-owner-evidence-v1/counterpart-recipe-r330-v2/native-plan.json'
+    if not path.exists():
+        pytest.skip('retained counterpart corpus unavailable')
+    plan=p.read_json_file(path)
+    child=r.load_registered_release('2017-18','sourced-irish-2017-counterpart-corrections-20261026-r330a')
+    return child,plan,d._outputs(plan)
+
+
+def test_mixed_layout_corrections_replay_the_published_native_game(native_counterparts):
+    child,plan,out=native_counterparts
+    assert out['selected_players']==[9676,18068,27024,29914]
+    assert out['selected_clubs']==[1261]
+    assert out['selected_managers']==[]
+    for key,name in [('jug','JUG98030.FDI'),('eq','EQ98030.FDI'),('ent','ENT98030.FDI')]:
+        assert (child.game_path/'DBDAT'/name).read_bytes()==out[key]
+
+
+def test_native_starting_copy_is_removed_from_the_source_opening_xi(native_counterparts):
+    from app.fdi_indexed import IndexedFDIFile
+    from app.player_initial_order import read_initial_order
+    child,plan,out=native_counterparts
+    entries={e.record_id:e for e in IndexedFDIFile.from_bytes(out['jug']).entries}
+    assert read_initial_order(entries[29914].decode_payload(out['jug'])).order==15
+    club=next(c for c in out['package']['clubs'] if c['carrier_id']==1261)
+    assert len(club['opening']['starting_xi_player_ids'])==11
+    assert 'player-29914' not in club['opening']['starting_xi_player_ids']
+    assert 'player-29914' in club['opening']['substitute_player_ids']
