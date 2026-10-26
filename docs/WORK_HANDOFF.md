@@ -1,3 +1,20 @@
+## 2026-10-26 20:24 UTC — active English2023 ownership delivery
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Installed remains v184. See CURRENT_WORK.md active r398 heading. Source18cases:
+11confirmed wrong owners,7legitimate exceptions. Twelve selected actor slots,
+four source benches. A built, independent SOURCE B active; not installed.
+Native preflight12identities+44other order bytes only; firstXIs/EQ/ENT/kits exact.
+Code869d5b5 pushed;39focused tests+1realMode0 corpus regression pass.
+Root `.local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/english-2023-winter-ownership-v1/`.
+Build`build_twelve_slot_A_SOURCE_B_root_v4.py`; recipe-r398-v2. Capture waiter
+starts serial9 captures only after SOURCE proof. Next: inspect every original,
+verify hashes/native/source/pixels, then install_r398_verified_root_v1.py only
+if approvals pass. v185 script prepared, not run; no delivery credit yet.
+Luna quota exhausted; no competing runner. Disk7.3GiB/6GiB reserve. Original2015
+and other25 unchanged. Preserve older failed preflight logs; no game promoted
+from them. Continue10cohort/calendar/Bath/kits and final26 regression thereafter.
+
 # PM99 worker handoff
 
 ## INSTALLED v184: Portuguese2023 case closed — 2026-10-26 18:56 UTC

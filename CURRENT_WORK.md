@@ -1,5 +1,32 @@
 # PM99: current work
 
+## ACTIVE r398 ownership correction — 2026-10-26 20:18 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Installed authority remains v184/r397; no unverified game promoted.
+Evidence `parallel-rc-20261023/resume-qa/english-2023-winter-ownership-v1/`
+under `.local/consolidated-audit-20261009/`.
+Dated original transfer brackets + opening benches classify 18 cases: 11 confirmed
+wrong-owner reserves, seven legitimate exceptions. Prepared 12 identity slots
+(one legitimate Leicester capacity swap), four bench orders; all first XIs,
+EQ/ENT, tactics, managers and kits preserved. Five people retain current facts
+and ratings; seven sourced opening-bench additions declare FIFA23 past proxies.
+All selected old-occupant photos disabled; no replacement-photo claim.
+V1 build safely blocked before publication: Mode0 English clubs were sent to
+Mode1-only order writer. Small adapter dispatch now uses existing ownership-checked
+Mode0 order API. New immutable recipe-r398-v2 binds updated code; v1 retained.
+Active serial build controller `build_twelve_slot_A_SOURCE_B_root_v4.py`, log
+`build-r398-v4.log`; A built, SOURCE B running. Native preflight proves12 identity
+records plus44 other startup-order bytes only; original first XIs unchanged.
+Focused tests39pass plus real mixed Mode0 regression1pass. Code869d5b5 pushed.
+`wait_build_then_capture_root_v1.py` will start9 serial captures ONLY after SOURCE
+proof; log`capture-r398-v1.log`. Originals then require lead visual/hash review.
+Do not rerun controller if release A exists; inspect partial output first.
+No progress credit until actual delivery and validation. Existing counts below
+remain authoritative. Luna quota unavailable; lead integrating. Disk 7.3GiB,
+6GiB reserve. Completed disposable clones retired with cleanup ledger v9.
+
+
 ## INSTALLED v184: Portuguese2023 case closed — 2026-10-26 18:56 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
