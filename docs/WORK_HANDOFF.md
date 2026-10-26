@@ -6881,3 +6881,55 @@ scratch or claim all other clubs historically certified. Remaining calendar/Bath
 stock and consolidated final26 sweep persist. No new claim of complete RC readiness.
 No available workers due quota; lead continues deterministic batching. Normal
 boundary passes; ignored pre-existing `upstream/.local/` remains untouched.
+
+## INSTALLED v188: 34 English2019 opening-owner corrections — 2026-10-26 23:59 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Authority `.local/consolidated-audit-20261009/release-delivery-checklist-v188.json`
+and `parallel-rc-20261023/confirmed-critical-batch-20261026-v40.json`.
+Default2019 NOW `sourced-exeter2019-august-reserve-20261026-r406a`; full release
+validation PASS; `./pm99-season play 2019-20` points to this version. Other25
+bindings/native releases and original2015 backup exact. No unaffected rebuilds.
+Evidence root`resume-qa/english2019-bulk-january-owners-v1/`: completion-proof-v188,
+installed-full-release-validation, composed34-native-proof-v1,
+r406-original-runtime-proof-v1 JSONs. Both r405(33actors) and r406(1actor) full
+SOURCE recipe/inventory equal. Composed404->406 changes exactly34selected native
+player records, zero other actor/order bytes; club/manager/EQ/ENT/kit/tactics exact.
+Six original profiles +Stoke startup personally viewed; six kit-pixel comparisons
+pass. Cards show LosslEverton/G0, ClarkeBrentford/RB, EriksenTottenham/M, Bennett
+Derby/striker, SeymourExeter/striker and HusinStevenage/Afghanistan. Original OCR
+refusals retained and independently visually adjudicated, no altered frames.
+Bennett prior same-season biography/roles/skills frozen; target shirt-control
+policy explicit. Maxted existing24600 preserved; expanded exact published/FIFA
+aliases +DOB prevented a second Jonny/JonathanMaxted. Seymour source official
+Exeter2Augfull squad +Sky13AugcupXI, both original bodies retained. TargetFIFA20
+matched exact published birth dates; local TOG101/AFG155 mappings readback pass.
+Sourceful names preserved, only representable native display transliterated.
+All selected prior-person faces disabled; no optional-photo enrichment claimed.
+Across these2019batches,83selected actor records corrected,45dated ownership
+errors plus38Swiss-cohort actor replacements,1manager/2grounds/2factory kits.
+
+Counts:groups28total/24delivered/4open; source40/31/9; stock327/65installed/
+16false/246untreated. English1254fixedcensus`fixed-baseline-dispositions-after-r406-v1.json`:
+737priorbench/owner/protected,65legitimateAugust exceptions,40actual corrections,
+170mismatch candidates still requiring disposition,242unavailable NOTcleared.
+January candidate baseline97:40native corrections/57remaining candidates.
+No original2809/17 credit without exact semantic crosswalk. All26 RC NOT complete.
+Remaining nine source-cohort dependencies, calendar native repairs, Bath openingXI,
+stock candidates and consolidated final26 regression persist. No overall percent
+inferred from issue-group counts. Lead continuing; workers quota-unavailable.
+
+NEXT: investigate bounded2020Scottish label/manager chain, not fresh source scan.
+Current Kilmarnock1252 has Celtic2020cohort; Celtic1259 has DundeeUnited2020;
+Hamilton1258 has Kilmarnock2020. Factory IDs1252Celtic/1259DundeeUnited/1258Killie;
+original cache already covers all3 first fixtures/managers. Could be3 coupled
+metadata corrections, not a whole-new roster: validate current recipes/native
+firstXI against originals, complete target-name uniqueness, manager sole ownership,
+actual grounds and all3 kit preimages before deciding. Do not blindly rename
+one club and leave duplicates. Reuse Portuguese coupled identity tools, preserve
+all players. Other Scottish clubs are outside this bounded check; original
+world topology is11records, don't assume nonexistent1250/1257 slots. No Scottish
+native changes/builds yet. r406runner idle; disposable clone retained for now.
+Cleanup v15 evicted1.5GiB old unreferenced compiled Go cache with SHA ledger;
+all game/source evidence preserved. Free~9GiB; noPiarchive needed. Normal boundary
+passes; pre-existing ignored upstream/.local remains preserved.

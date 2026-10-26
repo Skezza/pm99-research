@@ -1,3 +1,100 @@
+## INSTALLED v188: 34 English2019 opening-owner corrections — 2026-10-26 23:59 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Authority `.local/consolidated-audit-20261009/release-delivery-checklist-v188.json`
+and `parallel-rc-20261023/confirmed-critical-batch-20261026-v40.json`.
+Default2019 NOW `sourced-exeter2019-august-reserve-20261026-r406a`; full release
+validation PASS; `./pm99-season play 2019-20` points to this version. Other25
+bindings/native releases and original2015 backup exact. No unaffected rebuilds.
+Evidence root`resume-qa/english2019-bulk-january-owners-v1/`: completion-proof-v188,
+installed-full-release-validation, composed34-native-proof-v1,
+r406-original-runtime-proof-v1 JSONs. Both r405(33actors) and r406(1actor) full
+SOURCE recipe/inventory equal. Composed404->406 changes exactly34selected native
+player records, zero other actor/order bytes; club/manager/EQ/ENT/kit/tactics exact.
+Six original profiles +Stoke startup personally viewed; six kit-pixel comparisons
+pass. Cards show LosslEverton/G0, ClarkeBrentford/RB, EriksenTottenham/M, Bennett
+Derby/striker, SeymourExeter/striker and HusinStevenage/Afghanistan. Original OCR
+refusals retained and independently visually adjudicated, no altered frames.
+Bennett prior same-season biography/roles/skills frozen; target shirt-control
+policy explicit. Maxted existing24600 preserved; expanded exact published/FIFA
+aliases +DOB prevented a second Jonny/JonathanMaxted. Seymour source official
+Exeter2Augfull squad +Sky13AugcupXI, both original bodies retained. TargetFIFA20
+matched exact published birth dates; local TOG101/AFG155 mappings readback pass.
+Sourceful names preserved, only representable native display transliterated.
+All selected prior-person faces disabled; no optional-photo enrichment claimed.
+Across these2019batches,83selected actor records corrected,45dated ownership
+errors plus38Swiss-cohort actor replacements,1manager/2grounds/2factory kits.
+
+Counts:groups28total/24delivered/4open; source40/31/9; stock327/65installed/
+16false/246untreated. English1254fixedcensus`fixed-baseline-dispositions-after-r406-v1.json`:
+737priorbench/owner/protected,65legitimateAugust exceptions,40actual corrections,
+170mismatch candidates still requiring disposition,242unavailable NOTcleared.
+January candidate baseline97:40native corrections/57remaining candidates.
+No original2809/17 credit without exact semantic crosswalk. All26 RC NOT complete.
+Remaining nine source-cohort dependencies, calendar native repairs, Bath openingXI,
+stock candidates and consolidated final26 regression persist. No overall percent
+inferred from issue-group counts. Lead continuing; workers quota-unavailable.
+
+NEXT: investigate bounded2020Scottish label/manager chain, not fresh source scan.
+Current Kilmarnock1252 has Celtic2020cohort; Celtic1259 has DundeeUnited2020;
+Hamilton1258 has Kilmarnock2020. Factory IDs1252Celtic/1259DundeeUnited/1258Killie;
+original cache already covers all3 first fixtures/managers. Could be3 coupled
+metadata corrections, not a whole-new roster: validate current recipes/native
+firstXI against originals, complete target-name uniqueness, manager sole ownership,
+actual grounds and all3 kit preimages before deciding. Do not blindly rename
+one club and leave duplicates. Reuse Portuguese coupled identity tools, preserve
+all players. Other Scottish clubs are outside this bounded check; original
+world topology is11records, don't assume nonexistent1250/1257 slots. No Scottish
+native changes/builds yet. r406runner idle; disposable clone retained for now.
+Cleanup v15 evicted1.5GiB old unreferenced compiled Go cache with SHA ledger;
+all game/source evidence preserved. Free~9GiB; noPiarchive needed. Normal boundary
+passes; pre-existing ignored upstream/.local remains preserved.
+
+## LIVE bulk2019 33 SOURCE-equal + Exeter source-backed successor — 2026-10-26 23:23 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Current installed/default remains v187 r404, full release-validated. Other25 and
+original2015 preserved. Public commit d5978ca pushed. Do NOT regenerate r399-r404.
+`resume-qa/english2019-bulk-january-owners-v1/recipe-r405-v5/` now BUILT+SOURCE-EQUAL
+`sourced-english2019-bulk-opening-owners-20261026-r405a`/b:33 confirmed January
+wrong-owner reserves,30clubs. Native readback all facts/roles/skills passes;
+zero other actor/order changes, EQ/ENT/tactics/kits exact. Not installed/runtime.
+Authoring v1-v4 safely failed prepublication (country spelling/dictionary; Maxted
+alias; frozen Bennett shirt policy). V5 passes, preserves Bennett biography/
+roles/skills from r403, target shirt-control lane declared preserved. Source
+Togo TOG native101, Afghanistan AFG native155 supported; no XXX invented.
+Expanded exact published/FIFA aliases +DOB guard correctly rejected inserting
+JonnyMaxted: existing JonathanMaxted24600 same1993-10-26. Original Exeter wrong
+owner24601Dickenson remains a bug; rejecting a replacement does NOT close it.
+
+Resolved Exeter positive member separately: official club2Aug2019full squad35Ben
+Seymour, original Sky13AugcupXI35BSeymour; both original HTTP200bodies retained.
+Exact original public person527794 DOB1999-04-16 +FIFA20 BenjaminMarkSeymour/ST.
+`resume-qa/exeter-2019-positive-August-reserve-v1/recipe-r406-v1` built native
+preflight passes; A/SOURCE builder active log`build-seymour-v1.log`. Finalcandidate
+`sourced-exeter2019-august-reserve-20261026-r406a`; NOT default/credited yet.
+Next check build-proof for r406, then run bulk root`capture_final_r406_root_v1.py`
+serial:Stoke +Lossl3920/Clarke9540/Eriksen9337/Bennett9706/Seymour24601. Shared
+Wine prefix,6GiB reserve; no concurrent builds or runner. View every original,
+verify exact input hashes/native/kit pixels, compose404->405->406 masks, promote
+with explicit ancestor chain, attest final startup/fullrelease, checkpointv188.
+Final34 owner corrections should close new34casegroup once, not count alias false
+candidate as an old-owner exception. Other57 January candidates still require
+review/correction;65August additions legitimately preserved via original endpoint
+and31Augustowner brackets. Original2809 baseline unchanged without crosswalk.
+
+Last completed counts v187 groups27/23/4;source40/31/9;stock327/65/16false/246.
+English1254fixedcensus afterr404:737priorverified/protected,65August exceptions,
+6actual corrections,204mismatchespending,242unavailable-not-cleared. After final
+34 validated, should be40actual corrections,170mismatchespending (not falsely
+cleared), same1254denominator. Full26 RC NOT complete:9sourcecohort dependencies,
+calendar native repairs, Bath openingXI, stock candidates and final26 regression
+persist. Do not give group-percentage as overall progress. Luna/all old workers
+quota-unavailable; root progressing, no waiting on dead workers.
+Cleanup v14 removes only completed disposable r404 runner game; preserves source,
+sealed release, all originals/sharedprefix. Free~8GiB before finalcapture. NoPi
+archive needed. Pre-existing ignored upstream/.local remains preserved.
+
 ## INSTALLED v187: Stoke/Millwall2019; next bulk34 evidence ready — 2026-10-26 23:02 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
