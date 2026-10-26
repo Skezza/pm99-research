@@ -1,5 +1,34 @@
 # PM99 worker handoff
 
+## Five goalkeeper cases delivered; remaining ownership fix queued — 2026-10-26 03:00 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Actualinstalled checkpoint v177: allfive English wrong-GK occurrences delivered.
+Wycombe2016 preferred `sourced-wycombe-handling-cap-20261026-r327e`, manifest
+35b7390284f04b708e172c6f7ad6c081d9d095e09400d71d4766acd48c7c8510.
+Brown18216 nowWycombe391, Jombati33277 broadD/Handling20. Othernine skills,
+other25 preferred games and original2015 preserved. Full SOURCE A/B at allthree
+stages, composite native scope/readback, profile age/digit/native proof, original
+lineup/sourceXI and installed playable validation passed. No unaffected rebuilds.
+Original `local_2016_17_jombati_lineup_r327e/screens/022_line_up_inspect.png`:
+Brown,Harriman,Pierre,Stewart,O'Nien,Jacobson,Wood,Bean,Weston,Thompson,Southwell;
+Jombati reserve18 DEF. Runner successTrue/exit0. ROOT inspected original.
+Completion `resume-qa/coupled-wrong-gk-opening-xi-v1/two-membership-crossmatches-root-v1/2016-17/completion-proof-v177.json`.
+Disposable Wycombe runnergame retired after inventory+idle proof,363659264bytes;
+registered game, sharedprefix and originalcaptures retained. Free~6.4GiB.
+
+Prior22groups now18delivered/4open (original17baseline14/3 unchanged). Newly
+confirmed Nardiello wrong-owner case is separate: v178 classification checkpoint
+records23groups/18delivered/5open, preserving22baseline and reason foraddition.
+No Nardiello game correction is claimed. Its raw chronology/independentidentity
+adjudication is under `resume-qa/nardiello-2007-opening-owner-v1/`.
+Exactnext action: source-bound reserve-only move9834 Barnsley331→QPR339, preserve
+identity/skills/bothXIs, keep main/English owner/order metadata aligned, then
+SOURCE/native/targeted original runner verification and narrow promotion.
+Do not rerun completedr325/r326/r327 stages or captures. Then Irish/calendar,
+Bath/GTF, stockkit corrections, and one consolidatedall26 regression. AllRCs
+NOT closed. Luna quota unavailable; lead has continued without workers.
+
 ## Barnsley2007 installed; Wycombe original lineup running — 2026-10-26 02:55 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
