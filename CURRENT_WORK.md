@@ -1,5 +1,51 @@
 # PM99: current work
 
+## 2003 installed and verified; next three keeper corrections building — 2026-10-26 00:42 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Authoritative installed checklist is now v174, ledger
+`parallel-rc-20261023/confirmed-critical-batch-20261026-v26.json`.
+Counts22 groups /17delivered /fiveopen unchanged; wrong-GK group now2/5 delivered,
+three remaining. Crossclub frozen110/2809 and original17 baseline14/3 unchanged.
+
+2003 preferred `sourced-westham-brentford-opening-fixes-20261025-r324a`, manifest
+57956bd92b10e202ff8e8f073750cf32c49da5f49b1ec8a0fd37943fe06e95ce.
+Installed through checked exact ancestry r275a→r324m2→r324p→r324h→r324a. Never use
+invalid oldr324m/n. FinalA/B SOURCE exact inventories/recipe bytes, composite native
+scope, two profile readbacks/digit+age checks, actual WestHam lineup and playable
+validation all passed. James→WestHam, Smith→Brentford, Defoe→WestHam; sourceXIs
+correct. Talbot M/Handling20; duplicate13213→Bywater; genuineRobLee12523 retained.
+All other25 preferred bindings and original2015 verified unchanged.
+Completion `resume-qa/westham-brentford-r324-root-delivery-v1/completion-proof-v174.json`.
+Genuine lineup `local_2003_04_r324a_westham_lineup_v2/screens/022_line_up_inspect.png`:
+James,Dailly,Ferdinand,Repka,Brevett,Lee,Etherington,Hutchison,Garcia,Defoe,Mellor;
+Bywater bench16,Carrick reserve17. Original review and successful transport under
+that packet's `runtime/`. Kit red/white mismatch remains OPEN, not pixel encoding.
+
+Retired only the completed disposable r324 runner game after source inventory,
+input evidence, no active process/container references checked; prefix/screens
+and registered release retained. Ledger in packet `retired-disposable-runner-copy-v1.json`;
+recovered~345MiB. Prior65-directory Pi archive completed with all3312 files verified;
+restore command in cleanup ledger. Free~6.5GiB; keep six-GiB guard unchanged.
+
+Source verifier code/docs/tests d41c2f1 pushed to GitHub. Grid/parser18tests and
+classic2003 golden1test passed. All three subsequent membership preflights passed.
+Bristol2004 r325a membership BUILT, NOT installed; SOURCEr325b running log
+`root-bristol-membership-SOURCE-B-v1.log`. Barnsley2007 r326a publication running,
+NOT installed. Wycombe2016 r327a membership publication PLAN prepared, not built.
+All under `resume-qa/coupled-wrong-gk-opening-xi-v1/two-membership-crossmatches-root-v1/`.
+At most two independent source/build jobs; no runner active now. Do not rerun
+completed prepare/build stages; inspect locators and proof files first.
+
+Exact next actions: finish Bristol membership SOURCE; run narrow broadA/B then
+HandlingA/B via `build_three_outfield_repairs_root_v1.py` (r325c/d thenr325e/f).
+Same Barnsley r326c/d/e/f and Wycombe r327c/d/e/f after membershipA/B. Prepared
+private driver uses existing annual-source and quality APIs; no new writer.
+Then composite scope/source/native checks, serial genuine profiles/lineups,
+ancestry promotion and group5 closure only afterallfive occurrences delivered.
+Continue Irish joint allocation, Bath/GTF, stock-kit cases afterthese. Luna quota
+remains exhausted; lead continues. No final26RC completion claim yet.
+
 ## Three keeper membership preflights passed; runtime capture active — 2026-10-26 00:34 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
