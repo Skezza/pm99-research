@@ -1,5 +1,55 @@
 # PM99 worker handoff
 
+## Active milestone: close all26RCs, not another isolated repair — 2026-10-26 11:37 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+User explicitly requests remaining gaps and sustained delivery until allRCs ready.
+Authoritative installed v179 /23groups19delivered4open; this is NOT83percent
+completion because groups differ greatly in scope. Current26 playable releases
+exist; finalRC assessment/consolidated regression remains unfinished.
+
+Bounded remaining delivery checklist:
+1. Irish2017 jointcountry repair:12published AugustXIs retained,11clubs18matchday
+   people andDundalk14. Complete datedDundalk/reserve evidence as actualcapacities
+   require, annualproviderID/DOB joins,12cohort/carrier allocation and datedmanager
+   proof. Close three knownlabelcases1854/1857/1859 together withcohorts, notblind
+   renames. Preserveglobalownership andothercountries, deliveractualgame +SOURCE/
+   native/originalrunner proof. Exactnextaction: sourceidentity/capacity crossmatch
+   using first-august-published-members-v1.json and correct2017annualsprovider2016.
+2. Calendar routing cascade: BRA1,IR1,NO1,SE1. Collectorfixed;931wrong-year source
+   rows are reviewinputs, not931provennativebugs. Reuse865correctsource pairs from
+   calendar-source-reuse-index-v3; compareactualcurrentgames, correctonlyconfirmed
+   wrong-season country/club slices. Russia65early+7transition ambiguouscasesstay
+   separate and mustbe explicitlydisposed/blocking ifserious; noautomaticyearflip.
+3. Bath2000/GTF:3301 wrongwholecohort, keepgenuineGTFonNorthwich10821 andcorrect
+   realTranmere348. BathAugustmembership/managerPaulBodin havepositiveevidence,
+   completefirstXI unresolved. Need datedXI/cup/friendly or furtherpositiveoriginal
+   evidence, notinventedfirstXI or fullseasonappearances treatedasAugustsquad.
+   Remainsgenuineblocker ifrequiredsourcecannotbeestablished.
+4. Stockkit mapping cascade:327originalcandidates,58installed,13Nacionalno-op
+   falsepositivesalreadydisposed. Thus256otheroriginalcandidatesremainuntreated;
+   269notdelivered includes13legitimate no-ops and isnot269confirmedbugs. Two
+   additionalEnglish2003 findings WestHam/Brentford outside327baseline: largewrong
+   own-slotstock,compactalreadymodified; needguardedEnglishfivearchive admission,
+   notbypassordinaryownstockprotection. Protectperiodsourcedart, useonlysame-club/
+   country approvedfallback, proveallbitmaprecords andtargetedactualUIrendering.
+5. Aftercorrections: ONEconsolidatedall26 regression: preferredrecipe/native/
+   inventory/launchbindings, validreproducibilityproofs, changed-data scope and
+   relevantgenuine runtimeevidence. ReusevalidunchangedSOURCE/runtimeproofs; no
+   unaffectedregeneration. Finalperseasonstatus/playcommands andexceptions handoff.
+
+NotadditionalRCrequirements: exhaustivehistoryreverification, portraitcoverage,
+neweditorwork or1990generationtest. Missingportraits/genuinelyunavailable secondary
+facts/provenunsupportednationalitycodes remainallowed documentedgaps. Newlyproven
+seriousidentity/ownership/visible/runtime bugsjoincriticalchecklist withstableID
+and explicitdenominatoraddition. Unreviewedcrossclubcandidatesare notautomaticbugs
+or a claimofclearance (frozendispositions110of2809unchanged). Modelagreement/tests
+are nothistoricalproof. Do notclaimallRCsreadywhilegenuineblockersremain.
+
+Continuebatcheswithoutaskingproceed. Do notuseanotherone-playerdeliveryas the
+endofthismilestone. Lunaquotaunavailable; leadmustcontinuewithoutwaitingforworkers.
+Preservecurrentgames/original2015/sourcecaches; monitorfree space, keepreserveguard.
+
 ## Irish August source extraction complete; Nardiello runner copy retired — 2026-10-26 07:58 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
