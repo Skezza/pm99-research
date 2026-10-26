@@ -1,5 +1,45 @@
 # PM99 worker handoff
 
+## INSTALLED v184: Portuguese2023 case closed — 2026-10-26 18:56 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Authority:`.local/consolidated-audit-20261009/release-delivery-checklist-v184.json`,
+`parallel-rc-20261023/confirmed-critical-batch-20261026-v36.json`.
+All26 current keeper repairs remain delivered.2023 now
+`sourced-portuguese-coupled-label-managers-20261026-r397a` (other25 unchanged).
+Two club labels +3dated coaches delivered, players/tactics/ratings/kit/photo bytes
+unchanged. Root`resume-qa/portuguese-2023-coupled-source-review-v1/`:
+`completion-proof-v184.json`, `installed-full-release-validation.json`,
+`r397-final-native-scope-proof-v1.json`,3`club*-original-profile-proof.json`.
+All3 original cards +Stoke startup viewed; native IDs/input hashes/source-XI IDs
+and actual kit pixels verified (maxerror0). Boavista/RioAve ORIGINAL OCR failures
+preserved unchanged; accents triggered name-token failure. Original frames show
+correct people/clubs, no crash/modal, independent checks pass. No recapture.
+V1 controller stopped after Boavista; only previously missing RioAve captured
+by`resume_only_rioave_root_v1.py`. All controllers finished; runner idle.
+
+Source-cohort cases39/29delivered/10pending (new616 counterpart added and closed
+with existing606case). Arouca602 coach was required dependency, not a new group.
+Kit63installed,16documented false positives,248untreated; new Boavista2023case
+was own factory bitmap in all3archives: label fix, zero kit-copy credit.
+Groups24/20delivered/4open. Original17=15/2 and2809/110/2699 preserved.
+Fresh full release validation also passes2009/2025 with genuine startup attests.
+All26 final consolidated runtime sweep remains pending; not allRC closed.
+
+NEXT: dated-source ownership corrections prompted by ORIGINAL2023Stoke frame:
+carrier10747DanielIversen (Jan2024Stoke loan) and10762NiallEnnis (Feb2024arrival).
+JUG identical throughout r393→r397: these PRE-EXISTED the manager/label repair.
+BBC dated sources located; primary official Iversen URL found through Wikipedia,
+body capture/adjudication still needed. Also inspect coupled Gayle/Derby and
+Tezgel/MKDons before any identity choice; no new corrections yet. Use original
+opening bench sources, preserve firstXI, actual people/counterpart ownership,
+avoid creating duplicate people or blindly clearing slots.10cohort dependencies,
+calendar/Bath/kits remain. Vaduz source discoveries below remain research only.
+Disk~6.6GiB; completed2025/r397 disposable runner clones can be retired after
+checking current sealed sources/original proofs. Keep shared prefix and sealed
+games. Luna quota unavailable. No active builds/captures after v184.
+
+
 ## INSTALLED v183: 26 keeper repairs +12 label cases — 2026-10-26 18:28 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
