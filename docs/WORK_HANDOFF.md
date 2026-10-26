@@ -1,5 +1,38 @@
 # PM99 worker handoff
 
+## Irish August source extraction complete; Nardiello runner copy retired — 2026-10-26 07:58 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Installed remains v179 /23groups19delivered4open. Nardiellor328a installed+verified;
+SOURCE/runtime/install allcomplete. Disposablecopiedprofilegame retired after
+registeredinventory, originalprofileproof and noactivecontainer/FD/cwd/exe checks;
+361357312bytesrecovered. Originalevidence/sharedWineprefix/sourcegame kept.
+Receipt `resume-qa/nardiello-2007-opening-owner-v1/retired-disposable-runner-copy-v1.json`.
+Do not reruncompletedbuilds/captures or delete sharedprefix.
+
+NewSOURCEONLY milestone: all12IR1 clubs have positivelypublished firstAugust2017
+startingXI from retainedRSSSF;11clubs18matchdaypeople, Dundalk14reportedpeople.
+Private deterministicextractor and exactrawpublishedrows retainedunder
+`resume-qa/calendar-2017-irish-august-v1/extract_first_august_members_root_v1.py`
+and `first-august-published-members-v1.json`. No malformedrowsrefused inthese12.
+No birthdays, roles, formation, manager or nativecarrier inferred by extraction.
+Dundalk requiresadditionalAugustsource beforecapacityfit;14isnotafullsquad.
+UseofficialStPatsAug5report as independentcrosscheck (publishedaliases maydiffer,
+e.g.MickLeahyvsMichaelLeahy; do notsilentlyaliasidentities). ReadrawHTMLauthority,
+not searchsnippets. These inputsdo NOT closeanygameissue.
+
+EXACTNEXT: join12sourceXIs/benches to correctprovider2016/IR1 rawannuals(title2017),
+fullsourceDOB/providerIDs; jointlymap12native1851–1862cohorts, preserveothercountry
+actors/owners. Existingmode1openingcohortwriter supportsfixedslotcorrections;
+reuseit ratherthan freshworldbuild or three blindlabelchanges. Sourceplanmust
+explicitlyresolveglobalexistingidentities and source-supportedreserves to fill
+actualfixedcapacities18–23. Reusecached annuals/transferhistories first. Correct
+managers fromdatedsources; absentsecondaryfacts/portraits allowed documentedgaps.
+Need scopedrecipe/nativecorrection, SOURCEreplay, genuineaffectedrunner evidence,
+thenpromotion. Remainingcalendarcountrycasesnot931confirmednativebugs. Otheropen
+groupsBath/GTF,stockkits. Oneconsolidatedall26regressiononlyaftercorrections.
+Lunaquotaunavailable; leadcontinues. NoallRCcompletionclaim.
+
 ## Nardiello ownership installed and verified — 2026-10-26 07:54 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
