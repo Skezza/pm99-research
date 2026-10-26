@@ -1,3 +1,49 @@
+## INSTALLED v185: English2023 ownership corrections — 2026-10-26 20:52 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Authority `.local/consolidated-audit-20261009/release-delivery-checklist-v185.json`
+and `parallel-rc-20261023/confirmed-critical-batch-20261026-v37.json`.
+2023 preferred `sourced-english-opening-ownership-20261026-r398a`; other25 exact.
+Stable play command `./pm99-season play 2023-24`. Original2015 backup reverified.
+Root `resume-qa/english-2023-winter-ownership-v1/`: `completion-proof-v185.json`,
+`installed-full-release-validation.json`, `recipe-r398-v2/build-proof.json`,
+`recipe-r398-v2/A-native-proof-v2.json`, `original-runtime-proof-v1.json`.
+Eleven confirmed winter wrong-owner reserves corrected with12 actor replacements
+(one legitimate Leicester capacity selection); seven legitimate exceptions kept.
+Five existing people retain their abilities; seven sourced opening-bench people
+use declared FIFA23 proxies. FirstXIs/EQ/ENT/tactics/kits exact;44 other records
+change startup-order byte only. V1 native proof blanket byte-identical label was
+imprecise; V2 explicitly corrects that metadata, all game bytes unchanged.
+Selected old faces disabled; no new-photo claim. Gayle secondary DOB conflict
+retained explicitly, not newly certified. Nine original frames viewed;8profile
+kit pixel/input/native checks and1startup verified. Full installed release PASS.
+Mode0 writer dispatch code869d5b5 pushed;39focused+1real corpus tests pass.
+Groups25/21delivered/4open (new11case group added+closed), sourcecohort39/29/10,
+original17=15/2 and2809/110/2699 unchanged. Not allRC complete.
+
+NEXT ACTIVE: `resume-qa/vaduz-2019-duplicate-cohort-backfill-v1/`.
+`stgallen-22-positive-opening-members-v1.json`: actual18first-fixture members
++4positive dated transfer brackets. `vaduz-16-positive-opening-source-plan-v2.json`:
+originalJuly21XI+4usedsubs+datedbackup keeperOspelt. Original LFV German DOB fields
+verified in`two-LFV-literal-birth-fields-verified-v2.json`. Source pool38v2 resolves
+missing Kutesa role/nation with original2019Reims article and explicit single-case
+FIFA spelling crosswalk; no generic fuzzy matcher. Draft `recipe-r399-v3` PREPARED,
+NOT BUILT/INSTALLED, current2019r389 parent. Country source4-3-3StGallen, explicit
+editorial3-4-2-1Vaduz;38actors,26same-carrier capacity recoveries, optional photos
+cleared, other clubs held exact. Need native/source proof before any promotion.
+`source38-outside-native-name-DOB-collision-review-v1.json` confirms coupled
+Middlesbrough10057Stojanovic sameperson. Primary dated arrival16Jan2020; resolve
+that counterpart before promotion. Outside Besiktas VictorRuiz is DOB-distinct
+namesake (1989vs1993), preserve. Middlesbrough missing opening benchPears/Bola/
+Browne, plus retained actualAugust13cupWalker/Liddle can fill Jan arrivals if
+positive identity/date proofs completed. Original SKY cup source located, not yet
+body-captured. Do not classify all unreviewed annual players as confirmed bugs.
+Vaduz kit mapping needs separate approved factory1805→1109; keepStGallen1105.
+No active runner/build after English batch. Disk6.8GiB/6GiB reserve. Luna quota
+exhausted; lead continues. Existing calendar/Bath/kit/10cohort queues +final26
+runtime sweep remain. Preserve all originals and source parents; no rerun of
+English delivery or captures needed.
+
 ## 2026-10-26 20:24 UTC — active English2023 ownership delivery
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
