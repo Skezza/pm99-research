@@ -6832,3 +6832,52 @@ sealedrelease and sharedprefix retained;7.8GiB free. Public normal boundary pass
 `--check-local` exposes pre-existing ignored `upstream/.local/season-2015-16`;
 left intact because it may be legacy recovery data. No tracked boundary violation.
 All worker models quota-unavailable; lead using deterministic scripts, not waiting.
+
+## INSTALLED v187: Stoke/Millwall2019; next bulk34 evidence ready — 2026-10-26 23:02 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Authority `.local/consolidated-audit-20261009/release-delivery-checklist-v187.json`
+and `parallel-rc-20261023/confirmed-critical-batch-20261026-v39.json`.
+Default2019 NOW `sourced-stoke-millwall-opening2019-20261026-r404a`; full release
+validation PASS; `./pm99-season play 2019-20`. Other25 and original2015 exact.
+Root `resume-qa/stoke-millwall-2019-opening-ownership-v1/`: completion-proof-v187,
+installed-full-release-validation, r404-original-runtime-proof-v1 JSONs. Four
+original cards and startup personally viewed, four kit pixel comparisons maxerror0.
+Federici/Mitchell wrapper OCR refusals retained with actual original summaries,
+visually correct names/clubs. Correct Federici/Woods August Stoke bench shown;
+Bialkowski/Mitchell at Millwall. Existing Woods skills exact, firstXI/EQ/ENT/kits/
+tactics unchanged;21 other startup-order bytes only. Mitchell central role/skills
+explicit editorial; secondary physicals not independently dated. Bialkowski source
+Unicode spelling preserved, native CP1252 Bialkowski transliteration explicit.
+V1 native preflight safely refused that unrepresentable display name before any
+publication; v2 proper native display passed. No SDK/guard bypass or rebuild of
+completed releases. Both A and SOURCE full recipe/inventory equal.
+
+Groups27/23delivered/4open; source cohorts40/31/9; stock327/65installed/16false/
+246untreated. Original17/2809 baselines unchanged. English1254 reserve census
+`fixed-baseline-dispositions-after-r404-v1.json`:737 prior benches/owners/protected,
+65 positive August-owner exceptions,6 actual corrections,204 mismatches needing
+further disposition,242 unavailable NOTcleared. Owner-date exceptions do not
+certify all player facts or physical loan copies.
+NEXT bulk proposal `english2019-reserve-ownership-fixed-census-v1/`
+`bulk-clean-first-bench-facts-v1.json`:34 source-confirmed January wrong-owner
+reserves in31clubs, replacement people all original first benches, unique published
+DOB/FIFA20 identities, no known outside copies. Planning/authoring ONLY, not built,
+not installed, not counted as34 delivered. Need retain existing MasonBennett skills/
+facts from r403 carrier10085 when returning him to Derby (removed wrong Millwall
+copy in r404); source plan may otherwise rerate him unnecessarily. Other proposed
+people must be checked against retained r402/r403 for same-season frozen abilities.
+Use new players-only authored delta, preserve firstXI/bench orders/managers/kits/
+tactics, clear selected old faces, guard new collisions and every native field.
+After A/SOURCE proof, targeted serial startup +representative profiles and promote.
+No concurrent runner/build. Current runner idle; disposable r404 game may be
+retired after preserved proofs to recover~347MiB; sealed release and frames stay.
+
+Existing nine source-cohort dependencies may need counterparts, not9simple
+renames. Read-only2020 actual shows Kilmarnock1252 Celtic cohort; existingCeltic1259
+has DundeeUnited-looking people, so no blind rename. Woking3320 old/mixed, Dover3321
+actual Woking cohort. Source-review artifacts already bound; do not restart from
+scratch or claim all other clubs historically certified. Remaining calendar/Bath/
+stock and consolidated final26 sweep persist. No new claim of complete RC readiness.
+No available workers due quota; lead continues deterministic batching. Normal
+boundary passes; ignored pre-existing `upstream/.local/` remains untouched.
