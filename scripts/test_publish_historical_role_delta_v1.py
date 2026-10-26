@@ -52,9 +52,30 @@ def test_derived_keeper_proof_is_labelled_editorial_consistency():
                 proof_grade='reviewed-editorial')
     plan['updates'][0]['fine_roles'] = [0]
     result = publish.updated_package(package, plan)
-    proof = next(p for p in result['proofs'] if p['id']=='proof-historical-roles-2014-15')
+    proof = next(p for p in result['proofs'] if p['id']==publish.role_input_names(plan)[1])
     assert proof['grade'] == 'reviewed-editorial'
     assert proof['covers'] == ['declared-native-goalkeeper-position-consistency']
+
+
+def test_keeper_consistency_preserves_previous_role_provenance_and_edits():
+    parent = publish.updated_package(_native_package(), plan_for(_native_package()))
+    player = parent['players'][0]
+    player['facts']['fine_roles'] = {'policy': 'preserve-existing-mode1'}
+    plan = {'season': '2014-15',
+            'policy': 'declared-and-native-G-preserved-fine-role-to-keeper-zero-v1',
+            'proof_grade': 'reviewed-editorial', 'updates': [{
+                'player_id': player['id'], 'carrier_id': player['carrier_id'],
+                'name': player['name'], 'birth_date': player['facts']['birth_date'],
+                'fine_roles': [0]}], 'unresolved': []}
+    before = copy.deepcopy(parent)
+    result = publish.updated_package(parent, plan)
+    assert parent == before
+    assert result['players'][1] == before['players'][1]
+    assert all(a in result['artifacts'] for a in before['artifacts'])
+    assert all(p in result['proofs'] for p in before['proofs'])
+    identity, _, filename = publish.role_input_names(plan)
+    assert identity != 'historical-role-plan-2014-15'
+    assert filename.startswith('role-update-') and filename.endswith('.json')
 
 
 @pytest.mark.parametrize('canonical,surname', [('Luigi Del Neri', 'Del Neri'),

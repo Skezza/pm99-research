@@ -47,6 +47,8 @@ abilities, biography, names, ownership, orders, tactics, kits and photographs.
 SOURCE recomputes the exact plan from the immutable parent, rejects unresolved
 or mixed transactions, and compares the full game inventory and recipe. Genuine
 runner evidence must establish the visible keeper label before installation.
+New consistency receipts use hash-namespaced input filenames and proof IDs,
+preserving earlier role corrections and their source artifacts in the recipe.
 
 Before installation, check full recipe validity, exact native changes,
 unselected records and file inventories, an actual independent SOURCE build,

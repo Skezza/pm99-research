@@ -145,6 +145,20 @@ def _validate_manager_display_projection(manager_plan):
             raise ValueError('manager family-name projection does not match the published surname')
 
 
+def role_input_names(plan):
+    """Keep earlier role authority when adding a new consistency layer."""
+    identity = 'historical-role-plan-' + plan['season']
+    proof_id = 'proof-historical-roles-' + plan['season']
+    filename = 'role-plan.json'
+    if (plan.get('policy') == 'declared-and-native-G-preserved-fine-role-to-keeper-zero-v1'
+            and plan.get('proof_grade') == 'reviewed-editorial'):
+        digest = hashlib.sha256(pipeline.canonical_json_bytes(plan)).hexdigest()
+        identity += '-' + digest[:16]
+        proof_id += '-' + digest[:16]
+        filename = 'role-update-' + digest + '.json'
+    return identity, proof_id, filename
+
+
 def updated_package(package, plan, nationality_plan=None, manager_plan=None, club_plan=None):
     result = copy.deepcopy(package)
     by_id = {p['id']: p for p in result['players']}
@@ -234,21 +248,20 @@ def updated_package(package, plan, nationality_plan=None, manager_plan=None, clu
             'artifact_id': identity, 'covers': ['unanimous-authored-source-club-labels']}], key=lambda p: p['id'])
     # Detailed provenance is per player in this immutable, hash-bound artifact.
     if plan['updates']:
-        identity = 'historical-role-plan-' + plan['season']
+        identity, proof_id, role_filename = role_input_names(plan)
         descriptor = {'id': identity, 'kind': 'season-input',
                       'sha256': hashlib.sha256(pipeline.canonical_json_bytes(plan)).hexdigest(),
-                      'media_type': 'application/json', 'relative_path': 'role-plan.json'}
+                      'media_type': 'application/json', 'relative_path': role_filename}
         result['artifacts'] = sorted([a for a in result['artifacts'] if a['id'] != identity] + [descriptor], key=lambda a: a['id'])
-        proof_id = 'proof-historical-roles-' + plan['season']
         result['proofs'] = sorted([p for p in result['proofs'] if p['id'] != proof_id] + [
             {'id': proof_id, 'grade': 'source-receipt', 'artifact_id': identity, 'covers': ['source-backed-detailed-role-mapping']}], key=lambda p: p['id'])
     if plan.get('policy') == 'original-TFF-first-XI-broad-position-conservative-compatible-role-v1' and plan['updates']:
-        proof = next(p for p in result['proofs'] if p['id']=='proof-historical-roles-'+plan['season'])
+        proof = next(p for p in result['proofs'] if p['id']==role_input_names(plan)[1])
         proof['grade']='reviewed-editorial'
         proof['covers']=['source-backed-broad-position-conservative-central-role']
     if (plan.get('policy') == 'declared-and-native-G-preserved-fine-role-to-keeper-zero-v1'
             and plan.get('proof_grade') == 'reviewed-editorial' and plan['updates']):
-        proof = next(p for p in result['proofs'] if p['id']=='proof-historical-roles-'+plan['season'])
+        proof = next(p for p in result['proofs'] if p['id']==role_input_names(plan)[1])
         proof['grade'] = 'reviewed-editorial'
         proof['covers'] = ['declared-native-goalkeeper-position-consistency']
     package_v2.validate_package(result)
@@ -1000,7 +1013,7 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             raise ValueError('repaired English recipe artifact hash differs')
     # A visibility/ownership/no-op delta is not a new historical role source.
     # Keep the inherited role-plan filename and proof bound to its original.
-    saved_plan = workspace / ('role-plan.json' if plan['updates'] else 'role-delta-input.json')
+    saved_plan = workspace / (role_input_names(plan)[2] if plan['updates'] else 'role-delta-input.json')
     if not prepared:
         pipeline.write_canonical_json(saved_plan, plan)
     if visibility_plan is not None:
