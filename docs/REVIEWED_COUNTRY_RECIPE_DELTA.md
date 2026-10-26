@@ -19,6 +19,15 @@ or expand beyond proven capacity. Unrelated native records, recipes and kits are
 preserved. Replaced identities can have stale portraits disabled; unchanged
 portrait declarations remain intact.
 
+For a repair confined to particular clubs, `selection_kind: "clubs"` accepts an
+explicit nonempty subset of existing clubs in one country. The same fixed-size
+roster, original-source and native-record guards apply to that subset. All other
+clubs and their players and coaches stay closed, including clubs in the same
+country. A coach shared with an unselected club is refused. This permits a bad
+roster to be replaced without regenerating the rest of its country's data;
+it does not approve the historical membership or resolve duplicate identities
+on its own. Review those source and ownership decisions before publication.
+
 The explicit `players-only` selection is narrower: only the listed existing
 reserve identities can change. Every club, manager, ownership link, startup
 order and tactics record stays closed. Native ownership and nonstarter status

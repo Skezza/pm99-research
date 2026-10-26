@@ -71,6 +71,49 @@ def test_country_carrier_exchange_preserves_sizes_and_explicit_owners(recipes):
         d.verify_recipe_mask(before,after,request)
 
 
+def test_explicit_club_selection_keeps_other_same_country_clubs_closed(recipes):
+    before,after,request=recipes
+    before['clubs'][1]['country']=after['clubs'][1]['country']='test'
+    with pytest.raises(ValueError,match='exactly'):
+        d.verify_recipe_mask(before,after,request)
+    request['selection_kind']='clubs'
+    assert d.verify_recipe_mask(before,after,request)==({1},{'p1'},{'m1'})
+    after['players'][1]['name']='Unrelated player'
+    with pytest.raises(ValueError,match='unselected'):
+        d.verify_recipe_mask(before,after,request)
+
+
+@pytest.mark.parametrize('selected', [[],[1,1],[1,2],[99]])
+def test_club_selection_refuses_empty_repeated_cross_country_or_unknown_clubs(recipes,selected):
+    before,after,request=recipes
+    request.update(selection_kind='clubs',club_carrier_ids=selected)
+    with pytest.raises(ValueError,match='unique existing clubs'):
+        d.verify_recipe_mask(before,after,request)
+
+
+def test_club_slice_cannot_modify_a_manager_owned_outside_the_slice(recipes):
+    before,after,request=recipes
+    request['selection_kind']='clubs'
+    before['clubs'][1]['manager_id']=after['clubs'][1]['manager_id']='m1'
+    with pytest.raises(ValueError,match='shared with an unselected club'):
+        d.verify_recipe_mask(before,after,request)
+
+
+@pytest.mark.parametrize('mutation', [
+    lambda p:p['clubs'][1].update(name='Unselected same-country club'),
+    lambda p:p['managers'][1].update(name='Unselected same-country coach'),
+    lambda p:p['assets']['portraits'][1].update(status='native-no-photo'),
+    lambda p:p['clubs'][0]['roster_player_ids'].append('p2'),
+])
+def test_club_slice_does_not_weaken_closed_graph_or_asset_guards(recipes,mutation):
+    before,after,request=recipes
+    before['clubs'][1]['country']=after['clubs'][1]['country']='test'
+    request['selection_kind']='clubs'
+    mutation(after)
+    with pytest.raises(ValueError):
+        d.verify_recipe_mask(before,after,request)
+
+
 def test_player_only_selection_keeps_every_club_and_owner_closed(recipes):
     before,after,request=recipes
     after['clubs']=copy.deepcopy(before['clubs'])

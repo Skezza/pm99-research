@@ -55,7 +55,7 @@ def verify_recipe_mask(before, after, request):
     oldclubs = {c['carrier_id']: c for c in before['clubs']}
     newclubs = {c['carrier_id']: c for c in after['clubs']}
     players_only=request.get('selection_kind') in ('players-only','players-and-openings')
-    if request.get('selection_kind') not in (None,'players-only','players-and-openings'):
+    if request.get('selection_kind') not in (None,'clubs','players-only','players-and-openings'):
         raise ValueError('unsupported reviewed recipe selection kind')
     if set(oldclubs)!=set(newclubs):
         raise ValueError('reviewed recipe cannot add or remove clubs')
@@ -65,10 +65,18 @@ def verify_recipe_mask(before, after, request):
         if (request.get('selection_kind')=='players-only' and selected) or not people or len(people)!=len(request['player_ids']) or not people<=oldplayers.keys():
             raise ValueError('player-only selection needs unique existing players and no clubs')
     else:
-        if selected != {cid for cid,c in oldclubs.items() if club_group(c)==request['country']}:
+        country_clubs = {cid for cid,c in oldclubs.items() if club_group(c)==request['country']}
+        if request.get('selection_kind') == 'clubs':
+            if (not isinstance(request['country'], str) or not request['country']
+                    or not selected or len(selected) != len(request['club_carrier_ids'])
+                    or not selected <= country_clubs):
+                raise ValueError('club selection needs unique existing clubs within one country')
+        elif selected != country_clubs:
             raise ValueError('country delta must select exactly the existing country club graph')
         people={pid for cid in selected for pid in oldclubs[cid]['roster_player_ids']}
         managers={oldclubs[cid]['manager_id'] for cid in selected}
+        if any(c['manager_id'] in managers for cid,c in oldclubs.items() if cid not in selected):
+            raise ValueError('selected manager is shared with an unselected club')
     for key in before.keys()-{'package_id','players','clubs','managers','artifacts','proofs','sources','assets'}:
         if before[key] != after[key]:
             raise ValueError('closed package field changed: '+key)
@@ -250,6 +258,8 @@ def _reconstruct(base, request):
 def prepare(base,input_path):
     path=paths._source_path(r.relative_workspace_path(Path(input_path).resolve()));request=p.read_json_file(path);_reconstruct(base,request)
     plan=dict(schema=SCHEMA,season=base.season,release_id=base.release_id,parent=request['parent'],source_input=dict(path=r.relative_workspace_path(path),sha256=r.sha256_file(path)),package_sha256=r.sha256_file(base.package_path),jug_sha256=r.sha256_file(base.game_path/'DBDAT/JUG98030.FDI'),scope='Reviewed country recipe only: fixed country carrier totals and club capacities, explicit selected-country carrier exchanges, selected facts/skills/names and startup orders; selected club/coach names, grounds and contextual tactics; all other native records, memberships and kits preserved.')
+    if request.get('selection_kind') == 'clubs':
+        plan['scope']='Reviewed explicit clubs within one existing country only; fixed selected club capacities and carrier partition; selected actors, exclusive coaches and metadata; every unselected same-country or foreign club, player, coach and all kits preserved.'
     if request.get('selection_kind') in ('players-only','players-and-openings'):
         plan['scope']='Reviewed source-bound reserve identities/facts/skills/names and their stale portraits only; complete country/club memberships, startup orders, all club/manager/tactics records, kits and unrelated actors preserved.'
     if request.get('selection_kind')=='players-and-openings':
