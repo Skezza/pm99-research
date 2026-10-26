@@ -1,5 +1,102 @@
 # PM99 worker handoff
 
+## v181 INSTALLED: 2019 club/manager corrections and five kits — 2026-10-26 15:53 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+2019-20 preferred: `sourced-italian-dated-managers-20261026-r333a`;
+manifest `6c3c12092e6277b8bbb3baf1cd0f3b164e55a170679d0fd7bb09fe227a9a0b2b`. Play `./pm99-season play 2019-20`.
+Actual games + recipes installed: Salernitana/Ventura and Venezia/Dionisi replace
+wrong Inter/Torino labels/coaches; Torino/Mazzarri and Atalanta/Gasperini corrected.
+Five same-club factory kit fallbacks: Lens, Sparta, Rosario Central, Olimpia and
+Atlético Nacional. These are factory fallback identity fixes, not period designs.
+All player records/facts/skills/orders, photographs and unrelated data unchanged.
+Other25 preferred bindings and original2015 backup verified unchanged.
+
+Evidence `parallel-rc-20261023/resume-qa/stock-kit-2019-cohort-guard-root-v1/` under
+`.local/consolidated-audit-20261009/`: `completion-proof-v181.json`, exact native
+record/bitmap preservation proof, all three A/SOURCE B layers recipe+inventory
+identical, three genuine profiles with0pixel error and final Stoke startup.
+Giannetti/Zigoni strict OCR refusals are original-frame visual adjudications;
+original summaries/transports remain untouched. No duplicate captures taken.
+Final release has an inventory-bound genuine startup attestation.
+
+Authoritative checklist `release-delivery-checklist-v181.json`; ledger
+`parallel-rc-20261023/confirmed-critical-batch-20261026-v33.json`.
+23 groups /19 delivered /4 open: calendar, Bath, kits, coupled source labels.
+The group increase from3open is two newly confirmed label dependencies, NOT
+regression of completed data: original11 labels remain delivered, two further
+Italian labels delivered, StGallen1109 and Boavista606 remain pending. Label
+scope15cases/13delivered/2pending; original17 baseline15/2 unchanged. Crossclub
+baseline2809 /110 disposed unchanged; no candidate-scan credit claimed.
+Stock original327:63delivered,13Nacional exceptions+1newSalernitana falsepositive,
+250untreated. The Salernitana case was a wrong label, not an Inter-kit remap.
+Next pending stock plans MUST use `kit-seed-misassignment-review-v1/stock-kit-next-two-plan-v1/delivered-stock-kit-case-index-v6-v181-bound.json` (63 exact IDs),
+not the older38-ID v4 index or stale58-count preparation scripts.
+
+Prevention fix923ffb0: both older label/manager consumers now include the central
+BRA/IR/NO/SE calendar country set. Retained Feb2020 Irish fixtures are rejected
+for2019;33focused tests pass. This is a pipeline fix, not game-delivery credit.
+The25season read-only comparison is discovery only, excludes legacy2015 and has
+unresolved original-label/source-body cases; see prior entry for exact index.
+Fourteen-case r304 remains HELD/uninstalled. Never promote it. No unrelated game
+rebuilt.727629824B reclaimed from completed disposable clones only; recovery and
+screenshots preserved. Final r333 runner game clone remains disposable after
+final evidence recorded; preserve shared Wine prefix. Free around6.5GiB.
+Luna quota unavailable; lead continues. Bath editorial-XI question still pending.
+NEXT: Portuguese coupled606/616 review is in progress (source-root old fixture
+bodies reused); inspect `portuguese-coupled-label-review/2019-20/club-label-review.json`.
+Then deliver supported coupled labels, resolve Swiss1105/1109 roster dependency,
+continue remaining calendar/Bath/kit checklist and one final all26 regression.
+No RC-complete claim while these remain.
+
+
+## 2019 combined corrections BUILT, runner validation active — 2026-10-26 15:42 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Preferred releases/checklist remain v180. No new installation is claimed.
+Evidence root `parallel-rc-20261023/resume-qa/stock-kit-2019-cohort-guard-root-v1/`
+under `.local/consolidated-audit-20261009/`.
+Built immutable chain from 2019 r218: r331 five same-club stock-kit fallbacks;
+r332 source-authored Salernitana/Ventura and Venezia/Dionisi labels/managers;
+r333 dated Torino/Mazzarri and Atalanta/Gasperini managers. All three A/SOURCE B
+complete recipes and inventories match. No player data changed in any layer.
+Final candidate `sourced-italian-dated-managers-20261026-r333a` is NOT preferred.
+`capture_final_r333_root_v1.py` is running serial genuine captures; Stoke done,
+Lens/Leca and corrected-club Giannetti/Zigoni profiles pending. Check original
+`final-runtime.log`/runner summaries; do not rerun completed captures.
+
+Fourteen-kit r304 was built and startup-tested but HELD, never installed:
+source/native cohort checks exposed conflicting labels. Only five narrowed
+mappings rebuilt in r331. No claim of historical kit designs or complete roster
+approval. Nine held cases and exact source/native name joins are recorded in
+`current-native-source-cohort-review-v1.json`. Salernitana was independently
+admitted from a unanimous authored XI and original Aug24 report; Venezia from
+its own original fixture. The first single-label r332 preparation failed safely
+because Ventura still belonged to mislabelled Venezia; no game was published
+by that failed v1. Coupled v2 then passed existing collision/owner guards.
+StGallen1109 and Boavista606 source-label corrections are confirmed pending;
+1109 collides with unresolved1105. Other held cohorts remain unclassified.
+
+New prevention fix: old label/manager consumers used only NTF calendar groups,
+omitting BRA/IR/NO/SE. They wrongly accepted two retained Feb2020 Irish fixtures
+for2019. Both consumers now include the central audited calendar country set;
+actual replay rejects those two cases. Focused tests33passed; original failed
+synthetic-fixture test log retained. No current game rebuilt for this guard.
+Read-only current-native/calendar comparison completed25 nonlegacy seasons:
+`resume-qa/calendar-current-native-membership-v1/all25-readonly-comparison-index-v1.json`.
+Counts are discovery/source availability, NOT confirmed bugs or closure credit.
+2015 legacy branch excluded. New Irish2017 labels missing from old source joins
+must not invalidate the already verified230-person country correction.
+
+Retired only two completed disposable r304/r331 runner game copies,727629824B;
+preflight/completion ledger in evidence root. Sealed games, all screenshots and
+shared Wine prefix preserved. Free space around6.5GiB; minimum reserve6GiB.
+Luna quota unavailable; lead continues. Bath editorial-XI question still pending.
+NEXT: inspect final r333 original frames, prove input/native/pixel bindings,
+promote verified r218→r331→r332→r333 chain, update fixed ledger/checklist; then
+resolve the held source-label dependencies, calendar countries and Bath.
+
+
 ## v180 installed: Irish2017 country, ownership and opening XI — 2026-10-26 14:43 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
