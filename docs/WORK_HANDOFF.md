@@ -1,5 +1,73 @@
 # PM99 worker handoff
 
+## Nardiello ownership installed and verified — 2026-10-26 07:54 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Authoritative installed checklist v179; ledger `confirmed-critical-batch-20261026-v31.json`.
+23groups /19delivered /fouropen. Prior22 baseline18/4, original17baseline14/3,
+frozen crossclub110/2809 unchanged. Preferred2007
+`sourced-qpr-nardiello-opening-owner-20261026-r328a`, manifest
+aae5b31f0be31c4287a013291afe0dc48b150f94474d61cc3da738f0ec574ede.
+DanielNardiello9834 now exclusivelyQPR339, removedBarnsley331; main/English agree.
+NativeonlyEQ/JUG and11startuporderbytes; bothXIs, allfacts/skills/tactics/managers/
+assets andother25/original2015 preserved. Actual independentSOURCE B entiregame
+inventory+recipe exact. Originalprofile ROOT viewedshows QueensParkRangers,
+FORWARD/CENTRALSTRIKER,25, unchangedten skills inclHandling6/quality50. ENG
+fallback preserved, not newlycertified. Digit/age/nativeinput/kitpixelchecks and
+playablecandidate validation passed; installedgameidentical andregisteredinventory
+rechecked. No unaffectedregeneration. Completion under
+`resume-qa/nardiello-2007-opening-owner-v1/completion-proof-v179.json`.
+Originalframe `local_2007_08_nardiello_qpr_r328a/screens/55_profile_only_nardiello_done.png`.
+Generic reservecode/docs/tests251afb0 pushed.11retained+5synthetic tests passed;
+publisher/pruning39passed2skipped. Profilecapture/SOURCE/install allDONE; do notrerun.
+Disposableprofilegame stilllocal; canretireonlyafterinput+idle checks. Sharedprefix
+mustremain. Cachev4cleanupDONE, ledgerunder`.local/cleanup-20261025/`.
+
+NEXT Irish/calendar: correctcached2017IR1 annual and schedules atprovider2016
+exist; firstAugustfixtureIDs StPats2818245,Shamrock2818244,Cork2818241. FirstTM
+Augustrequest returned implausiblysmallbody; validatorrefused, stoppedfetching,
+receipt `resume-qa/calendar-2017-irish-august-v1/capture-receipt-v1.json`. Notabsence.
+Alternative originalsources successfullyretainedHTTP200 withURL/SHA receipts:
+`alternative-originals/stpats-20170805-report1090.html` officialclub report gives
+both Sligo/StPats XIs andusedsubs; `rsssf-2017-details.html`364443bytescontains
+full2017 dated fixtures, XI/used+unusedsubs forall12clubs. RSSSFhas2tables,noPRE.
+Date `<th colspan=3>August 04 2017</th>`; matchheaderthreeTDwithboldhome/score/away;
+teamrow `<b>Club: </b>` then semicolon-separatednumbered family,given; parentheses
+usedsubs, `<i>Subs not used:</i>` unusedbench. Need strictdeterministic parser/
+source assertions, annualnumeric/DOB joins and joint fixedcarrierallocation;
+noIrishgame haschanged. Do notrename3labelsblindly orusefullseasonannualroster
+asAugustmembership. Can reusebothnew originals ratherthan repeatfetches.
+Bathprogrammeavailabilitydiscovered butrawEBay403, no XIproof; recordedunder
+`bathcity-2000-opening-cohort-research-v1/programme-discovery-v4/`. No purchase.
+Remainingfourgroups Irish/calendar routing, staleIrishlabels, Bath/GTF, stockkits;
+then consolidatedall26regression. Lunaquota unavailable; leadcontinues.
+
+## Nardiello reserve transfer built; SOURCE and original profile active — 2026-10-26 07:46 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Installed remains v178classification /23groups18delivered5open; preferred2007r326e.
+New `sourced-qpr-nardiello-opening-owner-20261026-r328a` BUILT, NOT installed.
+OnlyEQ/JUG differ; player9834 Barnsley331→QPR339;11 startup-order bytes, both
+nativeXIs/allfacts/skills/tactics/managers/assets preserved; main+English aligned.
+Source packet `parallel-rc-20261023/resume-qa/nardiello-2007-opening-owner-v1/`:
+request,plan, `built-native-scope-proof-v1.json`, `build_source_transfer_root_v1.py`.
+Generic dated-reserve provider251afb0 pushed;16targeted tests (11retained+5synthetic)
+and publisher/pruning39passed,2skipped. No hardcoded player/season in provider.
+SOURCEB currently controller68590, log `source-B-v1.log`; release r328b. Do not
+rerun A; inspect B locator/proof before resume. Original profile controller78219,
+`local_2007_08_nardiello_qpr_r328a`; log `profile-capture-v1.log`; uses shared
+prestonWineprefix. Need ROOT original review/native input+skill proof, genuine
+QPRlineup if helpful, playablevalidation, other25/original2015 preservation, then
+narrowpromotion/checklistv179 +ledger31. Do not claim delivered beforepromotion.
+
+Disk fell4.6GiB due sharedcachegrowth BEFORE builds; bounded unusedcompiledcachev4
+removed5897old>5h entries, cap4GiB, activeFD/maps/exe exclusions and inode/mtime
+recheck, installed Go markUsedpolicy. Ledger `.local/cleanup-20261025/old-unused-go-cache-entries-v4/completion-v1.json`.
+Recovered~4GiB; no PM99data/source/module/downloads touched; guard6GiB unchanged.
+Currentfree~8.6GiB beforeprofileclone. Oldercleanup is complete; don't repeat.
+Afterowner fix continueIrish/calendar, Bath/GTF, stockkits then all26regression.
+Luna quota unavailable; leadcontinues. No finalRCclaim.
+
 ## Five goalkeeper cases delivered; remaining ownership fix queued — 2026-10-26 03:00 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
