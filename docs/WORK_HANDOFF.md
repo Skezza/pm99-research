@@ -1,5 +1,32 @@
 # PM99 worker handoff
 
+## FullRC milestone remains active; Irish identity join measured — 2026-10-26 11:42 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+No newgame changes: installedv179 /23groups19delivered4open. FullRCclosure plan
+recorded278dbb7/pushed; don'trepresent19/23ascompletionpercentage. Remainingfour
+workstreams andexitcriteria insectionbelow. Userrequests allRCsready, notisolated
+repairendpoints. Continuewithoutaskingproceed; preserveunaffectedgames.
+
+SOURCEONLY newwork retainedunder `resume-qa/calendar-2017-irish-august-v1/`:
+`crossmatch_annual_identity_root_v1.py` verifiescorrect2017annualtitles atprovider2016,
+extracts430uniqueproviderIDs from12rawannuals and replaysonlyneededretainedoriginal
+personAPI responses, includingURL/SHA receipts and originalparse equality.317
+annualpeople haveconfirmed fullnames/DOB fromexistingR3cache;113notyetconfirmed
+isannualcoverage, NOTrequiredopeninglookups. Don'tfetchall113blindly.
+`August-full-name-provider-and-DOB-crossmatch-v1.json` narrows212publishedfirstAugust
+matchmembers:197uniquename/providerjoins,177confirmedDOB,20stableIDsneedoriginal
+personlookups;15publishednameexceptions retained, noaliasinference. Somealiases
+arelikelyRobert/Rob,Patrick/Paddy etc butneedoriginalpublishedvariantproof.
+IbrahimKeďta maybesourceencoding/spelling; inspectrawbytes andindependentreport,
+never silentlynormalise toanotherperson. Theseareidentityreviewgaps,not15newgamebugs.
+Nextpreciseaction: reuse/fetch20knownID originalpersonentities usingexisting
+`season_published_person_identity_v1`100-IDbatch API+immutableURL/SHA receipts;
+resolve15nameexceptionsusingproviderannualIDs andpublishedvariant/fullDOB proof.
+Thenjoint12nativecohortallocation andfixedcapacities;Dundalk14membersstillneeds
+additionalAugustmembership evidence. NoIrish recipes/games havebeencorrected yet.
+Do notrescrapeallannuals orrepeatcompleted317personcacheproofasahistoricalfix.
+
 ## Active milestone: close all26RCs, not another isolated repair — 2026-10-26 11:37 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
