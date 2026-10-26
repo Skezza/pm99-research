@@ -1,5 +1,69 @@
 # PM99: current work
 
+## Bristol2004 installed; final two runner checks active — 2026-10-26 02:13 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Installed checklist v175; ledger `confirmed-critical-batch-20261026-v27.json` in
+Oct23 packet.22groups /17delivered /fiveopen. Wrong-GK batch now3/5 INSTALLED,
+2pendingruntime/promotion. Original17 baseline14/3 and frozen110/2809 unchanged.
+2004 preferred `sourced-bristol-handling-cap-20261026-r325e`, manifest
+e1bb1700b56ca5619905d9f37a02388854b9c80ab7bd2071f18072a5986b22f5.
+Actual SOURCE A/B at each stage, native composite, genuine Elliott profile and
+Bristol lineup, digit/age/nativeinput/kitpixel checks and playable candidate
+validation PASSED. Registration rechecked full inventory; installed binding is
+the identical validated immutable game (explicitly reused validation, no second
+semantic run claimed). Other25 and original2015 unchanged. Completion under
+`coupled-wrong-gk-opening-xi-v1/two-membership-crossmatches-root-v1/2004-05/`.
+Genuine original frames: `local_2004_05_elliott_r325e/screens/52_profile_only_elliott_done.png`
+and `local_2004_05_elliott_lineup_r325e/screens/022_line_up_inspect.png`.
+Elliott DEFENDER /INS CENT LEFT /handling20 /age26(year-only native UI age).
+Miller firstXI; Elliott defenderreserve18. Othernine skills unchanged. Kit not
+historically approved. Disposable Bristolrunnergame retired after evidence checks;
+registeredgame, prefix and screenshots retained. Do not rerun completed stages.
+
+ALL remaining candidate build stages now complete, NOT installed:
+- Barnsley2007 finalr326e/f fullSOURCE and composite passed. Hassell profile
+  captured and ROOT viewed: DEFENDER /INS CENT LEFT /handling20 /age27. Review
+  `review_hassell_profile_root_v1.py` running independentdigit/nativeproof.
+- Wycombe2016 finalr327e/f fullSOURCE and composite passed. Await captures.
+Previous two build sequences completed; no build jobs should remain active.
+Current SERIAL capture sequence controller90572: Barnsley profile→lineup→Wycombe
+profile→lineup. Logs `root-barnsley-*-capture-v2-after-cache.log`, then
+`root-wycombe-*-capture-v1.log`. EarlierBarnsleyprofilev1 blocked BEFORE launch.
+Capture helper `capture_three_final_candidates_root_v1.py`; unique originals are
+never overwritten. Need ROOT original-frame reviews, digit/native proofs and
+`lineup-original-review.json`; THEN serial installer2007v176,2016v177. Group closes
+onlyafterv177 allfive delivered. `install_three_verified_candidates_root_v1.py`.
+Do not promote automatically from successful build logs.
+
+Disk measured rather than assumed: newr325–327 independent files add~0.5GiB
+(metadata436752384+game101720064bytes); compiled Go cache measured10516189184.
+Both our builds and unrelated sharedcache growth consumed headroom. Source
+artifacts alreadyhardlinked; no dedup rewrite introduced. Additional bounded
+cachev3 cleanup completed:1717 unused>5h compiledentries, cap2GiB, same installed
+Go mtime-use evidence +activeFD/maps/exe exclusion/recheck asv2. Ledger
+`.local/cleanup-20261025/old-unused-go-cache-entries-v3/completion-v1.json`.
+Free restored~7.8GiB before remainingcaptures; keep6GiBguard. ExistingverifiedPi
+archives/current26/original2015 intact. Do not repeat completed cleanup.
+
+Provenance check:2003 andlater mainrecipes include currenteffectiveEnglishactors;
+`english-season-package.json` is an inheritedauthoring snapshot and canretain
+older facts/ratings. Mainpreferredrecipe is effectiveactortruth usedby native
+proof/workbench. Membership updates owner/order context inboth, later role/skill
+edits preserve the authoring snapshot. Do NOT overwrite historicalsnapshotfacts
+or misclassify its oldRobertLee as an installed duplicate. Actual2003game Bywater
+and mainrecipe correct; original Talbotfine CentralMid is visibly confirmed.
+
+While captures run, Irish2017 review found current12labels include duplicate
+Bray/Limerick entries; treat as reviewcandidates until rawcohort identity proof,
+not automaticrename. Correct cached squad title2017atprovider2016 verified.
+Fullseason33–46player rows are NOT all openingmembers. ReuseAugustfixtures per
+existingMoldeAug2017/source-monthpolicy, plus dated reserves. Need jointcountry
+allocation, not three isolatedrenames. Original three labelcase IDs unchanged.
+Englishkit findings and Bathsource/firstXIlimitation remain as recorded below.
+Luna quota unavailable; lead continues. Next afterkeepers: Irish/calendar, Bath,
+stock-kit fixes, then one all26 consolidated regression. No finalRCclaim yet.
+
 ## Two resumed build sequences; disk headroom restored — 2026-10-26 01:14 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
