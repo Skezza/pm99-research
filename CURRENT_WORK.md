@@ -1,4 +1,167 @@
+## INSTALLED v186: Swiss2019 + seven English ownership errors — 2026-10-26 22:40 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Authority `.local/consolidated-audit-20261009/release-delivery-checklist-v186.json`
+and `parallel-rc-20261023/confirmed-critical-batch-20261026-v38.json`.
+Default2019 NOW `sourced-coupled-reserve-owners2019-20261026-r403a`; full release
+validation PASS; `./pm99-season play 2019-20`. Other25 and original2015 exact.
+Evidence `resume-qa/2019-new-reserve-coupled-owners-v1/completion-proof-v186.json`,
+`installed-full-release-validation.json`, `r403-original-runtime-proof-v1.json`.
+Four final original frames personally viewed, three card kit comparisons maxerror0;
+Buechel OCR refusal preserved, visually correct KEEPER. SOURCE reproduction exact
+for all five narrow layers r399-r403;38Swiss actors +7English wrong-owner slots,
+2factory kit mappings,2dated ground strings,1manager. Mode1tactics preserved,
+not newly written; kits same-club factory fallback, not 2019 design certification.
+Selected old portraits disabled; no new photos. Genuine r401 ancestor Pears and
+Stojanovic cards retained separately, not claimed to be finalr403 captures.
+
+Fixed source-cohort40/31delivered/9pending; stock327/65installed/16falsepositives/
+246untreated. Groups27/22delivered/5open: includes newly confirmed four Stoke/
+Millwall reserve errors as OPEN, never hidden by completed Swiss batch. Original
+17 and2809baselines unchanged without semantic crosswalk. English1254case census
+is separately scoped;275mismatches NOT275confirmed bugs. Triage includes academy
+and loan-parent candidates. No claim that all RCs are ready.
+Current active builder `resume-qa/stoke-millwall-2019-opening-ownership-v1/`:
+`build_four_slot_A_SOURCE_B_root_v1.py`, log`build-four-slot-v1.log`. Four-slot
+recipe prepared: Chester->Federici, Oakley-Booth->Woods, MillwallWoods->Bialkowski,
+Bennett->BillyMitchell. Preserve existing Woods abilities; Mitchell explicit
+editorial skills/central role. Preserve firstXIs, restore both actual August benches.
+Check builder before rerun. Next validate A/SOURCE equality, capture serial
+r404 Stoke and4profiles, personally inspect originals/native/pixels, promote and
+close only these four cases. Then continue remaining9source cohorts/calendar/
+Bath/stock and bounded reserve candidates; one consolidated final26 sweep pending.
+Cleanup v12 removes only regenerable r401 runner game (~347MiB), originalframes,
+sealedrelease and sharedprefix retained;7.8GiB free. Public normal boundary passes.
+`--check-local` exposes pre-existing ignored `upstream/.local/season-2015-16`;
+left intact because it may be legacy recovery data. No tracked boundary violation.
+All worker models quota-unavailable; lead using deterministic scripts, not waiting.
+
+## LIVE final2019 r403 runtime; next four ownership corrections prepared — 2026-10-26 22:35 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Last completed checklist v185; default2019 remains native-validated r400. Final
+private r401 kits, r402 two dated grounds, r403 coupled Blackpool/Oxford copies
+are BUILT and SOURCE-equal. No rebuild of r399/r400 required. Final r403 serial
+runner controller active: `resume-qa/2019-new-reserve-coupled-owners-v1/` under
+`.local/consolidated-audit-20261009/parallel-rc-20261023/`; controller
+`capture_final_r403_root_v1.py`, log `r403-capture.log`. Stoke/Shaw originals
+captured and personally viewed; Berkoe/Buechel pending. Keep shared Wine prefix.
+`vaduz-2019-duplicate-cohort-backfill-v1/r401-original-profile-proof-v1.json`
+verifies three personally viewed ancestor cards; exact launched native hashes,
+kit interiors maximum error0. Buechel original OCR refusal preserved; actual
+role KEEPER, not a sweeper. Do not reopen settled keeper mapping.
+`real-release-regression-guard-v1.json` in coupled root proves new guard detects
+both real r400 Bola/Browne collisions and neither in final r403. Five focused
+public guard tests pass. Public scripts uncommitted; do not alter their SHA while
+bound receipts pending. Final v186 installer prepared but MUST await complete
+r403 original runtime proof and all preconditions; not executed or credited.
+
+Read-only English2019 reserve census fixed1254:402 first benches,330 dated owners,
+5 protected corrections,242 unavailable cases,275 mismatches needing disposition.
+`english2019-reserve-ownership-fixed-census-v1/lead-triage-raw-transfer-types-v1.json`
+binds raw event types and original club entities:33 academy-parent,13 loan-away
+parent,193 later native arrivals,36 other candidates. None auto-cleared. Of193,
+97 datedJanuary arrivals, not97 delivered/approved fixes. Do not claim full RC.
+Next concrete four cases in `stoke-millwall-2019-opening-ownership-v1/`: Chester,
+Oakley-Booth, Millwall Woods/Bennett. Planned positive August people Federici,
+Woods, Bialkowski, Mitchell. Preserve frozen existing Woods skills; Mitchell
+actual dated20Aug2019 contracted academy midfield interview, editorial central
+role/skills explicit. Direct HTTP403; web-reader notes truthfully distinct from
+original raw HTML. Exact Mitchell published identity/DOB cached; do not claim
+historical transfer bracket for his academy period. Preparation may be running;
+check log before rerun. No new game built/installed for these four yet.
+No working Luna/other agents (quota errors); lead progressing with deterministic
+scripts. Remaining nine cohorts after current Swiss closure, calendar, Bath,
+stock candidates and final26 regression persist. Free~7.6GiB; serial work only.
+Exact next: finish r403 originals/native/pixels, promote+attest+v186. Then build
+r404 four-case delta and SOURCE reconstruction, serial runtime, promote/validate.
+
 # PM99: current work
+
+## LIVE installed2019 native r400; final kit/runtime pending — 2026-10-26 21:24 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+2019 preferred is NOW `sourced-middlesbrough-2019-opening-ownership-20261026-r400a`:
+38Swiss actors +5Middlesbrough wrong-owner replacements native/SOURCE validated,
+playable validation passed. NOT final runtime-verified/RC-closed. v185 remains
+last completed checkpoint; source counts not credited yet. All other25 unchanged.
+Swiss root`resume-qa/vaduz-2019-duplicate-cohort-backfill-v1/`:
+`pre-kit-original26-bindings.json`, `native-installed-before-kit-runtime-pending.json`.
+Middlesbrough`recipe-r400-v3/build-proof.json`, `A-native-proof.json` show5identities
++8other order bytes only; firstXI/EQ/ENT/kits unchanged relativeSwissr399parent.
+All five real replacements positively source-bound. Source/rating provenance IDs
+lowercase now; earlier schema failures did not write any games.
+Two frozen factory-kit cases prepared in`kit-r401-v1/`; `request-v2.json` SHA
+`7b26aace6e4256cb3e18e9656fa4c37a059c54350876f52427741b4372c00a3d`.
+Existing generic stock driver active, log`build-kit-r401-v2.log`; no competing
+build/capture. V1 request stopped before writes because local driver requires an
+exact scope string; v2 merely corrects that metadata, same two authorised mappings.
+Next: wait `.local/season-stock-kit-seed-remaps-v1/2019-20-r401-two-source-clubs/build-complete.json`,
+then serial `capture_final_r401_root_v1.py` (Stoke,Pears,Stojanovic,Büchel), view
+originals, verify native/source/kit pixels, installfinalr401/attest/checkpointv186.
+No need rerun r398, r399 or r400 SOURCE builds.
+Cleanup ledgers v10 compiled Go cache (~1.5GiB), v11 completed independent r398
+runtime game (~346MiB), all originals/current sealed games/shared prefix intact.
+Free8.49GiB before kit build, passes unchanged8GiB stock-driver reserve.
+Correct factory map is1109StGallen→1105 and1805Vaduz→1109;1105factoryisAarau.
+Final accounting should add5caseownershipgroup only once; close existing source
+cohort1109case with explicit1105counterpart addition, and2originalstock cases.
+Original17/2809baselines stay until exact crosswalk. Luna unavailable. Remaining
+calendar/Bath/othercohort/stock queues and final26 sweep persist.
+
+
+## ACTIVE Swiss2019 + coupled Middlesbrough — 2026-10-26 21:11 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Installed authority remains v185 (English2023 r398, committed/pushedd1f898c).
+Swiss root `resume-qa/vaduz-2019-duplicate-cohort-backfill-v1/` under
+`.local/consolidated-audit-20261009/parallel-rc-20261023/`.
+BUILT+SOURCE-EQUAL `sourced-swiss-2019-opening-cohorts-20261026-r399a`/b,
+`recipe-r399-v4/build-proof.json`, `A-native-proof.json`; NOT installed.
+38 positive opening members, fixed22/16. Unselected JUG/EQ/ENT records exact;
+selected facts/roles/abilities readback pass, all4keepers fine0. Mode1native
+formation/grid bytes preserved (existing Irish policy); source/editorial target
+formation remains recipe metadata only. Source4-3-3StGallen, inferred3-4-2-1Vaduz.
+26same-carrier name-window recoveries through established factory proof.
+`finalise_mode1_native_policy_root_v1.py` reuses proven Irish finalisation; v3
+unsafe Mode1grid request safely failed before game publication, v4 succeeded.
+
+Coupled root `resume-qa/middlesbrough-2019-winter-ownership-v1/`.
+Five dated wrong-owner cases:10045Morrison,10046Moukoudi,10049Roberts,10050Nmecha,
+10057Stojanovic. `five-dated-opening-owner-adjudications-v1.json`+5 original API
+histories. Existing3 history bodies reused, not refetched. Nmecha legacy DOB12Dec
+conflicts published14Dec; actual original2019Wolfsburg first-bench provider314288
+establishes the identity independently of erroneous old secondary DOB.
+Original Sky13Aug2019cup and BBC16Jan2020Stojanovic bodies captured. Five positive
+replacement people: Pears/Bola/Browne original first-league bench; Liddle/Walker
+original cup. `five-positive-opening-people-v1.json`: FIFA20 original rows; Walker
+literal Wikipedia DOB11Oct2000 overrides FIFA20typo21Oct; unique same-club/season/
+shirt36+sourceS.Walker identity join documented, not generic fuzzy matching.
+`prepare_five_slot_recipe_root_v3.py` preparing immutable`recipe-r400-v3` on r399a.
+V1/v2 lowercase-ID schema failures happened before recipe output or build. Next
+run`build_five_slot_A_SOURCE_B_root_v3.py` ONLY after country-request exists.
+All five are reserves; firstXI/EQ/ENT/tactics/kits held exact, source7bench restored.
+No source/data correction credit yet. Live new5-case group awaiting integration;
+v185 historical group baseline25/21/4 remains, live addition would be26/21/5.
+
+IMPORTANT verified factory map correction: factory1105=AARAU,1109=ST.GALLEN,
+1805=VADUZ (`.local/season-pipeline-v2/world-fixed-carriers.json`). Earlier assumption
+that factory1105wasStGallen was wrong; no incorrect kit change was delivered.
+Actual source labels remain StGallen at target1105 and Vaduz at target1109.
+Need BOTH sealed factory copies1109→1105 and1805→1109. Frozen327caseIDs
+`kit-stock-seed-remap-2ad4d9bca1dab9d5769c` and
+`kit-stock-seed-remap-7344ba8c26379af9e6c1`. Use sealed factory, never current donor.
+Stock remap materialiser requires exact parent preferred. After r400 native/SOURCE
+proof, lead may register narrow corrected2019 parent, then materialise approved
+2case kit patch and SOURCE childr401, then serial genuine startup +Pears/Stojanovic/
+Büchel profiles. Do not claim combined closure until originals/native/source pass.
+Generic stock driver has8GiB reserve; current6.7GiB. Use existing core APIs with
+controlled disk budget or verified cleanup/Pi, no guard bypass or competing builds.
+Unrelated26 releases/original2015 preserved. Source-cohort39/29/10 until actual
+promotion/proof; no crossclub2809credit without original-case crosswalk. Luna quota
+exhausted. Runner idle; only narrow Boro authoring active. Continue remaining
+9cohort (after this), calendar/Bath/kit backlog, consolidated final26 regression.
+
 
 ## INSTALLED v185: English2023 ownership corrections — 2026-10-26 20:52 UTC
 
