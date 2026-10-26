@@ -170,7 +170,18 @@ def _reconstruct(base, request):
             index={e.record_id:e for e in IndexedFDIFile.from_bytes(jug).entries};changes=[]
             for position,pid in enumerate(carriers,1):
                 field=read_initial_order(index[pid].decode_payload(jug));changes.append(OrderReplacement(pid,field.name,field.order,position))
-            jug=patch_owned_mode1_complete_orders(jug,oldeq,club_record_id=cid,replacements=changes)
+            from scripts import season_opening_order_repair_v1 as opening_orders
+            records = opening_orders.tactics.payloads(oldeq)
+            if records[cid][0x29] == 0:
+                jug = opening_orders.apply_layer(oldeq, jug, {
+                    'schema_version': opening_orders.SCHEMA,
+                    'clubs': [{'carrier_id': cid, 'players': [dict(
+                        native_player_id=change.record_id,
+                        native_name=change.expected_name,
+                        before=change.before, after=change.after)
+                        for change in changes]}]}, allow_compact=True)
+            else:
+                jug=patch_owned_mode1_complete_orders(jug,oldeq,club_record_id=cid,replacements=changes)
         result=dict(package=after,jug=jug,eq=oldeq,ent=oldent,selected_players=sorted(oldplayers[id]['carrier_id'] for id in people),selected_clubs=sorted(selected),selected_managers=[])
 
         _CACHE.clear();_CACHE[key]=copy.deepcopy(result)

@@ -216,3 +216,33 @@ def test_native_starting_copy_is_removed_from_the_source_opening_xi(native_count
     assert len(club['opening']['starting_xi_player_ids'])==11
     assert 'player-29914' not in club['opening']['starting_xi_player_ids']
     assert 'player-29914' in club['opening']['substitute_player_ids']
+
+
+def test_english_mode0_identity_and_bench_delta_preserves_native_scope():
+    """Exercise the real mixed identity/order boundary, including compact records."""
+    from app.fdi_indexed import IndexedFDIFile
+    from app.player_initial_order import read_initial_order
+    source = d.r.ROOT / '.local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/english-2023-winter-ownership-v1/recipe-r398-v2/native-plan.json'
+    if not source.exists():
+        pytest.skip('retained English opening-ownership corpus unavailable')
+    plan = d.p.read_json_file(source)
+    base = d.r.load_registered_release(plan['season'], plan['release_id'])
+    output = d._outputs(plan)
+    raw = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    before = {e.record_id: e.decode_payload(raw) for e in IndexedFDIFile.from_bytes(raw).entries}
+    after = {e.record_id: e.decode_payload(output['jug']) for e in IndexedFDIFile.from_bytes(output['jug']).entries}
+    assert len(output['selected_players']) == 12
+    assert output['selected_clubs'] == [322, 351, 355, 378]
+    assert before.keys() == after.keys()
+    order_only = []
+    for cid, payload in before.items():
+        if cid in output['selected_players'] or payload == after[cid]:
+            continue
+        field = read_initial_order(payload)
+        expected = bytearray(payload)
+        expected[field.offset] = after[cid][field.offset]
+        assert bytes(expected) == after[cid]
+        order_only.append(cid)
+    assert order_only
+    for key, name in [('eq', 'EQ98030.FDI'), ('ent', 'ENT98030.FDI')]:
+        assert output[key] == (base.game_path / 'DBDAT' / name).read_bytes()
