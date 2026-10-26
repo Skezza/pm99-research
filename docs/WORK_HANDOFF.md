@@ -1,5 +1,61 @@
 # PM99 worker handoff
 
+## 2003 final identity build running — 2026-10-26 00:01 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Installed state remains v173 /22 groups /17 delivered /five open. Other25 and
+original2015 unchanged. Do not count candidate builds as installed corrections.
+
+VALID membership r324m2/n2 A/B SOURCE passed. Amanifest
+42977fa532963d61474be2400a8025addaa4804a26830921ce58306fb3072db3;
+Bmanifest b3a480e7bf9bed3cb5231d317b4df8b74c25463f16f2e57b403457ef863e6ab0.
+Full schema validity and exact native golden checked. Old r324m/n remain invalid
+artifact-metadata candidates and must never be promoted. Native/source/compiler/
+order regressions65passed; final artifact/schema guards18passed separately.
+
+Talbot primary-position r324p/q A/B SOURCE passed: exactlyone G-to-M primary byte,
+fine9 and all abilities/otherfacts/assets unchanged. Then Handling r324h/i A/B
+SOURCE passed: exactlyone Handling52-to20 byte, nine other skills unchanged.
+Their proof files are `talbot-broad-AB-source-proof-v1.json` and
+`talbot-handling-AB-source-proof-v1.json` under the r324 packet. Common annual
+regressions36pass; selected Handling/quality regressions26pass. Neither installed.
+
+Bywater actual preflight PASSED against r324h: duplicate13213 is areserve, positively
+sourced StephenBywater3873/DOB1981-06-07/ENG/G0 replacesonlythat slot; correct
+RobLee12523 stays. All otherplayers/clubs/managers/EQ unchanged in preview. Positive
+alias evidence is `westham-2003-duplicate-positive-replacement-v1/lee-alias-adjudication-root-v2.json`:
+Soccerbase headerRobLee/RealNameRobertLee/sameDOB plus datedAug6 squadnumber5 lists
+both spellings. The strict ordinary biography parser was NOT loosened for aliases;
+Root independently parsed the explicit same-page alias for this adjudication.
+
+`build_bywater_final_root_v1.py` is running actual final r324a/b through existing
+`build_opening_identity_exchange_v1.deliver`; log `root-bywater-final-build-A-B-v1.log`.
+Packet: `resume-qa/westham-brentford-r324-root-delivery-v1/`.
+Output `bywater-final-A-B-v1/` already contains frozen plan/inert descriptor.
+DO NOT rerun this driver if output/locators exist. Inspect running PID/log and
+existing A/B stage before resume; recover completed work rather than rebuilding.
+After `final-bywater-A-B-proof-v1.json`: native composite scope/readback, genuine
+WestHam+Brentford lineup and Bywater+Talbot profile captures, then one promotion
+from r275a through m2→p→h→r324a. Preserve other25 and original2015. Group5 false-GK
+cases will be PARTIALLY delivered (2/5), not closed until otherthree are corrected.
+
+Disk reserve correctly blocked Handling A before mutation when unrelated Go tests
+grew storage. Retired14 old generated Go compile/test/benchmark /tmp directories
+only after rechecking age>6h, owner, exact sizes/counts, no links or active FD/cwd/
+exe references. Ledger `.local/cleanup-20261025/retired-stale-generated-tmp-completion-v1.json`;
+these regenerable outputs were not backed up. Recovered~747MiB; active cache/tests
+untouched. Handling resumed exact retained descriptor via v2 driver; no rebuild.
+Free~6.7GiB, enough for next bounded stage but check before capture. Prior verified
+Pi archives and all critical PM99 data remain intact. No new cleanup required now.
+
+After 2003 delivery: remaining Bristol2004, Barnsley2007, Wycombe2016 source-XI/GK
+ownership plus broad/Handling corrections. Existing packet has33 identity matches;
+onlykeepers needmoves. Sky Barnsley/Coventry opening fixture ID85969 located for
+raw-source alternative; otherfixtures Sky search not yet found. Do not repeat
+blocked11v11 requests or pretend indexed text is originalHTML. Then Irish calendar
+allocation, Bath/GTF and stock-kit checklist.13 stable kit no-op dispositions are
+complete separately, stock58 deliveries unchanged. Luna quota remains exhausted.
+
 ## v173 installed and verified — 2026-10-25 22:48 UTC
 
 Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.

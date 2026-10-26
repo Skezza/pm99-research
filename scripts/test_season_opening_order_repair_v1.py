@@ -99,3 +99,37 @@ def test_durable_layer_compiler_replay_and_hash_rejection_are_atomic(tmp_path):
     with pytest.raises(ValueError, match='hash changed'):
         compiler.compile_package_to_tree(package_path=path, base_tree=base, materialisation_tree=rejected)
     assert (rejected / 'DBDAT/JUG98030.FDI').read_bytes() == before
+
+
+def test_native_owner_cache_preserves_isolation_and_binds_all_input_bytes(monkeypatch):
+    from types import SimpleNamespace
+    calls = []
+    def read(raw):
+        calls.append(raw)
+        return {321: b'small'}
+    monkeypatch.setattr(repair.tactics, 'payloads', read)
+    monkeypatch.setattr(repair, 'parse_eq_external_team_roster_payload',
+        lambda *args: SimpleNamespace(rows=[SimpleNamespace(player_record_id=1234)]))
+    first = repair.native_owners(b'first image')
+    first[1234].add(999)
+    assert repair.native_owners(b'first image') == {1234: {321}}
+    assert repair.native_owners(b'second image') == {1234: {321}}
+    assert calls == [b'first image', b'second image']
+    monkeypatch.setattr(repair, 'parse_eq_external_team_roster_payload', lambda *args: None)
+    assert repair.native_owners(b'second image') == {}
+
+
+def test_native_owner_cache_never_suppresses_unreadable_roster_rejection(monkeypatch):
+    import pytest
+    raw = bytearray(0x30)
+    raw[0x26:0x28] = (600).to_bytes(2, 'little')
+    calls = []
+    def read(value):
+        calls.append(value)
+        return {321: bytes(raw)}
+    monkeypatch.setattr(repair.tactics, 'payloads', read)
+    monkeypatch.setattr(repair, 'parse_eq_external_team_roster_payload', lambda *args: None)
+    for _ in range(2):
+        with pytest.raises(ValueError, match='unreadable external'):
+            repair.native_owners(b'unreadable')
+    assert len(calls) == 2

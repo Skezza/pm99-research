@@ -22,6 +22,12 @@ the retained sources. It rejects a different native postimage before writing
 the clean game tree. Legacy packages without the artifact retain their existing
 receipt fields and follow the same compilation path.
 
+The bounded publisher uses the same source admission. The binder emits required
+artifact metadata in canonical order and validates the complete resulting recipe
+before publication. A process-local composition cache rehashes every parent and
+source input before reuse, returns independent copies, and is cleared before the
+SOURCE reconstruction. It never substitutes a candidate's output for its parent.
+
 This is a mechanism, not a release approval. Corrected games still need an
 independent SOURCE replay, unchanged-data checks and relevant runtime evidence.
 In particular, the Rob Lee/Robert Lee duplicate must be resolved separately;

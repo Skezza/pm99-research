@@ -1,5 +1,170 @@
 # PM99: current work
 
+## 2003 final identity build running — 2026-10-26 00:01 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Installed state remains v173 /22 groups /17 delivered /five open. Other25 and
+original2015 unchanged. Do not count candidate builds as installed corrections.
+
+VALID membership r324m2/n2 A/B SOURCE passed. Amanifest
+42977fa532963d61474be2400a8025addaa4804a26830921ce58306fb3072db3;
+Bmanifest b3a480e7bf9bed3cb5231d317b4df8b74c25463f16f2e57b403457ef863e6ab0.
+Full schema validity and exact native golden checked. Old r324m/n remain invalid
+artifact-metadata candidates and must never be promoted. Native/source/compiler/
+order regressions65passed; final artifact/schema guards18passed separately.
+
+Talbot primary-position r324p/q A/B SOURCE passed: exactlyone G-to-M primary byte,
+fine9 and all abilities/otherfacts/assets unchanged. Then Handling r324h/i A/B
+SOURCE passed: exactlyone Handling52-to20 byte, nine other skills unchanged.
+Their proof files are `talbot-broad-AB-source-proof-v1.json` and
+`talbot-handling-AB-source-proof-v1.json` under the r324 packet. Common annual
+regressions36pass; selected Handling/quality regressions26pass. Neither installed.
+
+Bywater actual preflight PASSED against r324h: duplicate13213 is areserve, positively
+sourced StephenBywater3873/DOB1981-06-07/ENG/G0 replacesonlythat slot; correct
+RobLee12523 stays. All otherplayers/clubs/managers/EQ unchanged in preview. Positive
+alias evidence is `westham-2003-duplicate-positive-replacement-v1/lee-alias-adjudication-root-v2.json`:
+Soccerbase headerRobLee/RealNameRobertLee/sameDOB plus datedAug6 squadnumber5 lists
+both spellings. The strict ordinary biography parser was NOT loosened for aliases;
+Root independently parsed the explicit same-page alias for this adjudication.
+
+`build_bywater_final_root_v1.py` is running actual final r324a/b through existing
+`build_opening_identity_exchange_v1.deliver`; log `root-bywater-final-build-A-B-v1.log`.
+Packet: `resume-qa/westham-brentford-r324-root-delivery-v1/`.
+Output `bywater-final-A-B-v1/` already contains frozen plan/inert descriptor.
+DO NOT rerun this driver if output/locators exist. Inspect running PID/log and
+existing A/B stage before resume; recover completed work rather than rebuilding.
+After `final-bywater-A-B-proof-v1.json`: native composite scope/readback, genuine
+WestHam+Brentford lineup and Bywater+Talbot profile captures, then one promotion
+from r275a through m2→p→h→r324a. Preserve other25 and original2015. Group5 false-GK
+cases will be PARTIALLY delivered (2/5), not closed until otherthree are corrected.
+
+Disk reserve correctly blocked Handling A before mutation when unrelated Go tests
+grew storage. Retired14 old generated Go compile/test/benchmark /tmp directories
+only after rechecking age>6h, owner, exact sizes/counts, no links or active FD/cwd/
+exe references. Ledger `.local/cleanup-20261025/retired-stale-generated-tmp-completion-v1.json`;
+these regenerable outputs were not backed up. Recovered~747MiB; active cache/tests
+untouched. Handling resumed exact retained descriptor via v2 driver; no rebuild.
+Free~6.7GiB, enough for next bounded stage but check before capture. Prior verified
+Pi archives and all critical PM99 data remain intact. No new cleanup required now.
+
+After 2003 delivery: remaining Bristol2004, Barnsley2007, Wycombe2016 source-XI/GK
+ownership plus broad/Handling corrections. Existing packet has33 identity matches;
+onlykeepers needmoves. Sky Barnsley/Coventry opening fixture ID85969 located for
+raw-source alternative; otherfixtures Sky search not yet found. Do not repeat
+blocked11v11 requests or pretend indexed text is originalHTML. Then Irish calendar
+allocation, Bath/GTF and stock-kit checklist.13 stable kit no-op dispositions are
+complete separately, stock58 deliveries unchanged. Luna quota remains exhausted.
+
+## Candidate packaging guard — 2026-10-25 23:28 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+IMPORTANT: do NOT promote r324m/r324n. Their native A/B and source contents reproduce,
+but full recipe validation found the new source artifact lacked required `kind`.
+These uninstalled candidates are retained as failed evidence. Talbot v1 preflight
+then rejected that parent at package validation; no Talbot game/plan was published.
+
+Fixture binder now emits `kind=season-input`, media type, sorted artifact IDs and
+validates the COMPLETE recipe BEFORE publication. The first r324m2 attempt failed
+at that guard on artifact ordering, before any locator/game existed. Corrected
+Root driver v3 also sorts the expected artifact list. Current run:
+`westham-brentford-r324-root-delivery-v1/build_membership_root_v3.py publish-a`
+→ r324m2; log `root-publish-membership-A2-v2.log`. B will be r324n2. Do not reuse
+old v1/v2 driver expectations. Exact native EQ/JUG golden remains unchanged;
+only required source-artifact metadata and canonical ordering differ from old A.
+Final artifact/envelope/cache/dispatch guard suite18passed. Earlier failed logs
+and original candidates retained; none installed. Inspect locator/proof before
+resuming; do not rerun a completed A2. v173 remains17groups delivered/five open.
+
+Pure native-owner lookup now retains at most two immutable full-byte EQ images,
+returns fresh sets and includes injected parser functions in its cache key.
+Six tests pass: changed bytes/parser invalidate, caller mutation cannot poison,
+unreadable external rosters still reject. This caches mechanics only, not source
+judgments. Full source/compiler/order suite is still running in
+`root-canonical-final-regressions-v2.log`; do not claim it passed yet.
+
+Generic annual one-byte broad-position adapter is now connected to the common
+source API;36 annual/common regressions pass. It reparses raw annual data and
+binds exact full name/DOB/native owner plus source club/country; no hardcoded audit
+file is source authority. Its actual Talbot request must be re-pinned to corrected
+r324m2 (NEW talbot-broad-preflight-v2 folder). Preserve failed v1 request/log.
+Planned order: membership → Talbot G-to-M primary byte → selected Handling cap →
+replace duplicate13213 with source-qualified StephenBywater; keep RobLee12523.
+
+Selected Handling cap uses existing quality-only native writer. New declarative
+request policy pins selected actor/name/DOB/owner/current value; only an actual
+native outfield actor over20 is accepted. Retains nine existing skill values and
+records the cap as editorial, not historical proof. New quality API supports that
+request-bound kind and explicit reserve forwarding; defaults remain8GiB.
+26 handling/quality regressions pass. No Handling game built yet. Public files:
+`season_selected_outfield_handling_cap_v1.py`, `season_quality_only_delta_v1.py`.
+All new code beyond pushed50f9bd8 is working-tree and awaits actual delivery.
+
+Exact next action: finish valid A2, publish SOURCE B2 via v3 driver; rebase and
+validate Talbot request using corrected parent, then publish bounded primary-byte,
+Handling and Bywater transactions with actual SOURCE and runner checks. Preserve
+other25/default2003/original2015 until final batch promotion. Lunar quota limitation
+remains; lead continues. Disk/Pi cleanup and13 kit no-op classifications are complete
+as recorded below, no additional disk cleanup needed at~7.7GiB.
+
+## r324 membership A built; SOURCE B running — 2026-10-25 23:14 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Installed state remains v173: 22 groups /17 delivered /five open. Root/upstream
+commits `50f9bd8` / `44bd639` are pushed. No new default 2003 release installed.
+
+Canonical membership publication API and existing publisher/SOURCE dispatcher are
+working-tree changes. The immutable preflight passed; actual r324m membership A is
+BUILT. Exact native EQ/JUG, main recipe and English recipe contents match that
+preflight; only EQ/JUG game files changed. Driver stopped after publication because
+it compared newline-free pipeline JSON with newline-terminated package JSON.
+Recovered the completed proof without rebuilding; original failed log preserved.
+Packet: `resume-qa/westham-brentford-r324-root-delivery-v1/`.
+`membership-A-build-proof-v1.json` is authoritative for the candidate build.
+A: `sourced-westham-brentford-opening-membership-20261025-r324m`.
+B: `sourced-westham-brentford-opening-membership-20261025-r324n` is running through
+`build_membership_root_v1.py publish-b`; log `root-publish-membership-B-v1.log`.
+Do NOT rerun A; inspect B locator/proof before any resume. Both remain candidates
+until Bywater replacement and Talbot position/handling corrections are delivered.
+
+The API memoizes its pure composition within one process only after rehashing all
+parent recipe/native bytes and source bodies. Callers receive copies; SOURCE clears
+that memo and reconstructs freshly from the immutable parent. Guard/dispatch suite:
+17 passed. The previously committed provider/compiler lane passed50 tests. Broader
+publisher suite107passed/11failed; exact same11cases fail with committed50f9bd8
+publisher/pruning code. Both logs and stable case-ID comparison retained. Do not
+claim an unqualified regression pass or silently fix unrelated mocks.
+
+New generic annual broad-position adapter is NOT wired into common dispatch yet:
+`scripts/season_annual_literal_broad_position_v1.py`. Copied only reviewed single-case
+lane, removed hardcoded audit-file dependency, added native-owner club/country and
+source-path guards. Source authority is raw annual row plus independently reparsed
+capture, never the audit itself. Actual Talbot9998 preflight against r324m is running
+via `prepare_talbot_broad_root_v1.py`; log `root-talbot-broad-preflight-v1.log`.
+Do not publish this adapter until its common-dispatch and regression checks pass.
+Then cap only outfield handling (preserve nine other skills), and use existing
+source-qualified Bywater replacement for duplicate13213; RobLee12523 remains.
+
+Disk cleanup completed: six stale synthetic SQLite test files (untouched since
+before12:18UTC; no active FD/cwd references) archived to Pi, every member verified,
+local hashes rechecked, then only those two old /tmp test dirs removed. Active Go
+tests and cache untouched. About1.57GiB recovered; free~7.7GiB. Restore ledger:
+`.local/cleanup-20261025/stale-go-test-sqlite-to-pi-v2/completion-v1.json`.
+Archive SHA256 `51696f56d824131f251bfb01da1b2298efe2345ceacf7f54817202f6b8963e96`.
+Initial UUID equality check rejected autofs/device multirow output safely; v2 used
+`findmnt --target`, same verified UUID, no root-filesystem fallback.
+
+Root independently re-read39 current kit bitmaps for13 Nacional proposals: all
+remain exact self-stock, no current kit mutation needed. Rejected unpublished
+Uruguay-donor proposals and recovered all13 stable frozen kit IDs:
+`nacional-stock-identity-review-20261025-v1/root-frozen-case-dispositions-v3.json`.
+Frozen327 and58 stock deliveries preserved;13 no-op dispositions are separate
+from delivered corrections. Other256 are candidates, not confirmed bugs, and may
+include other completed work not yet matched to that stock index. No game rebuilt.
+Exact next action: finish B proof; complete/QA Talbot adapter, then targeted native
+rating cap and Bywater identity replacement into candidate game; SOURCE and genuine
+club/profile runner checks before promotion. Keep other25 and original2015 exact.
+
 ## v173 installed and verified — 2026-10-25 22:48 UTC
 
 Machine: `joe-Vostro-3350`. Source session: `01a0592d-fcd5-7262-a637-743a8253d9b4`.

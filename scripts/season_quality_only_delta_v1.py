@@ -9,6 +9,7 @@ from app.fdi_indexed import IndexedFDIFile
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import season_package_v2 as packages,season_package_compiler_v2 as compiler
 from scripts import season_historical_roster_audit_v1 as roster
+from scripts import season_disk_budget_v1 as disk_budget
 
 SCHEMA='pm99-source-bound-nationality-or-rating-only-delta-v1'
 PREFIX='source-bound-quality-only-'
@@ -36,8 +37,14 @@ def verified_source(base,kind):
     raise ValueError('unknown quality source policy')
 
 
-def prepare(base,kind):
-    rows,bindings=verified_source(base,kind)
+def prepare(base,kind,*,request_path=None):
+    if kind=='selected-outfield-handling-cap-v1':
+        from scripts import season_selected_outfield_handling_cap_v1 as handling_cap
+        if request_path is None:raise ValueError('selected handling cap requires its bound request')
+        rows,bindings=handling_cap.rows(base,request_path)
+    else:
+        if request_path is not None:raise ValueError('request-bound admission is only supported for selected Handling caps')
+        rows,bindings=verified_source(base,kind)
     if not rows or len({r['carrier_id'] for r in rows})!=len(rows):raise ValueError('nonempty unique quality updates required')
     doc=dict(schema=SCHEMA,season=base.season,release_id=base.release_id,kind=kind,
         package_sha256=registry.sha256_file(base.package_path),jug_sha256=registry.sha256_file(base.game_path/'DBDAT/JUG98030.FDI'),
@@ -50,7 +57,10 @@ def verify(base,plan):
     # JSON has arrays, not Python tuples. Compare the canonical wire contract
     # so a declarative (low, high) policy pair survives its JSON round trip,
     # without weakening any source/preimage/transaction fingerprint.
-    if plan.get('schema')!=SCHEMA or packages.canonical_json_bytes(prepare(base,plan['kind']))!=packages.canonical_json_bytes(plan):
+    extra={}
+    if plan.get('kind')=='selected-outfield-handling-cap-v1':
+        extra['request_path']=registry.ROOT/plan['source_bindings']['source_input']['path']
+    if plan.get('schema')!=SCHEMA or packages.canonical_json_bytes(prepare(base,plan['kind'],**extra))!=packages.canonical_json_bytes(plan):
         raise ValueError('quality sources/preimage no longer reproduce')
 
 
@@ -86,6 +96,15 @@ def bind(package,plan):
         result['sources'].append(dict(id=SOURCE_ID,title=title,
             proof_grade='reviewed-editorial',evidence_artifact_id=aid))
         result['sources'].sort(key=lambda s:s['id'])
+    if plan['kind']=='selected-outfield-handling-cap-v1':
+        from scripts import season_selected_outfield_handling_cap_v1 as handling_cap
+        source_id=plan['source_bindings']['source_id']
+        if any(row['id']==source_id for row in result['sources']):
+            raise ValueError('selected handling cap source already exists')
+        result['sources'].append(dict(id=source_id,
+            title='Explicit selected outfield Handling cap at20; nine existing abilities preserved',
+            proof_grade='reviewed-editorial',evidence_artifact_id=aid))
+        result['sources'].sort(key=lambda row:row['id'])
     result['artifacts'].sort(key=lambda a:a['id']);packages.validate_package(result)
     return result
 
@@ -131,7 +150,8 @@ def reject_factory_recipe(package):
         raise ValueError('quality-only recipe requires exact source-bound reconstruction')
 
 
-def reconstruction(previous,release_id):
+def reconstruction(previous,release_id,*,minimum_free_bytes=disk_budget.DEFAULT_RESERVE):
+    disk_budget.validate_reserve(minimum_free_bytes)
     path=previous.locator.get('sourced_profile_assignment_plan_path')
     if not path:return None
     path=registry.ROOT/path;plan=pipeline.read_json_file(path)
@@ -151,7 +171,7 @@ def reconstruction(previous,release_id):
         package_sha256=plan['package_sha256'],jug_sha256=plan['jug_sha256'],updates=[],unresolved=[]):
         raise ValueError('quality SOURCE input is not exact inert descriptor')
     for r in (base,previous):pipeline.assert_tree_matches_inventory(r.game_path,pipeline.read_json_file(r.inventory_path))
-    publisher.publish(previous.season,descriptor,release_id=release_id,source_release_id=base.release_id,profile_assignment_plan_path=path)
+    publisher.publish(previous.season,descriptor,release_id=release_id,source_release_id=base.release_id,profile_assignment_plan_path=path,minimum_free_bytes=minimum_free_bytes)
     rebuilt=registry.load_registered_release(previous.season,release_id)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path,pipeline.read_json_file(previous.inventory_path))
     if pipeline.read_json_file(rebuilt.package_path)!=package:raise ValueError('quality SOURCE recipe differs')

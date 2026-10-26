@@ -198,6 +198,9 @@ def reconstruction(previous, release_id):
     package = pipeline.read_json_file(previous.package_path)
     path = registry.ROOT / previous.locator['sourced_profile_assignment_plan_path']
     plan = pipeline.read_json_file(path)
+    from scripts import season_source_bound_fixture_membership_v1 as fixture_membership
+    if plan.get('schema') == fixture_membership.PROFILE_SCHEMA:
+        return fixture_membership.reconstruction(previous, release_id)
     from scripts import season_source_bound_birthday_disagreements_v1 as birthdays
     if plan.get('schema') == birthdays.SCHEMA:
         return birthdays.reconstruction(previous, release_id)

@@ -107,17 +107,30 @@ def inferred_deployment(opening, players):
                        for pid, i in zip(ids, assigned)]}
 
 
-def native_owners(eq):
+@lru_cache(maxsize=2)
+def _native_owner_rows(eq, parse_roster, read_payloads):
     owners = {}
-    for carrier, payload in tactics.payloads(eq).items():
-        roster = parse_eq_external_team_roster_payload(payload, {})
+    for carrier, payload in read_payloads(eq).items():
+        roster = parse_roster(payload, {})
         if (roster is None and len(payload) >= 0x2a and payload[0x29] in (0, 1)
                 and int.from_bytes(payload[0x26:0x28], 'little') >= 600):
             raise ValueError('cannot prove ownership through an unreadable external club roster')
         if roster is not None:
             for row in roster.rows:
                 owners.setdefault(row.player_record_id, set()).add(carrier)
-    return owners
+    return tuple((carrier, frozenset(clubs)) for carrier, clubs in owners.items())
+
+
+
+def native_owners(eq):
+    """Return fresh owner sets derived only from the complete immutable EQ bytes.
+
+    Retain at most two parsed byte images. Parser functions are part of the
+    cache key so injected parsers cannot reuse another implementation's result.
+    No source evidence or ownership decision is cached here.
+    """
+    return {carrier: set(clubs) for carrier, clubs in _native_owner_rows(
+        bytes(eq), parse_eq_external_team_roster_payload, tactics.payloads)}
 
 
 def apply_layer(eq, jug, layer, *, allow_compact=False):

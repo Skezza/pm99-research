@@ -192,3 +192,139 @@ def test_root_rejects_untrusted_or_wrong_fixture_route(url):
 
 def test_root_accepts_exact_https_report_route():
     subject._verify_report_url("https://www.transfermarkt.co.uk/preston-west-ham/index/spielbericht/2247999", "2247999")
+
+
+def _minimal_publication_envelope(tmp_path, monkeypatch):
+    from scripts import season_pipeline_v2 as pipeline
+    monkeypatch.setattr(registry, 'ROOT', tmp_path)
+    document = {'schema_version': 'pm99-opening-xi-transfer-crossmatch-v1',
+                'parent': {'release_id': 'parent'}, 'source_files': {}}
+    source = tmp_path / 'source.json'
+    source.write_bytes(pipeline.canonical_json_bytes(document))
+    plan = dict(document, schema=subject.PROFILE_SCHEMA, season='2003-04',
+                release_id='parent', package_sha256='a' * 64, jug_sha256='b' * 64,
+                source_input={'path': 'source.json', 'sha256': _sha(source.read_bytes())},
+                scope='test')
+    plan['transaction_id'] = _sha(pipeline.canonical_json_bytes(plan))[:24]
+    return document, plan
+
+
+def test_publication_envelope_preserves_original_source_semantics(tmp_path, monkeypatch):
+    document, plan = _minimal_publication_envelope(tmp_path, monkeypatch)
+    assert subject._verify_envelope(plan) == document
+
+
+def test_publication_envelope_rejects_resealed_source_changes(tmp_path, monkeypatch):
+    from scripts import season_pipeline_v2 as pipeline
+    _, plan = _minimal_publication_envelope(tmp_path, monkeypatch)
+    plan['parent']['release_id'] = 'another-parent'
+    plan.pop('transaction_id')
+    plan['transaction_id'] = _sha(pipeline.canonical_json_bytes(plan))[:24]
+    with pytest.raises(subject.OpeningXICompositionError, match='altered the original'):
+        subject._verify_envelope(plan)
+
+
+def test_publication_envelope_rejects_stale_content_id(tmp_path, monkeypatch):
+    _, plan = _minimal_publication_envelope(tmp_path, monkeypatch)
+    plan['release_id'] = 'another-parent'
+    with pytest.raises(subject.OpeningXICompositionError, match='content hash'):
+        subject._verify_envelope(plan)
+
+
+def test_publication_envelope_rejects_changed_retained_source(tmp_path, monkeypatch):
+    _, plan = _minimal_publication_envelope(tmp_path, monkeypatch)
+    (tmp_path / 'source.json').write_text('{}')
+    with pytest.raises(subject.OpeningXICompositionError, match='crossmatch changed'):
+        subject._verify_envelope(plan)
+
+
+def _cache_fixture(tmp_path, monkeypatch):
+    from scripts import season_pipeline_v2 as pipeline
+    from types import SimpleNamespace
+    document, plan = _minimal_publication_envelope(tmp_path, monkeypatch)
+    evidence = tmp_path / 'report.html'
+    evidence.write_bytes(b'original report')
+    document['source_files'] = {'report.html': {'sha256': _sha(evidence.read_bytes())}}
+    source = tmp_path / 'source.json'
+    source.write_bytes(pipeline.canonical_json_bytes(document))
+    overlay = tmp_path / 'english-season-package.json'
+    overlay.write_bytes(b'{}')
+    package = tmp_path / 'package.json'
+    package.write_bytes(pipeline.canonical_json_bytes({'artifacts': [{'id': 'english',
+        'relative_path': overlay.name, 'sha256': _sha(overlay.read_bytes())}]}))
+    game = tmp_path / 'game'
+    (game / 'DBDAT').mkdir(parents=True)
+    (game / 'DBDAT/EQ98030.FDI').write_bytes(b'parent EQ')
+    (game / 'DBDAT/JUG98030.FDI').write_bytes(b'parent JUG')
+    release = SimpleNamespace(season='2003-04', release_id='parent', manifest_sha256='c' * 64,
+                              package_path=package, game_path=game)
+    plan['source_files'] = copy.deepcopy(document['source_files'])
+    plan.update(package_sha256=_sha(package.read_bytes()), jug_sha256=_sha(b'parent JUG'),
+                source_input={'path': source.name, 'sha256': _sha(source.read_bytes())})
+    plan.pop('transaction_id')
+    plan['transaction_id'] = _sha(pipeline.canonical_json_bytes(plan))[:24]
+    monkeypatch.setattr(subject, '_base', lambda value: release)
+    calls = []
+    def compose(*args):
+        calls.append(args)
+        if args[3] != b'parent EQ':
+            raise subject.OpeningXICompositionError('changed parent EQ')
+        return {'mutable': {'value': 'expected'}}
+    monkeypatch.setattr(subject, 'compose_in_memory', compose)
+    monkeypatch.setattr(subject, '_RECONSTRUCTION_CACHE', {})
+    return plan, release, evidence, calls
+
+
+def test_checked_process_cache_cannot_be_poisoned_by_a_caller(tmp_path, monkeypatch):
+    plan, _, _, calls = _cache_fixture(tmp_path, monkeypatch)
+    first = subject._reconstruct(plan)
+    first['mutable']['value'] = 'tampered'
+    assert subject._reconstruct(plan) == {'mutable': {'value': 'expected'}}
+    assert len(calls) == 1
+
+
+def test_checked_process_cache_rehashes_source_bodies_before_reuse(tmp_path, monkeypatch):
+    plan, _, evidence, calls = _cache_fixture(tmp_path, monkeypatch)
+    subject._reconstruct(plan)
+    evidence.write_bytes(b'changed report')
+    with pytest.raises(subject.OpeningXICompositionError, match='source hash changed'):
+        subject._reconstruct(plan)
+    assert len(calls) == 1
+
+
+def test_checked_process_cache_never_hides_changed_native_parent(tmp_path, monkeypatch):
+    plan, release, _, calls = _cache_fixture(tmp_path, monkeypatch)
+    subject._reconstruct(plan)
+    (release.game_path / 'DBDAT/EQ98030.FDI').write_bytes(b'changed EQ')
+    with pytest.raises(subject.OpeningXICompositionError, match='changed parent EQ'):
+        subject._reconstruct(plan)
+    assert len(calls) == 2
+
+
+def test_existing_source_dispatch_routes_only_the_exact_membership_schema(monkeypatch):
+    from types import SimpleNamespace
+    from scripts import season_profile_assignment_pruning_layer_v1 as dispatcher
+    previous = SimpleNamespace(locator={'sourced_profile_assignment_plan_path': 'source.json'}, package_path=Path('package.json'))
+    monkeypatch.setattr(dispatcher.pipeline, 'read_json_file', lambda path: {'schema': subject.PROFILE_SCHEMA})
+    calls = []
+    monkeypatch.setattr(subject, 'reconstruction', lambda *args: calls.append(args) or {'source': 'membership'})
+    assert dispatcher.reconstruction(previous, 'child') == {'source': 'membership'}
+    assert calls == [(previous, 'child')]
+
+
+def test_publication_bind_emits_a_schema_valid_source_artifact(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    from scripts.test_season_package_compiler_v2 import _native_package
+    package = _native_package()
+    package['artifacts'].append({'id': 'z-last', 'kind': 'season-input', 'sha256': 'b' * 64})
+    package['artifacts'].sort(key=lambda row: row['id'])
+    path = tmp_path / 'package.json'
+    path.write_bytes(package_v2.canonical_json_bytes(package))
+    plan = {'transaction_id': 'a' * 24}
+    monkeypatch.setattr(subject, '_base', lambda value: SimpleNamespace(package_path=path))
+    monkeypatch.setattr(subject, '_reconstruct', lambda value: {'outputs': {'main_package': copy.deepcopy(package)}})
+    bound = subject.bind(package, plan)
+    artifact = next(row for row in bound['artifacts'] if row['id'] == subject.PLAN_ARTIFACT_ID)
+    assert artifact['kind'] == 'season-input' and artifact['media_type'] == 'application/json'
+    assert [row['id'] for row in bound['artifacts']] == sorted(row['id'] for row in bound['artifacts'])
+    package_v2.validate_package(bound)

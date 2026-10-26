@@ -704,6 +704,9 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         from scripts import season_opening_cohort_delta_v1 as opening_cohort
         if assignment_plan.get('schema') == opening_cohort.PROFILE_SCHEMA:
             assignments = opening_cohort
+        from scripts import season_source_bound_fixture_membership_v1 as fixture_membership
+        if assignment_plan.get('schema') == fixture_membership.PROFILE_SCHEMA:
+            assignments = fixture_membership
         assignments.verify(release, assignment_plan)
     if not changes and not nationality_changes and not club_changes and not (nationality_plan and nationality_plan['updates']) and not (manager_plan and manager_plan['updates']) and patched_exe == original_exe and not (ownership_plan and ownership_plan['updates']) and visibility_plan_path is None and keeper_plan is None and not birth_year_changes and opening_plan is None and italian_plan is None and trabzon_plan is None and name_plan is None and assignment_plan is None:
         return {'season': season, 'status': 'no-native-role-changes', 'registered': False}
@@ -872,6 +875,8 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         disk_budget.require_space(release.game_path, predicted,
             minimum_free_bytes=minimum_free_bytes, context="season publication")
     updated_english = None
+    if assignment_plan is not None and assignment_plan.get('schema') == fixture_membership.PROFILE_SCHEMA:
+        updated_english = fixture_membership.updated_english(assignment_plan)
     if assignment_plan is not None and assignment_plan.get('schema') == english_roles.SCHEMA:
         updated_english = english_roles.updated_english(assignment_plan)
     if assignment_plan is not None and assignment_plan.get('kind') == 'season-rating-calibration-2015-english-v3':
@@ -955,7 +960,13 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         package_path.write_bytes(package_v2.canonical_json_bytes(result))
     if updated_english is not None:
         from scripts import season_duplicate_english_overlay_v1 as overlay
-        artifact = next(a for a in result['artifacts'] if a['id'] == overlay.ARTIFACT)
+        if assignment_plan is not None and assignment_plan.get('schema') == fixture_membership.PROFILE_SCHEMA:
+            matches = [a for a in result['artifacts'] if str(a.get('relative_path', '')).endswith('english-season-package.json')]
+            if len(matches) != 1:
+                raise ValueError('membership correction needs one exact English overlay artifact')
+            artifact = matches[0]
+        else:
+            artifact = next(a for a in result['artifacts'] if a['id'] == overlay.ARTIFACT)
         relative = Path(artifact['relative_path'])
         if relative.is_absolute() or '..' in relative.parts:
             raise ValueError('unsafe repaired English recipe artifact path')
@@ -1315,6 +1326,11 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             opening_identity_changes=identity_changes,
             players_written=len(identity_changes),
             allowed_write='Only source-bound selected opening-cohort actors, reviewed facts/ratings, fixed target roster memberships, compatible complete mode-1 orders, and selected native-no-photo deactivations; all other actors, clubs, managers, game files, and assets byte-identical.')
+    elif assignment_plan is not None and assignment_plan.get('schema') == fixture_membership.PROFILE_SCHEMA:
+        receipt.update(compilation_mode=fixture_membership.MODE,
+            original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
+            removed_target_roster_links=[], fixed_duplicate_case_ids=[],
+            players_written=0, allowed_write=assignment_plan['scope'])
     elif assignment_plan is not None:
         starter_opening = assignment_plan.get('schema') == duplicate_opening.SCHEMA
         assignment_reviews = [assignment_plan['review']] if starter_opening else assignment_plan['reviews']

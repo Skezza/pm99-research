@@ -31,17 +31,25 @@ EDITORIAL_FACTORY_ROLE_KIND='reviewed-editorial-compatible-fine-role-projection'
 DATED_PARENT_FACTS_ROLE_KIND='dated-parent-facts-editorial-compatible-fine-role-projection-v3'
 NATIONAL_TEAM_KIND='dated-national-squad-single-game-country'
 DOB_DISAGREEMENT_KIND='source-backed-known-dob-disagreement'
+ANNUAL_BROAD_KIND='annual-literal-broad-position-only'
 MULTI_FIELD_KINDS=(ADJUDICATED_KIND,DATED_ROLE_KIND,PRIMARY_ROLE_KIND,NATIONAL_TEAM_KIND,DOB_DISAGREEMENT_KIND,EDITORIAL_FACTORY_ROLE_KIND,DATED_PARENT_FACTS_ROLE_KIND)
 HEIGHT_SCOPE='Only selected adult published-height recipe fields and one height byte per changed native player; names, DOBs, countries, roles, ratings, orders, clubs, managers, photos, kits, EXE and opaque bytes unchanged. Published adult biography height is not a dated target-season measurement claim.'
 SCOPE='Only selected explicit missing nationality recipe fields and one country byte per selected native player; all names, DOBs, roles, ratings, orders, ownership, tactics, managers, photos, kits, EXE and opaque data unchanged.'
 digest=native.digest
 
 def filename(plan):
+    if plan.get('kind') == ANNUAL_BROAD_KIND:
+        from scripts import season_annual_literal_broad_position_v1 as annual_broad
+        return annual_broad.filename(plan)
     if plan.get('kind') == DATED_PARENT_FACTS_ROLE_KIND:
         from scripts import season_dated_parent_facts_editorial_role_v1 as dated_parent_role
         return dated_parent_role.filename(plan)
     return 'source-backed-player-changes-'+plan['transaction_id']+'.json'
-def artifact_id(plan):return PREFIX+plan['transaction_id']
+def artifact_id(plan):
+    if plan.get('kind') == ANNUAL_BROAD_KIND:
+        from scripts import season_annual_literal_broad_position_v1 as annual_broad
+        return annual_broad.artifact_id(plan)
+    return PREFIX+plan['transaction_id']
 def binding(path):return dict(path=registry.relative_workspace_path(path),sha256=registry.sha256_file(path))
 
 def original_path(relative):
@@ -54,6 +62,9 @@ def prepare(base,input_path):
     path=Path(input_path)
     original_path(registry.relative_workspace_path(path))
     request=pipeline.read_json_file(path)
+    if request.get('kind') == ANNUAL_BROAD_KIND:
+        from scripts import season_annual_literal_broad_position_v1 as annual_broad
+        return annual_broad.prepare(base, path)
     if request.get('kind') == DATED_PARENT_FACTS_ROLE_KIND:
         from scripts import season_dated_parent_facts_editorial_role_v1 as dated_parent_role
         return dated_parent_role.prepare(base, path)
@@ -193,6 +204,9 @@ def prepare_height(base, path, request):
     return result
 
 def verify(base,plan):
+    if plan.get('kind') == ANNUAL_BROAD_KIND:
+        from scripts import season_annual_literal_broad_position_v1 as annual_broad
+        return annual_broad.verify(base, plan)
     if plan.get('kind') == DATED_PARENT_FACTS_ROLE_KIND:
         from scripts import season_dated_parent_facts_editorial_role_v1 as dated_parent_role
         return dated_parent_role.verify(base, plan)
@@ -201,6 +215,9 @@ def verify(base,plan):
         raise ValueError('source-backed field plan does not independently reproduce')
 
 def validate_mask(plan):
+    if plan.get('kind') == ANNUAL_BROAD_KIND:
+        from scripts import season_annual_literal_broad_position_v1 as annual_broad
+        return annual_broad.validate_mask(plan)
     if plan.get('kind') == DATED_PARENT_FACTS_ROLE_KIND:
         from scripts import season_dated_parent_facts_editorial_role_v1 as dated_parent_role
         return dated_parent_role.validate_mask(plan)
@@ -256,6 +273,9 @@ def validate_mask(plan):
         offsets.add(mask['file_offset'])
 
 def bind(package,plan):
+    if plan.get('kind') == ANNUAL_BROAD_KIND:
+        from scripts import season_annual_literal_broad_position_v1 as annual_broad
+        return annual_broad.bind(package, plan)
     if plan.get('kind') == DATED_PARENT_FACTS_ROLE_KIND:
         from scripts import season_dated_parent_facts_editorial_role_v1 as dated_parent_role
         return dated_parent_role.bind(package, plan)
@@ -279,6 +299,9 @@ def bind(package,plan):
     return result
 
 def apply(jug,eq,plan):
+    if plan.get('kind') == ANNUAL_BROAD_KIND:
+        from scripts import season_annual_literal_broad_position_v1 as annual_broad
+        return annual_broad.apply(jug, eq, plan)
     if plan.get('kind') == DATED_PARENT_FACTS_ROLE_KIND:
         from scripts import season_dated_parent_facts_editorial_role_v1 as dated_parent_role
         return dated_parent_role.apply(jug, eq, plan)
@@ -306,6 +329,8 @@ def apply(jug,eq,plan):
     return after,after_eq
 
 def reject_factory_recipe(package):
+    from scripts import season_annual_literal_broad_position_v1 as annual_broad
+    annual_broad.reject_factory_recipe(package)
     if any(a['id'].startswith(PREFIX) for a in package.get('artifacts',[])):
         raise ValueError('source-backed field recipe requires exact SOURCE reconstruction')
 
@@ -314,6 +339,9 @@ def reconstruction(previous,release_id,*,minimum_free_bytes=disk_budget.DEFAULT_
     relative=getattr(previous,'locator',{}).get('sourced_profile_assignment_plan_path')
     if not relative:return None
     path=registry.ROOT/relative;plan=pipeline.read_json_file(path)
+    if plan.get('kind') == ANNUAL_BROAD_KIND:
+        from scripts import season_annual_literal_broad_position_v1 as annual_broad
+        return annual_broad.reconstruction(previous, release_id, minimum_free_bytes=minimum_free_bytes)
     if plan.get('schema')!=SCHEMA:return None
     base=registry.load_registered_release(previous.season,plan['release_id']);verify(base,plan)
     receipt=pipeline.read_json_file(previous.compiler_receipt_path)

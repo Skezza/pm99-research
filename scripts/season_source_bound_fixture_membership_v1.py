@@ -757,3 +757,161 @@ def compose_in_memory(parent: Any, main_package: Mapping[str, Any], english_pack
                     "eq": eq_after, "jug": jug_after},
         "write_policy": "all outputs are returned as in-memory values; no registered files were written",
     }
+
+
+# Bounded publication through the existing native-delta publisher. The original
+# crossmatch stays semantic source data; this envelope only pins its provenance.
+PROFILE_SCHEMA = 'pm99-source-bound-opening-fixture-membership-publication-v1'
+MODE = 'known-good-baseline-source-bound-opening-fixture-membership'
+
+# Process-local only. Every retained input is rehashed before lookup; SOURCE
+# reconstruction clears this cache and derives a fresh result from the parent.
+_RECONSTRUCTION_CACHE: dict[tuple, dict[str, Any]] = {}
+
+
+def filename(plan: Mapping[str, Any]) -> str:
+    return 'opening-fixture-membership-' + plan['transaction_id'] + '.json'
+
+
+def _base(plan: Mapping[str, Any]):
+    ref = plan['parent']
+    return registry.load_registered_release(ref['season'], ref['release_id'])
+
+
+def prepare(release: Any, source_path: Path) -> dict[str, Any]:
+    from scripts import season_pipeline_v2 as pipeline
+    raw = source_path.read_bytes()
+    document = json.loads(raw)
+    if 'schema' in document or 'transaction_id' in document:
+        raise OpeningXICompositionError('source crossmatch must not carry a publication envelope')
+    if document.get('parent', {}).get('release_id') != release.release_id:
+        raise OpeningXICompositionError('source crossmatch pins another parent release')
+    plan = copy.deepcopy(document)
+    plan.update(schema=PROFILE_SCHEMA, season=release.season, release_id=release.release_id,
+        package_sha256=registry.sha256_file(release.package_path),
+        jug_sha256=registry.sha256_file(release.game_path / 'DBDAT/JUG98030.FDI'),
+        source_input={'path': registry.relative_workspace_path(source_path.resolve()), 'sha256': _sha(raw)},
+        scope='Source-proven mode-0 membership and exact opening order/context only; identities, facts, skills, managers and assets unchanged.')
+    plan['transaction_id'] = _sha(pipeline.canonical_json_bytes(plan))[:24]
+    verify(release, plan)
+    return plan
+
+
+def _verify_envelope(plan: Mapping[str, Any]) -> dict[str, Any]:
+    from scripts import season_pipeline_v2 as pipeline
+    if plan.get('schema') != PROFILE_SCHEMA:
+        raise OpeningXICompositionError('unsupported membership publication schema')
+    original = copy.deepcopy(dict(plan))
+    transaction_id = original.pop('transaction_id', None)
+    if transaction_id != _sha(pipeline.canonical_json_bytes(original))[:24]:
+        raise OpeningXICompositionError('membership transaction content hash differs')
+    bound = plan['source_input']
+    raw = _source_path(bound['path']).read_bytes()
+    if _sha(raw) != bound['sha256']:
+        raise OpeningXICompositionError('original membership source crossmatch changed')
+    document = json.loads(raw)
+    envelope = {'schema', 'season', 'release_id', 'package_sha256', 'jug_sha256',
+                'source_input', 'scope'}
+    if {k: v for k, v in original.items() if k not in envelope} != document:
+        raise OpeningXICompositionError('publication altered the original source crossmatch')
+    return document
+
+
+def _reconstruct(plan: Mapping[str, Any]) -> dict[str, Any]:
+    document = _verify_envelope(plan)
+    release = _base(plan)
+    if (release.season != plan['season'] or release.release_id != plan['release_id']
+            or registry.sha256_file(release.package_path) != plan['package_sha256']
+            or registry.sha256_file(release.game_path / 'DBDAT/JUG98030.FDI') != plan['jug_sha256']):
+        raise OpeningXICompositionError('membership publication parent/package/JUG pin differs')
+    main_raw = release.package_path.read_bytes()
+    main = json.loads(main_raw)
+    english_raw = _layer_path(main, release.package_path, 'english-season-package.json').read_bytes()
+    eq = (release.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    checked_sources = _check_sources(document)
+    key = (plan['transaction_id'], release.manifest_sha256, _sha(main_raw),
+           _sha(english_raw), _sha(eq), _sha(jug),
+           tuple((row['path'], row['sha256']) for row in checked_sources))
+    if key not in _RECONSTRUCTION_CACHE:
+        result = compose_in_memory(release, main, json.loads(english_raw), eq, jug, document)
+        _RECONSTRUCTION_CACHE.clear()
+        _RECONSTRUCTION_CACHE[key] = result
+    # Callers cannot mutate a later validation's expected output.
+    return copy.deepcopy(_RECONSTRUCTION_CACHE[key])
+
+
+def verify(release: Any, plan: Mapping[str, Any]) -> None:
+    if release.manifest_sha256 != plan.get('parent', {}).get('manifest_sha256'):
+        raise OpeningXICompositionError('membership publication registered parent differs')
+    _reconstruct(plan)
+
+
+def bind(package: Mapping[str, Any], plan: Mapping[str, Any]) -> dict[str, Any]:
+    from scripts import season_pipeline_v2 as pipeline
+    release = _base(plan)
+    if package_v2.canonical_json_bytes(dict(package)) != release.package_path.read_bytes():
+        raise OpeningXICompositionError('membership bind input differs from immutable parent recipe')
+    result = copy.deepcopy(_reconstruct(plan)['outputs']['main_package'])
+    if any(row.get('id') == PLAN_ARTIFACT_ID for row in result['artifacts']):
+        raise OpeningXICompositionError('a membership source plan is already present')
+    result['artifacts'].append({'id': PLAN_ARTIFACT_ID, 'kind': 'season-input',
+                               'media_type': 'application/json', 'relative_path': filename(plan),
+                               'sha256': _sha(pipeline.canonical_json_bytes(plan))})
+    result['artifacts'].sort(key=lambda row: row['id'])
+    package_v2.validate_package(result)
+    return result
+
+
+def apply(jug: bytes, eq: bytes, plan: Mapping[str, Any]) -> tuple[bytes, bytes]:
+    release = _base(plan)
+    expected = _reconstruct(plan)['outputs']
+    result = expected['jug'], expected['eq']
+    before = ((release.game_path / 'DBDAT/JUG98030.FDI').read_bytes(),
+              (release.game_path / 'DBDAT/EQ98030.FDI').read_bytes())
+    if (jug, eq) not in (before, result):
+        raise OpeningXICompositionError('membership writer input is neither exact parent nor exact postimage')
+    return result
+
+
+def updated_english(plan: Mapping[str, Any]) -> dict[str, Any]:
+    return copy.deepcopy(_reconstruct(plan)['outputs']['english_package'])
+
+
+def reconstruction(previous: Any, release_id: str, *, minimum_free_bytes: int = 8 * 1024**3):
+    from scripts import season_pipeline_v2 as pipeline
+    relative = previous.locator.get('sourced_profile_assignment_plan_path')
+    if not relative:
+        return None
+    path = registry.ROOT / relative
+    plan = pipeline.read_json_file(path)
+    if plan.get('schema') != PROFILE_SCHEMA:
+        return None
+    _RECONSTRUCTION_CACHE.clear()
+    parent = _base(plan)
+    verify(parent, plan)
+    receipt = pipeline.read_json_file(previous.compiler_receipt_path)
+    if (receipt.get('compilation_mode') != MODE
+            or path.resolve() != (previous.package_path.parent / filename(plan)).resolve()
+            or registry.sha256_file(path) != receipt.get('original_profile_assignment_plan_sha256')):
+        raise OpeningXICompositionError('membership SOURCE plan/receipt binding differs')
+    package = pipeline.read_json_file(previous.package_path)
+    if bind(pipeline.read_json_file(parent.package_path), plan) != package:
+        raise OpeningXICompositionError('membership SOURCE would discard main recipe edits')
+    overlay = _layer_path(package, previous.package_path, 'english-season-package.json')
+    if package_v2.canonical_json_bytes(updated_english(plan)) != overlay.read_bytes():
+        raise OpeningXICompositionError('membership SOURCE would discard English recipe edits')
+    descriptor = previous.package_path.parent / 'role-delta-input.json'
+    if pipeline.read_json_file(descriptor) != dict(season=parent.season, release_id=parent.release_id,
+            package_sha256=plan['package_sha256'], jug_sha256=plan['jug_sha256'], updates=[], unresolved=[]):
+        raise OpeningXICompositionError('membership SOURCE inert descriptor differs')
+    from scripts import publish_historical_role_delta_v1 as publisher
+    publisher.publish(previous.season, descriptor, release_id=release_id,
+        source_release_id=parent.release_id, profile_assignment_plan_path=path,
+        minimum_free_bytes=minimum_free_bytes)
+    rebuilt = registry.load_registered_release(previous.season, release_id)
+    pipeline.assert_tree_matches_inventory(rebuilt.game_path, pipeline.read_json_file(previous.inventory_path))
+    if rebuilt.package_path.read_bytes() != previous.package_path.read_bytes():
+        raise OpeningXICompositionError('membership SOURCE complete recipe differs')
+    return {'season': previous.season, 'complete_game_inventory_identical': True,
+            'complete_recipe_identical': True}
