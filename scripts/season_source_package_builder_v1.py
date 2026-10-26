@@ -377,8 +377,9 @@ def _updated_facts(source: Mapping[str, Any], artifact_id: str) -> tuple[dict[st
         "height_cm": source.get("height_cm") if source.get("height_cm") is not None else copy.deepcopy(PRESERVE),
         "weight_kg": source.get("weight_kg") if source.get("weight_kg") is not None else copy.deepcopy(PRESERVE),
         "primary_position": source.get("position") if source.get("position") is not None else copy.deepcopy(PRESERVE),
-        # Broad source positions do not justify inventing PM99 fine roles.
-        "fine_roles": copy.deepcopy(PRESERVE),
+        # A literal goalkeeper has a known native role. Broad outfield
+        # positions alone still do not establish a side or detailed role.
+        "fine_roles": [0] if source.get("position") == "G" else copy.deepcopy(PRESERVE),
         # The compiler's foreign shirt-number storage is not proven writable.
         "shirt_number": copy.deepcopy(PRESERVE),
     }

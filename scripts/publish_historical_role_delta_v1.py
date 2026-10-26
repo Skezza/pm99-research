@@ -288,8 +288,12 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
     release = (registry.load_registered_release(season, source_release_id)
                if source_release_id is not None else registry.load_preferred_release(season))
     plan = json.loads(plan_path.read_text())
+    keeper_policies = {
+        'original-target-squad-full-name-DOB-literal-G-to-PM99-role-zero-v1',
+        'declared-and-native-G-preserved-fine-role-to-keeper-zero-v1',
+    }
     explicit_keeper_role_replay = (
-        plan.get('policy') == 'original-target-squad-full-name-DOB-literal-G-to-PM99-role-zero-v1'
+        plan.get('policy') in keeper_policies
         and bool(plan.get('updates')) and not plan.get('unresolved')
         and not any((register, modern_birth_dates, nationality_plan_path, manager_plan_path,
             club_plan_path, ownership_plan_path, visibility_plan_path, mode1_keeper_plan_path,
@@ -297,7 +301,7 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             trabzon_opening_plan_path, name_only_plan_path, profile_assignment_plan_path,
             resume_unregistered_assignment)))
     if (source_release_id is not None
-            and plan.get('policy') == 'original-target-squad-full-name-DOB-literal-G-to-PM99-role-zero-v1'
+            and plan.get('policy') in keeper_policies
             and not explicit_keeper_role_replay):
         raise ValueError('explicit keeper SOURCE requires a nonempty resolved role-only plan without mixed options')
     explicit_manager_replay = (manager_plan_path is not None and not any((
@@ -347,7 +351,9 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             season, release.release_id, registry.sha256_file(release.package_path), registry.sha256_file(source_jug)):
         raise ValueError('role plan is stale; never apply to a different release')
     package = json.loads(release.package_path.read_text())
-    if plan.get('policy') == 'original-target-squad-full-name-DOB-literal-G-to-PM99-role-zero-v1':
+    if plan.get('policy') in (
+            'original-target-squad-full-name-DOB-literal-G-to-PM99-role-zero-v1',
+            'declared-and-native-G-preserved-fine-role-to-keeper-zero-v1'):
         from scripts import season_sourced_goalkeeper_roles_v1 as sourced_goalkeepers
         sourced_goalkeepers.verify(release, plan)
     if plan.get('policy') == 'original-TFF-first-XI-broad-position-conservative-compatible-role-v1':

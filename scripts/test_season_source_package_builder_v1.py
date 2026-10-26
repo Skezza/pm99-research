@@ -9,6 +9,18 @@ from pathlib import Path
 import pytest
 
 
+@pytest.mark.parametrize('position, expected', [
+    ('G', [0]), ('D', {'policy': 'preserve-existing-mode1'}),
+    ('M', {'policy': 'preserve-existing-mode1'}),
+    ('F', {'policy': 'preserve-existing-mode1'}),
+    (None, {'policy': 'preserve-existing-mode1'}),
+])
+def test_literal_goalkeeper_derives_keeper_role_without_guessing_outfield_roles(position, expected):
+    from scripts import season_source_package_builder_v1 as builder
+    facts, _ = builder._updated_facts({'position': position}, 'original-source')
+    assert facts['fine_roles'] == expected
+
+
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))

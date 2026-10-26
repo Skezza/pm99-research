@@ -17,6 +17,64 @@ from scripts import season_release_registry_v1 as registry
 from scripts import season_opening_order_repair_v1 as order
 
 POLICY = 'original-target-squad-full-name-DOB-literal-G-to-PM99-role-zero-v1'
+CONSISTENCY_POLICY = 'declared-and-native-G-preserved-fine-role-to-keeper-zero-v1'
+
+
+def declared_keeper_target(player, native):
+    """Synchronise an existing G declaration, without claiming new history."""
+    facts = player['facts']
+    return (player.get('policy') != 'preserve-existing-mode1'
+            and facts.get('primary_position') == 'G'
+            and facts.get('fine_roles') == {'policy': 'preserve-existing-mode1'}
+            and native['position'] == 'G'
+            and audit.normalise(native['name']) == audit.normalise(player['name']))
+
+
+def prepare_position_consistency(release):
+    """Replace inherited outfield roles only where recipe and game say G.
+
+    This is deterministic compilation consistency, not independent evidence
+    that the current person's historical position or roster ownership is right.
+    Explicit fine-role declarations and whole-person fallbacks stay closed.
+    """
+    raw = release.package_path.read_bytes()
+    package = json.loads(raw)
+    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(jug).entries}
+    updates, unresolved = [], []
+    for player in package['players']:
+        if (player.get('policy') == 'preserve-existing-mode1'
+                or player['facts'].get('primary_position') != 'G'
+                or player['facts'].get('fine_roles') != {'policy': 'preserve-existing-mode1'}):
+            continue
+        carrier = player['carrier_id']
+        try:
+            decoded = entries[carrier].decode_payload(jug)
+            _, roles = read_indexed_native_roles(decoded, carrier)
+            if roles[0] == 0:
+                continue
+            native = audit.native_player(decoded, carrier)
+        except (KeyError, ValueError) as exc:
+            unresolved.append({'carrier_id': carrier, 'reason': str(exc)})
+            continue
+        if not declared_keeper_target(player, native):
+            unresolved.append({'carrier_id': carrier, 'reason': 'recipe/native identity or broad G disagrees'})
+            continue
+        updates.append({'player_id': player['id'], 'carrier_id': carrier,
+            'name': player['name'], 'birth_date': player['facts'].get('birth_date'),
+            'fine_roles': [0], 'provenance': {'method': CONSISTENCY_POLICY,
+                'declared_primary_position': 'G', 'native_primary_position': 'G',
+                'native_before_roles': roles,
+                'limit': 'Existing declared/native G synchronisation only; no new historical identity, ownership, biography or ability approval'}})
+    if (registry.sha256_file(release.package_path) != hashlib.sha256(raw).hexdigest()
+            or registry.sha256_file(release.game_path / 'DBDAT/JUG98030.FDI') != hashlib.sha256(jug).hexdigest()):
+        raise ValueError('goalkeeper consistency inputs changed during planning')
+    return {'schema_version': 'pm99-historical-role-plan-v1', 'season': release.season,
+        'release_id': release.release_id, 'package_sha256': hashlib.sha256(raw).hexdigest(),
+        'jug_sha256': hashlib.sha256(jug).hexdigest(), 'policy': CONSISTENCY_POLICY,
+        'updates': updates, 'unresolved': unresolved,
+        'summary': {'declared_keeper_role_corrections': len(updates),
+                    'native_identity_or_position_conflicts': len(unresolved)}}
 
 
 def original_keeper(capture, name, birthday):
@@ -111,6 +169,10 @@ def prepare(release, reparse_report):
 
 
 def verify(release, plan):
+    if plan.get('policy') == CONSISTENCY_POLICY:
+        if prepare_position_consistency(release) != plan:
+            raise ValueError('declared goalkeeper consistency plan does not reproduce')
+        return
     binding = plan['original_reparse_report']
     path = registry.ROOT / binding['path']
     registry.relative_workspace_path(path)
@@ -118,7 +180,7 @@ def verify(release, plan):
         raise ValueError('sourced goalkeeper role plan does not independently reproduce')
 
 
-def reconstruction(previous, release_id):
+def reconstruction(previous, release_id, *, minimum_free_bytes=None):
     """Replay this exact role-only child, never an inherited keeper ancestor."""
     from scripts import season_pipeline_v2 as pipeline
     from scripts import publish_historical_role_delta_v1 as publisher
@@ -136,7 +198,7 @@ def reconstruction(previous, release_id):
     path = registry.ROOT / relative
     registry.relative_workspace_path(path)
     plan = pipeline.read_json_file(path)
-    if plan.get('policy') != POLICY:
+    if plan.get('policy') not in (POLICY, CONSISTENCY_POLICY):
         return None
     if (not plan.get('updates') or plan.get('unresolved')
             or receipt.get('plan_sha256') != registry.sha256_file(path)):
@@ -161,8 +223,9 @@ def reconstruction(previous, release_id):
     if set(left) != set(right) or any(left[key] != right[key] for key in left if key != 'DBDAT/JUG98030.FDI'):
         raise ValueError('keeper SOURCE changed another game file')
     pipeline.assert_tree_matches_inventory(previous.game_path, inventories[1])
+    options = {} if minimum_free_bytes is None else {'minimum_free_bytes': minimum_free_bytes}
     publisher.publish(previous.season, path, release_id=release_id,
-                      source_release_id=base.release_id)
+                      source_release_id=base.release_id, **options)
     rebuilt = registry.load_registered_release(previous.season, release_id)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path, inventories[1])
     if rebuilt.package_path.read_bytes() != previous.package_path.read_bytes():
