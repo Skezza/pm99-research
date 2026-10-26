@@ -1,8 +1,8 @@
-"""Private integration prototype for source-bound opening XI/owner updates.
+"""Reconstruct source-bound opening XI and ownership corrections.
 
-This is QA-only. It consumes a fully pinned source/native crossmatch and two
-canonical recipe layers, then returns in-memory EQ/JUG and recipe postimages.
-It has no publication, runner, filesystem write, or registry operation.
+Reparse pinned original reports and annual identities before composing narrow
+EQ/JUG and main/English recipe changes. Publication uses the common delta
+publisher; SOURCE replay independently reconstructs the same changes.
 """
 from __future__ import annotations
 
@@ -220,6 +220,21 @@ def _identity_key(value: str) -> str:
     return " ".join(unicodedata.normalize("NFC", value).casefold().split())
 
 
+def _parse_grid_team(team: Any) -> tuple[list[tuple[str, str, None]], str]:
+    """Reuse the original capture parser; retain published surnames and exact IDs."""
+    from scripts.capture_transfermarkt_opening_lineups_v1 import _modern_lineup, CaptureError
+    try:
+        starters, _bench, formation, _manager = _modern_lineup(team)
+    except (CaptureError, ValueError, KeyError) as exc:
+        raise OpeningXICompositionError("raw formation-grid XI cannot be reconstructed") from exc
+    ids = [str(row.get("source_player_id", "")) for row in starters]
+    if (len(ids) != 11 or len(set(ids)) != 11 or any(not re.fullmatch(r"[1-9][0-9]*", pid) for pid in ids)
+            or any(not isinstance(row.get("display_name"), str) or not row["display_name"].strip()
+                   for row in starters)):
+        raise OpeningXICompositionError("raw formation grid needs eleven distinct published player identities")
+    return [(pid, row["display_name"], None) for pid, row in zip(ids, starters, strict=True)], formation
+
+
 def _verify_raw_match_reports(source_doc: Mapping[str, Any], main_package: Mapping[str, Any],
                               jug_data: bytes, native_rosters: Mapping[int, Any],
                               native_owners: Mapping[int, set[int]]) -> list[dict[str, Any]]:
@@ -316,8 +331,15 @@ def _verify_raw_match_reports(source_doc: Mapping[str, Any], main_package: Mappi
                 teams.append(team)
         if len(teams) != 1:
             raise OpeningXICompositionError("raw report does not identify one exact selected club line-up")
-        parsed: list[tuple[str, str, str]] = []
-        for tr in teams[0].select("table tr"):
+        parsed: list[tuple[str, str, str | None]] = []
+        style = club.get("style", "published-position-groups")
+        if style == "published-formation-grid":
+            parsed, published_formation = _parse_grid_team(teams[0])
+            if club.get("published_formation") != published_formation:
+                raise OpeningXICompositionError("raw grid formation differs from the bound published formation")
+        elif style != "published-position-groups":
+            raise OpeningXICompositionError("unsupported source lineup representation")
+        for tr in (teams[0].select("table tr") if style == "published-position-groups" else []):
             label = tr.find("b")
             if label is None:
                 continue
@@ -349,7 +371,11 @@ def _verify_raw_match_reports(source_doc: Mapping[str, Any], main_package: Mappi
                         {"Goalkeeper": "G", "Defenders": "D", "Midfielders": "M", "Forwards": "F"}.get(
                             slot.get("source_position_group")))
                        for slot in captured.get("starting_xi", [])]
-        if (captured.get("source_status") != "source-qualified-with-explicit-gaps"
+        expected_statuses = ({"source-qualified", "source-qualified-with-explicit-gaps"}
+                             if style == "published-formation-grid" else {"source-qualified-with-explicit-gaps"})
+        if (captured.get("source_status") not in expected_statuses
+                or captured.get("lineup_source_style") != style
+                or (style == "published-formation-grid" and captured.get("formation") != published_formation)
                 or captured_xi != parsed):
             raise OpeningXICompositionError("raw first-fixture report differs from its hash-bound season schedule capture")
         identity_exceptions = []

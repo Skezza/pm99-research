@@ -1,5 +1,85 @@
 # PM99: current work
 
+## Three keeper membership preflights passed; runtime capture active — 2026-10-26 00:34 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Installed v173 /22groups /17delivered /fiveopen unchanged. Current2003 finalA/B
+built and profile-verified, NOT installed. After archive cleanup the actual
+WestHam lineup capture is now running at corrected410,359 selector; evidence
+`local_2003_04_r324a_westham_lineup_v2`. Earlier v2/v3/v4 attempts stopped before
+launch on disk guards; v5-after-cache is the active attempt. Must inspect original
+frame and exact club/XI before executing prepared `install_r324_v174_root_v1.py`.
+The guard still requires6GiB; no weakening was made.
+
+Safe space recovery completed:65 older runner diagnostic/probe/tactics captures,
+3312 files, streamed to Pi, every archived size/SHA verified, then every local
+file rehashed and no active references checked before removal. Ledger:
+`.local/cleanup-20261025/old-runner-diagnostics-to-pi-v1/completion-v1.json`.
+Remote archive `/srv/hdd/workstation-archive/pm99/runner-diagnostics/vostro/20261026T002545Z/diagnostics.tar.gz`,
+SHA d234d3fee211098705da38d3eccd0e17682809dd875063716a97d6aea1b630e1.
+Recovered~512MiB, restore command in ledger. All current games, original2015,
+source data and recent runtime captures retained. Additionally retired~23MiB
+regenerable Mesa shader cache>6h with no active file descriptors; ledger
+`.local/cleanup-20261025/retired-old-mesa-shader-cache-v1.json`. Free~6.2GiB,
+monitor unrelated active Go workloads. Do not repeat completed cleanup.
+
+All THREE original-fixture/annual/native membership preflights now pass:
+Bristol2004 Miller9724 Derby328→Bristol347; Barnsley2007 Colgan9809 Ipswich330→331;
+Wycombe2016 Brown18216 Cheltenham361→391. Source XIs have eleven uniquely joined
+annual full names/DOB/providerIDs; donor starters preserved, capacities fit.
+Proofs in `resume-qa/coupled-wrong-gk-opening-xi-v1/two-membership-crossmatches-root-v1/`.
+Earlier v1 receipt serialization failed on nested bytes AFTER successful2004
+in-memory composition; v2 stores postimage hashes, no game was built then.
+Bristol publication plan prepared; Barnsley prepare running. No membership release
+built yet. Private driver `build_two_membership_root_v1.py` reuses common publisher;
+planned Bristolr325a/b, Barnsleyr326a/b. After membership, apply exact existing
+annual broad-position and selected Handling cap APIs, then actual SOURCE/runtime.
+
+Common adapter now also reparses original formation grids through existing
+capture parser, preserving published surnames/IDs and pinning source formation.
+Wycombe full preflight passed. Parser18tests passed; classic2003 golden also passed (1passed/25deselected,
+130.30s in `root-classic-golden-after-grid-v1.log`). Source and native preflight
+for all three cases passed; no new membership games built yet. No audit-source bypass or new website scrape needed.
+Next: finish/install2003; build the three bounded keeper/role corrections serially;
+then Irish allocation, Bath/GTF and stock-kit queues. Luna quota still exhausted.
+
+## 2003 built and profile-verified; lineup capture pending — 2026-10-26 00:22 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Installed state remains v173: 22 groups,17 delivered,five open. Final2003 r324a/b
+completed A/B SOURCE replay; manifest A57956bd92b10e202ff8e8f073750cf32c49da5f49b1ec8a0fd37943fe06e95ce.
+Composite proof checks three keeper/striker ownership moves, two source XIs,
+Talbot M/Handling20 and duplicate-slot Bywater; correct RobLee retained and all
+unselected players/managers/assets preserved. These builds are NOT installed.
+Proofs: `resume-qa/westham-brentford-r324-root-delivery-v1/` under the Oct23 packet:
+`final-bywater-A-B-proof-v1.json`, `final-composite-native-recipe-proof-v1.json`.
+Bywater/Talbot original profile frames reviewed; independent digit,age,native
+input and rendered-kit pixel checks passed under `runtime/`. No portrait claim.
+
+WestHam lineup v1 correctly FAILED identity validation: clean-map coordinates
+selected DerbyCounty. Original failed summary/screens retained. Current2003
+Championship sorts WestHam22nd; corrected candidate coordinate410,359 on First
+Division. v2 capture blocked BEFORE launch by six-GiB reserve; v3 tried explicit
+five-GiB but hard minimum correctly rejected it. DO NOT loosen disk-budget guard.
+Find safe archive/cleanup, then rerun v2 only if its unique evidence path remains
+absent. Exact next action: recover disk headroom and verify actual WestHam XI,
+then ancestry-checked promotion r275a→r324m2→r324p→r324h→r324a. Never use invalidm/n.
+Groups stay22/17/5; wrong-GK group will have2/5 corrected after installation.
+
+Three next-case original Sky team sheets fetched HTTP200 and SHA-bound in
+`resume-qa/coupled-wrong-gk-opening-xi-v1/sky-raw-opening-v1/`: Bristol2004,
+Barnsley2007,Wycombe2016. Positively show Miller,Colgan,Brown in XI; Elliott and
+Jombati on bench. Sky Bristol literal uses AliGibb versus existing AllyGibb,
+so alias must be explicitly adjudicated rather than silently expanded.
+Current2003 English kit appearance (WH red/white,Brentford black/white) needs
+bounded stock-donor review; pixel correctness is not historical kit approval.
+Preserve original327 kit baseline, distinguish any additions. No kit fix claimed.
+
+Code245e951 is confirmed present on GitHub snapshot branch (ls-remote). Luna quota
+still unavailable; lead continues. Free disk~6GiB and unrelated active Go work
+growing; do not delete its active cache/test outputs. All current26/original2015
+preserved. Continue with otherthree keeper cases, Irish allocation, Bath, stock.
+
 ## 2003 final identity build running — 2026-10-26 00:01 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.

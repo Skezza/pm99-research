@@ -5,8 +5,14 @@ existing players into their source-proven opening squads. It does not exchange
 their identities or invent substitute players to balance roster counts.
 
 The admission provider reparses retained Transfermarkt match bodies, selects the
-club by provider ID, and joins each published player ID and full name to a
-hash-bound annual name/date-of-birth row and the native player. Sources must use
+club by provider ID, and joins each published player ID to a hash-bound annual
+full name/date-of-birth row and the native player. Position-group tables retain
+their published names. Formation grids reuse the original capture parser and
+retain published surnames where that is all the report provides; they do not
+expand initials or invent given names. The published formation and the exact
+eleven provider IDs/names must also match the bound season fixture capture.
+Grid rows do not acquire a claimed published broad position from their pitch
+coordinates. Sources must use
 an HTTPS Transfermarkt report URL with the exact match ID. Ambiguous joins,
 changed source hashes and wrong parent releases are rejected.
 
