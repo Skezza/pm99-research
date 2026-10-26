@@ -1,5 +1,88 @@
 # PM99: current work
 
+## v182 INSTALLED: Portuguese pair and Clinceni manager — 2026-10-26 16:22 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+2019-20 preferred `sourced-portuguese-coupled-label-managers-20261026-r335a`;
+manifest `8c5313fe3cbb01e2599c8d7ade1e02de2c62be2be941da226ac9b6db93878102`. `./pm99-season play 2019-20`.
+Actual recipes/games now Boavista/Vidigal606 and RioAve/Carvalhal616, plus
+Clinceni/Poenaru1405. LPF primary tenure evidence proves Poenaru Aug2019 without
+inventing a fixture date or exact Jan2018 appointment day. Only selected EQ
+labels and three ENT records changed; every player, kit and photo byte preserved.
+Two A/SOURCE B layers complete recipe/inventory equal. Genuine Bracali/Boavista
+and Tarantini/RioAve profiles visually read, actual kit pixelerror0. Tarantini OCR
+refusal adjudicated from original frame; no recapture/altered transport. Genuine
+final Stoke startup attested to exact manifest/inventory. Other25 and original
+2015 backup unchanged. Evidence same `stock-kit-2019-cohort-guard-root-v1/` root:
+`completion-proof-v182.json`, `r335-final-native-scope-proof-v1.json`, profiles,
+original LPFPDF and all proofs. Current checklist`release-delivery-checklist-v182.json`;
+ledger`parallel-rc-20261023/confirmed-critical-batch-20261026-v34.json`.
+
+23 groups /19 delivered /4open. Original17 baseline15/2 and original11 completed
+label cases preserved. Targeted source review of all264 not-delivered stock
+candidate IDs FINISHED:24 source-confirmed cohort/label conflicts,12 admitted by
+existing delivery guards,12 dependency holds; includes existing2019/1109 and
+2019/606, not24 new bugs.606 now delivered, plus newly sourced counterpart616.
+Net source-cohort case scope38 /15delivered /23pending (12ready /11dependencies).
+Original11 denominator retained; added cases are positive original-fixture/XI
+source/native contradictions, not merely unsuccessful searches. Missing/mixed
+cohorts remain unclassified; no candidate scan credit claimed. Source index:
+`pending-stock-source-cohort-gates-v1/confirmed-source-conflict-case-index-v1.json`.
+Stock327:63delivered,13Nacional+Salernitana+Boavista exceptions,249untreated.
+Boavista606's old RioAve kit mapping was false: all3 current own seed sizes already
+correct after label repair; no kit write/delivery credit. Overall RCs NOT closed.
+
+NEXT distant batch: deliver12 already-guarded label/manager corrections across
+2009,2010,2017,2018,2021,2022,2024,2025, using exact existing frozen source reviews;
+then resolve11 dependency cases, calendar countries, Bath and remaining kits.
+One final all26 regression remains. Do not repeat earlier source investigations.
+Pi is online, /srv/hdd actual ext4 /dev/sda1 mounted,231GiBfree. No smbclient CLI;
+SSH batch-mode works. Old B-twin selection-only ledger under
+`.local/cleanup-20261026/source-twins-to-pi-v1/` found only44MiBindependently allocated:
+not worth archive/delete; NOTHING removed there. Larger source-safe archive
+candidates still being assessed. Current r335 disposable clone may be retired
+only after completion proof saved; keep shared Wine prefix and sealed games.
+Luna quota unavailable; lead continues without repeated failing spawns.
+
+
+## Active continuation after v181 — 2026-10-26 16:01 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Authoritative installed checkpoint remains v181/r333; do not rerun it.
+Same `stock-kit-2019-cohort-guard-root-v1/` evidence root as below.
+Portuguese606→Boavista/Vidigal and616→RioAve/Carvalhal are independently
+source-confirmed (Aug11/Aug16 original reports). First r334 label-only prep
+failed safely: recipe also incorrectly assigned Carvalhal to Romanian1405.
+Native1405 was R.Vlad, not recipeCarvalhal; record this distinction.
+Official LPF11Sep2020 interview (`clinceni-primary-source/lpf-bulletin-22.pdf`,
+2883336B) explicitly identifies Ilie Poenaru as Clinceni coach since Jan2018,
+continuously through interview. This proves Aug2019 tenure; does NOT establish
+an exact appointment day or opening XI. Original PDF, HTTP receipt and extracted
+text retained. No fabricated fixture date (manager first_fixture_date=None).
+
+BUILT, NOT INSTALLED: `sourced-clinceni-official-manager-20261026-r334a` +SOURCEb
+from installedr333; exact recipe/inventory match; only1405's ENT manager changes.
+`clinceni-manager-r334-v2/build-proof.json`. Successful r334 is manager-only;
+failed prior `portuguese-coupled-r334/` is only source/preflight, never published.
+BUILD ACTIVE: `build_portuguese_coupled_label_managers_root_v2.py`, log
+`portuguese-coupled-build-v2.log`, output`portuguese-coupled-r335/`, reserved
+`sourced-portuguese-coupled-label-managers-20261026-r335a/b`, extendsr334.
+Retire no parent source games. Do not rerun a completed build.
+NEXT: finish r335 A/SOURCE equality; capture final startup plus7747 RafaelBracali
+(Boavista) and20273 T.Tarantini (RioAve) serially, shared existing Wineprefix;
+prove only606/616 EQ labels plus three ENT managers differ from installedr333,
+all JUG/skills/facts/kits/photos unchanged. Promote chainr333→r334→r335 only
+once genuine frames/native/readback/source checks pass; create v182 ledger.
+One further label case616 is new; preserve original label baseline11 and v181
+baseline15. This would close pending606 and deliver added616, leaving1109.
+Kit606 oldRioAve remap may be another false positive after label restoration;
+prove all3 current bitmaps equal clean Boavista606 before disposing. Never count
+that as a delivered kit mapping. Source kit indexv6 remains63delivered.
+Completed r333 disposable runner clone retired363794432B with exact ledger;
+sealed installed release, all screenshots and shared Wine prefix preserved.
+Free around6.7GiB, minimum6GiB. Luna quota unavailable; no repeated failed spawns.
+
+
 ## v181 INSTALLED: 2019 club/manager corrections and five kits — 2026-10-26 15:53 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
