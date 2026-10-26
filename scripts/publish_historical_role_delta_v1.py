@@ -710,6 +710,9 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         from scripts import season_source_bound_reserve_transfer_v1 as reserve_transfer
         if assignment_plan.get('schema') == reserve_transfer.SCHEMA:
             assignments = reserve_transfer
+        from scripts import season_authored_country_delta_v1 as authored_country
+        if assignment_plan.get('schema') == authored_country.SCHEMA:
+            assignments = authored_country
         assignments.verify(release, assignment_plan)
     if not changes and not nationality_changes and not club_changes and not (nationality_plan and nationality_plan['updates']) and not (manager_plan and manager_plan['updates']) and patched_exe == original_exe and not (ownership_plan and ownership_plan['updates']) and visibility_plan_path is None and keeper_plan is None and not birth_year_changes and opening_plan is None and italian_plan is None and trabzon_plan is None and name_plan is None and assignment_plan is None:
         return {'season': season, 'status': 'no-native-role-changes', 'registered': False}
@@ -720,6 +723,10 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         patched, patched_eq = assignments.apply(original, original_eq, assignment_plan)
         if assignments.apply(patched, patched_eq, assignment_plan) != (patched, patched_eq):
             raise ValueError('reserve assignment pruning is not idempotent')
+        if assignment_plan.get('schema') == authored_country.SCHEMA:
+            patched_ent = authored_country.apply_ent(original_ent, assignment_plan)
+            original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
+            portrait_archive, portrait_offsets = authored_country.apply_minifoto(original_archive, assignment_plan)
         if assignment_plan.get('schema') == owned_roster.SCHEMA:
             from scripts import season_duplicate_ownership_delta_v1 as portrait_delta
             original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
@@ -1001,6 +1008,8 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         pipeline.write_canonical_json(workspace / names.FILENAME, name_plan)
     if assignment_plan is not None and not prepared:
         pipeline.write_canonical_json(workspace / assignments.filename(assignment_plan), assignment_plan)
+        if assignment_plan.get('schema') == authored_country.SCHEMA:
+            authored_country.copy_new_inputs(workspace, assignment_plan)
         if assignment_plan.get('schema') == amavisca_tx.SCHEMA:
             _write_amavisca_source_artifact(workspace, assignment_plan)
         if assignment_plan.get('schema') == alty_joint.SCHEMA:
@@ -1331,6 +1340,11 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             opening_identity_changes=identity_changes,
             players_written=len(identity_changes),
             allowed_write='Only source-bound selected opening-cohort actors, reviewed facts/ratings, fixed target roster memberships, compatible complete mode-1 orders, and selected native-no-photo deactivations; all other actors, clubs, managers, game files, and assets byte-identical.')
+    elif assignment_plan is not None and assignment_plan.get('schema') == authored_country.SCHEMA:
+        receipt.update(compilation_mode=authored_country.MODE,
+            original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
+            removed_target_roster_links=[], fixed_duplicate_case_ids=[],
+            players_written=len(authored_country._outputs(assignment_plan)['selected_players']), allowed_write=assignment_plan['scope'])
     elif assignment_plan is not None and assignment_plan.get('schema') == reserve_transfer.SCHEMA:
         receipt.update(compilation_mode=reserve_transfer.MODE,
             original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),

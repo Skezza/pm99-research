@@ -2205,6 +2205,8 @@ def compile_package_to_tree(
         foreign.reject_factory_recipe(package)
         from scripts import season_opening_cohort_delta_v1 as opening_cohort
         opening_cohort.reject_factory_recipe(package)
+        from scripts import season_authored_country_delta_v1 as authored_country
+        authored_country.reject_factory_recipe(package)
     except ValueError as exc:
         raise SeasonCompilerError(str(exc)) from exc
     effective_package_sha256 = package_v2.sha256_bytes(_canonical_json_bytes(package))

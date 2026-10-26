@@ -198,6 +198,9 @@ def reconstruction(previous, release_id):
     package = pipeline.read_json_file(previous.package_path)
     path = registry.ROOT / previous.locator['sourced_profile_assignment_plan_path']
     plan = pipeline.read_json_file(path)
+    from scripts import season_authored_country_delta_v1 as authored_country
+    if plan.get('schema') == authored_country.SCHEMA:
+        return authored_country.reconstruction(previous, release_id)
     from scripts import season_source_bound_reserve_transfer_v1 as reserve_transfer
     if plan.get('schema') == reserve_transfer.SCHEMA:
         return reserve_transfer.reconstruction(previous, release_id)

@@ -1,5 +1,104 @@
 # PM99: current work
 
+## Irish 2017 candidate built and SOURCE/runtime verified; ownership follow-up next — 2026-10-26 13:50 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Preferred releases still v179 / 23 groups / 19 delivered / 4 open. New Irish
+candidate is BUILT and VERIFIED but NOT INSTALLED; do not claim RC closure.
+Evidence root: `.local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/calendar-2017-irish-august-v1/`.
+
+`country-recipe-r329-v6/` is the final frozen input. A
+`sourced-irish-2017-country-correction-20261026-r329a` and SOURCE B/r329b have
+identical complete recipes and game inventories (`AB-SOURCE-proof-v1.json`).
+All230 native players pass DOB, nationality, broad/fine roles and ten-skill
+readback (`native-source-fact-readback-v1.json`); all230 original person responses
+reparsed independently (`original-person-source-replay-v1.json`). Twelve clubs,
+managers and opening XIs corrected; six carrier links exchanged within Ireland
+for complete long surnames, squad capacities unchanged. Same-carrier original
+factory capacity recovery uses existing exact shrink-inverse runtime proof.
+Foreign native tactics remain preserved: existing grid writer is mode0 only.
+Target formations remain recipe information, explicitly distinguished in source
+manifest. Foreign shirt numbers preserve native bytes with logged source facts.
+Do not reinterpret those declarations as native tactics/shirt-number writes.
+
+Original runner screens:
+`.local/runlogs/pm99_runner/local_irish_2017_r329a_schlingermann/screens/52_profile_only_schlingermann_done.png`
+and `.../local_irish_2017_r329a_gallagher/screens/55_profile_only_gallagher_done.png`.
+Both profiles have independent bitmap-digit, age, native/asset hash and pixel
+proofs in `runtime/`. Schlingermann transport strict word boundary rejected OCR
+`mschlingermann`; original success/exit0 and frame preserved, visual/native
+adjudication saved. Do not rerun it. Gallagher initial manual transcription of
+three small digits was rejected by bitmap-font comparison; enlarged original
+confirmed51/20/12. Rejected review preserved, corrected review passes. Native
+facts were correct throughout. Finn Harps still shows inherited red/white art;
+keep it in the stock-kit mapping workstream, not a successful period-kit claim.
+
+Global identity check flags four counterpart slots outside Ireland. Target Irish
+August membership is positive; cached original transfer histories prove Delaney
+joined Rochdale9Jan2018 and Ogbene joined Brentford30Jan2018. Dated BBC29Dec2017
+McEleney report says Oldham arrival1Jan; Sky14Dec2017 McMillan report says StJohnstone
+January arrival. These counterpart slots need correction before promotion:
+StJohnstone player-29914 DavidMcMillan; Oldham english-player-18068 PatrickMcEleney;
+Rochdale english-player-27024 RyanDelaney; Brentford english-player-9676 Ogbene.
+Full candidate rows: `new-country-global-identity-candidates-v1.json`. No automatic
+queue closure or duplicate deletion. All four are reserves in the current recipe.
+Potential evidenced replacements absent from the entire current recipe:
+MichaelO'Halloran(StJohnstone July29 loan), TopeObadeyi(Oldham Aug5 actualsub),
+MattyGillam(Rochdale May3 contract offer needs August appearance/accepted deal),
+SergiCanos(Brentford needs retained dated August evidence). Verify source/person
+facts and global uniqueness before compiling these replacements. Reuse original
+cached history316554/392591; API92545/121337 requests returned406, don't retryblindly.
+
+Public country adapter/publisher/SOURCE wiring: regression43passed2skipped,
+including two real230-player native corpus checks. Earlier reserve lane16passed;
+boundary and diff checks passed. Source season-specific producers are private,
+frozen versioned scripts; do not edit completed producer files and invalidate
+hash-bound authoring sources. v1/v2/v3/v4/v5 preparation artifacts are superseded
+inputs, not installed games; final6 is the input to retain/replay.
+
+Disk: evicted only old unused compiled Go cache, up to2GiB, active/recent entries
+and all PM99 data preserved. Ledger `.local/cleanup-20261025/old-unused-go-cache-entries-v5/`.
+Free was8.3GiB before disposable runner copy. Preserve shared Wine prefix. Luna
+quota still exhausted; lead continues. Bath policy question remains unanswered.
+Exact next action: finish the four dated counterpart reserve replacements through
+existing narrow source-bound writer, then native/SOURCE/runtime proof and install
+the combined corrected2017 game; continue calendar/Bath/kit workstreams and final26
+regression. Do not rebuild r329 or recapture its completed profiles.
+
+
+## Irish country recipe compilation in progress — 2026-10-26 13:15 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Installed releases remain v179: 23 groups / 19 delivered / 4 open. No Irish
+correction has yet been installed or verified in the runner in this batch.
+Evidence root: `.local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/calendar-2017-irish-august-v1/`.
+All 230 selected Irish players now have original person identity/DOB evidence;
+12 August opening XIs are retained. Capacity extras use positive dated contract
+brackets; rejected Drinan/Sadauskas are excluded. Nicky Low explicitly joined to
+original passport name Nicholas Low. Full details/raw receipts remain at root.
+
+Prepared recipe v1 passed schema but native preflight rejected foreign shirt
+number writes. Prepared v2 preserves those fields but full names exceeded checked
+native carrier windows. Neither was published. Current private producer
+`prepare_country_recipe_root_v1.py` targets immutable `country-recipe-r329-v3/`,
+with deterministic within-club name-capacity matching and checked published
+variants/initial plus whole surname. Full source identities stay in source_name.
+No clipping, native writer guard relaxation or additional roster slots.
+`prepare-country-v6.log` is active; inspect before rerunning. Portrait declarations
+are preserved for unchanged identities, cleared only for replaced identities.
+
+UNCOMMITTED implementation: `scripts/season_authored_country_delta_v1.py`,
+13 scope/guard tests, publisher/compiler/SOURCE dispatch wiring. The synthetic
+scope tests have emitted 13 passes; retained reserve regression still running.
+Do not publish until actual country native preflight and integration tests pass.
+Exact next action: inspect producer v6 outcome, run native preflight against v3
+request into a NEW log; fix demonstrated failures, then actual A/SOURCE build,
+native/source comparison and genuine targeted runner evidence before promotion.
+Current 2017 preferred remains r317a. No unaffected release regenerated.
+Luna quota remains exhausted until November 1; do not repeatedly retry workers.
+Bath editorial-XI exception question remains pending; no implied approval.
+
+
 ## FullRC milestone remains active; Irish identity join measured — 2026-10-26 11:42 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
