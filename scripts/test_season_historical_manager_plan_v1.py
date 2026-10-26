@@ -67,3 +67,17 @@ def test_snapshot_review_requires_same_hash_bound_manager_proof(tmp_path, monkey
     evidence.write_bytes(b'changed snapshot')
     with pytest.raises(ValueError, match='source bytes changed'):
         manager.plan('2000-01', audit)
+
+
+@pytest.mark.parametrize('country', ['brazil', 'ireland', 'norway', 'sweden', 'finland'])
+def test_calendar_manager_rejects_next_year_even_with_valid_original_evidence(tmp_path, monkeypatch, country):
+    audit, report, _ = setup_review(tmp_path, monkeypatch)
+    monkeypatch.setattr(manager, 'club_group', lambda club: country)
+    report['clubs'][0]['evidence']['date'] = '2001-02-14'
+    audit.write_text(json.dumps(report))
+    refused = manager.plan('2000-01', audit)
+    assert refused['updates'] == []
+    assert 'outside season start year' in refused['unresolved'][0]['reason']
+    report['clubs'][0]['evidence']['date'] = '2000-08-04'
+    audit.write_text(json.dumps(report))
+    assert manager.plan('2000-01', audit)['updates'][0]['after'] == 'Correct Era Coach'

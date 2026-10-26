@@ -21,11 +21,13 @@ from scripts import season_source_package_builder_v1 as builder
 from scripts import season_historical_roster_audit_v1 as roster
 from scripts import season_historical_opening_review_v1 as opening
 from scripts.capture_ntf_historical_carrier_squads_v1 import CALENDAR_YEAR_COUNTRIES
+from scripts.transfermarkt_calendar_year_policy_v1 import AUDIT_CALENDAR_COUNTRIES
 from scripts.reconcile_opening_date_identities_v1 import _normalise
 from scripts.audit_2015_world_release_semantics_v1 import _manager_graph
 from scripts import season_historical_club_label_full_cohort_optin_v2 as full_cohort_optin
 
 SCHEMA = 'pm99-independent-historical-club-label-review-v1'
+CALENDAR_SOURCE_COUNTRIES = CALENDAR_YEAR_COUNTRIES | set(AUDIT_CALENDAR_COUNTRIES)
 
 
 def selector_key(selector):
@@ -146,7 +148,8 @@ def review(season, source_root, opening_root, reused_root, output, *, source_rel
                             raise ValueError('authored XI and original first fixture differ')
                         xi_ids = {str(p['opening_source_player_id']) for p in source['players'] if isinstance(p.get('opening_xi_order'), int)}
                         if xi_ids != set(proof['starting_xi']): raise ValueError('authored starters differ from independently parsed original XI')
-                        if roster.club_group(club) in CALENDAR_YEAR_COUNTRIES and proof['date'][:4] != season[:4]:
+                        if (roster.club_group(club) in CALENDAR_SOURCE_COUNTRIES
+                                and proof['date'][:4] != season[:4]):
                             raise ValueError('calendar-country source is outside season start year')
                         row.update(status='source-supported-club-label-mismatch', evidence=proof,
                             native_manager_carrier_id=native_id, native_manager=native_name, native_manager_owner_count=owners,

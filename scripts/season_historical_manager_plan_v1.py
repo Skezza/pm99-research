@@ -14,7 +14,10 @@ from scripts import season_pipeline_v2 as pipeline
 from scripts import season_package_compiler_v2 as compiler
 from scripts import season_historical_opening_review_v1 as opening
 from scripts.capture_ntf_historical_carrier_squads_v1 import CALENDAR_YEAR_COUNTRIES
+from scripts.transfermarkt_calendar_year_policy_v1 import AUDIT_CALENDAR_COUNTRIES
 from scripts.season_historical_roster_audit_v1 import club_group
+
+CALENDAR_SOURCE_COUNTRIES = CALENDAR_YEAR_COUNTRIES | set(AUDIT_CALENDAR_COUNTRIES)
 
 
 def plan(season, audit_path):
@@ -51,7 +54,8 @@ def plan(season, audit_path):
         if row['club_id'] not in allowed:
             unresolved.append({'club_id': row['club_id'], 'club': row['club'], 'reason': 'historical club represented by multiple native carriers'})
             continue
-        if club and club_group(club) in CALENDAR_YEAR_COUNTRIES and row['evidence']['date'][:4] != season[:4]:
+        if (club and club_group(club) in CALENDAR_SOURCE_COUNTRIES
+                and row['evidence']['date'][:4] != season[:4]):
             unresolved.append({'club_id': row['club_id'], 'club': row['club'], 'reason': 'calendar-country first fixture falls outside season start year'})
             continue
         if (manager is None or manager['carrier_id'] != row['native_manager_carrier_id'] or
