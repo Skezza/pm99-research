@@ -2165,6 +2165,8 @@ def compile_package_to_tree(
         coady_cascade.reject_factory_recipe(package)
         from scripts import season_coady_centerback_exchange_v1 as coady_role
         coady_role.reject_factory_recipe(package)
+        from scripts import season_source_bound_reserve_transfer_v1 as reserve_transfer
+        reserve_transfer.reject_factory_recipe(package)
         from scripts import season_batth_wolves_opening_transfer_v1 as batth_wolves
         batth_wolves.reject_factory_recipe(package)
         from scripts import season_shuker_city_reserve_move_v1 as shuker_move
