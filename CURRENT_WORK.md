@@ -1,5 +1,75 @@
 # PM99: current work
 
+## Two resumed build sequences; disk headroom restored — 2026-10-26 01:14 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Installed remains v174 /22groups /17delivered /fiveopen; wrong-GK2/5 delivered.
+2003r324a is installed+verified. GitHub now includes its actual preferred catalog
+selection7a73f4c and handoff8a0de19; source-grid code d41c2f1. Other25 and original2015
+unchanged. Do not rerun2003 builds/captures/install.
+
+Bristol2004 r325a/b membership A/B SOURCE PASSED; r325c/d broadD A/B SOURCE PASSED.
+Barnsley2007 r326a/b membership A/B SOURCE PASSED; r326c broadD A BUILT.
+BristolHandlingA and BarnsleyBroadB first attempts were correctly stopped by disk
+reserve BEFORE workspace/locator creation. Retained request/plan/preflight files
+remain exact; no completed release was regenerated. The two old shell sequences
+stopped at those failures via set-e. DO NOT assume they are still running.
+
+CURRENT active sequences (private scripts in `resume-qa/coupled-wrong-gk-opening-xi-v1/`):
+- `run_lane1_resume_v2.sh`: Bristol HandlingA/B → Wycombe membershipA/B → Wycombe
+  broadA/B → Wycombe HandlingA/B. Controller7307. All logs suffixv2-after-cache.
+- `run_lane2_resume_v2.sh`: Barnsley BroadB → HandlingA/B. Controller81294.
+Both resume exactly the incomplete stage and stop on first failure. All outputs
+stay UNINSTALLED. At most two independent build processes, no runner active.
+Definition `resume-lanes-v2.json`. For restart inspect log/proof/locator first;
+continue only from the first incomplete stage, never rerun a completed sequence.
+Next: final composite scope proof per season; original profile/lineup screenshots
+serially; parent ancestry validation and promotion; group closes onlyafterallfive
+occurrences actually installed and verified. Pending finalA IDs r325e/r326e/r327e.
+
+Space recovery is complete (not active cleanup):
+- Old unused Go cachev1:857 entries>6h, ~0.8GiB removed.
+- Cachev2:2074 entries>5h,2147479552allocatedbytes (~2GiB) removed, bounded cap2GiB.
+  Installed Go cache.go explicitly marks mtime on use with at most1h lag. Excluded
+  recent/open/mapped/executing files; rechecked inode/mtime before unlink. Only
+  regenerable compiled action/output files; sources/modules/downloads untouched.
+  Ledgers `.local/cleanup-20261025/old-unused-go-cache-entries-v1/` and `-v2/`.
+-44 old FAILED runner directories:2609files archived and independently SHA/size
+  verified on Pi;1069 old images/largeWine logs removed, ALL localJSON/TXT metadata
+  retained. `.local/cleanup-20261025/old-failed-runner-screens-to-pi-v2/completion-v1.json`.
+  Archive `/srv/hdd/workstation-archive/pm99/failed-runner-screens/vostro/20261026T010707Z/failed-screens.tar.gz`,
+  SHA909188c16a0db555d0941c219d841b5de41a5a16b3917dc213dada01caa2f5b3.
+  Restore command in ledger. Earlier65-diagnostic archive and r324 runner-copy
+  retirement also completed. Current releases, original2015 and recent evidence
+  intact. Free~7.8GiB. Keep six-GiB guard; unrelated Go workload consumed~1GiB
+  during prior jobs, explaining repeated pre-publication reserve failures.
+
+Extra bounded findings (NO game fixes counted):
+- Gibb spelling concern DISPOSED falsepositive. Actual native/annual/TM/Sky all
+  literal AliGibb; earlier indexed noteAlly was misleading. No alias rewrite.
+  `coupled-wrong-gk-opening-xi-v1/root-ali-gibb-literal-adjudication-v1.json`.
+- Two English2003 kit findings OUTSIDE original327 baseline. Factorymap source
+  WH311→target353 and Brentford347→335. BIGCAMP/BIGESC retain wrong own-slot stock.
+  Compact three are already modified and differ from both ownstock and sameclub
+  stock, so ordinary own-stock-only remap must NOT bypass its guard. DAT palette
+  exactlyfactory64f44... confirms no palette substitution. Englishcatalogue says
+  no target-period source forboth; same-club factoryfallback is an available
+  bounded fix, but requires explicit five-archive/English identity admission.
+  Packet `westham-brentford-r324-root-delivery-v1/english-kit-fallback-findings-v1.json`
+  plus actual preimage review. No art changed; keep existing stockgroup open.
+- Bath official August page links `bathcityfcarchive.x10host.com`. Retained raw
+  home,2000/01 page and original appearancesGIF with receipts under
+  `bathcity-2000-opening-cohort-research-v1/archive-root-v3/`. ROOT viewed image:
+  positively fullnames IanGanfield,SalvatoreBibbo. Sourcepage opening league
+  fixture is Aug19vsFolkestone (newsAug20 is publication date). ManagerPaulBodin,
+  assistantSteveWhite. This is FULL-SEASON totals, not a firstXI; do not admit
+  later arrivals based onlyonthis image. `root-archive-findings-v3.json` records
+  exact limitation; Bath openingXI still unresolved. No Bath recipe changed.
+
+After keeper group: Irish joint2017 allocation, Bath/GTF and stock-kit cases;
+then one consolidated all26 regression. No editor work. Luna quota unavailable;
+lead continues. Do not close serious gaps merely because a source search failed.
+
 ## 2003 installed and verified; next three keeper corrections building — 2026-10-26 00:42 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
