@@ -1,3 +1,52 @@
+## Lead recovery and delivery checkpoint — 2026-10-27 20:55 UTC
+
+Machine joe-Vostro-3350; source session 01a0592d-fcd5-7262-a637-743a8253d9b4.
+Target remains zero confirmed release blockers, not a claim of current completion.
+Verified latest installed kit checkpoint v209 / 2020-21 r428a: original327 =247 installed +32 disproved +48 untreated. Serial master PID1120685 preserved; it owns builds, runner and promotions. Do not repeat completed captures or builds. The older “Eightcohort” wording below is stale: cumulative source-cohort scope is80,34 delivered/46 pending; original42/34/8 baseline retained.
+
+Disk pause addressed by removing19 abandoned generated /tmp/go-build* directories, each older than24h with no active Go compiler/test process;1,379,246,080 allocated bytes retired. Preflight and completion: .local/cleanup-20261027/stale-go-temporary-objects-v1/. No project source/game/evidence or shared Wine prefix removed. Pi SSH drive UUID independently confirmed; no new archive transfer claimed.
+
+New same-person role-only adapter scripts/season_authored_player_roles_v1.py changes only six fine-role bytes and broad-role byte; preserves identity/DOB/skills/orders/tactics/assets/adjacent byte. Existing reserve guards unchanged. Focused role/country/publication tests:48 passed,2 skipped; repository boundary passes. Four Badou Ndiaye source-bound native proposals r438–r441 all passed byte-mask/readback (2015:1 changed byte;2017:1;2018:3;2019:2); NOT built, installed or runtime-verified. Evidence: resume-qa/badou-ndiaye-visible-role-review-v1/recipe-r*/same-person-role-native-proof-not-installed-v3.json. Add four explicit confirmed cases to forward release ledger before claiming closure; no existing cases erased.
+
+Swiss2020 r434-v5 and Swiss2021 r436 source/native proposals ready but unbuilt; Parma r435 one-record ownership correction ready but unbuilt. Swiss2022 r437 safely held: source-backed Bergsma move between club opening dates conflicts with existing Cambuur owner; pending previously asked ownership-date decision, no duplicate guard bypass. Additional manager counterpart evidence prepared, not installed. Source path root .local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/.
+
+Exact next action: keep serial kit delivery advancing, view original frames at lead review barriers; prepare bounded source-backed ownership/coach corrections concurrently without competing builds or promotions; after serial delivery integrate prepared actual-game corrections and final all-season regression. Missing portraits remain optional; frozen cross-club baseline2809/110 disposed/2699 unreviewed is unchanged. Do not turn candidate counts into confirmed bug counts or claim an overall completion percentage from kit counts.
+
+## LIVE serial kit delivery v209 — 2026-10-27 20:48 UTC
+
+Machine joe-Vostro-3350; source session01a0592d-fcd5-7262-a637-743a8253d9b4.
+2020-21 sourced-stock-kit-bulk-20261027-r428a installed/fullreleasevalidated. Stock327: 247installed/32false/48untreated.
+Evidence .local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/bulk-kit-declared-identity-20261027-v2/2020-21/completion-proof-v209.json. Original frames lead-viewed; exact inputs, all3selected factory BMPs and all unselected archive bytes proved; all native data/recipe/photos preserved. SOURCEequal. Other25bindings/original2015preserved.
+Serial master stillactive; inspect bulk-kit-declared-identity-20261027-v2/live-serial-state.json for exactstage. Continue without userproceed. Do notrerun completed builds/captures. Eightcohort/ownership/calendar/Bath/final26regression remain.
+
+## LIVE serial kit delivery v208 — 2026-10-27 20:35 UTC
+
+Machine joe-Vostro-3350; source session01a0592d-fcd5-7262-a637-743a8253d9b4.
+2019-20 sourced-stock-kit-bulk-20261027-r427a installed/fullreleasevalidated. Stock327: 234installed/32false/61untreated.
+Evidence .local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/bulk-kit-declared-identity-20261027-v2/2019-20/completion-proof-v208.json. Original frames lead-viewed; exact inputs, all3selected factory BMPs and all unselected archive bytes proved; all native data/recipe/photos preserved. SOURCEequal. Other25bindings/original2015preserved.
+Serial master stillactive; inspect bulk-kit-declared-identity-20261027-v2/live-serial-state.json for exactstage. Continue without userproceed. Do notrerun completed builds/captures. Eightcohort/ownership/calendar/Bath/final26regression remain.
+
+## LIVE serial kit delivery v207 — 2026-10-27 20:22 UTC
+
+Machine joe-Vostro-3350; source session01a0592d-fcd5-7262-a637-743a8253d9b4.
+2018-19 sourced-stock-kit-bulk-20261027-r426a installed/fullreleasevalidated. Stock327: 229installed/32false/66untreated.
+Evidence .local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/bulk-kit-declared-identity-20261027-v2/2018-19/completion-proof-v207.json. Original frames lead-viewed; exact inputs, all3selected factory BMPs and all unselected archive bytes proved; all native data/recipe/photos preserved. SOURCEequal. Other25bindings/original2015preserved.
+Serial master stillactive; inspect bulk-kit-declared-identity-20261027-v2/live-serial-state.json for exactstage. Continue without userproceed. Do notrerun completed builds/captures. Eightcohort/ownership/calendar/Bath/final26regression remain.
+
+## LIVE serial kit delivery v206 — 2026-10-27 20:09 UTC
+
+Machine joe-Vostro-3350; source session01a0592d-fcd5-7262-a637-743a8253d9b4.
+2017-18 sourced-stock-kit-bulk-20261027-r425a installed/fullreleasevalidated. Stock327: 215installed/32false/80untreated.
+Evidence .local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/bulk-kit-declared-identity-20261027-v2/2017-18/completion-proof-v206.json. Original frames lead-viewed; exact inputs, all3selected factory BMPs and all unselected archive bytes proved; all native data/recipe/photos preserved. SOURCEequal. Other25bindings/original2015preserved.
+Serial master stillactive; inspect bulk-kit-declared-identity-20261027-v2/live-serial-state.json for exactstage. Continue without userproceed. Do notrerun completed builds/captures. Eightcohort/ownership/calendar/Bath/final26regression remain.
+
+## LIVE serial kit delivery v205 — 2026-10-27 19:57 UTC
+
+Machine joe-Vostro-3350; source session01a0592d-fcd5-7262-a637-743a8253d9b4.
+2016-17 sourced-stock-kit-bulk-20261027-r424a installed/fullreleasevalidated. Stock327: 205installed/32false/90untreated.
+Evidence .local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/bulk-kit-declared-identity-20261027-v2/2016-17/completion-proof-v205.json. Original frames lead-viewed; exact inputs, all3selected factory BMPs and all unselected archive bytes proved; all native data/recipe/photos preserved. SOURCEequal. Other25bindings/original2015preserved.
+Serial master stillactive; inspect bulk-kit-declared-identity-20261027-v2/live-serial-state.json for exactstage. Continue without userproceed. Do notrerun completed builds/captures. Eightcohort/ownership/calendar/Bath/final26regression remain.
+
 ## LIVE serial kit delivery v204 — 2026-10-27 19:44 UTC
 
 Machine joe-Vostro-3350; source session01a0592d-fcd5-7262-a637-743a8253d9b4.

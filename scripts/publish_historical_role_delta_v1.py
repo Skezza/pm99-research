@@ -738,6 +738,9 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         from scripts import season_authored_country_delta_v2 as authored_country_v2
         if assignment_plan.get('schema') == authored_country_v2.SCHEMA:
             authored_country = authored_country_v2
+        from scripts import season_authored_player_roles_v1 as authored_player_roles
+        if assignment_plan.get('schema') == authored_player_roles.SCHEMA:
+            authored_country = authored_player_roles
         if assignment_plan.get('schema') == authored_country.SCHEMA:
             assignments = authored_country
         assignments.verify(release, assignment_plan)

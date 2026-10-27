@@ -200,6 +200,9 @@ def reconstruction(previous, release_id):
     plan = pipeline.read_json_file(path)
     from scripts import season_authored_country_delta_v1 as authored_country
     from scripts import season_authored_country_delta_v2 as authored_country_v2
+    from scripts import season_authored_player_roles_v1 as authored_player_roles
+    if plan.get('schema') == authored_player_roles.SCHEMA:
+        return authored_player_roles.reconstruction(previous, release_id)
     if plan.get('schema') == authored_country_v2.SCHEMA:
         return authored_country_v2.reconstruction(previous, release_id)
     if plan.get('schema') == authored_country.SCHEMA:
