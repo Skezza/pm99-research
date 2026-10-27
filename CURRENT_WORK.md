@@ -1,3 +1,27 @@
+## ACTIVE final Swiss runtime and independent role build — 2026-10-27 22:57 UTC
+
+Machine joe-Vostro-3350; source session 01a0592d-fcd5-7262-a637-743a8253d9b4.
+
+Swiss final r446 A/B SOURCE passed, only selected3kit archives changed and38 native actors preserved. Genuine serial captures active PTY30918, capture_swiss2020_final_r446_serial_root_v1.py, log swiss2020-coupled-identity-originals-v1/capture-r446-three-final-v1.log. Independent2017Ndiaye r439 A/B source build PTY57622 active in parallel with this isolated runner; do not change defaults until its proof recipe-r439-v1/build-A-SOURCE-B-proof-v1.json exists. Root owns runner serially. After captures, personally view originals, write lead-final-three-originals-review-v1.json, run verify_install_swiss2020_final_r446_root_v1.py only after r439complete; prepares fresh214checkpoint and closes exactly one cohort case. Do not preapprove screenshots. Next queued actual2018role capture helper capture_ndiaye2018_r440_serial_root_v1.py; do not run while Swiss runner active.
+
+Additional safe space recovery: idle Go compiler cache cleared only after no active go/compile/link/cgo executable;1,221,464,064bytes regenerable objects removed. Receipt .local/cleanup-20261027/idle-go-build-cache-second-v1/. No source/module cache/PM99 files removed. Free about9.5GiB before final runner copy. Latest installed authority remains213/Swissr434; r446 not yet promoted. All relative evidence under resume-qa root noted below.
+
+## CHECKPOINT v213; Aarau kit build active — 2026-10-27 22:55 UTC
+
+Machine joe-Vostro-3350; source session 01a0592d-fcd5-7262-a637-743a8253d9b4.
+
+Latest authority release-delivery-checklist-v213.json, ledger confirmed-critical-batch-20261027-v65.json. Binds installed Swiss2020r434;38 source actors and club/coach corrections installed with SOURCE, native, original cards and inventory-bound Stoke full-release validation. Coupled case deliberately remains open until Aarau kit; no new closure credit. Original screenshot Zigi reads St. Gallen, earlier textual mismatch was a reading error.
+
+Aarau r446 A/B SOURCE build active: PTY22613, resume-qa/build_aarau2020_coupled_kit_A_SOURCE_B_root_v2.py; log swiss2020-coupled-identity-originals-v1/build-aarau-kit-r446-v3.log. First v2 attempt safely refused space reserve before output; completed r434 bot clone then retired after sealed inventory/all-originals/inactivity proof, recovering364122112bytes, shared prefix preserved. Receipt .local/cleanup-20261027/completed-r434-runner-clone-v1/. No competing builds/captures/default writes until r446 SOURCE completes. Next genuine final Aarau/StGallen/Stoke captures, verify exact selected3factory BMPs and unchanged other data, promote/final checkpoint. Other prepared fixes remain as below.
+
+## ACTIVE Swiss native delivery; final kit pending — 2026-10-27 22:54 UTC
+
+Machine joe-Vostro-3350; source session 01a0592d-fcd5-7262-a637-743a8253d9b4.
+
+Original r434 runner frames personally reviewed: Zigi explicitly shows St. Gallen, not Aarau. Earlier textual mismatch interpretation was wrong; do not investigate or patch nonexistent club-reference bug. Enzler shows Aarau correctly. r434 is now installed, inventory-bound Stoke runtime attested and full release validation passed; other25bindings and original2015 unchanged. Evidence swiss2020-coupled-identity-originals-v1/recipe-r434-v5/{lead-original-native-runtime-review-v1,native-delivery-with-kit-still-open-v1}.json. All38 source-backed actor changes delivered, but coupled cohort case remains OPEN until Aarau factory kit r446 plus final runtime.
+
+2018r440 A/B SOURCE also completed, not installed/runner verified.2015r438 likewise. No active build/capture at this handoff. Next: run r446 through existing preferred-parent stock SDK, final native/source/runner verification, then checkpoint. Preserve original fixed counts; no final cohort closure yet. All relative evidence under .local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/.
+
 ## ACTIVE confirmed-data delivery; kit executor retired safely — 2026-10-27 22:22 UTC
 
 Machine joe-Vostro-3350; source session 01a0592d-fcd5-7262-a637-743a8253d9b4.
