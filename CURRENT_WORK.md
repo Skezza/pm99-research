@@ -1,3 +1,11 @@
+## Prepared corrections checkpoint — 2026-10-27 21:04 UTC
+
+Machine joe-Vostro-3350; source session01a0592d-fcd5-7262-a637-743a8253d9b4.
+Serial kit master still owns all builds/captures/promotions; latest installedv209.2021r429a SOURCEequal and runnercapture in progress. Do not restart it.
+Bounded AZ2020 source/native proposal now PASS: carrier19675 replaced with Ramon Leeuwin using original published full family component (native R. Leeuwin), retains Martins Indi at Stoke. All prior ownership/source/global-used-person guards pass; only19675 changes, initialorder and all other records exact, recompileidempotent. NOT BUILT/INSTALLED. Evidence frozen-crossclub-current-native-triage-20261027-v1/az-source-capacity-proposal-v1/native-proposal-readback-not-installed-v1.json. Reserve r442 for this correction after existing r434–r441 reservations; do not overwrite earlier proposals.
+Eleven original coach counterparts personally source-reviewed and all11 native ENT proposals pass, plus Brondby2020 NielsFrederiksen and OFI2011 NikosAnastopoulos (two dated original witnesses). These are13 prepared coach records, NOT game deliveries. OFI must remain coupled with AEK->OFI label correction; never publish it standalone under wrong club. No other manager currently claims either new primary-source name. Evidence current-club-duplicate-census-20261027-v1/{eleven-coach-counterpart-lead-source-review-v1.json,counterpart-manager-native-proposals-v1/,two-dated-primary-manager-native-proposals-v1/}. All paths under resume-qa root below.
+New role-source dispatcher/factoryrefusal test also passes:49passed2skipped focused lane. FourNdiaye confirmed-case fixedindex is saved and next serial finalizer carries it as explicit4case addition (group baseline30/26closed/4open preserved; forward31/26/5). No delivery credit for proposals. Rolecode pushed2e5bf6f; extra dispatchtest9c5df67 push checked separately. Next action remains advancing original review barriers then actual source-backed game corrections; do not count source-only proposals as completed RCs.
+
 ## Lead recovery and delivery checkpoint — 2026-10-27 20:55 UTC
 
 Machine joe-Vostro-3350; source session 01a0592d-fcd5-7262-a637-743a8253d9b4.

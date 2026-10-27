@@ -142,3 +142,42 @@ frames were viewed (Stoke `024_line_up_inspect.png`, MTK Hegedus
 native data/recipe/photos passed. The main v204 ledger now explicitly contains
 80 source-cohort cases, 34 delivered and 46 pending, retaining the old baseline.
 Parma's one-record native proposal also passed; it remains unbuilt/uninstalled.
+
+## Forward checkpoint at 2026-10-27 21:02 UTC
+
+Kit deliveries through 2020/21 are installed and verified at v209: original327
+candidates =247 installed corrections +32 disproved candidates +48 untreated.
+2021/22 r429a has SOURCE A/B equality and is undergoing genuine runner capture;
+it is not yet promoted. The serial executor owns promotion and runner access.
+
+All four Badou Ndiaye role proposals r438–r441 pass independently bounded
+native readback; only1/1/3/2 bytes change for2015/2017/2018/2019 respectively.
+Identity, DOB, skills, orders, assets and all other bytes remain exact.
+The matching2022 actor is preserved. These remain unbuilt/uninstalled.
+The generic same-person role adapter is committed;49 focused tests pass,2 skip.
+SOURCE dispatch and refusal to silently factory-recompile this layer are tested.
+Its four confirmed cases are indexed separately and carried into the next forward
+checklist without altering previous baselines or awarding delivery credit.
+
+The existing production capacity writer plus original-published family component
+now admits AZ2020 carrier19675 replacement Ramon Leeuwin. The existing ownership
+planner rechecked dated evidence and global used-person exclusions; native
+readback proves only19675 changes, with its initial order and every other record
+exact. Martins Indi remains at Stoke. Evidence under
+`frozen-crossclub-current-native-triage-20261027-v1/az-source-capacity-proposal-v1/`.
+This is a prepared correction, not a new installed game. Aldershot whole-club
+holds remain despite fitting names; capacity alone does not prove ownership.
+
+Original titles, dates and coach anchors were personally checked for eleven
+source-backed counterpart coach corrections. All eleven now have narrow native
+ENT proposals; they have not been built or installed. These resolve dependencies
+for existing confirmed source-label cases, rather than new exhaustive roster QA.
+Additional original club-history and contemporary OFI witnesses were read.
+Evidence is in `current-club-duplicate-census-20261027-v1/`.
+
+Disk interruption was resolved by retiring19 abandoned generated Go compiler
+/tmp directories, each older than24h, with no active Go compiler/test process.
+1,379,246,080 allocated bytes were reclaimed. No sources, games, evidence,
+photos or shared prefix were removed. Ledger:
+`.local/cleanup-20261027/stale-go-temporary-objects-v1/`.
+Pi archive mount UUID was verified; no new archive transfer is claimed.
