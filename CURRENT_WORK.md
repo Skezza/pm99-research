@@ -1,3 +1,18 @@
+## Installed v210 and nationality adjudication — 2026-10-27 21:12 UTC
+
+Machine joe-Vostro-3350; source session01a0592d-fcd5-7262-a637-743a8253d9b4.
+2021-22 r429a now installed/fullreleasevalidated:13newkit mappings; fixed327 =260installed +32disproved +35untreated. Original Stoke022 and Perugia/Chichizola57 frames personally viewed; exact SOURCE/inputs/native/unchanged-data checks pass. Evidence bulk-kit-declared-identity-20261027-v2/2021-22/completion-proof-v210.json. Other25defaults/original2015 preserved. 2022-23 r430 currentlycapturing; do not restart. Serial master owns builds/runner/promotions.
+Nationality followup is now independently adjudicated: exact Rein van Duijnhoven DOB1967-09-05 (do not use a remembered DOB), originalDFB Nation:Niederlande. Acrossall26recipes sixoccurrences:2000/01–2002/03 nativeHOLLANDalreadycorrect;2003/04 nativeCROATIA,2004/05+2005/06 nativeGERMANY confirmedwrong. Allsix native DOBs matchDFB; existingwriter in-memory proposals prove exactlyone countrybyte perwrongrecord with allotherbytesexact. No recipe or playablegame nationalitycorrections have yet been delivered. Evidence runtime-nationality-originals-20261027-v1/duijnhoven-all26-six-native-facts-verified-v3.json. Earlierprobev1failed nonexistentAPI beforewriting;v2completed all26;v3 used proper TEXTOS labelmapping ratherthan assuming countryabbreviations aretablekeys. Do not repeatcompletedprobes.
+Next serial finalizer explicitly carries these3 confirmed cases (existingvisible2003observation plus2same-person flags) separately, preserving oldbaselines; after4Ndiayeroleaddition31/26closed/5open, forwardgroupsbecome32/26/6. These are additions fromsource/native evidence, not regressions of deliveredfixes. Threealreadycorrectnativeflags are neitherbugs norcorrectioncredit. Balli/Wolfli sourcecandidates remain unadjudicated, notsilentlycleared.
+Preparedunbuilt role SOURCE driver: badou-ndiaye-visible-role-review-v1/build_one_same_person_A_SOURCE_B_root_v1.py. It refusesuntilserialkitmastercomplete, buildsoneexplicitcurrent-parent correction unregistered, verifiesonlyJUGchanges and SOURCEfullrecipe/inventory equality. Actual affectedcard/startupcapture, promotionandcheckpointremainmandatory. Allpaths under .local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/. Source/ownershipcalendar/Bathqueuesremain; milestone notclosed.
+
+## LIVE serial kit delivery v210 — 2026-10-27 21:05 UTC
+
+Machine joe-Vostro-3350; source session01a0592d-fcd5-7262-a637-743a8253d9b4.
+2021-22 sourced-stock-kit-bulk-20261027-r429a installed/fullreleasevalidated. Stock327: 260installed/32false/35untreated.
+Evidence .local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/bulk-kit-declared-identity-20261027-v2/2021-22/completion-proof-v210.json. Original frames lead-viewed; exact inputs, all3selected factory BMPs and all unselected archive bytes proved; all native data/recipe/photos preserved. SOURCEequal. Other25bindings/original2015preserved.
+Serial master stillactive; inspect bulk-kit-declared-identity-20261027-v2/live-serial-state.json for exactstage. Continue without userproceed. Do notrerun completed builds/captures. Eightcohort/ownership/calendar/Bath/final26regression remain.
+
 ## Prepared corrections checkpoint — 2026-10-27 21:04 UTC
 
 Machine joe-Vostro-3350; source session01a0592d-fcd5-7262-a637-743a8253d9b4.
