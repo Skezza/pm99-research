@@ -1,3 +1,104 @@
+## Source follow-up and verified kit milestone v201 — 2026-10-27 19:04 UTC
+
+Machine joe-Vostro-3350; source session 01a0592d-fcd5-7262-a637-743a8253d9b4.
+Actual installed kit checkpoint v201: 2003–2012 seasons r411a–r420a have all
+passed SOURCE A/B, native byte scope, lead-viewed originals and full release
+validation. Fixed stock327 =175 delivered +32 false +120 untreated.
+Serial master continues 2013 onward; read its live state, view both final
+original PNGs when waiting, then save lead-frame-review-v1.json immediately.
+No completed builds/captures need repeating. Do not end while it waits for ROOT.
+
+The native club collision source review independently verified39 real label/
+cohort mismatches: one overlaps original42 source cases,38 are additional
+positive classifications from the broader review. Original42 =34 delivered/8
+pending remains a preserved baseline; cumulative source scope is80 =34 delivered/
+46 pending. Supplement (not a new immutable release checkpoint) is
+current-club-duplicate-census-20261027-v1/confirmed-source-label-additions38-v1.json.
+15 additional label/paired-manager corrections pass existing guarded planning;
+23 need linked dependencies. Native/recipe/current original raw hashes rechecked.
+Do not omit these additional cases from a final zero-blocker claim or credit
+proposals as game fixes. Crossclub original2809/110disposed/2699unreviewed unchanged.
+
+Swiss2020 source evidence now complete for38 people. FINAL intended allocation
+follows corrected2019 convention: StGallen22 at1105 (same existing club name),
+Aarau16 at1109 (replace false duplicate Vaduz), correct Vaduz1110 unchanged.
+Raw official SFL original server mirror gives exact2020/21 DOB, role and country;
+club-authored Aarau opening report retained at Nau gives XI/usedsubs/absentees;
+original publisher person+dated entry/exit histories prove reserve memberships.
+Do not scrape these again. Source pool two-club-38-source-people-v4.json and
+recipe-r434-v5/ are FINAL current proposals. Earlier recipe-r434-v2/v3/v4 are
+unbuilt superseded allocation proposals, not playable releases. v5 passes the
+existing authored-country prepare/verify and independent proposed native38 name/
+DOB/broad/country readback plus all unselected record preservation:
+swiss2020-coupled-identity-originals-v1/prepared38-independent-native-readback-not-installed-v2.json.
+Nothing r434 installed/built yet; no historical correction credit. Current request
+binds parent2020r410. After kit2020r428 is delivered, rebind request to r428 ONLY
+after proving recipe/JUG/EQ/ENT unchanged, preserve all its newly delivered kits,
+build fresh SOURCE A/B and capture genuine corrected Swiss cards. Aarau1109 then
+needs same-country own-stock factory kit1105; StGallen1105 remains compatible
+with queued r428 kit mapping1105<-1109. No need to stop/rewrite the kit executor.
+Native Mode1 opaque grids preserved; authored first XIs/orders source-bound;
+Aarau bench is explicitly capacity-fitting editorial choice. Kosovo uses KVX,
+the existing native-unsupported XXX policy. Old fine/skills/physical facts are
+preserved for exact existing people where supported; inherited wrong-identity
+faces cleared and unrelated images retained. Source scope carries limitations.
+
+IMPORTANT false-positive correction: original2003 Stoke frame row12 Hill is DEF,
+not GOAL. New genuine Hill card also DEFENDER and native D/fine4 agrees. Earlier
+summary/v1 misread is superseded by clint-hill2003-original-frame-false-positive-
+disposition-v2.json under bulk kit root. No position fix/bench experiment needed.
+Extra completed independent Hill runner clone retired; all original frames,
+sealed games and shared Wine prefix retained. Disk about9GiB free; no Pi move
+this phase. Luna workers remain quota-unavailable, lead continues.
+
+## LIVE serial kit delivery v201 — 2026-10-27 19:01 UTC
+
+Machine joe-Vostro-3350; source session01a0592d-fcd5-7262-a637-743a8253d9b4.
+2012-13 sourced-stock-kit-bulk-20261027-r420a installed/fullreleasevalidated. Stock327: 175installed/32false/120untreated.
+Evidence .local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/bulk-kit-declared-identity-20261027-v2/2012-13/completion-proof-v201.json. Original frames lead-viewed; exact inputs, all3selected factory BMPs and all unselected archive bytes proved; all native data/recipe/photos preserved. SOURCEequal. Other25bindings/original2015preserved.
+Serial master stillactive; inspect bulk-kit-declared-identity-20261027-v2/live-serial-state.json for exactstage. Continue without userproceed. Do notrerun completed builds/captures. Eightcohort/ownership/calendar/Bath/final26regression remain.
+
+## LIVE serial kit delivery v200 — 2026-10-27 18:51 UTC
+
+Machine joe-Vostro-3350; source session01a0592d-fcd5-7262-a637-743a8253d9b4.
+2011-12 sourced-stock-kit-bulk-20261027-r419a installed/fullreleasevalidated. Stock327: 167installed/32false/128untreated.
+Evidence .local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/bulk-kit-declared-identity-20261027-v2/2011-12/completion-proof-v200.json. Original frames lead-viewed; exact inputs, all3selected factory BMPs and all unselected archive bytes proved; all native data/recipe/photos preserved. SOURCEequal. Other25bindings/original2015preserved.
+Serial master stillactive; inspect bulk-kit-declared-identity-20261027-v2/live-serial-state.json for exactstage. Continue without userproceed. Do notrerun completed builds/captures. Eightcohort/ownership/calendar/Bath/final26regression remain.
+
+## Original Hill screenshot correction — 2026-10-27 18:45 UTC
+
+Machine joe-Vostro-3350; source session 01a0592d-fcd5-7262-a637-743a8253d9b4.
+The earlier claimed Hill2003 GOAL/DEF discrepancy was a screenshot misread.
+ROOT reopened the original r411 Stoke lineup: row12 Hill is DEF; rows15/16
+Cutler/Foster are GOAL. New original Hill player card also says DEFENDER,
+matching native D/fine4. NO position bug established, NO native correction
+or controlled experiment required. Superseding evidence:
+resume-qa/bulk-kit-declared-identity-20261027-v2/clint-hill2003-original-frame-false-positive-disposition-v2.json.
+The earlier v1 observation is explicitly superseded, not erased. Do not re-open
+format/bench-role research on that mistaken transcription. Extra completed
+runner clone retired after proof; originals/shared prefix/sealed game retained.
+
+## LIVE serial kit delivery v199 — 2026-10-27 18:40 UTC
+
+Machine joe-Vostro-3350; source session01a0592d-fcd5-7262-a637-743a8253d9b4.
+2010-11 sourced-stock-kit-bulk-20261027-r418a installed/fullreleasevalidated. Stock327: 160installed/32false/135untreated.
+Evidence .local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/bulk-kit-declared-identity-20261027-v2/2010-11/completion-proof-v199.json. Original frames lead-viewed; exact inputs, all3selected factory BMPs and all unselected archive bytes proved; all native data/recipe/photos preserved. SOURCEequal. Other25bindings/original2015preserved.
+Serial master stillactive; inspect bulk-kit-declared-identity-20261027-v2/live-serial-state.json for exactstage. Continue without userproceed. Do notrerun completed builds/captures. Eightcohort/ownership/calendar/Bath/final26regression remain.
+
+## LIVE serial kit delivery v198 — 2026-10-27 18:24 UTC
+
+Machine joe-Vostro-3350; source session01a0592d-fcd5-7262-a637-743a8253d9b4.
+2009-10 sourced-stock-kit-bulk-20261027-r417a installed/fullreleasevalidated. Stock327: 153installed/32false/142untreated.
+Evidence .local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/bulk-kit-declared-identity-20261027-v2/2009-10/completion-proof-v198.json. Original frames lead-viewed; exact inputs, all3selected factory BMPs and all unselected archive bytes proved; all native data/recipe/photos preserved. SOURCEequal. Other25bindings/original2015preserved.
+Serial master stillactive; inspect bulk-kit-declared-identity-20261027-v2/live-serial-state.json for exactstage. Continue without userproceed. Do notrerun completed builds/captures. Eightcohort/ownership/calendar/Bath/final26regression remain.
+
+## LIVE serial kit delivery v197 — 2026-10-27 18:12 UTC
+
+Machine joe-Vostro-3350; source session01a0592d-fcd5-7262-a637-743a8253d9b4.
+2008-09 sourced-stock-kit-bulk-20261027-r416a installed/fullreleasevalidated. Stock327: 142installed/32false/153untreated.
+Evidence .local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/bulk-kit-declared-identity-20261027-v2/2008-09/completion-proof-v197.json. Original frames lead-viewed; exact inputs, all3selected factory BMPs and all unselected archive bytes proved; all native data/recipe/photos preserved. SOURCEequal. Other25bindings/original2015preserved.
+Serial master stillactive; inspect bulk-kit-declared-identity-20261027-v2/live-serial-state.json for exactstage. Continue without userproceed. Do notrerun completed builds/captures. Eightcohort/ownership/calendar/Bath/final26regression remain.
+
 ## LIVE serial kit delivery v196 — 2026-10-27 18:01 UTC
 
 Machine joe-Vostro-3350; source session01a0592d-fcd5-7262-a637-743a8253d9b4.

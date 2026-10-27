@@ -91,3 +91,23 @@ Next: finish the serial kit batches, deliver source-backed coupled club/roster
 corrections, resolve calendar/Bath ownership blockers and confirmed nationality
 observations, then run one consolidated all-season regression. Missing portraits
 and genuinely unavailable secondary facts remain separately documented allowed gaps.
+
+## Forward checkpoint at 2026-10-27 19:04 UTC
+
+Kit delivery reached v201 / 2012–13: 175 installed,32 disproved,120 untreated
+of the original327 candidates. Source review positively classified38 additional
+club-label/cohort cases (one of39 reviewed mismatches was already in original42).
+Original source42 baseline remains34delivered/8pending; cumulative scope is
+80cases,34delivered/46pending. Fifteen new guarded plans are proposals, not
+installed games. The source review and fixed-ID addition ledger are local under
+`current-club-duplicate-census-20261027-v1/`.
+
+Swiss2020 final preparation uses StGallen22 at1105 and Aarau16 at1109, preserving
+proper Vaduz1110. Original SFL exact-season facts and original dated registration
+histories are retained; recipe-r434-v5 and proposed native readback pass the
+existing compiler checks. This correction is not built or installed yet. Its
+future build must preserve the intervening2020 kit release rather than overwrite it.
+
+An earlier Hill2003 lineup-role observation was a transcription error. The original
+lineup says DEF and the independently captured player card says DEFENDER. No
+position change is justified. The superseding original-frame proof is retained.
