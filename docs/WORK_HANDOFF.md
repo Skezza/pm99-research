@@ -1,3 +1,25 @@
+## HANDOFF v189 installed; r409 safely refused before publication — 2026-10-27 01:04 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+v189 is the latest completed authority/default2020 r408. No r409 release built,
+installed or credited. `argentina2020-positive-opening-owners-v1/build-r409-v1.log`
+records native preflight refusal. Both wrong-owner cases remain CONFIRMED OPEN.
+Private preparer v2 recovered same-carrier capacity successfully, but existing
+SDK players-only branch calls compile_players(oldjug...) before the capacity
+handler used by its whole-club lane, so that request is ineffective here.
+Do not weaken the name guard, truncate Burián, monkeypatch the compiler, or label
+this built. No shared SDK/product changes were made; old source bindings intact.
+Next implement a bounded, version-safe use of the existing capacity writer in
+this selected-player route, preserving old reconstruction receipts, then retry
+native/SOURCE before any runner work. Alternatively a positive complete source
+cohort backfill can use existing whole-club capacity route, but must source all
+members/capacity and preserve all other clubs, not guess missing identities.
+Both selected native reserve orders verified:6103order17,25688order18. Native
+openingfirstXI remains factory/legacy policy and is NOT historically certified.
+Existing Colón/Gimnasia native cohorts contain other old2015/1999 identities;
+correcting onlythese2reserves must never be described as fixing entire squads.
+No competing build/capture active. Normal boundary PASS; disk8.5GiB.
+
 ## INSTALLED v189 Scottish2020 identity corrections — 2026-10-27 00:56 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.

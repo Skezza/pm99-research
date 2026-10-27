@@ -1,3 +1,49 @@
+## HANDOFF v189 installed; r409 safely refused before publication — 2026-10-27 01:04 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+v189 is the latest completed authority/default2020 r408. No r409 release built,
+installed or credited. `argentina2020-positive-opening-owners-v1/build-r409-v1.log`
+records native preflight refusal. Both wrong-owner cases remain CONFIRMED OPEN.
+Private preparer v2 recovered same-carrier capacity successfully, but existing
+SDK players-only branch calls compile_players(oldjug...) before the capacity
+handler used by its whole-club lane, so that request is ineffective here.
+Do not weaken the name guard, truncate Burián, monkeypatch the compiler, or label
+this built. No shared SDK/product changes were made; old source bindings intact.
+Next implement a bounded, version-safe use of the existing capacity writer in
+this selected-player route, preserving old reconstruction receipts, then retry
+native/SOURCE before any runner work. Alternatively a positive complete source
+cohort backfill can use existing whole-club capacity route, but must source all
+members/capacity and preserve all other clubs, not guess missing identities.
+Both selected native reserve orders verified:6103order17,25688order18. Native
+openingfirstXI remains factory/legacy policy and is NOT historically certified.
+Existing Colón/Gimnasia native cohorts contain other old2015/1999 identities;
+correcting onlythese2reserves must never be described as fixing entire squads.
+No competing build/capture active. Normal boundary PASS; disk8.5GiB.
+
+## ACTIVE Argentina2020 two goalkeeper corrections — 2026-10-27 01:00 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Installed authority v189, default2020 r408; commit03f4033 pushed.
+`resume-qa/argentina2020-positive-opening-owners-v1/` is active bounded followup.
+Positive exact published people/FIFA21 originals: Broun55150/1986-05-26,
+Burián72649/1984-01-21. Dated original transfer brackets at1Aug2020 establish
+Broun Gimnasia1106, Burián Colón1070, incumbent Navarro26727 SanLorenzo1775;
+all three original club entity names separately captured/verified.
+Original completed30OctGimnasia TyC report +1NovColón AS actualXI corroborate.
+AS30Octprobable lineup explicitly NOT used as actualXI proof.
+Proposed actual slots: Colón6103Broun→Burián; Gimnasia25688Navarro→Broun.
+Broun facts/ratings retained exactly from former same-season6103; Burián FIFA21
+facts/role/calibrated skills. Both old slot faces disabled, all orders/unselected
+actors/club/managers/tactics/kits frozen. No whole-club roster correctness claim.
+Preparer v1 safely refused before output: Burián exceeded compact name window.
+V2 uses established original same-carrier capacity recovery; passes authoring.
+`recipe-r409-v2/country-request.json` prepared; native/SOURCE build active via
+`build_two_keepers_A_SOURCE_B_root_v1.py`, log`build-r409-v1.log`.
+Candidate`sourced-argentina2020-opening-keepers-20261027-r409a` NOT installed or
+credited. Next check native proof/build equality, capture finalStoke+Burián+Broun
+serially, inspect originals/hash/kit, promote/attest/fullvalidate thencheckpoint.
+Do not start competing builds/runner or modify unaffected releases.
+
 ## INSTALLED v189 Scottish2020 identity corrections — 2026-10-27 00:56 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
