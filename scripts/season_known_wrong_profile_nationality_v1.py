@@ -89,6 +89,9 @@ def parse_profile_country(raw: bytes, source: dict, *, actor_name: str,
                           birth_date: str) -> dict:
     """Dispatch to exact Soccerbase parser or the one admitted DFB parser."""
     provider = source.get("provider")
+    if provider == "dfb-canonical-explicit-country-v1":
+        from scripts.season_dfb_profile_country_v1 import parse_country
+        return parse_country(raw, source, actor_name=actor_name, birth_date=birth_date)
     if provider == 'uefa-player-roster-table-pdf-v1':
         from scripts.season_uefa_roster_profile_admission_v1 import parse_country
         return parse_country(raw, source, actor_name=actor_name, birth_date=birth_date)

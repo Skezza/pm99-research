@@ -1,4 +1,18 @@
-## Installed v210 and nationality adjudication — 2026-10-27 21:12 UTC
+## Three nationality plans admitted — 2026-10-27 21:19 UTC
+
+Machine joe-Vostro-3350; source session01a0592d-fcd5-7262-a637-743a8253d9b4.
+Reusable DFB canonical-name/DOB/explicit-Nation parser added to existing nationality admission, without changing native writer or old provider branches. Retained original Duijnhoven body passes;58 targeted parser/existing-nationality tests pass (300.37sec; do not rerun merely because lengthy). All3 exact-parent known-wrong nationality plans now pass existing source/native verifier; NOT BUILT/INSTALLED. Evidence runtime-nationality-originals-20261027-v1/three-source-native-proposals-v1/{2003-04,2004-05,2005-06}/native-plan-not-built.json. Reservedr443–445; generic existing SOURCE/native mask handles these. Oldprimarysourcebody/receipt preserved. Additional Soccerbase Wölfli54748 original downloaded, not admitted; oldSoccerbase parser countrymap is limited, no unsupported claim or extra correction credit.
+Latestinstalledkit checkpointv211:2022r430a,270installed/32disproved/25untreated. Actual Stoke022 and SpartaRotterdam/NickOlij48 frames personally viewed, SOURCE/input/native/archive/inventory and fullreleasevalidationpassed. Current2023r431 build. v211ledger explicitly includes3Duijnhoven bugs and4Ndiaye roles;32groups/26closed/6open. Original30groupbaseline retained. Prior4and3additions do not imply regression of installed fixes.
+Next: keep current serial kit executor advancing and view originals; perform source-prepared same-person role/nationality and ownership/manager actual-game builds in a noncompeting quiet window or after kitmasterfinishes, retaining8GiBreserve and no other default/checkpointwriter. Do not claim0overall or count proposals as deliveries. Evidence root remains .local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/.
+
+## LIVE serial kit delivery v211 — 2026-10-27 21:17 UTC
+
+Machine joe-Vostro-3350; source session01a0592d-fcd5-7262-a637-743a8253d9b4.
+2022-23 sourced-stock-kit-bulk-20261027-r430a installed/fullreleasevalidated. Stock327: 270installed/32false/25untreated.
+Evidence .local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/bulk-kit-declared-identity-20261027-v2/2022-23/completion-proof-v211.json. Original frames lead-viewed; exact inputs, all3selected factory BMPs and all unselected archive bytes proved; all native data/recipe/photos preserved. SOURCEequal. Other25bindings/original2015preserved.
+Serial master stillactive; inspect bulk-kit-declared-identity-20261027-v2/live-serial-state.json for exactstage. Continue without userproceed. Do notrerun completed builds/captures. Eightcohort/ownership/calendar/Bath/final26regression remain.
+
+## Installed v210 and nationality adjudication — 2026-10-27 21:11 UTC
 
 Machine joe-Vostro-3350; source session01a0592d-fcd5-7262-a637-743a8253d9b4.
 2021-22 r429a now installed/fullreleasevalidated:13newkit mappings; fixed327 =260installed +32disproved +35untreated. Original Stoke022 and Perugia/Chichizola57 frames personally viewed; exact SOURCE/inputs/native/unchanged-data checks pass. Evidence bulk-kit-declared-identity-20261027-v2/2021-22/completion-proof-v210.json. Other25defaults/original2015 preserved. 2022-23 r430 currentlycapturing; do not restart. Serial master owns builds/runner/promotions.
