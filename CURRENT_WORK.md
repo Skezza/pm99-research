@@ -1,3 +1,62 @@
+## INSTALLED v189 Scottish2020 identity corrections — 2026-10-27 00:56 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Authority `.local/consolidated-audit-20261009/release-delivery-checklist-v189.json`
+and `parallel-rc-20261023/confirmed-critical-batch-20261027-v41.json`.
+2020 preferred NOW `sourced-scottish2020-coupled-identities-20261027-r408a`.
+Full release validation PASS. Other25 bindings/native releases and original2015
+backup verified unchanged. Genuine Stoke startup +Bain(Celtic), Eastwood(Kilmarnock),
+Siegrist(DundeeUnited) profiles personally viewed; launched input hashes, native
+names/clubs and3 kit pixel comparisons pass. Original frames preserved under
+`.local/runlogs/pm99_runner/local_scottish_2020_21_r408a_*/`.
+Evidence `resume-qa/scottish2020-coupled-source-identity-v1/`: completion-proof-v189,
+installed-full-release-validation, r408-original-runtime-proof-v1 and
+r408-final-native-scope-proof-v1 JSONs. Both r407/r408 full SOURCE equal.
+Exactly3 club labels +4 coaches corrected; all player records, grounds, tactics,
+portraits and3 kit archives unchanged. Colón manager Eduardo Domínguez source
+appointment March2020 +contemporary July source excerpt +November match; current
+Colón roster NOT certified by this manager-only repair.
+Counts:groups28/24delivered/4open unchanged; source42/34delivered/8pending (two
+required Scottish counterparts explicitly added); stock327/65installed/17false/
+245untreated. Celtic1252 existing own-factory bitmaps are a no-op false positive;
+no new kit delivery credit. No old duplicate baseline credit without crosswalk.
+
+NEXT actual confirmed data issue: Colón2020 Broun6103 has dated Gimnasia ownership.
+`resume-qa/argentina2020-positive-opening-owners-v1/` captures original30Oct2020
+AS report (its formation section is explicitly PROBABLE, not accepted actualXI)
+and TyC completed3-0 match actualXI report. Existing1NovColón actualAS XI supports
+Leonardo Burián. FIFA21 original exact Broun1986-05-26/Gimnasia and Burián1984-01-21/
+Colón GK rows found. No roster/native changes yet. Resolve exact identity and
+coupled incumbent ownership before writing; do not claim whole foreign squads
+verified. Wider frozen12,536 legacy2015-source candidates remain as below.
+Luna quotas unavailable; lead continues. Disk8.5GiB, no cleanup required now.
+
+## LIVE Scottish2020 corrections built; final capture active — 2026-10-27 00:53 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Installed authority remains v188; 2020 preferred remains r390, NOT r408 yet.
+Evidence root `resume-qa/scottish2020-coupled-source-identity-v1/`.
+r407 Colón manager Eduardo Domínguez and r408 coupled Celtic1252/Kilmarnock1258/
+DundeeUnited1259 labels/managers BUILT, both complete SOURCE recipe/inventory equal.
+`r408-final-native-scope-proof-v1.json`: exactly3 EQ labels +4 ENT coaches;
+all players, portraits, grounds, tactics and all3 kit archives unchanged.
+Original Stoke/Bain/Eastwood runner frames personally viewed and correct club
+identity. Siegrist final capture active serially; do not start competing runner.
+Next finish original-frame/hash/native/kit verification, then promote r408 with
+explicit r390→r407→r408 ancestry, attest/full release validation and checkpointv189.
+No source/stock case closure or default switch has yet been credited.
+
+Broader review finding: 12,536 entries in25 non2015 recipes retain primary2015
+identity provenance. These are review candidates, NOT12,536 confirmed bugs.
+`resume-qa/legacy2015-source-owner-review-v1/frozen-cases-v1.json` preserves IDs.
+586 provisional exact people:152 verified cached histories +434 new captures;
+584 parsed,2 gaps. Other9889 entries lack a unique existing identity join;
+borrowed DOBs cannot prove identity. No game writes from these research joins.
+Colón2020 still has legacy2015 roster after manager-only fix. Jorge Broun's
+original dated history positively places him at Gimnasia in2020, requiring
+source-backed owner/replacement work; do not claim this club fully verified.
+Luna/other worker quotas unavailable; lead continues serial integration.
+
 ## INSTALLED v188: 34 English2019 opening-owner corrections — 2026-10-26 23:59 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.

@@ -1,3 +1,36 @@
+## INSTALLED v189 Scottish2020 identity corrections — 2026-10-27 00:56 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Authority `.local/consolidated-audit-20261009/release-delivery-checklist-v189.json`
+and `parallel-rc-20261023/confirmed-critical-batch-20261027-v41.json`.
+2020 preferred NOW `sourced-scottish2020-coupled-identities-20261027-r408a`.
+Full release validation PASS. Other25 bindings/native releases and original2015
+backup verified unchanged. Genuine Stoke startup +Bain(Celtic), Eastwood(Kilmarnock),
+Siegrist(DundeeUnited) profiles personally viewed; launched input hashes, native
+names/clubs and3 kit pixel comparisons pass. Original frames preserved under
+`.local/runlogs/pm99_runner/local_scottish_2020_21_r408a_*/`.
+Evidence `resume-qa/scottish2020-coupled-source-identity-v1/`: completion-proof-v189,
+installed-full-release-validation, r408-original-runtime-proof-v1 and
+r408-final-native-scope-proof-v1 JSONs. Both r407/r408 full SOURCE equal.
+Exactly3 club labels +4 coaches corrected; all player records, grounds, tactics,
+portraits and3 kit archives unchanged. Colón manager Eduardo Domínguez source
+appointment March2020 +contemporary July source excerpt +November match; current
+Colón roster NOT certified by this manager-only repair.
+Counts:groups28/24delivered/4open unchanged; source42/34delivered/8pending (two
+required Scottish counterparts explicitly added); stock327/65installed/17false/
+245untreated. Celtic1252 existing own-factory bitmaps are a no-op false positive;
+no new kit delivery credit. No old duplicate baseline credit without crosswalk.
+
+NEXT actual confirmed data issue: Colón2020 Broun6103 has dated Gimnasia ownership.
+`resume-qa/argentina2020-positive-opening-owners-v1/` captures original30Oct2020
+AS report (its formation section is explicitly PROBABLE, not accepted actualXI)
+and TyC completed3-0 match actualXI report. Existing1NovColón actualAS XI supports
+Leonardo Burián. FIFA21 original exact Broun1986-05-26/Gimnasia and Burián1984-01-21/
+Colón GK rows found. No roster/native changes yet. Resolve exact identity and
+coupled incumbent ownership before writing; do not claim whole foreign squads
+verified. Wider frozen12,536 legacy2015-source candidates remain as below.
+Luna quotas unavailable; lead continues. Disk8.5GiB, no cleanup required now.
+
 ## LIVE installed2019 native r400; final kit/runtime pending — 2026-10-26 21:24 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
