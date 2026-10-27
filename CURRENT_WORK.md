@@ -1,3 +1,101 @@
+## LIVE serial kit delivery v196 — 2026-10-27 18:01 UTC
+
+Machine joe-Vostro-3350; source session01a0592d-fcd5-7262-a637-743a8253d9b4.
+2007-08 sourced-stock-kit-bulk-20261027-r415a installed/fullreleasevalidated. Stock327: 134installed/32false/161untreated.
+Evidence .local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/bulk-kit-declared-identity-20261027-v2/2007-08/completion-proof-v196.json. Original frames lead-viewed; exact inputs, all3selected factory BMPs and all unselected archive bytes proved; all native data/recipe/photos preserved. SOURCEequal. Other25bindings/original2015preserved.
+Serial master stillactive; inspect bulk-kit-declared-identity-20261027-v2/live-serial-state.json for exactstage. Continue without userproceed. Do notrerun completed builds/captures. Eightcohort/ownership/calendar/Bath/final26regression remain.
+
+## LIVE serial kit delivery v195 — 2026-10-27 17:51 UTC
+
+Machine joe-Vostro-3350; source session01a0592d-fcd5-7262-a637-743a8253d9b4.
+2006-07 sourced-stock-kit-bulk-20261027-r414a installed/fullreleasevalidated. Stock327: 128installed/32false/167untreated.
+Evidence .local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/bulk-kit-declared-identity-20261027-v2/2006-07/completion-proof-v195.json. Original frames lead-viewed; exact inputs, all3selected factory BMPs and all unselected archive bytes proved; all native data/recipe/photos preserved. SOURCEequal. Other25bindings/original2015preserved.
+Serial master stillactive; inspect bulk-kit-declared-identity-20261027-v2/live-serial-state.json for exactstage. Continue without userproceed. Do notrerun completed builds/captures. Eightcohort/ownership/calendar/Bath/final26regression remain.
+
+## LIVE serial kit delivery v194 — 2026-10-27 17:36 UTC
+
+Machine joe-Vostro-3350; source session01a0592d-fcd5-7262-a637-743a8253d9b4.
+2005-06 sourced-stock-kit-bulk-20261027-r413a installed/fullreleasevalidated. Stock327: 120installed/32false/175untreated.
+Evidence .local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/bulk-kit-declared-identity-20261027-v2/2005-06/completion-proof-v194.json. Original frames lead-viewed; exact inputs, all3selected factory BMPs and all unselected archive bytes proved; all native data/recipe/photos preserved. SOURCEequal. Other25bindings/original2015preserved.
+Serial master stillactive; inspect bulk-kit-declared-identity-20261027-v2/live-serial-state.json for exactstage. Continue without userproceed. Do notrerun completed builds/captures. Eightcohort/ownership/calendar/Bath/final26regression remain.
+
+## INSTALLED v192: first23kit fixes +15proved no-ops; continue bulk — 2026-10-27 16:53 UTC
+
+Machine joe-Vostro-3350; session01a0592d-fcd5-7262-a637-743a8253d9b4.
+Authority release-delivery-checklist-v192.json +confirmed-critical-batch-20261027-v44.json.
+2003/04 default NOW sourced-stock-kit-bulk-20261027-r411a, release validationPASS.
+Stock fixed327:88installed/32false/207untreated (from65/17/245). Original baseline
+unchanged.15falsecases independently prove source-corrected currentclub identity
+and all3factory bitmapbytes; no fictitious kit deliverycredit. Galway1862 proof
+comes from sealed wholeIrishr329source artifact, not a fabricated42caseclosure.
+23actualmappings exact whole-byte archive patch proof +SOURCE A/B recipe/inventory
+identical; all JUG/EQ/ENT/portraits/recipe unchanged. Genuine Stoke2003startup and
+changedBochumkitDuijnhoven card personallyviewed; exactinputs andkitpixels verified.
+Other25bindings +original2015backup preserved. Do NOTrebuild/re-capture r411.
+Evidence resume-qa/bulk-kit-declared-identity-20261027-v2/2003-04/completion-proof-v192.json;
+all245-preflight-index-v3.json has222native-ready cases,23pending (15noops now
+closed +8cohort conflicts). 23 of222native-ready mappings delivered;199 remain.
+NEXT serial2004/05r412 (14kits), then other21preparedseasons. Preferrequest-v3.json
+whenexists, else request.json. Same capture_one_season_root_v1.py selects actual
+changedclub withgloballyunique nativeplayername; personallyview bothoriginalframes,
+write lead-frame-review-v1.json, invokeverify_install_checkpoint_one_root_v1.py
+--previous192 --next193 (incrementafter each verifiedseason). Genericdriver source
+underkit-seed-misassignment-review-v1/stock-kit-next-two-plan-v1/ is unchanged.
+No competing builds/captures. 8knownsourceconflict kitcases remain quarantined.
+
+Observedpre-existing facts for followup (not kit regressions or approvedfacts):
+Duijnhoven2003card showsCroatia; recipe explicitlynationality preserve-existing.
+Sourcebackfill review needed. ClintHill carrier10299 showsGOAL in
+substitute row whilebothrecipe/nativefacts D/fine4. Needplayercardcheck to distinguish
+lineupassignment/UI role from playerfact. Bothobservations recorded inlead-frame-review;
+no confirmednewpositionbug or historicalnat approval inferredfromkitcapture.
+Disk~7.6GiB duringcapture; Pi SSH reachable actual /srv/hdd ext4. Native smbclient
+absent. OldGo-cachecleanupfoundnoeligible>3h entries anddeletednothing. Needfree
+safe additionalspace beforegeneric8GiBguard, preferablyverifiedPi archival of
+supersededunneeded artifacts; preservecurrentSOURCEancestry/allnative evidence.
+Runtime r410/r411 gameclones now disposable afterproof; retain sharedWineprefix.
+
+## LIVE target-zero: 222 kit candidates preflighted; first23 SOURCE-equal — 2026-10-27 16:41 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Installed authority remains v191; 2003 default still r373. Newr411 NOT installed.
+User requests target0remaining; continue batches without askingproceed.
+Evidence`resume-qa/bulk-kit-declared-identity-20261027-v2/`:
+`all245-preflight-index-v3.json` now222exact club/factory native-ready mappings;
+23held comprise15obsolete proposals under verification +8known cohort conflicts.
+Four club aliases separately original-source verified under siblingv1; Inter/
+AtléticoNacional additional2 exact pairs original-source verified under v2.
+Factory fallback follows exact declared club+country, not every missing firstXI
+admission join. Positive8sourceidentityconflicts remain quarantined. No target-year
+kit design claim; sourced/protected kits excluded; all country/shape/pixel guards
+still enforced. Rootpolicy receipts explicitly record this bounded interpretation.
+First2003/04 r411a/b BUILT+complete SOURCE-equal,23mappings,only3kit archives change;
+all native data/photos/recipe exact. Genericoutput
+`.local/season-stock-kit-seed-remaps-v1/2003-04-r411-bulk-declared-identity/build-complete.json`.
+Capture scriptactive`capture_one_season_root_v1.py --season2003-04`, log
+`capture-2003-04-v1.log`: Stoke capture done/finishing, next changedBochum kit card
+via unique nativeDuijnhoven4020 (club413). Do notstartcompetingrunner/build.
+Originals`.local/runlogs/pm99_runner/local_stock_2003_04_r411a_*/`.
+Next personallyview originals, verify inputhashes and all23x3 selected source
+bitmaps +wholearchive unknown-byte preservation, promote/attest/fullvalidate,
+checkpointv192. Then seriallydeliver other22 preparedseason batches using v3
+request whenpresent, v2 request otherwise; never rebuild completed r411 A/B.
+
+Obsoleteproposal proof: v1/v2 checkers safelyrefused premature15-case closure
+becauseIrishGalway1862 was source-corrected as partof full countryr329 but not
+oneof frozen42 caseIDs. Sealed`irish-2017-authoring-r329.json` proves Galway1862
+sourceclub+11originalIDs; new v3 checker adds this exact proof and verifies
+unique current factory club identity +all3 own-factory bitmaps. Check its result
+beforecrediting any no-op. Do notinfer3new kitbugs from missing case crosswalk.
+Olderfailedpreflights kept; no incorrect games written.
+Cleanup `.local/cleanup-20261027/proven-runner-clones-v1/`: 3verifieddisposable
+r406/r408/r409 clones retired (~1.02GiB); sealed/releases/screens preserved.
+UnusedoldGo-cachecleanupv2 active/completed; ledgerfolderold-unused-go-cache-entries-v2.
+Keep sharedWineprefix and currentlyactive r411clone. Original2015backup protected.
+Alloriginalcase counts remain327/65installed/17false/245untreated untilvalidated
+newdeliveries/dispositions. Eightsourcecohort,calendar/Bath/ownership and final26
+regression remain. Workers last known quota-unavailable; lead owns integration.
+
 ## INSTALLED v191: two 2020 keeper owners + dated Gimnasia coach — 2026-10-27 15:51 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
