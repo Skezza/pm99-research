@@ -167,3 +167,25 @@ def test_native_role_write_refuses_wrong_person_owner_or_changed_inputs(tmp_path
     with pytest.raises(ValueError):
         subject._reconstruct(base, request)
     assert (base.game_path/'DBDAT/JUG98030.FDI').read_bytes() == before
+
+
+def test_role_layer_uses_source_dispatch_and_cannot_fall_back_to_factory(tmp_path, monkeypatch):
+    from scripts import season_profile_assignment_pruning_layer_v1 as dispatcher
+    from scripts import season_authored_country_delta_v1 as factory_guard
+    artifact = {'id': subject.PREFIX + 'roles-fixture'}
+    with pytest.raises(ValueError, match='immutable-parent SOURCE replay'):
+        factory_guard.reject_factory_recipe({'artifacts': [artifact]})
+    package = tmp_path / 'package.json'
+    package.write_text('{}')
+    plan = tmp_path / 'plan.json'
+    plan.write_text('{"schema": "' + subject.SCHEMA + '"}')
+    previous = SimpleNamespace(package_path=package,
+        locator={'sourced_profile_assignment_plan_path': str(plan)})
+    calls = []
+    def replay(actual, release_id):
+        calls.append((actual, release_id))
+        return {'complete_recipe_identical': True, 'complete_game_inventory_identical': True}
+    monkeypatch.setattr(subject, 'reconstruction', replay)
+    result = dispatcher.reconstruction(previous, 'source-replay-fixture')
+    assert calls == [(previous, 'source-replay-fixture')]
+    assert all(result.values())
