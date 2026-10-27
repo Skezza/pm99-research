@@ -111,3 +111,34 @@ future build must preserve the intervening2020 kit release rather than overwrite
 An earlier Hill2003 lineup-role observation was a transcription error. The original
 lineup says DEF and the independently captured player card says DEFENDER. No
 position change is justified. The superseding original-frame proof is retained.
+
+## Forward checkpoint at 2026-10-27 19:42 UTC
+
+Kit delivery reached v203 / 2014–15: 191 installed, 32 disproved, 104 untreated
+of the original 327 candidates. The serial 2015–16 runtime check is in progress.
+The next fresh checkpoint will also carry the evidenced additional 38 source
+cases into the main ledger: original 42 remains a preserved baseline; cumulative
+80 = 34 delivered + 46 pending. Recording these cases is not correction credit.
+
+The existing ownership planner was replayed for the single Parma capacity case,
+using its original source bindings, global used-person exclusions and the already
+runtime-proven same-carrier recovery. It proposes replacing the premature Parma
+copy of Simon Sohm with opening-bench member Mattia Sprocati, retaining Sohm at
+Zürich. This is a proposal pending native verification, SOURCE builds and genuine
+runtime proof, not an installed correction. Two Aldershot capacity candidates
+remain blocked by the duplicate club/cohort dependency; the proposed Jack Hindle
+replacement is explicitly held for the same reason. No player is cleared merely
+because a replacement string fits.
+
+Evidence lives under `frozen-crossclub-current-native-triage-20261027-v1/`:
+`parma-source-capacity-proposal-v1/`, the two seven-window reviews and
+`hindle11221-whole-club-dependency-disposition-v1.json`. These are bounded source
+and capacity reviews, not a new pipeline or permission to clip published surnames.
+
+At v204, 2015–16 r423a is installed and full-release validated: five more kit
+mappings, making 196 delivered + 32 disproved + 99 untreated. Both actual original
+frames were viewed (Stoke `024_line_up_inspect.png`, MTK Hegedus
+`46_profile_only_kit_done.png`); SOURCE A/B, whole-byte archive scope and unchanged
+native data/recipe/photos passed. The main v204 ledger now explicitly contains
+80 source-cohort cases, 34 delivered and 46 pending, retaining the old baseline.
+Parma's one-record native proposal also passed; it remains unbuilt/uninstalled.
