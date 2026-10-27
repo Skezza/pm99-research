@@ -1,3 +1,62 @@
+## INSTALLED v191: two 2020 keeper owners + dated Gimnasia coach — 2026-10-27 15:51 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Authority `.local/consolidated-audit-20261009/release-delivery-checklist-v191.json`
+and `parallel-rc-20261023/confirmed-critical-batch-20261027-v43.json`.
+2020 default NOW`sourced-gimnasia2020-dated-manager-20261027-r410a`.
+`./pm99-season play 2020-21` points there. Full release validation PASS;
+other25 bindings and original2015 backup preserved. No unaffected rebuilds.
+
+Delivered r409: Colón6103Broun→Leonardo Burián; Gimnasia25688Navarro→Jorge Broun.
+Dated original person histories establish August ownership; actual target-opening
+reports corroborate. Burián targetFIFA21 facts/roles/calibrated skills; Broun
+same-season facts/ratings copied exactly. Two stale slot photos disabled.
+Exactly2 native player records changed, zero other actor/order bytes; club/
+manager/tactics/kit data preserved. Both genuine keeper cards +Stoke startup
+personally viewed; launched hashes/native facts/kit input pixels verified.
+Full SOURCE recipe/inventory equality PASS. Evidence root
+`resume-qa/argentina2020-positive-opening-owners-v1/`: completion-proof-v190,
+r409-original-runtime-proof-v1, r409-independent-native-scope-proof-v1 JSONs.
+
+Delivered r410: nativeGimnasia ENT1648 Ferraro→Maradona, recipeDiego Maradona.
+Official club3June2020renewal +completed30Octmatch support target date; sole
+manager owner9019 verified. Exactly1 ENT record changes; all players/clubs,
+portraits/tactics/kits unchanged. Full SOURCE recipe/inventory equality +native
+manager readback PASS. Finalr410Stoke startup personally viewed and exact input
+hashes verified, attested and release-validated. Earlier r409 keeper frames are
+retained as evidence for byte-identical player/EQ/assets, not relabelled r410.
+Evidence`resume-qa/gimnasia2020-dated-manager-v1/`: completion-proof-v191,
+installed-full-release-validation, r410/build-proof JSONs; original final screenshot
+`.local/runlogs/pm99_runner/local_gimnasia_2020_21_r410a_stoke/screens/022_line_up_inspect.png`.
+
+Reusable capacity fix: versioned `season_authored_country_delta_v2.py` applies
+existing proved same-carrier name recovery before selected-player compilation.
+V1 remains byte-identical; old2019r406 source request and complete recipe still
+reproduce with no rebuild.60 targeted tests pass, including versioned SOURCE
+routing and forged recovery/scope rejection. Boundary and diff checks PASS.
+No upstream product/editor changes; existing dirty submodules/viewer preserved.
+
+Fixed progress: withinclub82/82classified (0remaining; includes legitimate cases).
+Source-cohort42total/34delivered/8pending (19.05%remaining).
+Stock327total/65installed/17false/245untreated (74.92%reviewremaining).
+Originalcrossclub2809/110disposed/2699without final disposition(96.08%remaining).
+Newlegacy2015source12536/2nativeownerfixes/12534notcleared; these are candidates,
+NOT12534confirmed bugs. No frozen duplicate credit without semantic crosswalk.
+Groups30total/26closed/4open (13.33%ofgroups, NOT overall engineering percentage).
+Two new owner cases and one newly proved coach case were explicit scope additions;
+completed earlier cases were preserved. `fixed-progress-snapshot-v191.json` under
+Argentina evidence root records percentages/denominators and their limitations.
+26 games playable; all26 RCs NOT complete. No defensible overall/time estimate
+while broader ownership/legacy-source review remains unclassified.
+
+NEXT: source-backed backfills for8known cohort dependencies (Barrow2007,
+DeGraafschap2009,Vaduz2010/2020/2021/2022,Antalyaspor2011,Dover2020), then continue
+calendar-country native repairs, Bath openingXI, bounded kit/ownership review,
+and final consolidated26 regression. Do not restart completed source research or
+regenerate unaffected releases. Whole Colón/Gimnasia squads still NOT certified
+by these three narrow fixes. Last recorded worker quotas unavailable; lead-only
+batch. Disk~7.7GiB free, no cleanup needed; Pi not used.
+
 ## HANDOFF v189 installed; r409 safely refused before publication — 2026-10-27 01:04 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.

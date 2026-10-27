@@ -1,3 +1,115 @@
+## INSTALLED v191: two 2020 keeper owners + dated Gimnasia coach — 2026-10-27 15:51 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Authority `.local/consolidated-audit-20261009/release-delivery-checklist-v191.json`
+and `parallel-rc-20261023/confirmed-critical-batch-20261027-v43.json`.
+2020 default NOW`sourced-gimnasia2020-dated-manager-20261027-r410a`.
+`./pm99-season play 2020-21` points there. Full release validation PASS;
+other25 bindings and original2015 backup preserved. No unaffected rebuilds.
+
+Delivered r409: Colón6103Broun→Leonardo Burián; Gimnasia25688Navarro→Jorge Broun.
+Dated original person histories establish August ownership; actual target-opening
+reports corroborate. Burián targetFIFA21 facts/roles/calibrated skills; Broun
+same-season facts/ratings copied exactly. Two stale slot photos disabled.
+Exactly2 native player records changed, zero other actor/order bytes; club/
+manager/tactics/kit data preserved. Both genuine keeper cards +Stoke startup
+personally viewed; launched hashes/native facts/kit input pixels verified.
+Full SOURCE recipe/inventory equality PASS. Evidence root
+`resume-qa/argentina2020-positive-opening-owners-v1/`: completion-proof-v190,
+r409-original-runtime-proof-v1, r409-independent-native-scope-proof-v1 JSONs.
+
+Delivered r410: nativeGimnasia ENT1648 Ferraro→Maradona, recipeDiego Maradona.
+Official club3June2020renewal +completed30Octmatch support target date; sole
+manager owner9019 verified. Exactly1 ENT record changes; all players/clubs,
+portraits/tactics/kits unchanged. Full SOURCE recipe/inventory equality +native
+manager readback PASS. Finalr410Stoke startup personally viewed and exact input
+hashes verified, attested and release-validated. Earlier r409 keeper frames are
+retained as evidence for byte-identical player/EQ/assets, not relabelled r410.
+Evidence`resume-qa/gimnasia2020-dated-manager-v1/`: completion-proof-v191,
+installed-full-release-validation, r410/build-proof JSONs; original final screenshot
+`.local/runlogs/pm99_runner/local_gimnasia_2020_21_r410a_stoke/screens/022_line_up_inspect.png`.
+
+Reusable capacity fix: versioned `season_authored_country_delta_v2.py` applies
+existing proved same-carrier name recovery before selected-player compilation.
+V1 remains byte-identical; old2019r406 source request and complete recipe still
+reproduce with no rebuild.60 targeted tests pass, including versioned SOURCE
+routing and forged recovery/scope rejection. Boundary and diff checks PASS.
+No upstream product/editor changes; existing dirty submodules/viewer preserved.
+
+Fixed progress: withinclub82/82classified (0remaining; includes legitimate cases).
+Source-cohort42total/34delivered/8pending (19.05%remaining).
+Stock327total/65installed/17false/245untreated (74.92%reviewremaining).
+Originalcrossclub2809/110disposed/2699without final disposition(96.08%remaining).
+Newlegacy2015source12536/2nativeownerfixes/12534notcleared; these are candidates,
+NOT12534confirmed bugs. No frozen duplicate credit without semantic crosswalk.
+Groups30total/26closed/4open (13.33%ofgroups, NOT overall engineering percentage).
+Two new owner cases and one newly proved coach case were explicit scope additions;
+completed earlier cases were preserved. `fixed-progress-snapshot-v191.json` under
+Argentina evidence root records percentages/denominators and their limitations.
+26 games playable; all26 RCs NOT complete. No defensible overall/time estimate
+while broader ownership/legacy-source review remains unclassified.
+
+NEXT: source-backed backfills for8known cohort dependencies (Barrow2007,
+DeGraafschap2009,Vaduz2010/2020/2021/2022,Antalyaspor2011,Dover2020), then continue
+calendar-country native repairs, Bath openingXI, bounded kit/ownership review,
+and final consolidated26 regression. Do not restart completed source research or
+regenerate unaffected releases. Whole Colón/Gimnasia squads still NOT certified
+by these three narrow fixes. Last recorded worker quotas unavailable; lead-only
+batch. Disk~7.7GiB free, no cleanup needed; Pi not used.
+
+## INSTALLED v190 two keeper owners; Gimnasia coach SOURCE replay active — 2026-10-27 15:43 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Completed authority `.local/consolidated-audit-20261009/release-delivery-checklist-v190.json`
+and`parallel-rc-20261023/confirmed-critical-batch-20261027-v42.json`.
+2020 preferred NOW`sourced-argentina2020-opening-keepers-20261027-r409a`.
+Full release validation PASS; other25 bindings +original2015 backup preserved.
+Exactly2 native reserve owner corrections: Colón6103Broun→Burián; Gimnasia25688
+Navarro→Broun. All other actors/orders/game files exact except selected no-photo
+transform. Broun same-season facts/ratings preserved. Native readback, complete
+SOURCE recipe/inventory equality, original Stoke+Burián+Broun runner frames,
+launched hashes and kit input pixels pass. No historical kit-design certification.
+`resume-qa/argentina2020-positive-opening-owners-v1/`: completion-proof-v190,
+r409-independent-native-scope-proof-v1, r409-original-runtime-proof-v1,
+installed-full-release-validation andfixed-progress-snapshot-v190 JSONs.
+Reusable versioned selected-player capacity writer v2 passes60 targeted tests;
+v1 byte-identical, real existing2019r406 source request/recipe still reproduces
+without rebuild. New code/publication hooks not yet committed pending handoff.
+
+Additional CONFIRMED live coach issue: currentnative ENT1648 Ferraro belongs
+exclusively to Gimnasia9019. Official club3June2020Maradona renewal +completed
+30Oct2020TyC coach evidence proves target. This is one NEW bounded visible bug,
+not a re-opened goalkeeper case. `resume-qa/gimnasia2020-dated-manager-v1/`
+`build-r410-v1.log`: r410a BUILT, exactly1 ENT record changes; all players/clubs/
+portraits/kits/tactics byte-identical. SOURCEr410b replay active; NOT installed.
+Next final Stoke startup r410, vieworiginal/hash, attest/fullvalidate, checkpoint
+v191 with new1coach case delivered (expectedgroups30total/26closed/4open).
+No competing builds/captures. Coach source official contract dates bracketAugust;
+late2020assistantMéndez appearing at pitchside does not displace headcoachMaradona.
+
+Current measured queues before coach checkpoint: withinclub0/82remaining;
+source8/42remaining(19%);stock245/327untreated(75%);originalcrossclub2699/2809
+without final disposition(96%);newlegacy2015source12534/12536notcleared.
+These overlapping uneven review counts are NOT overall engineering percentages.
+26 games playable, all26RC signoff NOT complete. Foreign legacy source ownership
+and final consolidated26 regression remain. No promise of near completion.
+
+## LIVE v2 selected-player capacity: r409 A built, SOURCE replay active — 2026-10-27 15:25 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+Installed/default remains v189/r408. New `season_authored_country_delta_v2.py`
+keeps v1 byte-identical SHAa0d1b779e3093a9a906a986f7438ab26eafb933df696afaa45f9fd26254fa6cc.
+Publisher/SOURCE dispatcher select v2 only for explicit v2schema.58 targeted tests
+pass, including forged/scope-invalid recovery claims and v1 contract tests.
+`resume-qa/argentina2020-positive-opening-owners-v1/recipe-r409-v3/` is current.
+Native preflight PASS exactly6103/25688, zero other actor/order bytes changed.
+r409a BUILT; full SOURCE r409b replay active (`build-r409-v2.log`). No default
+switch/case closure until replay, genuine Stoke+Burián+Broun profiles, input hashes,
+kit pixels and full release validation. Capture script prepared, not started.
+Other25 bindings remain current; no competing builds/captures. Preserve untracked
+viewer and pre-existing dirty upstream submodules. Public changes not committed
+until actual SOURCE/runtime proof. Next wait build-proof then capture_final_r409.
+
 ## HANDOFF v189 installed; r409 safely refused before publication — 2026-10-27 01:04 UTC
 
 Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.

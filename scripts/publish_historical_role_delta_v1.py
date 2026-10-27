@@ -735,6 +735,9 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         if assignment_plan.get('schema') == reserve_transfer.SCHEMA:
             assignments = reserve_transfer
         from scripts import season_authored_country_delta_v1 as authored_country
+        from scripts import season_authored_country_delta_v2 as authored_country_v2
+        if assignment_plan.get('schema') == authored_country_v2.SCHEMA:
+            authored_country = authored_country_v2
         if assignment_plan.get('schema') == authored_country.SCHEMA:
             assignments = authored_country
         assignments.verify(release, assignment_plan)
