@@ -335,6 +335,10 @@ def build(season: str, *, release_id: str, resume: bool = False) -> dict[str, An
         if completed is not None:
             return completed
     previous = registry.load_preferred_release(season)
+    from scripts import season_opening_ownership_reconstruction_v1 as ownership_source
+    reconstructed = ownership_source.reconstruction(previous, release_id)
+    if reconstructed is not None:
+        return reconstructed
     from scripts import season_opening_cohort_delta_v1 as opening_cohort
     reconstructed = opening_cohort.reconstruction(previous, release_id)
     if reconstructed is not None:
