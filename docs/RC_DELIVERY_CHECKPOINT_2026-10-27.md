@@ -52,7 +52,7 @@ A read-only current native club-name census found 165 same-country collision
 groups across the games. These are review candidates, not 165 confirmed bugs.
 Reusing original source bytes for their carriers found 39 source-supported label
 mismatches; 26 have an exact crosswalk to the earlier v90 label candidate list.
-Existing guarded plans admit 16 label changes; the others have destination/coach
+Existing guarded plans admit 15 label changes; the others have destination/coach
 conflicts or insufficient evidence. No changes from this review have been installed.
 The retained manager plans include previous no-op paired entries and must not be
 interpreted as hundreds of new manager corrections.
