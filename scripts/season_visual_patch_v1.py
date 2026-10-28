@@ -165,11 +165,13 @@ def build_english_review_plan(report_path, resolutions_path):
             'no_photo': rows, 'replacements': []}
 
 
-def materialise(plan_path, output):
+def materialise(plan_path, output, *, source_release=None):
     plan = json.loads(plan_path.read_text())
     if plan.get("schema_version") != SCHEMA:
         raise ValueError("unsupported visual patch plan")
-    release = registry.load_preferred_release(plan["season"])
+    release = source_release if source_release is not None else registry.load_preferred_release(plan["season"])
+    if source_release is not None and release.season != plan['season']:
+        raise ValueError('visual patch source belongs to another season')
     if release.release_id != plan["inputs"]["release_id"] or sha(release.package_path) != plan["inputs"]["package_sha256"]:
         raise ValueError("visual patch plan is stale")
     archive_path = release.game_path / "DBDAT/MINIFOTO.PKF"
@@ -413,9 +415,11 @@ def publish(season, output_game, release_id, register=False, application_path=No
             "portrait_only": all('MINIFOTO' in name for name in allowed), "game": str(output_game)}
 
 
-def extend_kit(season, source_root, probe_root, output_root):
+def extend_kit(season, source_root, probe_root, output_root, *, source_release=None):
     """Combine a retained portrait patch with one actually reviewed kit probe."""
-    release = registry.load_preferred_release(season)
+    release = source_release if source_release is not None else registry.load_preferred_release(season)
+    if source_release is not None and release.season != season:
+        raise ValueError('kit patch source belongs to another season')
     plan_path = source_root / season / 'plan.json'
     patch_root = source_root / season / 'patch'
     plan = json.loads(plan_path.read_text())

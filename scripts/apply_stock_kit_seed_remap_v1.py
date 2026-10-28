@@ -530,7 +530,24 @@ def prepare(
             "native_recipe_photos_unchanged": True, "source_seed_not_current_donor": True}}
 
 
-def materialise(*, plan: Mapping[str, Any], approval_path: Path, output_root: Path) -> dict[str, Any]:
+def _materialisation_parent(plan, approval_path, allow_registered_parent):
+    if type(allow_registered_parent) is not bool:
+        raise StockKitRemapError('registered-parent opt-in must be a literal boolean')
+    release = registry.load_registered_release(plan['season'], plan['parent_release_id'])
+    if release.manifest_sha256 != plan['parent_manifest_sha256']:
+        raise StockKitRemapError('registered parent manifest changed')
+    if allow_registered_parent:
+        if json.loads(approval_path.read_text()).get('allow_registered_parent') is not True:
+            raise StockKitRemapError('unpromoted registered parent requires explicit bound approval')
+    else:
+        preferred = registry.load_preferred_release(plan['season'])
+        if preferred.release_id != release.release_id or preferred.manifest_sha256 != release.manifest_sha256:
+            raise StockKitRemapError('visual-patch materialisation requires this exact parent to be preferred')
+    return release
+
+
+def materialise(*, plan: Mapping[str, Any], approval_path: Path, output_root: Path,
+                allow_registered_parent: bool = False) -> dict[str, Any]:
     """Create only a detached kit probe and combined visual patch artifacts."""
     if plan.get("status") != "dry-run-candidate-only":
         raise StockKitRemapError("materialisation requires a freshly prepared plan")
@@ -552,10 +569,7 @@ def materialise(*, plan: Mapping[str, Any], approval_path: Path, output_root: Pa
     selected = {row["case_id"] for row in plan["selected_cases"]}
     if approved != selected:
         raise StockKitRemapError("approval cases must exactly equal the selected dry-run cases")
-    release = registry.load_registered_release(plan["season"], plan["parent_release_id"])
-    preferred = registry.load_preferred_release(plan["season"])
-    if preferred.release_id != release.release_id or preferred.manifest_sha256 != release.manifest_sha256:
-        raise StockKitRemapError("visual-patch materialisation requires this exact parent to be preferred")
+    release = _materialisation_parent(plan, approval_path, allow_registered_parent)
     source_dbdat = _root_path(plan["source_dbdat"], label="sealed source DBDAT")
     # Re-run the full parent/checklist/source preflight immediately before writes.
     fresh = prepare(checklist_path=Path(plan["checklist_path"]), checklist_sha256=plan["checklist_sha256"],
@@ -645,9 +659,10 @@ def materialise(*, plan: Mapping[str, Any], approval_path: Path, output_root: Pa
         "audit_scope": {"stock_kit_case_ids": [r["case_id"] for r in plan["selected_cases"]],
             "portrait_review": False, "historical_kit_authenticity": False}}
     pipeline.write_canonical_json(season_root / "plan.json", no_photo_plan)
-    visual_patch.materialise(season_root / "plan.json", season_root / "patch")
+    source_options = {'source_release': release} if allow_registered_parent else {}
+    visual_patch.materialise(season_root / "plan.json", season_root / "patch", **source_options)
     combined_root = output_root / "combined-visual-patch"
-    visual_patch.extend_kit(plan["season"], envelope_root, probe_root, combined_root)
+    visual_patch.extend_kit(plan["season"], envelope_root, probe_root, combined_root, **source_options)
     combined = combined_root / plan["season"]
     combined_plan = pipeline.read_json_file(combined / "plan.json")
     combined_receipt = pipeline.read_json_file(combined / "patch/receipt.json")

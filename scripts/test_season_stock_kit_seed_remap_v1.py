@@ -226,3 +226,28 @@ def test_materialisation_rejects_tampered_mapping_before_creating_output(tmp_pat
     with pytest.raises(remap.StockKitRemapError, match="freshly prepared plan differs"):
         remap.materialise(plan=submitted, approval_path=tmp_path / "approval.json", output_root=output)
     assert not output.exists()
+
+
+def test_registered_unpromoted_kit_parent_requires_explicit_immutable_approval(tmp_path, monkeypatch):
+    registered = SimpleNamespace(release_id='built-child', manifest_sha256='a' * 64)
+    preferred = SimpleNamespace(release_id='current', manifest_sha256='b' * 64)
+    monkeypatch.setattr(remap.registry, 'load_registered_release', lambda *args: registered)
+    monkeypatch.setattr(remap.registry, 'load_preferred_release', lambda *args: preferred)
+    plan = dict(season='2025-26', parent_release_id='built-child', parent_manifest_sha256='a' * 64)
+    approval = tmp_path / 'approval.json'
+    approval.write_text('{}')
+    with pytest.raises(remap.StockKitRemapError, match='preferred'):
+        remap._materialisation_parent(plan, approval, False)
+    with pytest.raises(remap.StockKitRemapError, match='explicit bound approval'):
+        remap._materialisation_parent(plan, approval, True)
+    approval.write_text(json.dumps({'allow_registered_parent': True}))
+    assert remap._materialisation_parent(plan, approval, True) is registered
+    assert preferred.release_id == 'current'  # no promotion as a side effect
+    with pytest.raises(remap.StockKitRemapError, match='manifest changed'):
+        remap._materialisation_parent(dict(plan, parent_manifest_sha256='c' * 64), approval, True)
+
+
+@pytest.mark.parametrize('value', [1, 'yes', None])
+def test_unpromoted_kit_parent_opt_in_rejects_truthy_non_booleans(tmp_path, value):
+    with pytest.raises(remap.StockKitRemapError, match='literal boolean'):
+        remap._materialisation_parent({}, tmp_path / 'unused', value)
