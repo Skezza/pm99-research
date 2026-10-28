@@ -89,6 +89,9 @@ def parse_profile_country(raw: bytes, source: dict, *, actor_name: str,
                           birth_date: str) -> dict:
     """Dispatch to exact Soccerbase parser or the one admitted DFB parser."""
     provider = source.get("provider")
+    if provider == '11v11-original-profile-country-v1':
+        from scripts.season_retained_reader_country_v1 import parse_original_country
+        return parse_original_country(raw, source, actor_name=actor_name, birth_date=birth_date)
     if provider == '11v11-retained-reader-biography-v1':
         from scripts.season_retained_reader_country_v1 import parse_country
         return parse_country(raw, source, actor_name=actor_name, birth_date=birth_date)
