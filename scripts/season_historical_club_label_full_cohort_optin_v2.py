@@ -156,6 +156,84 @@ def _reparse_source_cohort(season, selector, source):
     return {'method':'existing-source-verifier-reparsed-v1', 'season':season,
         'source_selector_sha256':_selector_identity(selector), 'raw_source':raw}
 
+
+def _reparse_mixed_source_cohort(season, selector, source, *, source_dir):
+    """Reparse annual rows and independently verify explicit opening additions.
+
+    A profiled opening player is not an annual squad row. Its original numeric
+    first-XI identity and original profile name/DOB must both be replayable.
+    Existing annual-only witnesses keep their original verification path.
+    """
+    from datetime import date
+    from scripts import review_profile_addition_duplicate_assignments_v1 as evidence
+    from scripts import transfermarkt_calendar_year_policy_v1 as calendar
+    from scripts.season_frozen_fixture_reserve_v2 import heading_name
+
+    additions = [row for row in source['players']
+        if row.get('opening_xi_origin') == 'profiled-first-fixture-addition']
+    annual = [row for row in source['players']
+        if row.get('opening_xi_origin') != 'profiled-first-fixture-addition']
+    if not additions or not annual:
+        raise ValueError('mixed source cohort needs annual rows and explicit opening additions')
+    indices = [row['source_row_index'] for row in source['players']]
+    ids = [row.get('opening_source_player_id') for row in additions]
+    if (len(set(indices)) != len(indices) or len(set(ids)) != len(ids)
+            or any(not isinstance(ident, str) or not ident.isdecimal() for ident in ids)):
+        raise ValueError('mixed source cohort repeats a row or lacks unique numeric profile IDs')
+    annual_proof = _reparse_source_cohort(season, selector, dict(source, players=annual))
+    source_dir = Path(source_dir)
+    lineup = json.loads((source_dir / 'opening-lineups.json').read_bytes())
+    matches = [row for row in lineup['clubs'] if all(
+        row['source_selector'].get(key) == selector.get(key)
+        for key in ('country_catalog', 'competition_catalog', 'club_name'))]
+    if len(matches) != 1:
+        raise ValueError('mixed source cohort needs one exact original opening club')
+    opening = evidence.opening.verify_opening(matches[0], lineup, source_dir / 'cache')
+    if len(opening['starting_xi']) != 11:
+        raise ValueError('mixed source additions require a complete original first XI')
+    year = int(season[:4])
+    calendar.route_provider_year(year, matches[0].get('source_competition_code'),
+        selector['country_catalog'])
+    if (opening['date'] != source.get('opening_fixture_date')
+            or date.fromisoformat(opening['date']).year != year):
+        raise ValueError('mixed source opening fixture does not belong to the target year')
+    persons = json.loads((source_dir / 'opening-lineup-person-evidence.json').read_bytes())
+    receipts = persons['source']['cache_files']
+    profiles = []
+    for row in additions:
+        ident = row['opening_source_player_id']
+        if ident not in opening['starting_xi'] or row.get('opening_xi_order') not in range(1, 12):
+            raise ValueError('profile addition is not in the original target-club first XI')
+        urls = [receipt['url'] for receipt in receipts
+            if receipt['url'].rstrip('/').endswith('/spieler/' + ident)]
+        if len(urls) != 1:
+            raise ValueError('opening addition lacks one exact original profile URL')
+        body, proof = evidence.opening.verified_page(source_dir / 'person-cache', receipts, urls[0])
+        facts = evidence._profile_facts(body, player={'source_player_id': ident})
+        expected = row['facts']
+        if (not expected.get('birth_date')
+                or facts.get('published_birth_date') != expected['birth_date']
+                or evidence.identity.key(facts['published_full_name'])
+                != evidence.identity.key(heading_name(expected['name']))):
+            raise ValueError('opening addition differs from its original profile name or DOB')
+        profiles.append({'source_row_index': row['source_row_index'],
+            'source_player_id': ident, 'original_profile': proof,
+            'verified_fields': ['name', 'birth_date'],
+            'published_full_name': facts['published_full_name'],
+            'published_birth_date': facts['published_birth_date']})
+    return {'method': 'raw-annual-and-original-opening-profile-additions-v1',
+        'season': season, 'source_selector_sha256': _selector_identity(selector),
+        'annual_row_count': len(annual), 'annual_source': annual_proof,
+        'opening_addition_count': len(additions), 'original_opening': opening,
+        'original_profile_additions': profiles}
+
+
+def _reparse_bound_source_cohort(season, selector, source, *, source_dir):
+    if any(row.get('opening_xi_origin') == 'profiled-first-fixture-addition'
+           for row in source['players']):
+        return _reparse_mixed_source_cohort(season, selector, source, source_dir=source_dir)
+    return _reparse_source_cohort(season, selector, source)
+
 def _native_owner_index(eq_bytes):
     indexed = IndexedFDIFile.from_bytes(eq_bytes)
     owners = {}
@@ -393,9 +471,11 @@ def create_witness(*, season, source_root, carrier_id, expected_source_selector,
     # A second source selector that also binds the entire roster by exact
     # names/DOBs makes the source-club allocation ambiguous; refuse it.
     _assert_unique_source_cohort(pre, source, target_players, club_group(club))
-    raw_source_proof = None if legacy_numeric_witness else _reparse_source_cohort(season, expected_source_selector, source)
+    raw_source_proof = None if legacy_numeric_witness else _reparse_bound_source_cohort(
+        season, expected_source_selector, source, source_dir=pre_path.parent)
     prior_raw_source_proof = (None if legacy_numeric_witness else
-        _reparse_source_cohort(season, prior_label_source_selector, prior_source)
+        _reparse_bound_source_cohort(season, prior_label_source_selector, prior_source,
+            source_dir=pre_path.parent)
         if collision is not None else None)
     witness = {'schema_version': SCHEMA, 'season': season, 'release_id': release.release_id,
         'package_path': registry.relative_workspace_path(release.package_path),
