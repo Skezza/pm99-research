@@ -196,6 +196,9 @@ def updated_package(package, plan, nationality_plan=None, manager_plan=None, clu
             'covers': ['source-backed-nationality-corrections']}], key=lambda p: p['id'])
     if manager_plan is not None:
         _validate_manager_display_projection(manager_plan)
+        if manager_plan.get('owner_isolations'):
+            from scripts.season_manager_owner_isolation_v1 import prepare_recipe
+            result = prepare_recipe(result, manager_plan)
         managers = {m['id']: m for m in result['managers']}
         clubs = {c['id']: c for c in result['clubs']}
         manager_sha = hashlib.sha256(pipeline.canonical_json_bytes(manager_plan)).hexdigest()
@@ -480,10 +483,29 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
                 registry.sha256_file(release.game_path / DATABASES[1]), hashlib.sha256(original_ent).hexdigest()):
             raise ValueError('manager plan is stale')
         holders, names = _manager_graph(eq_path=release.game_path / DATABASES[1], ent_path=release.game_path / DATABASES[2])
+        isolation_destinations = {}
+        if manager_plan.get('owner_isolations'):
+            if (plan.get('updates') or any((modern_birth_dates, club_plan, nationality_plan_path,
+                    ownership_plan_path, visibility_plan_path, profile_assignment_plan_path,
+                    name_only_plan_path, mode1_opening_plan_path, italian_opening_plan_path,
+                    trabzon_opening_plan_path, birth_year_plan_path, mode1_keeper_plan_path))):
+                raise ValueError('manager owner isolation requires an inert manager-only transaction')
+            from scripts import season_manager_owner_isolation_v1 as isolation
+            isolated = isolation.validated_rows(package, manager_plan)
+            patched_eq = isolation.apply_native(original_eq, original_ent, package, manager_plan)
+            isolation_destinations = {row['to_carrier_id']: row['club_carrier_id'] for row in isolated}
+            # The old profile may now receive a separately sourced correction
+            # for its sole remaining owner. Its before-name is still checked
+            # against the original ENT, never against another update's output.
+            holders = {id: list(owners) for id, owners in holders.items()}
+            for split in isolated:
+                holders[split['from_carrier_id']] = [owner for owner in holders[split['from_carrier_id']]
+                    if owner['carrier_id'] != split['club_carrier_id']]
         indexed = IndexedFDIFile.from_bytes(original_ent); entries = {e.record_id: e for e in indexed.entries}; replacements = {}; checked_sources = {}
         for row in manager_plan['updates']:
             id = row['carrier_id']
-            if id in replacements or [c['carrier_id'] for c in holders.get(id, [])] != [row['club_carrier_id']] or names.get(id) != row['native_before']:
+            expected_owners = [] if isolation_destinations.get(id) == row['club_carrier_id'] else [row['club_carrier_id']]
+            if id in replacements or [c['carrier_id'] for c in holders.get(id, [])] != expected_owners or names.get(id) != row['native_before']:
                 raise ValueError('manager native ownership/name is unbound or shared')
             for source in row['evidence']['raw_sources']:
                 path = ROOT / source['path']
@@ -1138,6 +1160,11 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         'native_birth_year_guard': birth_receipt,
         'historical_verification_complete': False,
         'remaining_detailed_role_source_gaps': len(plan['unresolved'])}
+    if manager_plan and manager_plan.get('owner_isolations'):
+        receipt.update(
+            manager_owner_isolations=manager_plan['owner_isolations'],
+            manager_owner_isolation_club_count=len(manager_plan['owner_isolations']),
+            allowed_write='One existing active EQ coach reference plus sourced name fields in its explicitly unused ENT slot and the previous shared ENT record for its sole remaining owner; other manager-plan name corrections remain explicitly enumerated. No new native IDs; ENT non-name fields, remaining owner link, players, tactics and assets preserved.')
     receipt_path = workspace / 'role-delta-compiler.json'
     if visibility_plan is not None:
         receipt.update(compilation_mode='known-good-baseline-authored-roster-visibility-delta',
