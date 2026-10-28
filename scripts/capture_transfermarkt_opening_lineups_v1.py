@@ -475,6 +475,34 @@ def _lineup_from_report(ref: TeamRef, fixture: Mapping[str, Any], cache: Snapsho
     }
 
 
+def _reject_duplicate_club_identities(rows):
+    """Do not certify two source club selectors as one provider club.
+
+    A unique substring match can otherwise map Olympiakos to Olympiakos Volos.
+    Keep the original failure explicit; do not guess which selector is wrong.
+    """
+    groups = {}
+    for row in rows:
+        selector = row['source_selector']
+        key = selector['transfermarkt_club_id']
+        groups.setdefault(key, []).append(row)
+    accepted, failures = [], []
+    for group in groups.values():
+        selectors = {(r['source_selector']['country_catalog'],
+                      r['source_selector']['competition_catalog'],
+                      r['source_selector']['club_name']) for r in group}
+        if len(selectors) <= 1:
+            accepted.extend(group)
+            continue
+        names = sorted(f'{country}/{competition}/{club}' for country, competition, club in selectors)
+        for row in group:
+            selector = row['source_selector']
+            failures.append({key: selector[key] for key in
+                             ('club_name', 'competition_catalog', 'country_catalog')} |
+                            {'reason': 'duplicate-provider-club-identity: ' + ', '.join(names)})
+    return accepted, failures
+
+
 def capture(
     *,
     clubs: list[dict[str, Any]],
@@ -533,6 +561,8 @@ def capture(
             rows.append(row)
         except (CaptureError, OSError, ValueError) as exc:
             failures.append({**selector, "reason": str(exc)})
+    rows, collisions = _reject_duplicate_club_identities(rows)
+    failures.extend(collisions)
     rows.sort(key=lambda row: (str(row["source_selector"]["country_catalog"]), str(row["source_selector"]["competition_catalog"]), str(row["source_selector"]["club_name"])))
     failures.sort(key=lambda row: (row["country_catalog"], row["competition_catalog"], row["club_name"]))
     qualified = sum(row["source_status"] == "source-qualified" for row in rows)

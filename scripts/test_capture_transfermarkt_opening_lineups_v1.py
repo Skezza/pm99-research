@@ -141,3 +141,24 @@ def test_eleven_person_bench_cannot_become_an_anonymous_pitch_fallback_xi():
         '<div class="aufstellung-ersatzbank-box"><table class="ersatzbank">' + rows + '</table></div></div>', 'html.parser')
     with pytest.raises(capture.CaptureError, match='no lineup table'):
         capture._modern_lineup(page.select_one('.aufstellung-box'))
+
+
+def test_distinct_clubs_cannot_share_a_provider_identity():
+    def row(name, provider_id, country='greece'):
+        return {'source_selector': {'country_catalog': country,
+                'competition_catalog': 'greekprm', 'club_name': name,
+                'transfermarkt_club_id': provider_id}}
+    good = row('AEK Athens', 244)
+    accepted, failures = capture._reject_duplicate_club_identities([
+        row('Olympiakos', 4602), good, row('Olympiakos Volos', 4602)])
+    assert accepted == [good]
+    assert {x['club_name'] for x in failures} == {'Olympiakos', 'Olympiakos Volos'}
+    assert all(x['reason'].startswith('duplicate-provider-club-identity:') for x in failures)
+    # Distinct provider IDs are accepted; numeric provider identity is global.
+    accepted, failures = capture._reject_duplicate_club_identities([
+        row('Example', 1), row('Other', 2, 'other')])
+    assert len(accepted) == 2 and not failures
+
+    accepted, failures = capture._reject_duplicate_club_identities([
+        row('Example', 1), row('Other', 1, 'other')])
+    assert not accepted and len(failures) == 2
