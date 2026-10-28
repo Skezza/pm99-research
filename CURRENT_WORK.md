@@ -1,3 +1,39 @@
+## Checkpoint242 installed: 2025/26 combined fixes verified — 2026-10-28 08:52 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`.
+
+**Installed/verified:** 2025/26 finalr482 at242. Roma207/Cagliari212/Górnik1060 labels; five distinct target/counterpart coach identities corrected plus existing Gasperini display shortened; original factory Rennes520 art from513. All five genuine final originals personally viewed (Stoke, Svilar/Roma, Caprile/Cagliari, Lubik/Górnik, Samba/Rennes). Full SOURCE recipe/game equality; exact EQ label reconstruction, ENT name-span reconstruction, selected3archive bytes/pixels, Native manager ownership/readback, allplayers/photos/tactics/other25/2015backup preservation, runtime attestation and full release validation pass. Sourcecohort45/81delivered36pending; original327kits278installed32noops2invalidated15untreated. AdditionalAZ9/9unchanged. Evidence `strong-two-original327-kits-r482-r483-v1/2025-26/completion-proof-v242.json` underhelperrootbelow. Current2025playcommand unchanged: `./pm99-season play 2025-26`.
+
+**Built/source-equal not installed:** 2018r481,2024r483; datedmanager484/485/486/487 across2000–2003 (9Nativecoachchanges). Managercensus56 now exactdisjointpartition:27confirmedcorrections,3nonbugs,1invalidsourcejoin,25shared1190 pendingtarget-specificisolation. ExtraVitória2000correctionoutside56remains explicit. Newmanagercases notyetintegratedinto fixedledger counts; donotclaim33groupscovernewlyconfirmedcases.
+
+**Lead caught and held:** unpromoted2024r502 includes validSevillaPimienta but PogońKolendowicz proposal is rejected:15Augappointment is AFTERJuly20opener/Aug1. CorrectopeningcoachJensGustafsson; workerpreparing onecorrectionover502. Do NOTpublish502alone; preserve its validSevillastage and earlier475/483kit/club stages. Current2024preferredunchanged. Hold `manager-native-source-consistency-checkpoint240-v1/merged-19-current-parent-manager-plans-v1/2024-25/r502-publication-hold-lead-v1.json`. No shipped game regressed.
+
+**Brazil41:** privatev4schema/mask valid, fullcompiler41 nowpassesafterclearinginheritedpreservepolicyonnewRafael8625. Nativeprepare thenrefusedcontextcase; actualnative22XI namesderivedstrictly. Mode1gridwriterdoesnotacceptmode0tacticscontext, establishedSwiss2019routeapplies: removecontextfromNative opening, retaininferred4-4-2/4-5-1 in evidence/report only, preserveNativegrid. Workerfinishingv6; useexistingcountryAPI notnewformatresearch. NeedactualNative41/protected21-order-onlyproof beforebuild488. NoBrazilgamebuilt/installedyet.
+
+**Public shipped:** `1c0400e` pushed source-provider-IDcollisionguard after23tests. Read-only25standardcapture replayfindsonlyOlympiakos/Volos collision; legacy2015distinctsourceflow. ExistingAthens1303andVolos1309rosters are distinctcorrectclubidentities bypositive rostercomparison; fix is sourcejoin1303TM683, notcopyVolosroster. `fcf0b88` approvedunpromoted-parentkitcomposition32tests alreadypushed. Boundaries/diffcheckpass.
+
+**Disk:** boundedserialcapture lowered discretionaryreserve8→7.5GiB with explicit493MBpeakbudget; no userrulechanged.2025completedclone retiredafteroriginal/inventory/inactivityproof (.local/cleanup-20261028/completed-r482-clone-v1), sharedprefix kept. Three supersededUNBUILTprivateBrazilgeneratedrecipe drafts v1/v2/v3 removedwithSHAledger (92,784,901bytes); originalsources/currentv4/receipts/reportsretained. SOURCEBmostlyalreadyhardlinked, so abandoned low-value newdedupeprocess. Pi SSH online229GiBfree; currentfree~8GiB, preserveonecaptureatonce.
+
+**Next:** finishcorrectPogońchildover502 and SOURCE, thenactualfinal2024fourframes/install includingexplicit2newmanagercaseaccounting. FinishBrazilv6Nativepreflight/build488whileonecapture runs. Continue2018r481runtime and remainingmanager/sourcecohort/calendar/Barnet/Bath/stock cases, finalall26regression. Finalprivateinstallerhasprepublicationchecksandrollback(catalog/locator/attestation/ledgers), adversarialreviewed; requiresactualframeandfrozenqueuejoins. Do notsilentlycreditbuiltwork.
+
+Helper/evidenceroot `.local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/`. Keepgoingtowardzero; no0remainingclaim.
+
+## Target zero blockers: final combined candidates built — 2026-10-28 08:27 UTC
+
+Machine `joe-Vostro-3350`; source session `01a0592d-fcd5-7262-a637-743a8253d9b4`. Installed authority remains checkpoint241; no new installation credit yet.
+
+**New built/source-verified:** 2025/26 finalr482 (Roma/Cagliari/Górnik labels, target/counterpart coaches, Rennes original factory art), 2024/25 finalr483 (Roma/Monaco labels plus four coaches, Sparta original factory art), and 2018/19 finalr481 (Cagliari + Heerenveen, actual Atalanta/PEC counterpart coaches). Each independent SOURCE reconstruction equals complete recipe/game; no unaffected release regenerated. 2000/01 r484 four dated coach corrections and 2001/02 r485 two corrections also A/SOURCE-B equal. 2002/03 r486 build/SOURCE active PTY71193; 2003/04 r487 prepared, unbuilt. Do not mutate catalogue during SOURCE.
+
+**Runtime disk guard:** no runner active. Final2025 capture refused before creation of evidence/game because free8.3GiB minus planned493MB would breach8GiB reserve. Shared-prefix symlink exists and is correct; private capture helper now permits exact existing shared symlink. Older r342/r343/r432/r395a clones already absent; do not repeatedly propose deleting them. Luna adversarial worker now checking redundant SOURCE-B same-byte file deduplication / Pi archival. Pi SSH works, `/srv/hdd`229GiB free. Source/currentgames/original2015/runner originals retained.
+
+**Public change shipped:** root `fcf0b88` pushed: explicit approved unpromoted-parent factory-kit composition, default preferred-parent rule unchanged.32focused tests + boundary/diff checks pass; real482/483 SOURCE proof exists. Doc `docs/UNPROMOTED_SEASON_KIT_COMPOSITION_2026-10-28.md`.
+
+**Workers:** calendar Luna preparing executable Brazil41 child-recipe input from completed source/capacity artifacts (no builds/shared edits); ready-label Luna researching remaining manager candidates with dated originals, not repeating first8; adversarial Luna checking cleanup. Original manager census56 denominator preserved: additional read-only review found one spelling alias (Palermo) and one bad source join (Olympiakos wrongly mapped to Volos); proposed adjusted54 candidates, not automatically54bugs. Strict August1 coach boundary was worker inference, NOT user rule: agreed August/opening-season evidence applies. Never certify whole history from alias counts.
+
+Evidence/helper root `.local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/`: `strong-two-original327-kits-r482-r483-v1/`, `ready-three-counterpart-coaches-r480-r481-v1/2018-19/`, `first8-confirmed-manager-batches-r484-r487-v1/`. New private installer `install_final_combined_2024_2025_root_v1.py` prepared (not executed): exact native mask/club labels/managers, archive target ranges, all originals/input receipts/SOURCE chains/other25/2015 preservation and explicit cohort+stock accounting. Requires lead-viewed actual originals before publication. Inspect/QA before running.
+
+**Exact next:** safely free >=1GiB; serial final2025 five frames (Stoke+207/212/1060/520), personally view/record, then install with combined ancestry after SOURCE ends. Retire only verified completed disposable clone, do final2024 four frames/install; then2018 three frames/install. Finish manager484–487 runtime/readback/explicit checklist additions and Brazil41 integration. Remaining sourcecohort/calendar/Barnet/Bath/stock/manager queues and final26regression are real outstanding work. No honest0%remaining claim yet. Keep going without proceed prompts.
+
 ## Checkpoint241 installed; SOURCE roster selection proven — 2026-10-28 07:57 UTC
 
 Machine joe-Vostro-3350; source session01a0592d-fcd5-7262-a637-743a8253d9b4.
