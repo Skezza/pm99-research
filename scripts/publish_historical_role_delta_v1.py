@@ -306,6 +306,11 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
     disk_budget.validate_reserve(minimum_free_bytes)
     if not re.fullmatch(r'[a-z0-9][a-z0-9.-]{0,127}', release_id):
         raise ValueError('invalid release ID')
+    if name_only_plan_path is not None and any((modern_birth_dates, nationality_plan_path, manager_plan_path,
+            club_plan_path, ownership_plan_path, visibility_plan_path, mode1_keeper_plan_path,
+            birth_year_plan_path, mode1_opening_plan_path, italian_opening_plan_path,
+            trabzon_opening_plan_path, profile_assignment_plan_path)):
+        raise ValueError('name-only delta cannot mix unrelated repairs')
     release = (registry.load_registered_release(season, source_release_id)
                if source_release_id is not None else registry.load_preferred_release(season))
     plan = json.loads(plan_path.read_text())
@@ -347,10 +352,6 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             club_plan_path, ownership_plan_path, visibility_plan_path, mode1_keeper_plan_path,
             birth_year_plan_path, mode1_opening_plan_path, italian_opening_plan_path)):
         raise ValueError('Trabzon full-XI delta cannot mix unrelated repairs')
-    if name_only_plan_path is not None and any((modern_birth_dates, nationality_plan_path, manager_plan_path,
-            club_plan_path, ownership_plan_path, visibility_plan_path, mode1_keeper_plan_path,
-            birth_year_plan_path, mode1_opening_plan_path, italian_opening_plan_path, trabzon_opening_plan_path)):
-        raise ValueError('name-only delta cannot mix unrelated repairs')
     if profile_assignment_plan_path is not None and any((modern_birth_dates, nationality_plan_path, manager_plan_path,
             club_plan_path, ownership_plan_path, visibility_plan_path, mode1_keeper_plan_path,
             birth_year_plan_path, mode1_opening_plan_path, italian_opening_plan_path, trabzon_opening_plan_path, name_only_plan_path)):
@@ -586,6 +587,9 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         from scripts import season_number_label_names_v2 as numeric_labels
         if name_plan.get('schema') == numeric_labels.SCHEMA:
             names = numeric_labels
+        from scripts import season_numeric_name_format_only_v1 as numeric_format
+        if name_plan.get('schema') == numeric_format.SCHEMA:
+            names = numeric_format
         names.verify(release, name_plan)
     assignment_plan = None
     if profile_assignment_plan_path is not None:
@@ -1214,6 +1218,9 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         if name_plan.get('schema') == numeric_labels.SCHEMA:
             receipt.update(compilation_mode='known-good-baseline-original-numeric-label-name-year-delta',
                 corrected_birth_years=sum(row['repair_birth_year'] for row in name_plan['updates']),
+                allowed_write=name_plan['scope'])
+        if name_plan.get('schema') == numeric_format.SCHEMA:
+            receipt.update(compilation_mode=numeric_format.MODE, corrected_birth_years=0,
                 allowed_write=name_plan['scope'])
     if assignment_plan is not None and assignment_plan.get('schema') in (stevenage.SCHEMA, boreham.SCHEMA, barrow.SCHEMA):
         receipt.update(compilation_mode={

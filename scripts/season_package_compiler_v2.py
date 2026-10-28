@@ -2201,6 +2201,8 @@ def compile_package_to_tree(
         original_person.reject_factory_recipe(package)
         from scripts import season_number_label_names_v2 as numeric_labels
         numeric_labels.reject_factory_recipe(package)
+        from scripts import season_numeric_name_format_only_v1 as numeric_format
+        numeric_format.reject_factory_recipe(package)
         from scripts import season_foreign_fixed_roster_delta_v1 as foreign
         foreign.reject_factory_recipe(package)
         from scripts import season_opening_cohort_delta_v1 as opening_cohort

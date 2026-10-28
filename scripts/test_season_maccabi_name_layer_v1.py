@@ -87,17 +87,23 @@ def test_changed_original_source_plan_is_not_accepted(monkeypatch):
         names.verify(SimpleNamespace(), {'schema': names.SCHEMA, 'original': False})
 
 
-def test_2015_build_dispatches_name_reconstruction_without_factory_compilation(monkeypatch):
+def test_2015_build_dispatches_name_reconstruction_without_factory_compilation(monkeypatch, tmp_path):
     from scripts import build_registered_quality_release_v1 as builder
-    monkeypatch.setattr(builder.registry, 'load_preferred_release', lambda _: SimpleNamespace())
+    receipt = tmp_path / 'receipt.json'
+    receipt.write_text('{}')
+    release = SimpleNamespace(season='2015-16', locator={}, compiler_receipt_path=receipt)
+    monkeypatch.setattr(builder.registry, 'load_preferred_release', lambda _: release)
     expected = {'complete_game_inventory_identical': True}
     monkeypatch.setattr(names, 'reconstruction', lambda previous, release_id: expected)
     assert builder.build('2015-16', release_id='test') == expected
 
 
-def test_2015_without_explicit_name_layer_keeps_specialist_build_guard(monkeypatch):
+def test_2015_without_explicit_name_layer_keeps_specialist_build_guard(monkeypatch, tmp_path):
     from scripts import build_registered_quality_release_v1 as builder
-    monkeypatch.setattr(builder.registry, 'load_preferred_release', lambda _: SimpleNamespace())
+    receipt = tmp_path / 'receipt.json'
+    receipt.write_text('{}')
+    release = SimpleNamespace(season='2015-16', locator={}, compiler_receipt_path=receipt)
+    monkeypatch.setattr(builder.registry, 'load_preferred_release', lambda _: release)
     monkeypatch.setattr(names, 'reconstruction', lambda previous, release_id: None)
     with pytest.raises(builder.QualityBuildError, match='manager-graph'):
         builder.build('2015-16', release_id='test')

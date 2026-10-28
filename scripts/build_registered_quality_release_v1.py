@@ -576,6 +576,10 @@ def build(season: str, *, release_id: str, resume: bool = False) -> dict[str, An
     reconstructed = foreign.reconstruction(previous, release_id)
     if reconstructed is not None:
         return reconstructed
+    from scripts import season_numeric_name_format_only_v1 as numeric_format
+    reconstructed = numeric_format.reconstruction(previous, release_id)
+    if reconstructed is not None:
+        return reconstructed
     from scripts import season_number_label_names_v2 as number_labels
     reconstructed = number_labels.reconstruction(previous, release_id)
     if reconstructed is not None:
