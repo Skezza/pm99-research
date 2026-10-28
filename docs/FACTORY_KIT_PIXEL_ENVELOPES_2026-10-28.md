@@ -28,6 +28,11 @@ remain required before release promotion.
 
 Six tests cover opaque-byte preservation, incompatible geometry, header-offset
 and trailing-byte variants, absolute PKF offsets, other records and refusal to
-overwrite an existing envelope. A real 2002/03 source envelope has also passed
-those native parser and pixel equivalence checks; its game build/runtime proof
-is pending under `.local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/az-factory-identity-alias-v1/2002-03-source-identity-factory-r451-v1/`.
+overwrite an existing envelope. The real 2002/03 correction passed complete
+A/SOURCE-B recipe and game equality, selected factory pixel equality at all three
+sizes, unchanged unselected archive bytes, and genuine Stoke/player-card runner
+checks. Its profile kit comparison matched all 153 compared interior pixels
+with zero channel error. It is installed at checkpoint 222; other 25 season
+bindings and the original 2015 backup were preserved.
+
+Evidence: `.local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/az-factory-identity-alias-v1/2002-03-source-identity-factory-r451-v1/completion-proof-v222.json`.
