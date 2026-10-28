@@ -99,3 +99,9 @@ def test_source_field_keeps_spelling_aliases_and_unlabelled_whitespace():
     assert names.source_label(' Joseph Alan Garner ') == ' Joseph Alan Garner '
     assert names.source_label('#19 Joseph Alan Garner') == 'Joseph Alan Garner'
     assert names.source_label('#19 ') == '#19 '
+
+
+def test_replay_reserve_is_validated_before_any_release_access():
+    with pytest.raises(ValueError, match='at least 6 GiB'):
+        names.reconstruction(object(), 'unused', minimum_free_bytes=0)
+    assert names.reconstruction(SimpleNamespace(locator={}), 'unused') is None

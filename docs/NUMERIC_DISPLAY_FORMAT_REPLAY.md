@@ -21,3 +21,9 @@ Independent replay regenerates and verifies the plan, descriptor, full recipe
 and complete game inventory. Factory compilation rejects this layer rather than
 silently dropping the repair. Publication and runner verification remain separate
 steps; successful unit tests or an in-memory plan are not a delivered game fix.
+
+Replay accepts the publisher's optional validated capacity reserve; its default
+remains 8 GiB. The bounded serial pilot used the existing 7.5 GiB batch reserve
+for both builds. A second actual build reproduced all 270 2023/24 display repairs
+with identical recipe and complete game inventory. Runtime validation and
+installation of that pilot remain separate pending steps.

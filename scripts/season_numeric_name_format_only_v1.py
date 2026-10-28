@@ -14,6 +14,7 @@ from app.fdi_indexed import IndexedFDIFile
 from scripts import season_historical_roster_audit_v1 as audit
 from scripts import season_package_compiler_v2 as compiler
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
+from scripts import season_disk_budget_v1 as disk_budget
 
 SCHEMA = 'pm99-numeric-player-display-format-only-v1'
 FILENAME = 'sourced-numeric-name-format-only-v1.json'
@@ -174,7 +175,8 @@ def reject_factory_recipe(package):
         raise ValueError('numeric display formatting requires source-bound known-good replay; factory compilation must not discard it')
 
 
-def reconstruction(previous, release_id):
+def reconstruction(previous, release_id, *, minimum_free_bytes=disk_budget.DEFAULT_RESERVE):
+    disk_budget.validate_reserve(minimum_free_bytes)
     relative = getattr(previous, 'locator', {}).get('sourced_player_name_only_plan_path')
     if not relative:
         return None
@@ -200,7 +202,8 @@ def reconstruction(previous, release_id):
         pipeline.assert_tree_matches_inventory(release.game_path, pipeline.read_json_file(release.inventory_path))
     from scripts import publish_historical_role_delta_v1 as publisher
     publisher.publish(previous.season, descriptor, release_id=release_id,
-        name_only_plan_path=path, source_release_id=baseline.release_id)
+        name_only_plan_path=path, source_release_id=baseline.release_id,
+        minimum_free_bytes=minimum_free_bytes)
     rebuilt = registry.load_registered_release(previous.season, release_id)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path, pipeline.read_json_file(previous.inventory_path))
     if pipeline.read_json_file(rebuilt.package_path) != expected:
