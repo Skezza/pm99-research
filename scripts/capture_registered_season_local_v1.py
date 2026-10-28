@@ -28,10 +28,26 @@ def summary_matches(summary, release, *, profile=False, selector=None):
         observed = summary.get('player_profile', {})
         expected = observed.get('expected_name_token')
         name = observed.get('player_name_ocr_normalized')
-        return (observed.get('expected_name_token_satisfied') is True
-                and isinstance(expected, str) and bool(expected.strip())
-                and isinstance(name, str)
-                and re.search(r'(?<!\w)' + re.escape(expected.strip()) + r'(?!\w)', name) is not None)
+        if (observed.get('expected_name_token_satisfied') is not True
+                or not isinstance(expected, str) or not expected.strip()
+                or not isinstance(name, str)):
+            return False
+        pattern = r'(?<!\w)' + re.escape(expected.strip()) + r'(?!\w)'
+        if re.search(pattern, name) is not None:
+            return True
+        # A narrow name crop can misread a final I as E. The retained header
+        # probes independently read the same name on their first line. Never
+        # accept a token occurring only in the body of a profile or other UI.
+        screen = summary.get('final_screen_classification', {})
+        if screen.get('screen') != 'player_profile_screen':
+            return False
+        for probe in screen.get('probes', []):
+            if probe.get('probe_name') not in {'configuration_header', 'name_team_header'}:
+                continue
+            lines = str(probe.get('raw_text', '')).strip().splitlines()
+            if lines and re.search(pattern, lines[0].casefold()) is not None:
+                return True
+        return False
     team = summary.get('route_summaries', {}).get('line_up', {}).get('team_identity', {})
     if selector is not None:
         coordinates = {key: selector[key] for key in (

@@ -192,3 +192,18 @@ def test_profile_diacritics_do_not_split_expected_ocr_token(release, monkeypatch
     assert args[args.index('--expected-profile-token') + 1] == expected
     steps = [args[i + 1] for i, value in enumerate(args[:-1]) if value == '--post-step']
     assert any('CP1252:' in step for step in steps)
+
+
+@pytest.mark.parametrize('screen,probe,text,accepted', [
+    ('player_profile_screen', 'configuration_header', 'Simone ARESTI\nCONTRACT', True),
+    ('player_profile_screen', 'name_team_header', 'Simone ARESTI\nCONTRACT', True),
+    ('player_profile_screen', 'configuration_header', 'Wrong Person\nARESTI', False),
+    ('player_profile_screen', 'configuration_header', 'Simone ARESTINO\nCONTRACT', False),
+    ('dashboard', 'configuration_header', 'Simone ARESTI', False),
+    ('player_profile_screen', 'modal_center', 'Simone ARESTI', False),
+])
+def test_profile_header_first_line_can_independently_confirm_name(release, screen, probe, text, accepted):
+    summary = dict(success=True, player_profile=dict(expected_name_token_satisfied=True,
+        expected_name_token='aresti', player_name_ocr_normalized='simone areste'),
+        final_screen_classification=dict(screen=screen, probes=[dict(probe_name=probe, raw_text=text)]))
+    assert subject.summary_matches(summary, release, profile=True) is accepted
