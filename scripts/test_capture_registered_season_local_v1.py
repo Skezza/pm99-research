@@ -181,3 +181,14 @@ def test_low_disk_refuses_before_copy_or_workspace_writes(release, monkeypatch, 
         subject.capture('2000-01', 'release', 'safe_tag')
     assert not (tmp_path / '.local').exists()
     assert (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes() == b'sealed'
+
+
+@pytest.mark.parametrize('name,token,expected', [
+    ('Philipp Köhn', 'Köhn', 'Kohn'), ('Húdson', 'Húdson', 'Hudson')])
+def test_profile_diacritics_do_not_split_expected_ocr_token(release, monkeypatch, name, token, expected):
+    monkeypatch.setattr(subject.pipeline, 'read_json_file', lambda _: {
+        'players': [dict(carrier_id=19, name=name)]})
+    args = subject.driver_args(release, carrier=19, label='accent', token=token)
+    assert args[args.index('--expected-profile-token') + 1] == expected
+    steps = [args[i + 1] for i, value in enumerate(args[:-1]) if value == '--post-step']
+    assert any('CP1252:' in step for step in steps)

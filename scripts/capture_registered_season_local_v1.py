@@ -9,6 +9,7 @@ import re
 import shutil
 import subprocess
 import sys
+import unicodedata
 from pathlib import Path
 
 from scripts import season_disk_budget_v1 as disk_budget
@@ -102,6 +103,10 @@ def driver_args(release, *, carrier=None, label=None, token=None, search_result_
     matches = [p for p in actors if p['carrier_id'] == carrier]
     if len(matches) != 1:
         raise ValueError('one exact recipe carrier required')
+    # OCR removes diacritics; remove combining marks before its ASCII tokeniser
+    # can turn Köhn into two tokens, while typing the real native name unchanged.
+    token = ''.join(char for char in unicodedata.normalize('NFKD', token)
+                    if not unicodedata.combining(char))
     args = ['python3', '/workspace/repo/scripts/pm99_runner/premier_offer_capture_driver.py',
             '--game-dir', '/workspace/game', '--artifacts-dir', '/workspace/artifacts',
             '--window-timeout', '120', '--team-slot', '1', '--skip-team-probe-ocr',
