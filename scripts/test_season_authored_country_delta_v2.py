@@ -1,6 +1,7 @@
 """Selected-player capacity recovery must retain the same native safety checks."""
 import copy
 import hashlib
+from pathlib import Path
 import pytest
 from scripts import season_authored_country_delta_v1 as legacy
 from scripts import season_authored_country_delta_v2 as current
@@ -11,6 +12,24 @@ from app.player_name_capacity import recover_compact_name_window
 from scripts.test_season_package_compiler_v2 import (
     _indexed_fdi, _synthetic_eq_decoded_payload, _synthetic_mode1_eq_decoded_payload,
 )
+
+
+def test_publication_artifact_contract_is_checked_before_native_staging(tmp_path, monkeypatch):
+    source = tmp_path / 'evidence.json'
+    source.write_bytes(b'{"source": "retained"}')
+    sha = hashlib.sha256(source.read_bytes()).hexdigest()
+    monkeypatch.setattr(current.paths, '_source_path', lambda value: source)
+    package = {'artifacts': [{'relative_path': 'evidence.json', 'sha256': sha}]}
+    row = {'path': 'retained/evidence.json', 'relative_path': 'evidence.json', 'sha256': sha}
+    assert current.new_input_payloads({'new_recipe_artifacts': [row]}, package) == [
+        (Path('evidence.json'), source.read_bytes())]
+    for invalid in ({k: v for k, v in row.items() if k != 'path'},
+                    dict(row, relative_path='../escape.json'),
+                    dict(row, sha256='0' * 64)):
+        with pytest.raises(ValueError):
+            current.new_input_payloads({'new_recipe_artifacts': [invalid]}, package)
+    with pytest.raises(ValueError, match='unique'):
+        current.new_input_payloads({'new_recipe_artifacts': [row, row]}, package)
 
 
 def test_mode0_permission_uses_actual_raw_roster_in_a_mixed_selection():

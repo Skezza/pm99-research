@@ -42,6 +42,30 @@ def _bound(row):
     return path
 
 
+def _new_input_source(row):
+    if not all(isinstance(row.get(key), str) and row[key] for key in ('path', 'relative_path', 'sha256')):
+        raise ValueError('new country artifact needs path, relative_path and sha256')
+    return _bound(row)
+
+
+def new_input_payloads(request, package):
+    """Validate the publication copy contract before any native staging."""
+    rows = request.get('new_recipe_artifacts', [])
+    if not rows:
+        return []
+    artifacts = {a.get('relative_path'): a for a in package['artifacts'] if a.get('relative_path')}
+    result, seen = [], set()
+    for row in rows:
+        source = _new_input_source(row)
+        relative = Path(row['relative_path'])
+        if (relative.is_absolute() or not relative.parts or '..' in relative.parts
+                or str(relative) in seen or artifacts.get(str(relative), {}).get('sha256') != row['sha256']):
+            raise ValueError('new country artifact is not an exact unique confined child recipe input')
+        seen.add(str(relative))
+        result.append((relative, source.read_bytes()))
+    return result
+
+
 def _parent(base):
     return dict(season=base.season, release_id=base.release_id, manifest_sha256=base.manifest_sha256,
                 package_sha256=r.sha256_file(base.package_path),
@@ -203,6 +227,8 @@ def _reconstruct(base, request):
         raise ValueError('country authoring receipt belongs to another recipe')
     for source in authoring['source_bindings']:
         _bound(source)
+    for source in request.get('new_recipe_artifacts', []):
+        _new_input_source(source)
     # Every cache hit still verifies the complete immutable parent and each
     # authoring/source hash above. Avoid repeating full recipe schema validation
     # for the same pinned transaction inside one publication process.
@@ -210,6 +236,7 @@ def _reconstruct(base, request):
     if key in _CACHE:
         return copy.deepcopy(_CACHE[key])
     before=p.read_json_file(base.package_path);after=p.read_json_file(childpath)
+    new_input_payloads(request, after)
     selected,people,managers=verify_recipe_mask(before,after,request)
     oldeq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes();oldjug=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes();oldent=(base.game_path/'DBDAT/ENT98030.FDI').read_bytes()
     if request.get('selection_kind') in ('players-only','players-and-openings'):
@@ -419,12 +446,9 @@ def reconstruction(previous,release_id,*,minimum_free_bytes=8*1024**3):
 
 
 def copy_new_inputs(workspace,plan):
-    request=p.read_json_file(_bound(plan['source_input']));package=_outputs(plan)['package'];artifacts={a.get('relative_path'):a for a in package['artifacts'] if a.get('relative_path')}
-    for row in request.get('new_recipe_artifacts',[]):
-        relative=Path(row['relative_path'])
-        if relative.is_absolute() or '..' in relative.parts or artifacts.get(str(relative),{}).get('sha256')!=row['sha256']:
-            raise ValueError('new country artifact is not an exact confined child recipe input')
-        raw=_bound(row).read_bytes();target=Path(workspace)/relative
+    request=p.read_json_file(_bound(plan['source_input']));package=_outputs(plan)['package']
+    for relative, raw in new_input_payloads(request, package):
+        target=Path(workspace)/relative
         if target.exists():
             raise ValueError('new country source input would overwrite an existing file')
         target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(raw)

@@ -26,3 +26,9 @@ This records preserved native controls, not a claim that the inherited lineup
 or formation matches a historical fixture. Source evidence for the new person
 remains bound separately in the authoring receipt. Missing secondary facts and
 portraits keep the existing documented fallback rules.
+
+Publication input copies are also validated during preparation: each new recipe
+artifact needs a bound source path, confined unique destination and matching
+recipe hash. These source hashes are rechecked on cache hits. A malformed copy
+request fails before native staging, rather than leaving a partial unpublished
+game. Existing inputs without new artifacts retain their previous path.
