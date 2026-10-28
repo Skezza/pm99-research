@@ -171,3 +171,161 @@ def test_idempotence_refuses_unrelated_postimage_edits(tmp_path, monkeypatch):
     assert layer.apply(b'jug', b'exact-after', plan) == (b'jug', b'exact-after')
     with pytest.raises(ValueError, match='unrelated native changes'):
         layer.apply(b'jug', b'tampered-after', plan)
+
+
+def source_selection_example():
+    ids = list(range(83, 100))
+    actors = [dict(id=f'p-{id}', carrier_id=id, club_id='club',
+                   policy='preserve-existing-mode1' if id == 99 else 'write') for id in ids]
+    package = dict(players=actors, clubs=[dict(id='club', carrier_id=1001,
+        roster_player_ids=[a['id'] for a in actors])], artifacts=[],
+        assets={'portraits': [dict(player_id=a['id']) for a in actors]})
+    review = dict(case_id='source-selection', club_id='club', club_carrier_id=1001,
+        native_roster_before=[[id, 0] for id in ids] + [[1000, 1]],
+        supported_native_ids=list(range(83, 99)), sourced_xi_native_ids=list(range(83, 94)),
+        removed_player_carrier_ids=[99])
+    plan = dict(schema=layer.SCHEMA, policy=layer.SOURCE_SELECTION, season='2001-02',
+        package_canonical_sha256=layer.digest(layer.packages.canonical_json_bytes(package)),
+        reviews=[review])
+    return package, plan
+
+
+def test_source_selection_keeps_people_and_portraits_and_opaque_rows(monkeypatch):
+    package, plan = source_selection_example()
+    monkeypatch.setattr(layer.packages, 'validate_package', lambda _: None)
+    before = copy.deepcopy(package)
+    bound = layer.bind(package, plan)
+    assert package == before
+    assert bound['players'] == before['players']
+    assert bound['assets'] == before['assets']
+    assert bound['clubs'][0]['roster_player_ids'] == [f'p-{id}' for id in range(83, 99)]
+    assert layer.groups(plan)[1001]['after'][-1] == (1000, 1)
+
+
+@pytest.mark.parametrize('problem', ['missing-xi', 'repeated-xi', 'unsupported-xi',
+    'short-supported', 'remove-supported', 'remove-opaque', 'repeated-removal', 'no-removals'])
+def test_source_selection_refuses_unsafe_or_unprotected_selection(problem):
+    _, plan = source_selection_example()
+    review = plan['reviews'][0]
+    if problem == 'missing-xi': review['sourced_xi_native_ids'].pop()
+    if problem == 'repeated-xi': review['sourced_xi_native_ids'][-1] = 83
+    if problem == 'unsupported-xi': review['sourced_xi_native_ids'][-1] = 99
+    if problem == 'short-supported': review['supported_native_ids'].pop()
+    if problem == 'remove-supported': review['removed_player_carrier_ids'] = [83]
+    if problem == 'remove-opaque': review['removed_player_carrier_ids'] = [1000]
+    if problem == 'repeated-removal': review['removed_player_carrier_ids'] *= 2
+    if problem == 'no-removals': review['removed_player_carrier_ids'] = []
+    with pytest.raises(ValueError):
+        layer.groups(plan)
+
+
+@pytest.mark.parametrize('key', ['starting_xi_player_ids', 'substitute_player_ids'])
+def test_source_selection_cannot_remove_existing_explicit_editorial_selection(monkeypatch, key):
+    package, plan = source_selection_example()
+    package['clubs'][0]['opening'] = {key: ['p-99']}
+    plan['package_canonical_sha256'] = layer.digest(layer.packages.canonical_json_bytes(package))
+    monkeypatch.setattr(layer.packages, 'validate_package', lambda _: None)
+    with pytest.raises(ValueError, match='explicitly selected'):
+        layer.bind(package, plan)
+
+
+def test_only_source_selection_opts_into_opaque_flag_preservation(monkeypatch):
+    calls = []
+    def prune(raw, **kwargs):
+        calls.append(kwargs)
+        return raw
+    monkeypatch.setattr(layer, 'prune_visible_mode1_roster_payload', prune)
+    group = dict(before=[(1, 0)], removed=[1])
+    layer._prune(b'raw', group, {})
+    layer._prune(b'raw', group, {'policy': layer.SOURCE_SELECTION})
+    assert 'preserve_unselected_flag_one' not in calls[0]
+    assert calls[1]['preserve_unselected_flag_one'] is True
+
+
+def prepared_selection_fixture(tmp_path, monkeypatch):
+    import json
+    from app.fdi_indexed import IndexedFDIFile
+    from scripts import season_historical_club_label_full_cohort_optin_v2 as full
+    package, _ = source_selection_example()
+    package['players'].append(dict(id='p-1000', carrier_id=1000, club_id='club', policy='preserve-existing-mode1'))
+    package['clubs'][0]['roster_player_ids'].append('p-1000')
+    for actor in package['players']:
+        actor.update(name=f"Player{actor['carrier_id']}", facts={'birth_date': '1980-01-01'})
+    rows = [dict(source_row_index=i, source_row_sha256=str(i),
+        facts=dict(name=f'Player{id}', birth_date='1980-01-01'),
+        opening_xi_order=i + 1 if i < 11 else None, opening_source_player_id=f's{id}')
+        for i, id in enumerate(range(83, 99))]
+    selector = dict(country_catalog='spain', competition_catalog='test', club_name='Source Club',
+        source_path='source.txt', source_sha256='a' * 64)
+    cohort = dict(selector=selector, players=rows, opening_fixture_date='2001-08-01', opening_xi_complete=True)
+    pre_path = tmp_path / 'pre.json'
+    pre_path.write_text(json.dumps({'source_clubs': [cohort]}))
+    package['artifacts'] = [dict(id='opening-squad-preallocation-2001-02', sha256=layer.registry.sha256_file(pre_path))]
+    package_path = tmp_path / 'package.json'
+    package_path.write_text(json.dumps(package))
+    (tmp_path / 'opening-lineups.json').write_text(json.dumps({'clubs': [{'source_selector': selector}]}))
+    game = tmp_path / 'game'
+    (game / 'DBDAT').mkdir(parents=True)
+    (game / 'DBDAT/EQ98030.FDI').write_bytes(b'eq')
+    (game / 'DBDAT/JUG98030.FDI').write_bytes(b'jug')
+    release = SimpleNamespace(season='2001-02', release_id='base', package_path=package_path, game_path=game)
+    monkeypatch.setattr(layer.registry, 'ROOT', tmp_path)
+    monkeypatch.setattr(full, 'club_group', lambda club: 'spain')
+    monkeypatch.setattr(full, '_assert_unique_source_cohort', lambda *args: None)
+    monkeypatch.setattr(full, '_native_owner_index', lambda eq: (None, {}))
+    monkeypatch.setattr(full, '_native_jug_identity_index', lambda *args: {})
+    monkeypatch.setattr(full, '_bind_cohort', lambda *args, **kwargs: [dict(
+        native_player_carrier_id=id, source_row_index=i) for i, id in enumerate(range(83, 99))])
+    before = [(id, 0) for id in range(83, 100)] + [(1000, 1)]
+    monkeypatch.setattr(layer, '_roster_rows', lambda *args: (None, b'raw', before))
+    capture = dict(selector, players=[r['facts'] for r in rows])
+    monkeypatch.setattr(source, 'bound_annual_capture', lambda *args: (capture, {'raw': 'verified-fixture'}))
+    monkeypatch.setattr(source.opening, 'verify_opening', lambda *args: dict(
+        date='2001-08-01', starting_xi=[f's{id}' for id in range(83, 94)]))
+    payload = bytearray(16)
+    payload[12:16] = bytes(v ^ 0x61 for v in bytes([1, 1]) + (1980).to_bytes(2, 'little'))
+    entries = [SimpleNamespace(record_id=id, decode_payload=lambda data: bytes(payload)) for id in range(83, 100)]
+    monkeypatch.setattr(IndexedFDIFile, 'from_bytes', lambda data: SimpleNamespace(entries=entries))
+    monkeypatch.setattr(source.rosters, 'native_player', lambda *args: {'name_end': 0})
+    case = dict(id='selection', policy=layer.SOURCE_SELECTION, club_carrier_id=1001,
+        source_selector=selector, preallocation={'path': 'pre.json', 'sha256': layer.registry.sha256_file(pre_path)},
+        removed_player_carrier_ids=[99])
+    return release, case
+
+
+def test_source_selection_saved_plan_verifies_after_json_roundtrip(tmp_path, monkeypatch):
+    import json
+    release, case = prepared_selection_fixture(tmp_path, monkeypatch)
+    prepared = layer.prepare(release, [case])
+    loaded = json.loads(json.dumps(prepared))
+    assert loaded == prepared  # catches tuple/list drift before publication
+    layer.verify(release, loaded)
+
+
+@pytest.mark.parametrize('problem', ['changed-source', 'different-native-dob', 'different-source-xi', 'supported-removal'])
+def test_source_selection_prepare_refuses_original_source_and_person_drift(tmp_path, monkeypatch, problem):
+    release, case = prepared_selection_fixture(tmp_path, monkeypatch)
+    if problem == 'changed-source':
+        (tmp_path / 'pre.json').write_text('{}')
+    if problem == 'different-native-dob':
+        original = source.rosters.native_player
+        monkeypatch.setattr(source.rosters, 'native_player', lambda *args: {'name_end': 1})
+    if problem == 'different-source-xi':
+        monkeypatch.setattr(source.opening, 'verify_opening', lambda *args: dict(
+            date='2001-08-01', starting_xi=[f's{id}' for id in range(84, 95)]))
+    if problem == 'supported-removal':
+        case['removed_player_carrier_ids'] = [83]
+    with pytest.raises(ValueError):
+        layer.prepare(release, [case])
+
+
+@pytest.mark.parametrize('country,code', [('brazil', 'BRA1'), ('ireland', 'IR1'), ('norway', 'NO1'), ('sweden', 'SE1')])
+def test_source_selection_cannot_accept_known_next_year_calendar_metadata(country, code):
+    layer._verify_selection_fixture_year('2024-25', country, code, '2024-02-16')
+    with pytest.raises(ValueError, match='next-year calendar'):
+        layer._verify_selection_fixture_year('2024-25', country, code, '2025-02-14')
+
+
+def test_source_selection_retains_existing_russia_transition_quarantine():
+    with pytest.raises(ValueError, match='quarantined'):
+        layer._verify_selection_fixture_year('2009-10', 'russia', 'RU1', '2009-03-15')

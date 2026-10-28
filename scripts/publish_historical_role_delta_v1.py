@@ -1387,17 +1387,23 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             players_written=0, allowed_write=assignment_plan['scope'])
     elif assignment_plan is not None:
         starter_opening = assignment_plan.get('schema') == duplicate_opening.SCHEMA
+        source_selection = (assignment_plan.get('policy') is not None
+                            and assignment_plan.get('policy') == getattr(assignments, 'SOURCE_SELECTION', None))
         assignment_reviews = [assignment_plan['review']] if starter_opening else assignment_plan['reviews']
         receipt.update(compilation_mode=('known-good-baseline-source-bound-duplicate-starter-opening' if starter_opening
+                                        else 'known-good-baseline-source-bound-reviewed-roster-selection' if source_selection
                                         else 'known-good-baseline-source-bound-reserve-assignment-pruning'),
             original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
             removed_target_roster_links=(duplicate_opening.removed_carriers(assignment_plan['review'])
-                                        if starter_opening else [r['removed_player']['carrier_id'] for r in assignment_reviews]),
-            fixed_duplicate_case_ids=[r['case_id'] for r in assignment_reviews],
+                                        if starter_opening else [id for r in assignment_reviews for id in r['removed_player_carrier_ids']]
+                                        if source_selection else [r['removed_player']['carrier_id'] for r in assignment_reviews]),
+            fixed_duplicate_case_ids=[] if source_selection else [r['case_id'] for r in assignment_reviews],
             players_written=(len({r['carrier_id'] for r in assignment_plan['orders'] if r['startup_order'] != r['after']} |
                                  {r['carrier_id'] for r in assignment_plan['primary_role_changes']}) if starter_opening else 0),
-            allowed_write=('One positively source-proved duplicate starter EQ link/count and required indexed offsets; complete sourced XI startup bytes and source-profile-compatible primary roles. A promoted duplicate secondary role is cleared; other secondary roles, birthdays, broad positions, skills, other records/managers/tactics/EXE/assets unchanged.' if starter_opening else
+            allowed_write=(assignment_plan['scope'] if source_selection else 'One positively source-proved duplicate starter EQ link/count and required indexed offsets; complete sourced XI startup bytes and source-profile-compatible primary roles. A promoted duplicate secondary role is cleared; other secondary roles, birthdays, broad positions, skills, other records/managers/tactics/EXE/assets unchanged.' if starter_opening else
                            'Only source-proved duplicate reserve EQ links/counts and required indexed offsets; every JUG byte, startup order, manager, tactic, EXE and asset unchanged'))
+        if source_selection:
+            receipt['source_roster_selection_case_ids'] = [r['case_id'] for r in assignment_reviews]
         if starter_opening and assignment_plan['review'].get('shared_removed_membership'):
             receipt['allowed_write'] = ('Source-priority duplicate target EQ link plus independently sourced wrong shared target membership; complete sourced XI startup/primary-role bytes and promoted duplicate secondary clear. Shared global players and other native clubs unchanged. Recipe preserves shared players/assets and structurally rebinds only the retired target owner; surviving unqualified fallback membership is not historical approval.')
     pipeline.write_canonical_json(receipt_path, receipt)
