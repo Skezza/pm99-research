@@ -162,6 +162,45 @@ def test_playable_modern_replacement_writes_actual_u16_birth_year():
         birth_year=None, height=None, weight=None, skills=native_skills) == payload
 
 
+def test_reviewed_mode0_shirt_preserves_other_header_and_startup_controls():
+    package, plan = fixture('dd6361')
+    package['clubs'][0]['division'] = 'Premier League'
+    result = delta.updated_package(package, plan)
+    result['players'][1]['facts']['shirt_number'] = 27
+    original = _indexed_fdi([(1, '', _dd6361_player_payload(1)),
+                             (2, '', _dd6361_player_payload(2))])
+    delta.fit_display_names(original, result, plan)
+    before_package = copy.deepcopy(result)
+    patched = delta.compile_players(original, result, {'player-02'},
+        {'ENGLAND': 30, 'XXX': 0}, mode0_carriers={2})
+    old = {e.record_id: e.decode_payload(original) for e in IndexedFDIFile.from_bytes(original).entries}
+    new = {e.record_id: e.decode_payload(patched) for e in IndexedFDIFile.from_bytes(patched).entries}
+    assert result == before_package
+    assert new[1] == old[1]
+    assert new[2][:7] == old[2][:7]
+    assert new[2][7] ^ 0x61 == 27
+    old_end = delta.roster.native_player(old[2], 2)['name_end']
+    new_end = delta.roster.native_player(new[2], 2)['name_end']
+    assert new[2][new_end:new_end + 2] == old[2][old_end:old_end + 2]
+    assert new[2][new_end + 9] == old[2][old_end + 9]
+    assert new[2][-7] ^ 0x61 == result['players'][1]['ratings']['values']['handling']
+    assert delta.compile_players(patched, result, {'player-02'},
+        {'ENGLAND': 30, 'XXX': 0}, mode0_carriers={2}) == patched
+
+
+def test_mode0_shirt_permission_cannot_escape_selected_indexed_players():
+    package, plan = fixture('dd6361')
+    result = delta.updated_package(package, plan)
+    original = _indexed_fdi([(1, '', _dd6361_player_payload(1)),
+                             (2, '', _dd6361_player_payload(2))])
+    with pytest.raises(ValueError, match='outside selected'):
+        delta.compile_players(original, result, {'player-02'}, {}, mode0_carriers={1})
+    compact, compact_plan = fixture('dd6360')
+    compact_result = delta.updated_package(compact, compact_plan)
+    with pytest.raises(ValueError, match='indexed dd6361'):
+        delta.compile_players(original, compact_result, {'player-02'}, {}, mode0_carriers={2})
+
+
 @pytest.mark.parametrize('family',['dd6360','dd6361'])
 def test_genuine_soccerbase_identity_compiles_without_fake_tm_id_or_other_record_changes(family):
     package,plan=fixture(family)

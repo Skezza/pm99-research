@@ -247,8 +247,25 @@ def compile_planned_players(original, package, changed_ids, country_codes, plan)
     return compile_players(capacity.prepare_source(original,plan),package,changed_ids,country_codes)
 
 
-def compile_players(original, package, changed_ids, country_codes):
+def compile_players(original, package, changed_ids, country_codes, *, mode0_carriers=()):
     subset = _compiler_subset(package, changed_ids)
+    mode0_carriers = set(mode0_carriers)
+    selected = {p['carrier_id']: p for p in subset['players']}
+    if not mode0_carriers <= selected.keys():
+        raise ValueError('mode0 shirt scope is outside selected players')
+    shirts = {}
+    for carrier in mode0_carriers:
+        player = selected[carrier]
+        if player['carrier_family'] != 'dd6361':
+            raise ValueError('mode0 selected player must use the indexed dd6361 lane')
+        value = player['facts']['shirt_number']
+        if value != {'policy': 'preserve-existing-mode1'}:
+            if type(value) is not int or not 1 <= value <= 99:
+                raise ValueError('mode0 selected shirt number must be 1..99 or preserved')
+            shirts[carrier] = value
+        # Reuse the isolated core writer, which retains the original club and
+        # startup controls. Apply only an explicitly sourced shirt afterwards.
+        player['facts']['shirt_number'] = {'policy': 'preserve-existing-mode1'}
     # dd6361's isolated core compiler leaves fine roles to the separately
     # proven native role writer. This is explicit, not a compiler bypass.
     roles = {p['carrier_id']: p['facts']['fine_roles'] for p in subset['players']}
@@ -276,6 +293,17 @@ def compile_players(original, package, changed_ids, country_codes):
     if tails:
         patched = compiler._rebuild_indexed(patched, index, tails)
     patched, _ = rewrite_indexed_native_roles(patched, roles)
+    if shirts:
+        shirt_index = IndexedFDIFile.from_bytes(patched)
+        shirt_entries = {e.record_id: e for e in shirt_index.entries}
+        shirt_payloads = {}
+        for carrier, value in shirts.items():
+            payload = bytearray(shirt_entries[carrier].decode_payload(patched))
+            # The existing dd6361 role/startup writer defines byte7 as the
+            # XOR-obfuscated shirt; no other header or suffix byte is changed.
+            payload[7] = value ^ 0x61
+            shirt_payloads[carrier] = bytes(payload)
+        patched = compiler._rebuild_indexed(patched, shirt_index, shirt_payloads)
     old_index, new_index = IndexedFDIFile.from_bytes(original), IndexedFDIFile.from_bytes(patched)
     old_entries = {e.record_id: e for e in old_index.entries}
     new_entries = {e.record_id: e for e in new_index.entries}
@@ -294,7 +322,10 @@ def compile_players(original, package, changed_ids, country_codes):
         if actual['name'].casefold() != player['name'].casefold() or actual['roles'][0] != player['facts']['fine_roles'][0]:
             raise ValueError('replacement name/fine-role native readback failed')
         end = actual['name_end']
-        if (payload[:8] != old_payload[:8] or payload[end:end + 2] != old_payload[old_end:old_end + 2] or
+        expected_prefix = bytearray(old_payload[:8])
+        if player['carrier_id'] in shirts:
+            expected_prefix[7] = shirts[player['carrier_id']] ^ 0x61
+        if (payload[:8] != bytes(expected_prefix) or payload[end:end + 2] != old_payload[old_end:old_end + 2] or
                 payload[end + 9:end + 10] != old_payload[old_end + 9:old_end + 10]):
             raise ValueError('replacement changed native club/shirt/startup controls')
         # +10/+11 are the independently established broad-position field

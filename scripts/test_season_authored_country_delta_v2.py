@@ -8,6 +8,25 @@ from scripts import season_same_carrier_name_capacity_v1 as capacity
 from scripts.test_season_same_carrier_name_capacity_v1 import fixture
 from app.fdi_indexed import IndexedFDIFile
 from app.player_name_capacity import recover_compact_name_window
+from scripts.test_season_package_compiler_v2 import (
+    _indexed_fdi, _synthetic_eq_decoded_payload, _synthetic_mode1_eq_decoded_payload,
+)
+
+
+def test_mode0_permission_uses_actual_raw_roster_in_a_mixed_selection():
+    eq = _indexed_fdi([(1, '', _synthetic_eq_decoded_payload()),
+                       (2, '', _synthetic_mode1_eq_decoded_payload(101))])
+    people = {'english': {'carrier_id': 1, 'club_id': 'english-club'},
+              'foreign': {'carrier_id': 101, 'club_id': 'foreign-club'}}
+    clubs = {'english-club': {'carrier_id': 1}, 'foreign-club': {'carrier_id': 2}}
+    assert current._mode0_shirt_carriers(eq, people, clubs, set(people)) == {1}
+
+
+def test_mode0_permission_rejects_a_player_not_in_the_claimed_native_owner():
+    eq = _indexed_fdi([(1, '', _synthetic_eq_decoded_payload())])
+    people = {'wrong': {'carrier_id': 999, 'club_id': 'english-club'}}
+    with pytest.raises(ValueError, match='exact visible player row'):
+        current._mode0_shirt_carriers(eq, people, {'english-club': {'carrier_id': 1}}, {'wrong'})
 
 
 def request(tmp_path,monkeypatch):

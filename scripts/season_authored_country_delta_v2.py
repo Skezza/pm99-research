@@ -154,6 +154,24 @@ def prepare_name_capacity(oldjug, request, selected_carriers):
     return prepared_jug
 
 
+def _mode0_shirt_carriers(eq, oldplayers, clubs, people):
+    """Grant the extra shirt write only for an exact visible mode-0 row."""
+    from app.eq_jug_linked import parse_eq_external_team_roster_payload
+    entries={e.record_id:e for e in IndexedFDIFile.from_bytes(eq).entries}
+    result=set()
+    for id in people:
+        actor=oldplayers[id];cid=clubs[actor['club_id']]['carrier_id'];entry=entries[cid]
+        roster=parse_eq_external_team_roster_payload(eq[entry.payload_offset:entry.payload_offset+entry.payload_length],{})
+        if roster is None or roster.mode_byte not in (0,1):
+            raise ValueError('selected player owner has no supported native roster mode')
+        if roster.mode_byte==0:
+            flags=[row.flag for row in roster.rows if row.player_record_id==actor['carrier_id']]
+            if flags!=[0]:
+                raise ValueError('mode0 shirt write needs one exact visible player row')
+            result.add(actor['carrier_id'])
+    return result
+
+
 def _reconstruct(base, request):
     if request.get('schema')!=SCHEMA+'-input' or request['parent']!=_parent(base):
         raise ValueError('country request does not pin its immutable parent')
@@ -183,7 +201,8 @@ def _reconstruct(base, request):
                 raise ValueError('reviewed reserve replacement needs exclusive ownership and a native nonstarter')
         codes=compiler._extract_country_codes_from_textos(base.game_path/'DBDAT/TEXTOS.PKF')
         prepared_jug=prepare_name_capacity(oldjug,request,[oldplayers[id]['carrier_id'] for id in people])
-        jug=native_players.compile_players(prepared_jug,after,people,codes)
+        mode0_carriers=_mode0_shirt_carriers(oldeq,oldplayers,clubs,people)
+        jug=native_players.compile_players(prepared_jug,after,people,codes,mode0_carriers=mode0_carriers)
         newclubs={c['carrier_id']:c for c in after['clubs']};newactors={a['id']:a for a in after['players']}
         if set(request.get('complete_order_carriers',{}))!={str(cid) for cid in selected}:
             raise ValueError('reviewed opening orders must cover exactly the selected clubs')
