@@ -172,6 +172,28 @@ def _mode0_shirt_carriers(eq, oldplayers, clubs, people):
     return result
 
 
+def static_native_opening_snapshot(eq, jug, club_carrier):
+    """Witness existing controls, without asserting a historical fixture XI."""
+    from app.eq_jug_linked import parse_eq_external_team_roster_payload
+    from scripts.season_historical_roster_audit_v1 import native_player
+    entry = next(e for e in IndexedFDIFile.from_bytes(eq).entries if e.record_id == club_carrier)
+    raw = eq[entry.payload_offset:entry.payload_offset + entry.payload_length]
+    roster = parse_eq_external_team_roster_payload(raw, {})
+    if roster is None or roster.mode_byte != 1 or any(row.flag != 0 for row in roster.rows):
+        raise ValueError('static opening witness requires visible mode1 rows')
+    entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(jug).entries}
+    rows = []
+    for row in roster.rows:
+        payload = entries[row.player_record_id].decode_payload(jug)
+        native = native_player(payload, row.player_record_id)
+        rows.append(dict(carrier_id=row.player_record_id,
+            order=read_initial_order(payload).order, roles=native['roles'], position=native['position']))
+    if len(rows) != len({row['carrier_id'] for row in rows}):
+        raise ValueError('static opening witness has repeated carriers')
+    return dict(eq_payload_sha256=digest(raw), rows=rows,
+        policy='preserve-current-native-controls-not-a-historical-fixture')
+
+
 def _reconstruct(base, request):
     if request.get('schema')!=SCHEMA+'-input' or request['parent']!=_parent(base):
         raise ValueError('country request does not pin its immutable parent')
@@ -195,14 +217,37 @@ def _reconstruct(base, request):
         from scripts.season_opening_order_repair_v1 import native_owners
         ownership=native_owners(oldeq);oldplayers={a['id']:a for a in before['players']}
         clubs={c['id']:c for c in before['clubs']};entries={e.record_id:e for e in IndexedFDIFile.from_bytes(oldjug).entries}
+        static = request.get('static_native_openings', {})
+        if static and request.get('selection_kind') != 'players-only':
+            raise ValueError('static opening witness is restricted to unchanged player-only club rows')
+        actor_clubs = {clubs[oldplayers[id]['club_id']]['carrier_id'] for id in people}
+        if not isinstance(static, dict) or any(str(cid) not in {str(x) for x in actor_clubs} for cid in static):
+            raise ValueError('static opening witness is outside selected actors')
+        for cid, snapshot in static.items():
+            if snapshot != static_native_opening_snapshot(oldeq, oldjug, int(cid)):
+                raise ValueError('static opening witness differs from the complete native parent')
+        newplayers = {a['id']: a for a in after['players']}
         for id in people:
             actor=oldplayers[id];carrier=actor['carrier_id'];club=clubs[actor['club_id']]
-            if ownership.get(carrier)!={club['carrier_id']} or ((read_initial_order(entries[carrier].decode_payload(oldjug)).order<=11 or id in club.get('opening',{}).get('starting_xi_player_ids',[])) and club['carrier_id'] not in selected):
+            static_club = str(club['carrier_id']) in static
+            if static_club:
+                row = next(x for x in static[str(club['carrier_id'])]['rows'] if x['carrier_id'] == carrier)
+                roles = [role for role in row['roles'] if role != 98]
+                parent_roles = actor['facts'].get('fine_roles')
+                if (parent_roles not in (roles, {'policy': 'preserve-existing-mode1'})
+                        or actor['facts'].get('primary_position') != row['position']
+                        or newplayers[id]['facts'].get('fine_roles') != roles
+                        or newplayers[id]['facts'].get('primary_position') != row['position']):
+                    raise ValueError('static opening identity replacement must preserve matching native roles')
+            if ownership.get(carrier)!={club['carrier_id']} or ((read_initial_order(entries[carrier].decode_payload(oldjug)).order<=11 or id in club.get('opening',{}).get('starting_xi_player_ids',[])) and club['carrier_id'] not in selected and not static_club):
                 raise ValueError('reviewed reserve replacement needs exclusive ownership and a native nonstarter')
         codes=compiler._extract_country_codes_from_textos(base.game_path/'DBDAT/TEXTOS.PKF')
         prepared_jug=prepare_name_capacity(oldjug,request,[oldplayers[id]['carrier_id'] for id in people])
         mode0_carriers=_mode0_shirt_carriers(oldeq,oldplayers,clubs,people)
         jug=native_players.compile_players(prepared_jug,after,people,codes,mode0_carriers=mode0_carriers)
+        for cid, snapshot in static.items():
+            if snapshot != static_native_opening_snapshot(oldeq, jug, int(cid)):
+                raise ValueError('static opening correction changed native startup controls or roles')
         newclubs={c['carrier_id']:c for c in after['clubs']};newactors={a['id']:a for a in after['players']}
         if set(request.get('complete_order_carriers',{}))!={str(cid) for cid in selected}:
             raise ValueError('reviewed opening orders must cover exactly the selected clubs')
@@ -302,6 +347,8 @@ def prepare(base,input_path):
         plan['scope']='Reviewed source-bound reserve identities/facts/skills/names and their stale portraits only; complete country/club memberships, startup orders, all club/manager/tactics records, kits and unrelated actors preserved.'
     if request.get('selection_kind')=='players-and-openings':
         plan['scope']='Reviewed identity replacements and explicitly source-bound complete opening orders for selected existing clubs; EQ/ENT, roster memberships, tactics grids, kits and all unselected facts/skills/names preserved.'
+    if request.get('static_native_openings'):
+        plan['scope']='Source-bound identity/fact/skill corrections in unchanged slots, with every witnessed native startup order, all six roles and primary position preserved; all club recipe rows, EQ/ENT, roster membership, tactics grids and kits exact. The static controls are not a historical fixture or XI claim.'
     plan['transaction_id']=digest(packages.canonical_json_bytes(plan))[:24]
     return plan
 
