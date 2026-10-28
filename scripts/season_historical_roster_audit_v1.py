@@ -246,6 +246,26 @@ def load_sources(season: str) -> tuple[list[dict], list[dict]]:
     return clubs, bindings
 
 
+def captured_players_match(parsed, captured, *, allow_added_transfermarkt_identity=False):
+    """Permit one known parser enrichment without changing frozen source facts."""
+    if parsed == captured:
+        return True
+    if not allow_added_transfermarkt_identity or len(parsed) != len(captured):
+        return False
+    for actual, original in zip(parsed, captured):
+        if actual == original:
+            continue
+        identity = actual.get('source_identity')
+        if ('source_identity' in original or not isinstance(identity, dict)
+                or set(identity) != {'provider', 'player_id'}
+                or identity['provider'] != 'transfermarkt'
+                or not isinstance(identity['player_id'], str)
+                or re.fullmatch(r'[1-9]\d*', identity['player_id']) is None
+                or {k: v for k, v in actual.items() if k != 'source_identity'} != original):
+            return False
+    return True
+
+
 class SourceVerifier:
     """Check original hash-bound raw files and independently reparse them."""
     def __init__(self, season: str, previous=None, source_bindings=None):
@@ -315,7 +335,9 @@ class SourceVerifier:
                 else:
                     parsed_name, parsed_players = web_source.parse_club_page(
                         payload=path.read_bytes(), source_year=int(self.season[:4]), label=str(path))
-                if normalise(parsed_name) not in club_names(source_group(row['country_catalog']), row['club_name']) or parsed_players != row['players']:
+                if (normalise(parsed_name) not in club_names(source_group(row['country_catalog']), row['club_name'])
+                        or not captured_players_match(parsed_players, row['players'],
+                            allow_added_transfermarkt_identity='transfermarkt' in root.name)):
                     result['status'] = 'raw-capture-disagrees'
                 else:
                     result['status'] = 'raw-source-reparsed'
