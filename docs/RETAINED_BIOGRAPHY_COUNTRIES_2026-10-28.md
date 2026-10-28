@@ -44,8 +44,10 @@ Soccerbase's conflicting birthday is not substituted for the selected birthday.
 
 A read-only census of all 26 preferred releases found nine exact Brown
 occurrences. Six already show England and require no change. The 2004/05,
-2005/06 and 2006/07 native records show France, Scotland and France respectively.
-Three nationality-only plans are prepared, not yet delivered. The 2004/05
-Hibernian club/manager candidate is held until its country correction is composed
-and verified. Evidence and hash-bound census:
+2005/06 and 2006/07 native records previously showed France, Scotland and France
+respectively. All three corrections are now installed and verified at checkpoints
+234–236, including exact native-byte changes, complete A/SOURCE-B equality and
+genuine in-game profiles showing ENGLAND. The 2004/05 release also delivers the
+Hibernian club/manager correction; its earlier uncorrected prototype remains held.
+The six already-correct occurrences were not regenerated. Evidence and hash-bound census:
 `.local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/simon-brown-known-country-luna-v1/`.
