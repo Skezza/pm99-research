@@ -34,6 +34,27 @@ before publication. A process-local composition cache rehashes every parent and
 source input before reuse, returns independent copies, and is cleared before the
 SOURCE reconstruction. It never substitutes a candidate's output for its parent.
 
+## Soccerbase player admissions
+
+`season_soccerbase_opening_person_admission_v1` supplies new-person evidence to
+the existing opening identity exchange. It accepts the published first league
+XI or bench, or a separately verified August appearance or bench listing.
+August cup matches may have a different competition from the league opener.
+The reader checks the numerical team and player IDs, season schedule, match
+date, score, profile name and birthday against retained original pages.
+
+The request also binds a reviewed provider-to-native club crosswalk and an
+explicit editorial fine-role choice. Every chosen role must agree with the
+published broad position; inferred fine roles are labelled as editorial.
+Unresolved nationality remains a documented source gap. A display alias must
+be the complete profile name or an exact published match label.
+
+This reader writes no game data. Its source bodies, receipts and reviews are
+listed in `provider_source_bindings` for replay and cache retention. Existing
+writers still enforce fixed slots, ownership, opening orders and unchanged
+data. A successful source read does not close an ownership case or approve a
+release. The dated facts are credited to [Soccerbase](https://www.soccerbase.com/).
+
 This is a mechanism, not a release approval. Corrected games still need an
 independent SOURCE replay, unchanged-data checks and relevant runtime evidence.
 In particular, the Rob Lee/Robert Lee duplicate must be resolved separately;

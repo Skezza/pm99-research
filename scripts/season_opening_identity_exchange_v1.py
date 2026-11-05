@@ -377,6 +377,12 @@ def _uses_reviewed_new_person_provider(selection):
 def new_person(selection, evidence, *, season=None, club=None):
     """Keep ordinary admissions; route only explicit reviewed provider shapes."""
     if 'admission_policy' in selection:
+        from scripts import season_soccerbase_opening_person_admission_v1 as soccerbase_admission
+        if selection['admission_policy'] == soccerbase_admission.POLICY:
+            if not season or club is None:
+                raise ValueError('Soccerbase admission requires exact target season and club')
+            return soccerbase_admission.new_person(
+                selection, season=season, destination_club=club)
         from scripts import season_11v11_squad_admission_v1 as elevenv_admission
         if selection['admission_policy'] == elevenv_admission.POLICY:
             if not season or club is None:
@@ -714,8 +720,12 @@ def prepare(base, input_path):
             if row.get('admission_policy') != profile_admission.POLICY:
                 raise ValueError('reviewed new-person source provider belongs only to 2005-06')
         if 'admission_policy' in row:
+            from scripts import season_soccerbase_opening_person_admission_v1 as soccerbase_admission
             from scripts import season_11v11_squad_admission_v1 as elevenv_admission
-            if row['admission_policy'] == elevenv_admission.POLICY:
+            if row['admission_policy'] == soccerbase_admission.POLICY:
+                opening_date = soccerbase_admission.membership_date(
+                    row, season=base.season, destination_club=clubs[actor['club_id']])
+            elif row['admission_policy'] == elevenv_admission.POLICY:
                 opening_date = elevenv_admission.new_person(
                     row, evidence, base.season, clubs[actor['club_id']])['opening_date']
             else:
@@ -761,7 +771,9 @@ def prepare(base, input_path):
                                     display_policy='original-11v11-published-complete-name-v1')
                 else:
                     decision.update(display_name=replacement['raw_evidence']['published_display_name'],
-                                    display_policy='original-official-roster-published-given-and-family-name-v1')
+                                    display_policy=replacement['raw_evidence'].get(
+                                        'published_display_policy',
+                                        'original-official-roster-published-given-and-family-name-v1'))
             elif 'squad_biography' in row:
                 from scripts import season_transfermarkt_squad_biography_v1 as biographies
                 decision.update(display_name=biographies.published_family_display(row, evidence),
@@ -782,6 +794,20 @@ def prepare(base, input_path):
         bindings=dict(snapshot=dict(project_url='https://www.transfermarkt.com/')),
         source_title='Dated opening bench identities and August ownership exchanges',
         proof_covers=['bounded-reserve-ownership-and-original-bench-only'], scope=SCOPE)
+    soccerbase_sources = {}
+    for row in request['new_people']:
+        from scripts import season_soccerbase_opening_person_admission_v1 as soccerbase_admission
+        if row.get('admission_policy') == soccerbase_admission.POLICY:
+            for source in soccerbase_admission.source_bindings(row):
+                if source['path'] in soccerbase_sources and soccerbase_sources[source['path']] != source:
+                    raise ValueError('Soccerbase source path has conflicting frozen bindings')
+                soccerbase_sources[source['path']] = source
+    if soccerbase_sources:
+        plan['provider_source_bindings'] = [soccerbase_sources[key] for key in sorted(soccerbase_sources)]
+        if all(row['replacement']['source_person'].get('source_provider') == 'soccerbase'
+               for row in updates):
+            plan['bindings']['snapshot']['project_url'] = 'https://www.soccerbase.com/'
+            plan['source_title'] = 'Original Soccerbase fixtures and profiles with reviewed opening ownership'
     if updates and not moves and all(
             row['replacement']['source_person'].get('source_provider') == '11v11' for row in updates):
         plan['bindings']['snapshot']['project_url'] = 'https://www.11v11.com/'
