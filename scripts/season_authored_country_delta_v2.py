@@ -218,6 +218,59 @@ def static_native_opening_snapshot(eq, jug, club_carrier):
         policy='preserve-current-native-controls-not-a-historical-fixture')
 
 
+def _static_identity_roles(actor, replacement, row, *, repair_defender=False):
+    """Keep static controls strict; optionally repair an incompatible seed role.
+
+    This is not evidence of a historical XI or a specific defensive position.
+    The opt-in only admits the existing generic defender projection, with a
+    source-receipt-backed replacement and an unchanged explicit broad role.
+    """
+    roles = [role for role in row['roles'] if role != 98]
+    parent_roles = actor['facts'].get('fine_roles')
+    desired = replacement['facts'].get('fine_roles')
+    if (parent_roles not in (roles, {'policy': 'preserve-existing-mode1'})
+            or actor['facts'].get('primary_position') != row['position']
+            or replacement['facts'].get('primary_position') != row['position']):
+        raise ValueError('static opening identity replacement must preserve matching native roles')
+    if not repair_defender:
+        if desired != roles:
+            raise ValueError('static opening identity replacement must preserve matching native roles')
+        return roles
+    from scripts.season_exact_fifa_role_delta_v1 import compatible
+    if (row['position'] != 'D' or not roles
+            or any(type(role) is not int or not 0 <= role <= 17 for role in roles)
+            or any(compatible('D', role) for role in roles)
+            or desired != [4]
+            or replacement.get('proof', {}).get('grade') != 'source-receipt'):
+        raise ValueError('static defender repair needs contradictory roles and source-backed generic D/4')
+    return [4]
+
+
+def _static_repair_proof(actor, package, request, authoring, *, parent_artifact_ids,
+                         parent_artifact_paths):
+    """A grade string cannot relabel an inherited static artifact as evidence."""
+    proof = actor.get('proof', {})
+    matches = [a for a in package.get('artifacts', [])
+               if a.get('id') == proof.get('artifact_id')]
+    if (proof.get('artifact_id') in parent_artifact_ids
+            or len(matches) != 1 or matches[0].get('kind') != 'season-input'):
+        raise ValueError('static defender repair needs a new hash-bound source input artifact')
+    artifact = matches[0]
+    relative = artifact.get('relative_path')
+    if (not relative or relative in parent_artifact_paths
+            or sum(a.get('relative_path') == relative
+                   for a in package.get('artifacts', [])) != 1):
+        raise ValueError('static defender repair needs a new unique hash-bound source input path')
+    inputs = [row for row in request.get('new_recipe_artifacts', [])
+              if row.get('relative_path') == artifact.get('relative_path')
+              and row.get('sha256') == artifact.get('sha256')]
+    if (len(inputs) != 1 or not any(
+            row.get('path') == inputs[0].get('path')
+            and row.get('sha256') == inputs[0].get('sha256')
+            for row in authoring.get('source_bindings', []))):
+        raise ValueError('static defender repair needs a new hash-bound source input artifact')
+
+
 def _reconstruct(base, request):
     if request.get('schema')!=SCHEMA+'-input' or request['parent']!=_parent(base):
         raise ValueError('country request does not pin its immutable parent')
@@ -238,6 +291,10 @@ def _reconstruct(base, request):
     before=p.read_json_file(base.package_path);after=p.read_json_file(childpath)
     new_input_payloads(request, after)
     selected,people,managers=verify_recipe_mask(before,after,request)
+    if ('static_defender_fine_role_repairs' in request
+            and (request.get('selection_kind') != 'players-only'
+                 or not isinstance(request['static_defender_fine_role_repairs'], list))):
+        raise ValueError('static defender repairs are restricted to explicit player-only witnesses')
     oldeq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes();oldjug=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes();oldent=(base.game_path/'DBDAT/ENT98030.FDI').read_bytes()
     if request.get('selection_kind') in ('players-only','players-and-openings'):
         from scripts import season_duplicate_ownership_delta_v1 as native_players
@@ -253,26 +310,39 @@ def _reconstruct(base, request):
         for cid, snapshot in static.items():
             if snapshot != static_native_opening_snapshot(oldeq, oldjug, int(cid)):
                 raise ValueError('static opening witness differs from the complete native parent')
+        repairs = request.get('static_defender_fine_role_repairs', [])
+        actor_carriers = {oldplayers[id]['carrier_id'] for id in people}
+        if (not isinstance(repairs, list) or any(type(cid) is not int for cid in repairs)
+                or len(repairs) != len(set(repairs)) or not set(repairs) <= actor_carriers
+                or any(str(clubs[oldplayers[id]['club_id']]['carrier_id']) not in static
+                       for id in people if oldplayers[id]['carrier_id'] in repairs)):
+            raise ValueError('static defender repairs need unique selected carriers and complete witnesses')
+        expected_static = copy.deepcopy(static)
         newplayers = {a['id']: a for a in after['players']}
+        for actor in newplayers.values():
+            if actor['carrier_id'] in repairs:
+                _static_repair_proof(actor, after, request, authoring,
+                    parent_artifact_ids={a['id'] for a in before.get('artifacts', [])},
+                    parent_artifact_paths={a.get('relative_path')
+                                           for a in before.get('artifacts', [])})
         for id in people:
             actor=oldplayers[id];carrier=actor['carrier_id'];club=clubs[actor['club_id']]
             static_club = str(club['carrier_id']) in static
             if static_club:
                 row = next(x for x in static[str(club['carrier_id'])]['rows'] if x['carrier_id'] == carrier)
-                roles = [role for role in row['roles'] if role != 98]
-                parent_roles = actor['facts'].get('fine_roles')
-                if (parent_roles not in (roles, {'policy': 'preserve-existing-mode1'})
-                        or actor['facts'].get('primary_position') != row['position']
-                        or newplayers[id]['facts'].get('fine_roles') != roles
-                        or newplayers[id]['facts'].get('primary_position') != row['position']):
-                    raise ValueError('static opening identity replacement must preserve matching native roles')
+                roles = _static_identity_roles(actor, newplayers[id], row,
+                    repair_defender=carrier in repairs)
+                if carrier in repairs:
+                    expected_row = next(x for x in expected_static[str(club['carrier_id'])]['rows']
+                                        if x['carrier_id'] == carrier)
+                    expected_row['roles'] = roles + [98] * (6 - len(roles))
             if ownership.get(carrier)!={club['carrier_id']} or ((read_initial_order(entries[carrier].decode_payload(oldjug)).order<=11 or id in club.get('opening',{}).get('starting_xi_player_ids',[])) and club['carrier_id'] not in selected and not static_club):
                 raise ValueError('reviewed reserve replacement needs exclusive ownership and a native nonstarter')
         codes=compiler._extract_country_codes_from_textos(base.game_path/'DBDAT/TEXTOS.PKF')
         prepared_jug=prepare_name_capacity(oldjug,request,[oldplayers[id]['carrier_id'] for id in people])
         mode0_carriers=_mode0_shirt_carriers(oldeq,oldplayers,clubs,people)
         jug=native_players.compile_players(prepared_jug,after,people,codes,mode0_carriers=mode0_carriers)
-        for cid, snapshot in static.items():
+        for cid, snapshot in expected_static.items():
             if snapshot != static_native_opening_snapshot(oldeq, jug, int(cid)):
                 raise ValueError('static opening correction changed native startup controls or roles')
         newclubs={c['carrier_id']:c for c in after['clubs']};newactors={a['id']:a for a in after['players']}
@@ -376,6 +446,8 @@ def prepare(base,input_path):
         plan['scope']='Reviewed identity replacements and explicitly source-bound complete opening orders for selected existing clubs; EQ/ENT, roster memberships, tactics grids, kits and all unselected facts/skills/names preserved.'
     if request.get('static_native_openings'):
         plan['scope']='Source-bound identity/fact/skill corrections in unchanged slots, with every witnessed native startup order, all six roles and primary position preserved; all club recipe rows, EQ/ENT, roster membership, tactics grids and kits exact. The static controls are not a historical fixture or XI claim.'
+    if request.get('static_defender_fine_role_repairs'):
+        plan['scope']='Source-bound unchanged-slot corrections with explicit generic D/4 repair only for listed defenders whose inherited fine roles are all incompatible. Every native startup order and broad position, all unlisted fine roles, all club rows, EQ/ENT, memberships, tactics and kits remain exact. Static controls are not a historical XI claim.'
     plan['transaction_id']=digest(packages.canonical_json_bytes(plan))[:24]
     return plan
 
