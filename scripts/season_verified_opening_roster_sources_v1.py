@@ -16,7 +16,7 @@ from scripts.capture_2015_source_tail_squads_v1 import NATIONALITY_CODES
 
 POLICY='original-first-league-XI-bench-plus-positive-opening-career-reserves-v1'
 SOURCE_COUNTRIES={**NATIONALITY_CODES,**biographies.NATIONALITY,
-                  'Tanzania':'TAN','St Kitts & Nevis':'SKN'}
+                  'Tanzania':'TAN','St Kitts & Nevis':'SKN','Zimbabwe':'ZIM'}
 
 
 def body(binding):
@@ -44,6 +44,13 @@ def profile(binding,person_id):
     except ValueError as exc:
         facts['nationality']=None
         gaps.append(dict(field='nationality',reason=str(exc)))
+    unresolved=list(facts.get('unresolved_fields', []))
+    if facts['nationality'] is None:
+        if 'nationality' not in unresolved:
+            unresolved.append('nationality')
+    else:
+        unresolved=[field for field in unresolved if field!='nationality']
+    facts['unresolved_fields']=unresolved
     return person,facts,gaps
 
 
