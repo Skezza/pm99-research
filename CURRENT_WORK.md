@@ -1,3 +1,15 @@
+## Actual2020 Spain final708 installed and runtime verified — 2026-11-05T21:35:19.746642+00:00
+
+Machine: joe-Vostro-3350. Source session: 01a0592d-fcd5-7262-a637-743a8253d9b4.
+
+ACTUAL2020/21 preferred is now sourced-ontiveros-origin-weight-2020-21-20261105-r708a, replacing617 WITHOUT rebuilding any unaffected release. Complete chain617→694→695→685→686→706→707→708 verified against immutable ancestry and A/B exact complete recipe/game inventories. Release and playable validation PASS. Other25 preferred bindings and original2015 backup unchanged. Root personally viewed genuine final708 Stoke1August2020, Ontiveros/Villarreal/Spain23/Forward/LeftWinger/handling9, Seoane/Huesca/Spain23/Midfielder/CentralMid/handling11. Evidence .local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/source708-ontiveros-origin-weight-root-v1/install-proof-r708-v1.json and root-personally-reviewed-three-controls-r708-v1.json; actual captures .local/runlogs/pm99_runner/local_final_2020_21_r708a_{stoke,villarreal_ontiveros,huesca_seoane}_v1/. Spain bounded correction delivered; Irish calendar/Gent/Anorthosis/English ownership still OPEN, no full2020RC closure claim.
+
+Authoritative checklist297/ledger147: Source81=70delivered/11pending; original2809 remains167disposed/2642unclassified candidates; original327 unchanged287delivered/32Native-noops/5source-invalid/3untreated, no credit for supplemental Atletico factory fallback. Macro31/34 and original17 15/17 unchanged.
+
+Source705 private v4 A/B built, NOTINSTALLED. Root diagnostic revealed /tmp/pm99_verify705_root.py wrong-family readback: DD6360 reader used for DD6361 origin9270/10349 and target9270. Thus its rating assertion failure is NOT evidence of a rating regression; recover_irish2025 independently checks correct-family all10ratings and Tuanzebe shirt38 before acceptance. Diagnostic /tmp/pm99_diag705.py and /tmp/pm99-verify705-root-v1.log preserved. No failure suppressed, no game modification to satisfy reader. prepare_2003_final_install actively rebases Source701 v2 onto705 exact parent, only5 changedEQ clubs, controls314/301/348 unchanged, Stoke Brown16, Pearson Jan31loan proof. recover_2003 continues Irish216-source-person global Native identity/capacity matrix and15 positive dated2020 extras; no builds/runner/publication delegated. Workers resumed using followup_task after restart revealed completed states.
+
+Exact next: review705 proper-family proof; review701v2 against original fixtures and705actualprojection, implement narrow exact5mode0roster correction with existing Native APIs and tests, then serial actual2022 runner validation/publication. Do not rerun completed708. Keep708 disposable RAM game until safely inventory-checked/no active runtime before retirement; persistent canonical/source/screens preserved. Disk7.3GiB observed; no NAS archive writes because prior expected HDD unavailable. No all26RC completion claim.
+
 ## Spain final708 in runner; 705 built; fixed original-case count167 — 2026-11-05T21:20:19.382768+00:00
 
 Machine: joe-Vostro-3350. Source session: 01a0592d-fcd5-7262-a637-743a8253d9b4.
