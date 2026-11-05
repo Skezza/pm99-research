@@ -1,3 +1,17 @@
+## Actual 2005/06 delivery and final Roda runtime check — 2026-11-05T13:12:40.727978+00:00
+
+Machine: joe-Vostro-3350. Source session: 01a0592d-fcd5-7262-a637-743a8253d9b4.
+
+2005/06 is now installed and verified as sourced-rushden-oxford-opening-2005-06-20261105-r681a. Evidence: .local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/rushden-oxford-canonical-root-v1/install-proof-r681-v1.json. Release and playable validation passed; all other season bindings and original 2015 backup are unchanged. Root viewed genuine final Stoke, Dempster/Rushden and Rob Hughes/Oxford frames, with unchanged Scarborough Speight and Bury Stuart Barlow profiles reused only after exact actor and asset equality checks. Known identities and ratings preserved; new actor ratings deterministic. Disposable runner copy retired with an inventory ledger; canonical games and screenshots remain.
+
+Authoritative counts: checklist290 / ledger140. Source81: 65 delivered, 16 pending. Original327 kits: 286 delivered, 32 native no-ops, 3 source-invalid, 6 untreated. Original2809 candidates: 130 disposed, 2679 unclosed; these are candidates, not confirmed bugs. Worker has proposed 18 case dispositions under the delivered wrong-cohort correction; Root review is pending and no count credit has been taken. All26 RC milestone remains open.
+
+Roda Source684 independent A/B reconstruction and Root native scope check passed: nine fine-role fixes, two broad-position fixes, role-aware ordering; all identities, ratings, biographies, ownership and other files unchanged from680. Evidence: resume-qa/roda803-source-role-correction-r680-to-r684-v1/root-independent-built-role-order-closed-scope-r684-v1.json. Actual2009 remains609 until fresh684 Stoke and DeFauw right-back screenshots pass. Initial capture stopped safely before launch because planned copy would breach the7GiB reserve. Root is linking only verified identical immutable completed684 files, retaining paths and full inventory, before retrying. No publication or case credit yet.
+
+Workers: prepare_2003_final_install reviews bounded remaining candidate dispositions against actual delivered source corrections; recover_2003 prepares2020 Villarreal/Atletico source allocation; recover_irish2025 prepares2022 StGallen/Vaduz plus source-positive Winterthur backfill. Workers do not publish or run the game. OFI682 and BJK683 private plans are ready for serial integration; BJK must rebase onto Greek correction without reverting it. Pi archive is not safe to write until its expected drive is remounted; sudo action remains with user, game work continues locally.
+
+Exact next action: finish immutable684 deduplication, retry final684 runner controls, personally inspect frames, then promote609→680→684 with rollback, validate release/playable and unchanged25. Continue OFI/BJK affected builds only. Preserve all other worker edits and current releases.
+
 ## Staged games held for confirmed corrections — 2026-11-05T12:03:03.299244+00:00
 
 Machine: joe-Vostro-3350. Source session: 01a0592d-fcd5-7262-a637-743a8253d9b4. Latest actual delivery remains 2024/25 r677, committed/pushed as 8f368e0. Checklist289/ledger139 remain authoritative: Source81 64 delivered / 17 pending; original327 kits 286 delivered / 32 native no-ops / 3 source-invalid / 6 untreated; original2809 candidates 130 disposed / 2679 unclosed. Do not count staged builds as delivered. Original2015 and all current preferred games are preserved. The 26 RC milestone is NOT closed.
