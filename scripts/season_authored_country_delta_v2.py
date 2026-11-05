@@ -222,7 +222,7 @@ def _static_identity_roles(actor, replacement, row, *, repair_defender=False):
     """Keep static controls strict; optionally repair an incompatible seed role.
 
     This is not evidence of a historical XI or a specific defensive position.
-    The opt-in only admits the existing generic defender projection, with a
+    The opt-in admits one compatible source-reviewed defender role, with a
     source-receipt-backed replacement and an unchanged explicit broad role.
     """
     roles = [role for role in row['roles'] if role != 98]
@@ -240,10 +240,11 @@ def _static_identity_roles(actor, replacement, row, *, repair_defender=False):
     if (row['position'] != 'D' or not roles
             or any(type(role) is not int or not 0 <= role <= 17 for role in roles)
             or any(compatible('D', role) for role in roles)
-            or desired != [4]
+            or not isinstance(desired, list) or len(desired) != 1
+            or type(desired[0]) is not int or not compatible('D', desired[0])
             or replacement.get('proof', {}).get('grade') != 'source-receipt'):
-        raise ValueError('static defender repair needs contradictory roles and source-backed generic D/4')
-    return [4]
+        raise ValueError('static defender repair needs contradictory roles and a source-backed compatible D role')
+    return desired[:]
 
 
 def _static_repair_proof(actor, package, request, authoring, *, parent_artifact_ids,
@@ -447,7 +448,12 @@ def prepare(base,input_path):
     if request.get('static_native_openings'):
         plan['scope']='Source-bound identity/fact/skill corrections in unchanged slots, with every witnessed native startup order, all six roles and primary position preserved; all club recipe rows, EQ/ENT, roster membership, tactics grids and kits exact. The static controls are not a historical fixture or XI claim.'
     if request.get('static_defender_fine_role_repairs'):
+        # Retain existing immutable generic-D/4 plan text byte-for-byte.
         plan['scope']='Source-bound unchanged-slot corrections with explicit generic D/4 repair only for listed defenders whose inherited fine roles are all incompatible. Every native startup order and broad position, all unlisted fine roles, all club rows, EQ/ENT, memberships, tactics and kits remain exact. Static controls are not a historical XI claim.'
+        child=p.read_json_file(_bound(request['child_recipe']))
+        if any(a['carrier_id'] in request['static_defender_fine_role_repairs']
+               and a['facts']['fine_roles'] != [4] for a in child['players']):
+            plan['scope']=plan['scope'].replace('generic D/4 repair', 'single compatible source-reviewed defender-role repair')
     plan['transaction_id']=digest(packages.canonical_json_bytes(plan))[:24]
     return plan
 

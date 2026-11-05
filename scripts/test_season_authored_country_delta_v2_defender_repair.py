@@ -36,10 +36,15 @@ def test_repair_cannot_discard_any_compatible_defensive_role_or_unassigned_set(o
         delta._static_identity_roles(*_case(old_roles), repair_defender=True)
 
 
-@pytest.mark.parametrize('new_roles', [(1,), (9,), (4, 14)])
+@pytest.mark.parametrize('new_roles', [(9,), (4, 14), (), (True,), (98,)])
 def test_repair_is_not_a_general_fine_role_editor(new_roles):
-    with pytest.raises(ValueError, match='generic D/4'):
+    with pytest.raises(ValueError, match='compatible D role'):
         delta._static_identity_roles(*_case(new_roles=new_roles), repair_defender=True)
+
+
+@pytest.mark.parametrize('role', [1, 2, 3, 4, 5])
+def test_repair_admits_one_explicit_compatible_source_reviewed_defender_role(role):
+    assert delta._static_identity_roles(*_case(new_roles=(role,)), repair_defender=True) == [role]
 
 
 @pytest.mark.parametrize('grade', ['reviewed-editorial', 'static-contract', None])
