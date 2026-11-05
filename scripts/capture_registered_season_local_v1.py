@@ -148,14 +148,31 @@ def driver_args(release, *, carrier=None, label=None, token=None, search_result_
     return args
 
 
-def capture(season, release_id, tag, *, carrier=None, label=None, token=None, search_result_row=1, selector=None, search_text=None, minimum_free_bytes=RESERVE):
+def _workspace_path(season, release_id, runtime_workspace_root=None):
+    if runtime_workspace_root is None:
+        return registry.ROOT / '.local/local-runner-v1' / season / release_id
+    root = Path(runtime_workspace_root)
+    expected = Path('/run/user') / str(os.getuid()) / 'pm99-registered-season-captures'
+    if root != expected or root.resolve() != root:
+        raise ValueError('alternate workspace must be the real per-user runtime capture directory')
+    workspace = root / season / release_id
+    if (Path(season).name != season or Path(release_id).name != release_id
+            or season in ('.', '..') or release_id in ('.', '..')
+            or workspace.resolve() != workspace):
+        raise ValueError('runtime workspace must use real season and release directories')
+    return workspace
+
+
+def capture(season, release_id, tag, *, carrier=None, label=None, token=None, search_result_row=1, selector=None, search_text=None, minimum_free_bytes=RESERVE, runtime_workspace_root=None):
     if not re.fullmatch(r'[a-z][a-z0-9_]{0,95}', tag):
         raise ValueError('safe unique capture tag required')
     release = registry.load_registered_release(season, release_id)
     driver = driver_args(release, carrier=carrier, label=label, token=token, search_result_row=search_result_row, selector=selector, search_text=search_text)
     inventory = pipeline.read_json_file(release.inventory_path)
     pipeline.assert_tree_matches_inventory(release.game_path, inventory)
-    workspace = registry.ROOT / '.local/local-runner-v1' / season / release_id
+    # Only the disposable workspace may move to the user runtime filesystem.
+    # Release inputs and all evidence retain their normal persistent locations.
+    workspace = _workspace_path(season, release_id, runtime_workspace_root)
     evidence = registry.ROOT / '.local/runlogs/pm99_runner' / tag
     if evidence.exists():
         raise ValueError('existing evidence must never be overwritten')

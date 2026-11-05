@@ -5,6 +5,33 @@ import pytest
 from scripts import capture_registered_season_local_v1 as subject
 
 
+def test_default_workspace_remains_persistent():
+    assert subject._workspace_path('2022-23', 'release-a') == (
+        subject.registry.ROOT / '.local/local-runner-v1/2022-23/release-a')
+
+
+def test_runtime_workspace_is_scoped_to_current_user():
+    from pathlib import Path
+    root = Path('/run/user') / str(subject.os.getuid()) / 'pm99-registered-season-captures'
+    assert subject._workspace_path('2022-23', 'release-a', root) == root / '2022-23/release-a'
+
+
+@pytest.mark.parametrize('root', ['/tmp/pm99-captures', '/home/joe/pm99-research',
+                                '/run/user/0/pm99-registered-season-captures-other'])
+def test_runtime_workspace_rejects_unrelated_or_canonical_paths(root):
+    with pytest.raises(ValueError, match='per-user runtime'):
+        subject._workspace_path('2022-23', 'release-a', root)
+
+
+@pytest.mark.parametrize('season,release_id', [('../2022-23', 'release-a'),
+    ('2022-23', '../release-a'), ('..', 'release-a')])
+def test_runtime_workspace_rejects_path_traversal(season, release_id):
+    from pathlib import Path
+    root = Path('/run/user') / str(subject.os.getuid()) / 'pm99-registered-season-captures'
+    with pytest.raises(ValueError, match='real season and release'):
+        subject._workspace_path(season, release_id, root)
+
+
 @pytest.fixture
 def release():
     return SimpleNamespace(season='2000-01', manifest_sha256='manifest',
