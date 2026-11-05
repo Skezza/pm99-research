@@ -1,3 +1,31 @@
+## Three installed2024 duplicate cases independently closed — 2026-11-05T00:25:55.568883+00:00
+
+Machine joe-Vostro-3350; source session 01a0592d-fcd5-7262-a637-743a8253d9b4. Authoritative checklist276 is METADATA-ONLY; actual catalogue/releases unchanged from275. Frozen original2809 now116disposed2693unreviewed (not2693bugs), three added closures are Winchester/Baggley/Lonergan, actual647 corrections independently verified with allnine originalsourcehashes, six datedlineups and exactNative payload/soleactiveowner readback. Proof resume-qa/irish-2024-frozen-three-owner-root-native-review-v1.json; underlying actual647 installation retained. No regeneration, no Source81/kit/manager credit.
+
+658 SOURCEA/B complete and identical; final genuine captures32362 ACTIVE after earlier preflight-only capacityrefusals (23477 also refused before evidence). Newlossless completedB hardlinks reclaim51597312gamebytes +22298624packagebytes, samepaths/content/mode, independent historicalproofs preserved but currentinodes shared; ledgers .local/cleanup-20261105/completed-B-r654-through-r658-exact-v1 andcompleted-B-r654-through-r658-packages-v1. RegenerableheadlessHTTP/JS cache12861440bytesremoved, storage/profiles/evidence untouched, ledgerheadless-browser-disposable-http-cache-v1.json. A second inactive Go compile-cache cleanup recovered584089600bytes after external compiler work ended; ledger go-build-cache-inactive-second-v1.json. Reserve7.5GiB unchanged. No claim658installed.
+
+Crawley2025 worker datedAugustleague union25 prepared; six genuinely new identities, Tshimanga DOB discrepancy separatelypreserved, Mukena/Dixon currentelsewhere ownershipmustresolvebeforemapping. Workercontinuesprimarytransfer/loanproof/globalclosedmapping, no sharededits. Irishworker actualcanonical9clubprepongoing. Rootnext: finish23477 controls/personallyview; review and execute private658/657 installers whenallgatespass; preserveallother25/original2015; continuecountryownershipdependencies then final26regression. UserstoppedLewes/Barrowbatch remainsSTOPPED, not silentlyrestarted.
+
+## Resumed final-source work — 2026-11-05T00:20:42.470379+00:00
+
+Machine joe-Vostro-3350; source session 01a0592d-fcd5-7262-a637-743a8253d9b4. Actual installed catalogue remains 275; no checklist credit before installation. Genuine r657 Stoke and Manuel Riemann controls completed; Root personally viewed Riemann profile showing VfL Bochum, GERMANY, GOALKEEPER and white kit. Bound review: resume-qa/bochum2023-current620-coupled-source-v1/corrected-own-factory-kit-r657-v1/lead-final-controls-review-r657-v1.json. Disposable runtime game retired after exact source/copy inventory and no-active-mount verification; original frames, release and shared prefix preserved. Ledger .local/cleanup-20261024/verified-inactive-2023-24-sourced-bochum-own-factory-kit-2023-24-20261104-r657a-runtime-final-controls.
+
+2003 matching factory kit prep completed: factory374→3302 Chester,388→3308 Scarborough,369→3314 Barnet, nine selected payloads across three archives, palettes equal, supplemental original327 credit zero. Root SOURCE658 A/B build session88027 ACTIVE after initial capacity refusal BEFORE writes and retirement of verified657 runner copy. Root reviewing worker private2003 installer; schema/provenance corrections requested before use. No installation claimed. Worker prepare_2003_final_install then private Bochum installer; recover_2003 Crawley dated August pool; recover_irish2025 actual canonical nine-club country prep. recover_cohorts Lewes/Barrow STOPPED under its reported direct user instruction; no override or replacement worker. Next: finish658 SOURCE, genuine final controls, review fail-closed installers and serial actual delivery; independently review three2024 frozen-case proposals before any credit. Current releases, original2015 and restored requiredIrishV9 remain preserved.
+
+## 2003 finalSOURCEcomplete; Bochum controls restart aftercachecleanup — 2026-11-05T00:12:15.193887+00:00
+
+Machine joe-Vostro-3350; source session01a0592d-fcd5-7262-a637-743a8253d9b4. Actualcatalog275unchanged (2018r653installed274;2025Wilde651installed275;2024Irish647installed273). Managers82total75delivered2pending1review4exceptions. Source81:61delivered20pending; kit327:279installed32noops2invalid14pending; frozen113disposed2696unreviewed. No0claim.
+
+SOURCE654Scott/HanneyA/B COMPLETEidenticalrecipe+game, JUG10838/10840only, orders18/16exact, EQ/ENTpreserved; proof2003-tamworth-scott-hanney-r654-v1/rebased-private-v2/source-game-r654-v1/build-A-SOURCE-B-proof-r654-v1.json. ActualID sourced-tamworth-opening-reserves-2003-04-20261104-r654a. SOURCE655finalthreecoachesA/B COMPLETE50266: sourced-three-opening-managers-2003-04-20261105-r655a/b, expectedEQ8 ENT800/1190/1829 JUGnone; allplayers/assetsunchanged, Root-readPacheco/Pizarro/Geeoriginalsbound. Proof2003-final-three-manager-r655-v1/rebased-private-v2/source-game-r655-v1/build-A-SOURCE-B-proof-r655-v1.json. Rootreviewfixedprivatev2prep(1) Geeoriginalplanlackedcase_id so deriveexplicitcase3303afterexactactor/club/sourcecheck;(2) onlyclubmanagerLINK8changes, other2namesonly;(3) historicalverificationflagfalse;(4) validationplanfileSHAincludescanonicalnewline. Originalsourceplansunchanged. BothNOTinstalleduntilfinal2003controls+fullancestrydelivery. Chainactual443→487→631→648→649→650→654→655, preserveallcorrections. Needcheckmatchingfactorykitsforchanged2003clubs3302Chester/3308Scarborough/3314Barnet BEFOREfinalpublication; NONEareoriginal327candidatecases, anyneedednewkitcorrectionssupplementalnotbaselinecredit.
+
+SOURCE656Bochum2023club+coach COMPLETEv2: EQ417Wolfsburg→Bochum,ENT836Kovac→Letsch; Source26Bochumcohortunchanged. SOURCE657correctownfactorykit COMPLETEA/B: sourced-bochum-own-factory-kit-2023-24-20261104-r657a; proofbochum2023-current620-coupled-source-v1/corrected-own-factory-kit-r657-v1/build-A-SOURCE-B-proof-r657-v1.json. Sourcefactory417nativeBochum,VfLBochum; sourceandgameDATpaletteequal; only3target417bitmaprawpayloadschanged, exactfactorypayloads. It reversesold327caseca241e0f5adee8014592wrong420Wolfsburg→417remap. OnACTUALdeliveryreclassifythatoneoriginal327caseSource-invalidandrecordcorrectiveBochumcase separately; don'tcountasregression/untouchedseedremap. Currentcountsunchangeduntilactual. Rootgenuine657Stoke+Riemann3022capture78575ACTIVEsole runner(twoindividualboots); previous16451capacityrefusalcreatednoevidence. Prefixsharedroot2000only. Needvieweveryoriginalbeforepublicationcombined620→656→657.
+
+Disk: exact154completedBNative/DAT/EXE/photo filesdedup285396992allocatedbytes +5completedBmain/English/qualityJSONdedup100827136, samebytes/paths/modes; sharedinodes/mtimesAwithhistoricalindependentbuildproofretained. Ledgers .local/cleanup-20261105/completed-B-additional-exact-v1 andcompleted-B-package-aux-exact-v1. Go testsfinallyinactive(pgrepnoactivego/compiler), /home/joe/.local/go/bin/go clean -cache recoveredobserved792MiBcompilercacheonly, noSources/modulecache/appdata; ledgergo-build-cache-after-tests-v1. Free8.7GiBbefore657clone, reserve7.5unchanged. Pi newrootdirwriteprobeALSOI/Oerror sowholePiarchiveunreliablefornewwrites; no moreNAScleanupattemptsuntilrepair. V9exactrequired4033... restoredlocalkept.
+
+Newconfirmedcrosscountry2025Crawleycase: actualr651English26940JustinFerizajDOB2005-01-13 belongsBrayAug1(primaryofficialreportRootread: Justin+Richardbrothersdistinct); CrawleyJan2026signingprimaryprogrammeJan31 https://www.ctfchistory.co.uk/progs/20260131.pdf andclubstatementreportedJan26. RetainedTMopener2025Aug2match4640105 SourceXI11+bench7 DIFFERfromactualCrawley372NativebenchMalone/Bajrami/LewisRichards/Radcliffe/Russell etc. CurrentCrawleycapacity25, Justinreserve(notXI/bench). Sourcepoolfixrequiredseparately beforeBrayJustinpublication. Rootaskedworker2003prepare25datedAugustpool/replacementsafter3frozen2024caseQA; newclubcaseOUTSIDEoriginal81/2809 countsnotyetadmitted. DoNOTomitJustinfromBraytoconcealclone. Existingpositive3frozencasesWinchester/BarryBaggley/Lonergancouldclosefromactual647source+native proof; workerindependentQA, noledgereditsyet. BoylecaseexcludeduntildatedDundalk2024positiveproof.
+
+Workers: recover_2003 3frozencaseQA thenCrawley25Sourcepool. recover_irish2025 actualcanonical9clubchildover651: officialAugustDundalk/BrayfullreportsNOWfound11bodies; previous"nosource"holdnottrueproviderexhaustion, exactpersonsRohan/EthenVaughanresolved; 7originaltopflightcohorts136sourcepeople+2firstdivcohortsneededtoavoidduplicates. RerunonlyrebasemechanicsnotSources. recover_cohorts returnedfailedcanonicalLewesprep missingformation/openingfallbackfields; Rootrequestedroutinefix(newversion inferredformationallowed, exactBarrowparentopening/orderpreserved, stalefallbackremoved). WorkerthenCLAIMEDdirectuserstopwithnovisibleparentcancel; RootrequestedEXACTquote/time/source clarificationONLY, doNOToverrideactualuserstop. No cohortSourcebuildexistsyet. UserlatestparentstillProceed/target0. ContinueRootdeliverieswhileclarifying.
+
 ## Colwyn delivered275; next2003/Bochum source integration — 2026-11-04T23:51:19.092564+00:00
 
 Machine joe-Vostro-3350; source session01a0592d-fcd5-7262-a637-743a8253d9b4. Actual275ColwynWilde651INSTALLED_AND_VERIFIED, proof colwyn-2025-opening-manager-wilde-v1/combined-delivery-r651-v1/completion-proof-release-delivery-checklist-v275-2025-26.json. OnlyENT897Coyne→Wilde; Nativeowner2055exclusive; allIR/player/kit/photo/tacticsdataunchanged, Sourceequal+rootNative+genuineStokecontrols+releasevalidationpassed. Managers82total75delivered2pending1review4exceptions. NewColwyn2055caseexplicitadditionoutsideoriginalcensus56; Source81/frozen/kitcredits0. 2742018r653alsoactualverified; preserveBelgianSource639priorfixes.
@@ -17345,3 +17373,37 @@ use the existing Soccerbase originals rather than repeat previous scraping.
 Free disk ~8.8 GiB; build floor remains 8 GiB. No additional deletions needed.
 No new portraits. Only Kelly has a replacement portrait in the cumulative
 ledger; he is English/playable. Foreign non-playable photo gaps are separate.
+
+## Native-port prototype: first gameplay routine verified on Intel and Pi — 2026-11-05 00:22 UTC
+
+Machine `joe-Vostro-3350`; source session `01a034fe-e683-7390-8e54-e1fce10b5446`.
+Separate native-port POC after the user endorsed a port. No season publication,
+release selection, editor changes, Wine/PM99 GUI runs or archive-disk writes.
+Source-only prototype: `experiments/pm99-native-core/`; usage in
+`experiments/README.md`. Reconstructed actual gameplay function004b13f0, not
+just a database decoder: portable C99 six-role tactical suitability penalty.
+
+Pinned EXE01b845f7...3158, original function+dispatch tables9c36237c...8f4b.
+Unmodified Intel instructions executed directly through private Linux/i386 ELF
+scaffolding; recovered C independently compiled x86_64. 282278 cases matched,
+including11479 real factory players at18positions, every role byte in each
+slot, invalid/edge requests, ordered pairs, permutations and random sets.
+No mismatches. Undefined-behavior-sanitized native build also matched with no
+diagnostics. All inputs/output bytes retained for independent native replay.
+
+Actual `raspberrypi` is Pi2ModelBRev1.1, Linux `armv7l`/ARM32, compiler Raspbian
+GCC14.2. Identical C source compiled and EXECUTED NATIVELY there; all282278
+cases match recorded original Intel outputs. Not emulation. ARM64/Apple silicon
+execution remains UNVERIFIED; no whole-game/renderer/match-engine port claim.
+Pi build used private tmpfs `/tmp/pm99-native-core.UUMfjJ`; binary/report copied
+back, hashes verified, then only that temporary directory removed. NAS untouched.
+
+Evidence `.local/pm99-native-core/role-proof-20261105-v2/report.json` SHA256
+`72350289ce509de8c955144cf85de00f1791992c0666cbfd341c0965d0e02d99`;
+`pi-arm32-proof-20261105-v1/report.json` SHA256
+`e6c36f1d76187041c8383603449ecd127c773133132e69ee1234045468a6d651`;
+combined `completion-20261105-v1.json`. Both proof source hashes equal current
+source; original EXE hash rechecked unchanged. Boundary/diff checks passed.
+REA was not needed or installed. Next port milestone: connect native player
+loading to this routine and reproduce an actual squad's tactics grid; a Mac
+or ARM64 replay can use the retained bundle without the original executable.
