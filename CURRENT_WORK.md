@@ -1,3 +1,7 @@
+## Supplemental opening-owner issue admitted — 2026-11-05T04:23:44.750746+00:00
+
+Machine joe-Vostro-3350; source session01a0592d-fcd5-7262-a637-743a8253d9b4. Checklist283 adds confirmed Enoru33127 at NottsCounty385 despite primary Tamworth transfer statement dated10January2026 (raw body retained and Root read dateTime). Correct August owner Tamworth. Worker prepares positive Notts opening replacement; no actual fix/delivery credit yet. Outside original2809/Source81 baselines: original counts remain127 disposed/2682 unclosed, Source18 and kit14 pending. Evidence resume-qa/notts-enoru-opening-owner-root-v1/. Other preferred releases unchanged. Do not silently call this a capacity omission or legitimate Notts registration. Root continues staged2025 integration.
+
 ## 2003 ownership correction installed; Irish SOURCE662 verified — 2026-11-05T04:19:59.304251+00:00
 
 Machine: joe-Vostro-3350. Source session: 01a0592d-fcd5-7262-a637-743a8253d9b4.
