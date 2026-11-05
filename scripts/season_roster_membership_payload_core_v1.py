@@ -144,3 +144,77 @@ def reassign_memberships(eq_data: bytes, moves: Sequence[Mapping[str, int]]) -> 
         "jug_or_recipe_written": False,
     }
     return result, receipt
+
+
+def rewrite_membership_transaction(
+    eq_data: bytes, *, moves: Sequence[Mapping[str, int]],
+    removals: Sequence[Mapping[str, int]],
+    desired_rosters: Mapping[int, Sequence[tuple[int, int]]],
+) -> tuple[bytes, dict[str, Any]]:
+    """Apply a complete source-approved mode-0 owner transaction in memory.
+
+    This admits no historical claim. The source wrapper must establish moves
+    and removals independently. Complete postimages prevent temporary capacity
+    overflow; no actor is deleted and no other EQ payload may change.
+    """
+    index, raw, parsed, owners = _read_rosters(eq_data)
+    before = {cid: [(int(row.flag), int(row.player_record_id)) for row in club.rows]
+              for cid, club in parsed.items()}
+    expected = {cid: list(rows) for cid, rows in before.items()}
+    touched: set[int] = set()
+    selected: set[int] = set()
+    for row, removing in [(row, False) for row in moves] + [(row, True) for row in removals]:
+        pid, source = row.get('player_record_id'), row.get('from_club_carrier_id')
+        target = None if removing else row.get('to_club_carrier_id')
+        if (type(pid) is not int or type(source) is not int or pid in touched
+                or (not removing and (type(target) is not int or target == source))):
+            raise MembershipPayloadError('transaction requires distinct exact integer owner claims')
+        involved = {source} if removing else {source, target}
+        if any(cid not in parsed or parsed[cid].mode_byte != 0 for cid in involved):
+            raise MembershipPayloadError('transaction is restricted to existing mode-0 clubs')
+        if owners.get(pid) != {source}:
+            raise MembershipPayloadError('transaction actor lacks its pinned exclusive source owner')
+        if any(flag != 0 for cid in involved for flag, _ in before[cid]):
+            raise MembershipPayloadError('transaction does not admit nonzero roster flags')
+        touched.add(pid)
+        selected.update(involved)
+        expected[source] = [pair for pair in expected[source] if pair[1] != pid]
+        if not removing:
+            expected[target].append((0, pid))
+    if not touched or set(desired_rosters) != selected:
+        raise MembershipPayloadError('complete postimages must select exactly the changed clubs')
+    rewritten = {}
+    for cid in sorted(selected):
+        desired = list(desired_rosters[cid])
+        if sorted(desired) != sorted(expected[cid]):
+            raise MembershipPayloadError('complete postimage differs from approved moves and removals')
+        rewritten[cid] = _rewrite_roster_rows(raw[cid], desired)
+    from app.xor import xor_decode
+    result = compiler._rebuild_indexed(eq_data, index, {
+        cid: xor_decode(value) for cid, value in rewritten.items()})
+    after_index, after_raw, after_parsed, after_owners = _read_rosters(result)
+    if [entry.record_id for entry in index.entries] != [entry.record_id for entry in after_index.entries]:
+        raise MembershipPayloadError('transaction changed the EQ directory identity or order')
+    after_entries = {entry.record_id: entry for entry in after_index.entries}
+    for entry in index.entries:
+        cid = entry.record_id
+        output = after_entries[cid]
+        observed_raw = result[output.payload_offset:output.payload_offset + output.payload_length]
+        expected_raw = rewritten[cid] if cid in selected else eq_data[entry.payload_offset:entry.payload_offset + entry.payload_length]
+        if observed_raw != expected_raw:
+            raise MembershipPayloadError('transaction changed an unapproved EQ payload')
+    expected_owners: dict[int, set[int]] = defaultdict(set)
+    for cid, rows in expected.items():
+        for _flag, pid in rows:
+            expected_owners[pid].add(cid)
+    if dict(expected_owners) != after_owners:
+        raise MembershipPayloadError('complete native owner graph differs from approved transaction')
+    for cid in selected:
+        if [(int(row.flag), int(row.player_record_id)) for row in after_parsed[cid].rows] != list(desired_rosters[cid]):
+            raise MembershipPayloadError('complete ordered Native postimage differs')
+    return result, dict(
+        operation='source-approved-complete-mode0-owner-transaction',
+        selected_clubs=sorted(selected), moved_carriers=sorted(row['player_record_id'] for row in moves),
+        removed_links_preserving_native_actors=sorted(row['player_record_id'] for row in removals),
+        full_native_owner_graph_verified=True, unselected_eq_payloads_byte_identical=True,
+        jug_or_recipe_written=False)
