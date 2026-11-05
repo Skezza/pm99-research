@@ -218,12 +218,14 @@ def static_native_opening_snapshot(eq, jug, club_carrier):
         policy='preserve-current-native-controls-not-a-historical-fixture')
 
 
-def _static_identity_roles(actor, replacement, row, *, repair_defender=False):
+def _static_identity_roles(actor, replacement, row, *, repair_defender=False,
+                           repair_forward=False):
     """Keep static controls strict; optionally repair an incompatible seed role.
 
     This is not evidence of a historical XI or a specific defensive position.
-    The opt-in admits one compatible source-reviewed defender role, with a
-    source-receipt-backed replacement and an unchanged explicit broad role.
+    The defender opt-in admits one compatible source-reviewed role. A separate
+    opt-in admits only generic F/12 for a new sourced forward identity. Both
+    require an unchanged explicit broad role and wholly incompatible old roles.
     """
     roles = [role for role in row['roles'] if role != 98]
     parent_roles = actor['facts'].get('fine_roles')
@@ -232,11 +234,23 @@ def _static_identity_roles(actor, replacement, row, *, repair_defender=False):
             or actor['facts'].get('primary_position') != row['position']
             or replacement['facts'].get('primary_position') != row['position']):
         raise ValueError('static opening identity replacement must preserve matching native roles')
-    if not repair_defender:
+    if repair_defender and repair_forward:
+        raise ValueError('static role repair kinds must not overlap')
+    if not repair_defender and not repair_forward:
         if desired != roles:
             raise ValueError('static opening identity replacement must preserve matching native roles')
         return roles
     from scripts.season_exact_fifa_role_delta_v1 import compatible
+    if repair_forward:
+        if (row['position'] != 'F' or not roles
+                or any(type(role) is not int or not 0 <= role <= 17 for role in roles)
+                or any(compatible('F', role) for role in roles)
+                or desired != [12] or type(desired[0]) is not int
+                or not replacement.get('person_id')
+                or replacement.get('person_id') == actor.get('person_id')
+                or replacement.get('proof', {}).get('grade') != 'source-receipt'):
+            raise ValueError('static forward repair needs a new source-backed forward identity and incompatible inherited roles; only generic F/12 is permitted')
+        return desired[:]
     if (row['position'] != 'D' or not roles
             or any(type(role) is not int or not 0 <= role <= 17 for role in roles)
             or any(compatible('D', role) for role in roles)
@@ -296,6 +310,10 @@ def _reconstruct(base, request):
             and (request.get('selection_kind') != 'players-only'
                  or not isinstance(request['static_defender_fine_role_repairs'], list))):
         raise ValueError('static defender repairs are restricted to explicit player-only witnesses')
+    if ('static_forward_fine_role_repairs' in request
+            and (request.get('selection_kind') != 'players-only'
+                 or not isinstance(request['static_forward_fine_role_repairs'], list))):
+        raise ValueError('static forward repairs are restricted to explicit player-only witnesses')
     oldeq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes();oldjug=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes();oldent=(base.game_path/'DBDAT/ENT98030.FDI').read_bytes()
     if request.get('selection_kind') in ('players-only','players-and-openings'):
         from scripts import season_duplicate_ownership_delta_v1 as native_players
@@ -312,16 +330,25 @@ def _reconstruct(base, request):
             if snapshot != static_native_opening_snapshot(oldeq, oldjug, int(cid)):
                 raise ValueError('static opening witness differs from the complete native parent')
         repairs = request.get('static_defender_fine_role_repairs', [])
+        forward_repairs = request.get('static_forward_fine_role_repairs', [])
         actor_carriers = {oldplayers[id]['carrier_id'] for id in people}
         if (not isinstance(repairs, list) or any(type(cid) is not int for cid in repairs)
                 or len(repairs) != len(set(repairs)) or not set(repairs) <= actor_carriers
                 or any(str(clubs[oldplayers[id]['club_id']]['carrier_id']) not in static
                        for id in people if oldplayers[id]['carrier_id'] in repairs)):
             raise ValueError('static defender repairs need unique selected carriers and complete witnesses')
+        if (any(type(cid) is not int for cid in forward_repairs)
+                or len(forward_repairs) != len(set(forward_repairs))
+                or not set(forward_repairs) <= actor_carriers
+                or set(forward_repairs) & set(repairs)
+                or any(str(clubs[oldplayers[id]['club_id']]['carrier_id']) not in static
+                       for id in people if oldplayers[id]['carrier_id'] in forward_repairs)):
+            raise ValueError('static forward repairs need unique selected carriers and complete witnesses')
+        all_repairs = set(repairs) | set(forward_repairs)
         expected_static = copy.deepcopy(static)
         newplayers = {a['id']: a for a in after['players']}
         for actor in newplayers.values():
-            if actor['carrier_id'] in repairs:
+            if actor['carrier_id'] in all_repairs:
                 _static_repair_proof(actor, after, request, authoring,
                     parent_artifact_ids={a['id'] for a in before.get('artifacts', [])},
                     parent_artifact_paths={a.get('relative_path')
@@ -332,8 +359,9 @@ def _reconstruct(base, request):
             if static_club:
                 row = next(x for x in static[str(club['carrier_id'])]['rows'] if x['carrier_id'] == carrier)
                 roles = _static_identity_roles(actor, newplayers[id], row,
-                    repair_defender=carrier in repairs)
-                if carrier in repairs:
+                    repair_defender=carrier in repairs,
+                    repair_forward=carrier in forward_repairs)
+                if carrier in all_repairs:
                     expected_row = next(x for x in expected_static[str(club['carrier_id'])]['rows']
                                         if x['carrier_id'] == carrier)
                     expected_row['roles'] = roles + [98] * (6 - len(roles))
@@ -454,6 +482,8 @@ def prepare(base,input_path):
         if any(a['carrier_id'] in request['static_defender_fine_role_repairs']
                and a['facts']['fine_roles'] != [4] for a in child['players']):
             plan['scope']=plan['scope'].replace('generic D/4 repair', 'single compatible source-reviewed defender-role repair')
+    if request.get('static_forward_fine_role_repairs'):
+        plan['scope'] += ' Listed new forward identities may replace wholly incompatible inherited fine roles with generic F/12 only, using a new hash-bound source input; all other witnessed controls remain exact.'
     plan['transaction_id']=digest(packages.canonical_json_bytes(plan))[:24]
     return plan
 
