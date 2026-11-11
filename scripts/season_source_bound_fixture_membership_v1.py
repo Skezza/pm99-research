@@ -189,6 +189,9 @@ def _source_path(raw: str) -> Path:
 
 
 def _check_sources(source_doc: Mapping[str, Any]) -> list[dict[str, Any]]:
+    from scripts import season_opening_roster_transaction_v1 as transaction
+    if source_doc.get('schema_version') == transaction.SCHEMA:
+        return transaction.source_bindings(source_doc)
     rows = source_doc.get("source_files")
     if not isinstance(rows, dict) or not rows:
         raise OpeningXICompositionError("source crossmatch lacks retained source bindings")
@@ -609,6 +612,9 @@ def _update_recipe_layer(
 def compose_in_memory(parent: Any, main_package: Mapping[str, Any], english_package: Mapping[str, Any],
                       eq_data: bytes, jug_data: bytes, source_doc: Mapping[str, Any]) -> dict[str, Any]:
     """Create and verify exact main+English recipe, EQ roster, and JUG order postimages."""
+    from scripts import season_opening_roster_transaction_v1 as transaction
+    if source_doc.get('schema_version') == transaction.SCHEMA:
+        return transaction.compose(parent, main_package, english_package, eq_data, jug_data, source_doc)
     if source_doc.get("schema_version") != "pm99-opening-xi-transfer-crossmatch-v1":
         raise OpeningXICompositionError("unsupported pinned first-fixture crossmatch")
     parent_pin = source_doc.get("parent")
@@ -817,7 +823,7 @@ def prepare(release: Any, source_path: Path) -> dict[str, Any]:
         package_sha256=registry.sha256_file(release.package_path),
         jug_sha256=registry.sha256_file(release.game_path / 'DBDAT/JUG98030.FDI'),
         source_input={'path': registry.relative_workspace_path(source_path.resolve()), 'sha256': _sha(raw)},
-        scope='Source-proven mode-0 membership and exact opening order/context only; identities, facts, skills, managers and assets unchanged.')
+        scope=('Reviewed opening-roster transaction: five mode-0 rosters, reserve orders and four sourced shirts; Native identities/ratings/tactics/assets preserved; prior705 English identity projection synchronised.' if document.get('schema_version') == 'pm99-source701-mode0-rebased-proposal-v2' else 'Source-proven mode-0 membership and exact opening order/context only; identities, facts, skills, managers and assets unchanged.'))
     plan['transaction_id'] = _sha(pipeline.canonical_json_bytes(plan))[:24]
     verify(release, plan)
     return plan

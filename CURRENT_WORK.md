@@ -1,3 +1,29 @@
+## 2022/23 ownership candidate built; runner validation in progress — 2026-11-11T07:37:18.486149+00:00
+
+Machine: joe-Vostro-3350. Source session: 01a0592d-fcd5-7262-a637-743a8253d9b4.
+
+Installed releases are unchanged: 2022/23 is still r691; 2020/21 remains the verified r708. The new 2022 candidate is `sourced-opening-ownership-five-clubs-2022-23-20261111-r701a`. Both builds passed complete recipe and game-inventory equality. Do not rebuild them. Evidence: `.local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/source701-delivery-v1/build-A-SOURCE-B-proof.json`.
+
+The candidate moves Sarkic to Wolves, Kilkenny to Stoke, McGrandles to Charlton and Janneh to Cambridge. It removes four false roster links while retaining their Native player records and the proper existing Hoever/Pearson/Bentley records. The Native readback proves exactly five EQ roster payloads, 30 JUG order bytes and four shirt bytes changed. Every other player byte, identities, ratings, tactics, managers, kits and photos are preserved against705. Proof: `source701-delivery-v1/root-actual-native-byte-scope-and-owner-readback-v1.json`. Casemiro's genuine705 screenshot can be reused only with its recorded complete actor/club/assets equality; it must not be relabelled as a701 capture.
+
+The recipe now explicitly selects five game substitutes. All seven Stoke published substitutes remain in the full roster and hash-bound source packet; this is an editorial game-capacity choice, not a claim that the source listed five. The older English artifact's Tuanzebe/Sparrow identities and their citation dependencies are synchronised from the already proven705 main recipe. The main recipe changes only the four moved actors' club/shirt fields and the five selected roster/substitute lists. No starting XIs or tactics change.
+
+Lead implemented a narrow opt-in source transaction through the existing fixture-membership publication and SOURCE-reconstruction path. New admission checks reparse eight original reports, crosswalk ten provider IDs to Native and recipe names/DOBs, require matching dated annual identity rows, parse all four source shirt rows, and re-read the qualified BBC Pearson loan context. Original default fixture path is preserved. Luna adversarial review caught the initial missing identity crosswalk; it is corrected and re-reviewed without further blocking findings. All42 old+new membership/integration tests passed; log `/tmp/test701-regression-all.log`. Original official Pearson article is still an empty SPA shell; the actual dated BBC report is clearly qualified secondary evidence.
+
+Sole runner: `/tmp/capture701.py`, session16238, log `/tmp/capture701.log`. Four serial controls: fresh Stoke, Sarkic/Wolves, Tuanzebe/United, Hoever/PSV (duplicate-search control). Real disposable RAM game, canonical release intact. Personally inspect each frame and bind input/transport hashes before publication. Independent Luna worker `/root/qa_2022_701_sources` is reviewing final actual recipe scope and A/B proof; no shared edits or runner delegation. Next: finish runner, personally review, install701 via explicit691→705→701 ancestry, attest fresh Stoke, validate release/playable and unchanged other25/original2015, then update delivery checklist. No install or closure credit yet; checklist297/ledger147 remains authoritative.
+
+Disk reserve restored by `go clean -cache` after confirming no Go/compiler processes; about1.04GB of regenerable cache reclaimed. No source/game/module-cache deletion. Ledger `.local/cleanup-20261111/inactive-go-compiler-cache.json`. Private705 inactive RAM copy retired only after canonical/runtime inventory and saved screenshot equality; ledger `verified-private705-RAM-game.json`. Canonical705 and all evidence retained. Source705 completed identical files linked without changing bytes/paths/modes; ledger `.local/cleanup-20261105/completed705Nov11-exact-unchanged-file-links-v1.json`. User later reported Pi extended self-test completed without error at9712powered-hours; prior 'no selftest logged' note is superseded. No NAS write needed for this batch.
+
+## User-provided Pi SMART baseline — 2026-11-11T00:37:11.484885+00:00
+
+Machine joe-Vostro-3350; source session01a0592d-fcd5-7262-a637-743a8253d9b4. User supplied Nov11 smartctl output: HGST1TB healthPASSED,0reallocated/pending/offlineuncorrectable/Gsense,27C,9708poweredhours. LatestloggedATAerror at5828poweredhours predatescurrent by3880poweredhours; CRC37baseline, not assumednewimpacterrors. Identitystructurechecksumwarning present, causeunconfirmed; USBbridge/reporting issue possible inference only, notfilecorruptionverdict. No selftestslogged. Userneedsprivilegedextendedselftest estimated224min thenreadlog; no test remotelyexecuted/claimed. Structuredbaseline .local/pi-health-20261111/user-smart-baseline.json. RCstatus/releasebindings unchanged.
+
+## Read-only Pi drop check and RC status — 2026-11-09T11:04:53.693195+00:00
+
+Machine joe-Vostro-3350; source session01a0592d-fcd5-7262-a637-743a8253d9b4. User asked remaining RC scope and whether Pi/HDD damaged after falling. No game/build/release changes. Latest authoritative checklist remains297/ledger147 (Nov5):26playable, RCmilestoneOPEN; Source81=70delivered/11pending, kits287delivered/32noops/5source-invalid/3untreated; original2809=167disposed/2642unclassified candidates, NOT2642confirmedbugs. No further verified release progress claimed.
+
+Pi192.168.1.133 reachable; actualHGST1TB /dev/sda1 mounted/srv/hdd,641GiBused229GiBfree, Sambaactive. Prior unmountedNAS state superseded. Currentboot kernel filtering found no diskI/O/media/ext4/USBdiskdisconnect faults; vcgencmdthrottled0x0. TwoOct28archivedLEDGERfiles match retainedSHA256s; this is NOT verificationofallbackupcontent. SMART read failedpermissions; sudo requirespassword, UDisksdoesnotexposeATAhealth. No fullmediacheck/repairs/writes/self-test performed. Cannotruleoutimpactdamage. Evidence .local/pi-health-20261109/read-only-checks.txt andsummary.json. Needed nextdiagnostic userinteractive ssh sudo smartctl -x -d sat /dev/sda; no requesttosharepassword. Engineeringnextaction remainsprevious701SOURCEintegration plus2020/2024/countrychecklist; noRCclosurecreditfromNAScheck.
+
 ## 2022 Casemiro genuine runtime passed; 701 exact native preflight complete — 2026-11-05T21:49:23.787224+00:00
 
 Machine joe-Vostro-3350; source session01a0592d-fcd5-7262-a637-743a8253d9b4. Actual2020r708 installed+verified; actual2022 remains691. Authoritative checklist297/ledger147 counts unchanged. Commitafb524b deliversactual2020; a7faece guardedexistingmembershipcore+tests, both pushed. Allunrelateddirtydocs/experiments/upstreamartifactdeletions preserved.
@@ -17943,3 +17969,48 @@ source; original EXE hash rechecked unchanged. Boundary/diff checks passed.
 REA was not needed or installed. Next port milestone: connect native player
 loading to this routine and reproduce an actual squad's tactics grid; a Mac
 or ARM64 replay can use the retained bundle without the original executable.
+
+
+## Source reconstruction feasibility and compiler audit — 2026-11-11 00:45 UTC
+
+Machine `joe-Vostro-3350`; source session `01a034fe-e683-7390-8e54-e1fce10b5446`.
+Read-only analysis of pinned MANAGPRE.EXE01b845f7...3158, with metadata receipt
+`.local/research-probes/pm99-source-feasibility-20261111/compiler-audit-v1.json`.
+PE32/i386, linker5.10; Rich Linker510/build7303 and Cvtres500/build1668;
+MFC42/MSVCRT and __CxxFrameHandler. Strong Visual C++5/VS97-era evidence;
+SP3 tool fingerprints present, exact cl.exe/flags and all object origins NOT
+proved. No COFF symbols/debug directory or ASCII PDB/source paths found.
+About2.89MiB .text is an inventory bound, not recovered source/function count.
+
+Existing Nov5 native role reports inspected, not rerun:282278 comparisons pass
+on Intel and actual PiARM32; AppleSilicon/ARM64 and whole game still unverified.
+Recommendation: bounded club/player loader+tactics-grid native screen, then
+headless season progression; defer database limit changes until faithful logic
+works. Reuse current season authoring as input; legacy import/export remains
+separate from a port's simpler runtime model. Full game estimate remains broad,
+many months to years; one pure routine cannot calibrate match/AI/save recovery.
+No implementation or release priority changes. No branches, game files,
+submodule pointers, installations or Pi touched; other workers' edits preserved.
+
+
+## Windows reconstruction repository and resume session — 2026-11-11 01:02 UTC
+
+Machine `joe-Vostro-3350`; source session `01a034fe-e683-7390-8e54-e1fce10b5446`.
+User requested separate repository setup and Hello World Codex Remote session.
+Created `upstream/pm99-reconstruction` on main with AGENTS.md, README.md,
+CURRENT_WORK.md, HANDOVER.txt and ignore rules; local Git initialized and declared
+as submodule with local absolute URL, Git metadata absorbed. No GitHub remote,
+publication or parent commit. Only new .gitmodules declaration/gitlink staged;
+existing dirty work preserved. Project objective is reconstructed Windows/x86
+source build; native port/database redesign deferred. No reconstruction started.
+
+Resume `PM99 Reconstruction — Hello World`, session
+`01a1c820-5df0-7aa3-a41a-045ca36078e6` on Vostro. Completed bootstrap turn read
+instructions and confirmed cwd/objective; verified default interactive thread/list
+visibility. Remote daemon reports connected; phone UI not personally inspected.
+Evidence `upstream/pm99-reconstruction/.local/bootstrap/remote-session.json`.
+Earlier exec bootstrap01a1c81e-28b7-7470-80ab-33c2081bb1cf redundant; use named
+interactive session only. Normal boundary/diff checks pass; strict local check
+still flags pre-existing upstream/.local/, untouched. Next: user resumes session
+and supplies continuation prompt to establish Windows toolchain and verified
+compiled-role replacement in an isolated game with one assigned runner lane.
