@@ -49,3 +49,12 @@ def test_reject_unapproved_source_or_changed_parent_inputs(data,mutation):
     elif mutation=='english':eng=copy.deepcopy(eng);eng['players'][0]['name']='Changed'
     elif mutation=='eq':eq=bytes([eq[0]^1])+eq[1:]
     with pytest.raises(ValueError):t.compose(base,main,eng,eq,jug,doc)
+
+def test_swapped_provider_to_native_identity_crosswalk_is_rejected(data, monkeypatch):
+    # Both people and annual DOBs remain valid; only their provider-ID pairing
+    # is wrong. The original report must expose that swap before any write.
+    bonham, sparrow = t.PEOPLE['209291'], t.PEOPLE['621365']
+    monkeypatch.setitem(t.PEOPLE, '209291', sparrow)
+    monkeypatch.setitem(t.PEOPLE, '621365', bonham)
+    with pytest.raises(ValueError, match='fixture provider-person'):
+        t.compose(*data)
