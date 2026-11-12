@@ -2135,6 +2135,8 @@ def compile_package_to_tree(
         woking.reject_factory_recipe(package)
         from scripts import season_quality_only_delta_v1 as quality_only
         quality_only.reject_factory_recipe(package)
+        from scripts import season_editorial_amendment_delta_v1 as editorial_amendments
+        editorial_amendments.reject_factory_recipe(package)
         from scripts import season_exact_fifa_role_delta_v1 as exact_roles
         exact_roles.reject_factory_recipe(package)
         from scripts import season_donor_keeper_role_delta_v1 as donor_roles

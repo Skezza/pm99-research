@@ -434,6 +434,9 @@ def reconstruction(previous, release_id):
     from scripts import season_quality_only_delta_v1 as quality_only
     if plan.get('schema') == quality_only.SCHEMA:
         return quality_only.reconstruction(previous, release_id)
+    from scripts import season_editorial_amendment_delta_v1 as editorial_amendments
+    if plan.get('schema') == editorial_amendments.SCHEMA:
+        return editorial_amendments.reconstruction(previous, release_id)
     from scripts import season_city_2024_opening_exchange_v1 as city
     if plan.get('schema') == city.SCHEMA:
         return city.reconstruction(previous, release_id)

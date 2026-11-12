@@ -718,6 +718,9 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         from scripts import season_quality_only_delta_v1 as quality_only
         if assignment_plan.get('schema') == quality_only.SCHEMA:
             assignments = quality_only
+        from scripts import season_editorial_amendment_delta_v1 as editorial_amendments
+        if assignment_plan.get('schema') == editorial_amendments.SCHEMA:
+            assignments = editorial_amendments
         from scripts import season_exact_fifa_role_delta_v1 as exact_roles
         if assignment_plan.get('schema') == exact_roles.SCHEMA:
             assignments = exact_roles
@@ -779,6 +782,10 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         patched, patched_eq = assignments.apply(original, original_eq, assignment_plan)
         if assignments.apply(patched, patched_eq, assignment_plan) != (patched, patched_eq):
             raise ValueError('reserve assignment pruning is not idempotent')
+        if assignment_plan.get('schema') == editorial_amendments.SCHEMA:
+            patched_ent = editorial_amendments.apply_ent(original_ent, assignment_plan)
+            if editorial_amendments.apply_ent(patched_ent, assignment_plan) != patched_ent:
+                raise ValueError('editorial manager-name delta is not idempotent')
         if assignment_plan.get('schema') == authored_country.SCHEMA:
             patched_ent = authored_country.apply_ent(original_ent, assignment_plan)
             original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
@@ -1235,7 +1242,7 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             fixed_duplicate_case_ids=(['2c01311314826e92f838732f4049bdbb8a1f3f3dab539de196dd43de8bfed553']
                 if assignment_plan['schema'] == stevenage.SCHEMA else assignment_plan['fixed_duplicate_case_ids']),
             players_written=len(assignment_plan['orders']), allowed_write=assignment_plan['scope'])
-    elif assignment_plan is not None and assignment_plan.get('schema') in (owned_roster.SCHEMA, source_changes.SCHEMA, quality_only.SCHEMA, exact_roles.SCHEMA, conservative_roles.SCHEMA, english_roles.SCHEMA, donor_roles.SCHEMA, primary_positions.SCHEMA, alias_primary_positions.SCHEMA, country_policy.SCHEMA, resolved_country.SCHEMA, shirt_numbers.SCHEMA, commons_number.SCHEMA, alias_countries.SCHEMA, birthday_disagreements.SCHEMA, maccabi_roles.SCHEMA, annual_roles.SCHEMA, barrow_winger_roles.SCHEMA, horne_facts.SCHEMA):
+    elif assignment_plan is not None and assignment_plan.get('schema') in (owned_roster.SCHEMA, source_changes.SCHEMA, quality_only.SCHEMA, editorial_amendments.SCHEMA, exact_roles.SCHEMA, conservative_roles.SCHEMA, english_roles.SCHEMA, donor_roles.SCHEMA, primary_positions.SCHEMA, alias_primary_positions.SCHEMA, country_policy.SCHEMA, resolved_country.SCHEMA, shirt_numbers.SCHEMA, commons_number.SCHEMA, alias_countries.SCHEMA, birthday_disagreements.SCHEMA, maccabi_roles.SCHEMA, annual_roles.SCHEMA, barrow_winger_roles.SCHEMA, horne_facts.SCHEMA):
         receipt.update(compilation_mode=assignments.MODE,
             original_profile_assignment_plan_sha256=registry.sha256_file(workspace / assignments.filename(assignment_plan)),
             removed_target_roster_links=[],fixed_duplicate_case_ids=[],

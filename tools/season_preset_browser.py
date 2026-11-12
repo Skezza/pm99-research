@@ -19,6 +19,7 @@ import json
 import mimetypes
 import re
 import sys
+import threading
 import webbrowser
 from dataclasses import dataclass
 from http import HTTPStatus
@@ -35,6 +36,8 @@ if str(ROOT) not in sys.path:
 from tools import season_manifest_amendments as amendments
 from tools import season_preset_spreadsheet as spreadsheet
 from scripts import season_release_registry_v1 as release_registry
+from scripts import season_editorial_field_policy_v1 as field_policy
+from scripts import season_amendment_candidates_v1 as candidate_registry
 
 
 DEFAULT_SEASONS_ROOT = ROOT / "seasons"
@@ -891,8 +894,20 @@ class PresetCatalog:
         overlays_root: Path = DEFAULT_OVERLAYS_ROOT,
         amendment_output_root: Path = DEFAULT_AMENDMENT_OUTPUT_ROOT,
         preferred_catalog_path: Path | None = None,
+        amendment_builder: Any = None,
+        candidates_root: Path | None = None,
+        minimum_free_bytes: int | None = None,
     ) -> None:
         self.seasons_root = seasons_root.expanduser().resolve()
+        # One build at a time; the builder is injectable so the workbook can be tested without a game tree.
+        self._amendment_builder = amendment_builder
+        self._candidates_root = candidates_root
+        if minimum_free_bytes is not None:
+            from scripts import season_disk_budget_v1 as disk_budget
+            disk_budget.validate_reserve(minimum_free_bytes)      # the shared hard floor (>= 6 GiB), never bypassed
+        self._minimum_free_bytes = minimum_free_bytes
+        self._build_lock = threading.Lock()
+        self.base_overrides: dict[str, str] = {}
         self.amendment_output_root = amendment_output_root.expanduser().resolve()
         self.entries = discover_presets(
             self.seasons_root, include_source_captures=include_source_captures
@@ -944,6 +959,7 @@ class PresetCatalog:
             "playable": False,
             "release_status": "V1 starts but is not historically release-ready; V2 correction is required",
         }
+        self._preferred_catalog_path = preferred_catalog_path or release_registry.CATALOG_PATH
         if preferred_catalog_path is not None:
             for season, presets in discover_preferred_release_recipe_presets(preferred_catalog_path).items():
                 self.entries.setdefault(season, []).extend(presets)
@@ -1040,6 +1056,17 @@ class PresetCatalog:
         replacement: Any, reason: str, evidence: str | None,
     ) -> dict[str, Any]:
         item, source, actual_sha256 = self._editable_json_manifest(season, manifest_id)
+        if item.kind == "preferred-release-recipe":
+            # This recipe feeds the build route: never save an edit that cannot reach the game.
+            unsupported = field_policy.reason_unsupported(json_pointer)
+            if unsupported is None:
+                kind, index, field = field_policy.classify(json_pointer)
+                records = source.get("managers" if kind == "manager-name" else "players", [])
+                unsupported = field_policy.record_reason(
+                    kind, records[index] if index < len(records) else None, field,
+                    replacement if kind == "player-fact" else None)
+            if unsupported is not None:
+                raise amendments.AmendmentError(unsupported)
         expected = amendments.value_at(source, json_pointer)
         document = self.amendments(season)
         # A spreadsheet cell may be corrected again before the reviewer
@@ -1185,6 +1212,7 @@ class PresetCatalog:
                 source, tab=tab, query=query, offset=offset, limit=limit,
                 kit_assets=self._kit_links(season),
                 portrait_assets=self._portrait_links(season),
+                build_bound=item.kind == "preferred-release-recipe",
             ),
         }
 
@@ -1230,6 +1258,85 @@ class PresetCatalog:
             resolve_manifest=resolve_manifest,
             output_root=self.amendment_output_root,
         )
+
+    # --- edit -> build -> play bridge -------------------------------------------------
+
+    def _preferred_preset_index(self, season: str) -> int:
+        for index, item in enumerate(self.entries.get(season, [])):
+            if item.kind == "preferred-release-recipe":
+                return index
+        raise KeyError("season has no registered release recipe to build from")
+
+    def candidates(self, season: str) -> list[dict[str, Any]]:
+        if season not in self.entries or not SEASON_NAME.fullmatch(season):
+            raise KeyError("season is not in the local catalog")
+        return candidate_registry.list_candidates(season, self._candidates_root)
+
+    def base_release(self, season: str) -> dict[str, Any]:
+        item = self.entries[self._known(season)][self._preferred_preset_index(season)]
+        return {
+            "release_id": Path(item.id).parts[1],
+            "is_preferred_release": season not in self.base_overrides,
+            "candidates": self.candidates(season),
+        }
+
+    def _known(self, season: str) -> str:
+        if season not in self.entries or not SEASON_NAME.fullmatch(season):
+            raise KeyError("season is not in the local catalog")
+        return season
+
+    def select_base(self, *, season: str, release_id: str | None) -> dict[str, Any]:
+        """Edit the preferred release (None) or a built candidate, so edits chain."""
+        self._known(season)
+        index = self._preferred_preset_index(season)
+        if release_id is None:
+            binding = release_registry.load_catalog(self._preferred_catalog_path)[season]
+            release = release_registry.load_registered_release(season, binding["release_id"])
+            self.base_overrides.pop(season, None)
+        else:
+            if release_id not in {row["release_id"] for row in self.candidates(season)}:
+                raise amendments.AmendmentError("choose a candidate built by this workbook")
+            release = release_registry.load_registered_release(season, release_id)
+            self.base_overrides[season] = release_id
+        path = _safe_regular_file(release.package_path, root=ROOT)
+        if path is None:
+            raise FileNotFoundError("release recipe is unavailable")
+        preset = _preset_from_file(
+            season=season, relative_path=f"preferred-release/{release.release_id}/season-package.json",
+            kind="preferred-release-recipe",
+            role="Current preferred registered recipe (amendment sidecar)" if release_id is None
+            else "Edited candidate recipe (base for the next edit)",
+            path=path, title=f"{'Preferred' if release_id is None else 'Candidate'} release recipe · {release.release_id}",
+        )
+        old = self.entries[season][index]
+        self.entries[season][index] = preset
+        self._by_key.pop((season, old.id), None)
+        self._by_key[(season, preset.id)] = preset
+        self._spreadsheet_sources.pop((season, old.id), None)
+        return self.base_release(season)
+
+    def build_amendments(self, *, season: str, dry_run: bool) -> dict[str, Any]:
+        """Check (dry run) or build the staged edits as a new, unpreferred playable candidate."""
+        self._known(season)
+        document = self.amendments(season)
+        if not document["changes"]:
+            raise amendments.AmendmentError("stage at least one cell edit first")
+        if self._amendment_builder is None:
+            from scripts import pm99_season_amend_v1 as amend_cli
+            builder = amend_cli.apply_amendments
+        else:
+            builder = self._amendment_builder
+        if not self._build_lock.acquire(blocking=False):
+            raise amendments.AmendmentError("another build is already running; wait for it to finish")
+        try:
+            options = {} if self._minimum_free_bytes is None else {"minimum_free_bytes": self._minimum_free_bytes}
+            return builder(
+                season, document=document, origin="workbook-staged-working-json",
+                parent_id=self.base_overrides.get(season), dry_run=dry_run,
+                seasons_root=self.seasons_root, **options,
+            )
+        finally:
+            self._build_lock.release()
 
     def read(self, season: str, preset_id: str) -> dict[str, Any]:
         item = self._by_key.get((season, preset_id))
@@ -1435,6 +1542,13 @@ def make_handler(catalog: PresetCatalog) -> type[BaseHTTPRequestHandler]:
                 except ValueError as exc:
                     self._send_json(HTTPStatus.CONFLICT, {"error": str(exc)})
                 return
+            if parsed.path == "/api/amendments/base":
+                query = parse_qs(parsed.query)
+                try:
+                    self._send_json(HTTPStatus.OK, {"base": catalog.base_release(query.get("season", [""])[0])})
+                except (KeyError, FileNotFoundError):
+                    self._send_json(HTTPStatus.NOT_FOUND, {"error": "season has no registered release recipe"})
+                return
             if parsed.path == "/api/amendments":
                 query = parse_qs(parsed.query)
                 try:
@@ -1482,6 +1596,25 @@ def make_handler(catalog: PresetCatalog) -> type[BaseHTTPRequestHandler]:
                         "amendments": catalog.remove_amendment(season=season, change_id=change_id)
                     })
                     return
+                if parsed.path in ("/api/amendments/build", "/api/amendments/check"):
+                    try:
+                        report = catalog.build_amendments(season=season, dry_run=parsed.path.endswith("/check"))
+                    except Exception as exc:  # AmendmentBuildError carries status/details; other errors map below
+                        status = getattr(exc, "status", None)
+                        if status is None:
+                            raise
+                        self._send_json(HTTPStatus.CONFLICT, {
+                            "error": str(exc), "status": status, "details": getattr(exc, "details", {}),
+                        })
+                        return
+                    self._send_json(HTTPStatus.OK, {"report": report, "base": catalog.base_release(season)})
+                    return
+                if parsed.path == "/api/amendments/base":
+                    release_id = request.get("release_id")
+                    if release_id is not None and not isinstance(release_id, str):
+                        raise ValueError("release_id must be a string or null")
+                    self._send_json(HTTPStatus.OK, {"base": catalog.select_base(season=season, release_id=release_id)})
+                    return
                 if parsed.path == "/api/amendments/materialise":
                     self._send_json(HTTPStatus.OK, {
                         "receipt": catalog.materialise_amendments(season=season)
@@ -1527,6 +1660,10 @@ def parse_args() -> argparse.Namespace:
         "--portrait-render-root", type=Path, default=DEFAULT_PORTRAIT_RENDER_ROOT,
         help="Hash-bound player portrait BMP cache to link from the spreadsheet",
     )
+    parser.add_argument(
+        "--minimum-free-bytes", type=int, default=None,
+        help="Free-disk reserve the Build button must keep (default 8 GiB; the build guard never allows under 6 GiB)",
+    )
     parser.add_argument("--host", default="127.0.0.1", help="Loopback host only (default: 127.0.0.1)")
     parser.add_argument("--port", type=int, default=0, help="Port; 0 asks the OS for a free port")
     parser.add_argument("--include-source-captures", action="store_true", help="Include raw sources/ JSON files")
@@ -1550,6 +1687,7 @@ def main() -> int:
             runtime_candidates_root=args.runtime_candidates_root,
             kit_render_root=args.kit_render_root,
             portrait_render_root=args.portrait_render_root,
+            minimum_free_bytes=args.minimum_free_bytes,
         )
     except ValueError as exc:
         raise SystemExit(f"preset browser error: {exc}") from exc

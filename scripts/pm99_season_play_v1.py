@@ -109,16 +109,19 @@ def main() -> int:
     parser.add_argument("--check", action="store_true", help="validate the registered release without launching")
     parser.add_argument("--level", choices=("playable", "release"), default="release")
     parser.add_argument("--print-command", action="store_true")
+    parser.add_argument("--release-id", help="validate/launch this registered (e.g. edited candidate) release instead of the preferred one")
     parser.add_argument("--original", action="store_true",
                         help="play the retained original 2015/16 in a separate writable session")
     args = parser.parse_args()
     if args.original and args.season != '2015-16':
         parser.error('--original is only available for 2015-16')
+    if args.release_id and (args.original or args.season == "all"):
+        parser.error("--release-id needs one season and cannot be combined with --original")
     seasons = registry.supported_seasons() if args.season == "all" else [args.season]
     if any(not re.fullmatch(r"20\d{2}-\d{2}", season) for season in seasons):
         parser.error("season must be YYYY-YY or all")
     check_level = args.level if args.check or args.season == "all" else "playable"
-    if not args.original and not args.check and not args.print_command and args.season != "all":
+    if not args.original and not args.release_id and not args.check and not args.print_command and args.season != "all":
         from scripts.season_visual_patch_v1 import ensure_playable_patch
         try:
             patch_result = ensure_playable_patch(args.season)
@@ -133,6 +136,9 @@ def main() -> int:
         result = registry.validate_preferred_release(args.season, level='playable', release_id=ORIGINAL_RELEASE)
         pipeline.assert_tree_matches_inventory(release.game_path, pipeline.read_json_file(release.inventory_path))
         results = [result]
+    elif args.release_id:
+        # A candidate is validated at the requested level; it never becomes preferred here.
+        results = [registry.validate_preferred_release(args.season, level=check_level, release_id=args.release_id)]
     else:
         results = [validate(season, level=check_level) for season in sorted(seasons)]
     if args.check or args.season == "all":
@@ -144,7 +150,12 @@ def main() -> int:
     if args.original and args.print_command:
         print(shlex.join([str(ROOT / 'pm99-season'), 'play', args.season, '--original']))
         return 0
-    game = (original_session_game(release) if args.original else game_path(args.season)).resolve()
+    if args.original:
+        game = original_session_game(release).resolve()
+    elif args.release_id:
+        game = registry.load_registered_release(args.season, args.release_id).game_path.resolve()
+    else:
+        game = game_path(args.season).resolve()
     command = ["wine", "./MANAGPRE.EXE"]
     if args.print_command:
         print(f"cd {shlex.quote(str(game))} && {shlex.join(command)}")

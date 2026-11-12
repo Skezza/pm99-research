@@ -291,8 +291,13 @@ def tab_payload(
     source: Mapping[str, Any], *, tab: str, query: str = "", offset: int = 0, limit: int = 200,
     kit_assets: Mapping[int, Sequence[Mapping[str, str]]] | None = None,
     portrait_assets: Mapping[str, Mapping[str, str]] | None = None,
+    build_bound: bool = False,
 ) -> dict[str, Any]:
-    """Return one page of the requested safe tab model."""
+    """Return one page of the requested safe tab model.
+
+    ``build_bound`` marks the model as the registered release recipe that the build route consumes:
+    cells the route cannot carry into the game become read-only with an explanatory ``build_note``.
+    """
 
     if tab not in TAB_ORDER:
         raise ValueError("unknown spreadsheet tab")
@@ -314,6 +319,22 @@ def tab_payload(
     total = len(rows)
     start = max(offset, 0)
     page = rows[start:start + max(1, min(limit, 500))]
+    if build_bound:
+        from scripts import season_editorial_field_policy_v1 as field_policy
+        tables = {"players": _rows(source.get("players")), "managers": _rows(source.get("managers"))}
+        for row in page:
+            for cell in row["cells"].values():
+                reason = None
+                if cell.get("pointer"):
+                    reason = field_policy.reason_unsupported(cell["pointer"])
+                    if reason is None:
+                        # Record-specific: e.g. goalkeepers, preserved managers, compact (dd6360) shirt/position.
+                        kind, index, field = field_policy.classify(cell["pointer"])
+                        records = tables["managers" if kind == "manager-name" else "players"]
+                        reason = field_policy.record_reason(kind, records[index] if index < len(records) else None, field)
+                if reason is not None:
+                    cell["editable"] = False
+                    cell["build_note"] = reason
     return {"tab": tab, "columns": columns, "rows": page, "total": total, "offset": start, "limit": limit}
 
 
