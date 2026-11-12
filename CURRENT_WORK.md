@@ -1,3 +1,19 @@
+## Reusable generator planning review complete — 2026-11-12T21:10:39.373543+00:00
+
+Machine: joe-Vostro-3350. Source Codex session: 01a0592d-fcd5-7262-a637-743a8253d9b4.
+
+User requested a NEW actual Claude Sonnet 5.5 session in planning mode to specify a reusable season recipe generator that leaves a small correction list. Actual session `69280f98-ad91-48e3-8b7c-3796459cfd70`; init and assistant models verified `claude-sonnet-5-5`, permission mode `plan`, only Read/Glob/Grep (76 calls across initial plan and two lead-challenged revisions). No worker execution, implementation, build, runner, publication or game changes.
+
+Reviewed proposal: `docs/REUSABLE_SEASON_RECIPE_GENERATOR_PLAN_2026-11-12.md`. Raw prompts, three responses/events and provenance: `.local/claude-generator-plan-20261112/`; `initial-plan.md` and `revised-plan.md` are superseded; `final-plan.md` is the unedited final Claude response. The tracked proposal explicitly includes lead corrections: full543slot denominator, compact-format field capabilities, one global roster cutoff, baseline exceptions counted within the same gap ceiling, and all Native slots accounted for. Lead verified451foreign carriers are allmode1 plus92Englishslots. The old211authored foreign clubs leaves240unauthored but does NOT establish that240were outside collector scope.
+
+Proposed implementation has three deliverables: (D1) bounded source/club-crosswalk preflight using all543slots, including below-top-flight Native clubs; (D2) reusable dated ownership assembly before carrier assignment, stable IDs/slots, pinned ratings and persistent identity-keyed overrides; (D3) full1990/91 recipe English+foreign, owner corrections through existing workbook extensions, clean locked offline replay and Native/runtime proof. Suggested minor-gap targets are at most20people and10clubs requiring mandatory action, strict92EnglishXI/manager coverage, optionalfacts/photos excluded from that action queue. These are PROPOSED product targets, not observed accuracy or a guarantee. A failed target retains a useful partialrecipe but doesnotclose the milestone.
+
+Important plan corrections: no nearest/earliest-match owner guess, no treating missing transfer exits as proof, no pooling hundreds of weak owners into a success metric, no scope shrink to already-captured clubs, no rerating on unrelated edits, no inherited prior-person fine roles/faces/nationality, and no new per-person/club/seasonmodules. 31August is a proposed common cutoff, not an exact previously approved date; existing2020policy and authorisedexceptions must be imported, while country source-calendar rules stay separate. Date precision may be intervals if all possible dates establish the same owner.
+
+Current work was planning ONLY; no `generate`/`build-generated` command has been implemented. Recommended next authorised implementation should cover D1–D3 as one bounded milestone, not stop after a new framework or a gap report; source insufficiency is a genuine blocker to report, not a successful generator. Preserve existing26preferred games andoriginal2015backup; do not regenerate them. Existing edit-to-game bridge at5ce9f50/upstream5fc3ef9 remains delivered, with its documented limits (including2015Englishsidecar and relational edits). HistoricalRCchecklist298 remains unchanged/open. No overall completion percentage claimed.
+
+Normal repository boundary and Markdown whitespace checks pass for this documentation-only task. Unrelated staged reconstruction changes and existing dirty docs/experiments/upstream artifact deletions remain untouched.
+
 ## Spreadsheet-to-game bridge delivered and independently QA'd — 2026-11-12T19:19:02.818806+00:00
 
 Machine: joe-Vostro-3350. Source session: 01a0592d-fcd5-7262-a637-743a8253d9b4.
