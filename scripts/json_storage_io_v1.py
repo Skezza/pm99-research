@@ -20,8 +20,9 @@ except ImportError:
     from json_storage_policy_v2 import excluded, SKIP_DIRS
 
 ROOT = Path(__file__).resolve().parents[1]
-# Enabled only after the complete consumer audit and regression gate.
-AUTO_ROOTS: set[str] = set()
+# This family passed the compressed browser/build/SOURCE and plain-control gates.
+# Other families require their own concrete canary before automatic activation.
+AUTO_ROOTS: set[str] = {'historical-role-deltas-v1'}
 EXCLUDED_PARTS = {'game', 'games', 'wine-prefix', 'node_modules', '.git'}
 
 
