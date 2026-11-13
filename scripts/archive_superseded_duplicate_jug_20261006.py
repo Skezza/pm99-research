@@ -103,7 +103,7 @@ def run(remove=False,cohort='r23-r31'):
         eligible(path, protected,pattern,filename)
         stat = storage_io.stat_result(path)
         files.append({'path': path.relative_to(ROOT).as_posix(),
-                      'sha256': registry.sha256_file(path), 'size': stat.st_size,
+                      'sha256': storage_io.physical_sha256_file(path), 'size': stat.st_size,
                       'mode': stat.st_mode, 'mtime_ns': stat.st_mtime_ns,
                       'allocated_bytes': stat.st_blocks * 512,
                       'remote_path': remote + '/' + path.relative_to(SOURCE).as_posix()})
@@ -134,7 +134,7 @@ def run(remove=False,cohort='r23-r31'):
     for f in files:
         path = ROOT / f['path']
         eligible(path, protected,pattern,filename)
-        if registry.sha256_file(path) != f['sha256']:
+        if storage_io.physical_sha256_file(path) != f['sha256']:
             raise ValueError('local retired JUG changed during backup')
     result['archive_verified'] = True
     result['verification'] = 'remote SHA256, fresh local SHA256, current/active-base guards'
@@ -145,7 +145,7 @@ def run(remove=False,cohort='r23-r31'):
     for f in files:
         path = ROOT / f['path']
         eligible(path, protected_files(active_plan_roots,filename),pattern,filename)
-        if registry.sha256_file(path) != f['sha256']:
+        if storage_io.physical_sha256_file(path) != f['sha256']:
             raise ValueError('local retired JUG changed before removal')
         storage_io.unlink(path)
         f['local_removed'] = True

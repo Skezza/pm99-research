@@ -13,7 +13,7 @@ from scripts.build_savio_bobb_alias_reserve_20261011 import retained
 def main():
     folder=registry.ROOT/'.local/historical-transfer-review-20261004-r1'
     for path in storage_io.glob(folder, '*', recursive=True):
-        if path.is_symlink() or storage_io.is_file(path) and path.suffix not in ('.json','.csv'):
+        if path.is_symlink() or storage_io.is_file(path) and path.suffix not in ('.json','.csv') and not path.name.endswith('.json.zst'):
             raise ValueError('cold transfer report collection contains unexpected raw/source/binary files')
     archive.ROOT=registry.ROOT/'.local/cleanup-20261017/cold-transfer-reviews-to-pi'
     archive.SOURCE=registry.ROOT/'.local'

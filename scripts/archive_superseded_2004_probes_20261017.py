@@ -85,7 +85,7 @@ def main():
                 raise ValueError('probe archive refuses special non-directory files')
     if not members:
         raise ValueError('no original probe files to archive')
-    expected={name:dict(sha256=registry.sha256_file(path),size=storage_io.size(path)) for path,name in members}
+    expected={name:dict(sha256=storage_io.physical_sha256_file(path),size=storage_io.size(path)) for path,name in members}
     links=Counter((storage_io.stat_result(p).st_dev,storage_io.stat_result(p).st_ino) for p,_ in members)
     allocated={}
     for path,_ in members:
@@ -116,7 +116,7 @@ def main():
     checked=json.loads(ssh('python3 -c '+shlex.quote(code)+' '+shlex.quote(REMOTE),input=json.dumps(expected)))
     retained(ROOT/'pi-member-verification.json',dict(checked,host=HOST,volume_uuid=UUID,archive_path=REMOTE))
     for path,name in members:
-        if storage_io.size(path)!=expected[name]['size'] or registry.sha256_file(path)!=expected[name]['sha256']:
+        if storage_io.size(path)!=expected[name]['size'] or storage_io.physical_sha256_file(path)!=expected[name]['sha256']:
             raise ValueError('probe source changed during transfer; do not remove it')
     no_registered_references()
     if registry.sha256_file(registry.CATALOG_PATH)!=catalog:

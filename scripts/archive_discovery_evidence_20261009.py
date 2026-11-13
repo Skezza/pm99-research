@@ -47,7 +47,7 @@ def inventory(root,paths):
             raise ValueError('Archive input is missing or symlinked')
         relative=path.relative_to(root).as_posix()
         result.append({'path':relative,'size':storage_io.size(path),
-                       'sha256':registry.sha256_file(path)})
+                       'sha256':storage_io.physical_sha256_file(path)})
     return result
 
 

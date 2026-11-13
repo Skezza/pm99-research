@@ -350,7 +350,7 @@ def test_dedup_temporary_never_receives_frame_bytes(tmp_path):
 
 def test_direct_bare_adapter_import_and_policy(tmp_path):
     import subprocess,sys
-    code="import json_storage_io_v1 as a; from pathlib import Path; assert not a.automatic(Path(a.ROOT)/'.local/history/current.json')"
+    code="import json_storage_io_v1 as a; from pathlib import Path; assert not a.automatic(Path(a.ROOT)/'.local/history/current.json'); a.assert_plain_reference_scan([Path('.')])"
     subprocess.run([sys.executable,'-I','-c','import sys; sys.path.insert(0,sys.argv[1]);'+code,str(batches.ROOT/'scripts')],cwd=tmp_path,check=True)
 
 
@@ -386,3 +386,36 @@ def test_parent_reference_extraction_matches_json_keys_not_string_values():
     doc={'release_id':'first','nested':[{'parent_release_id':'second'},{'source_release_id':'first'}],
          'string':'release_id','ignored_number':{'release_id':5},'quote':'a"release_id"b'}
     assert batches._parent_strings(json.dumps(doc,indent=2))=={'first','second'}
+
+
+def test_archive_member_hash_is_physical_and_source_hash_stays_logical(tmp_path):
+    import tarfile
+    from scripts import season_release_registry_v1 as registry
+    p=tmp_path/'input.json';raw=b'{"original":true}\n';storage.write_bytes(p,raw,compressed=True)
+    frame=adapter.physical_path(p);assert frame==storage.compressed_path(p)
+    physical=adapter.physical_sha256_file(frame)
+    assert physical==hashlib.sha256(frame.read_bytes()).hexdigest()
+    assert registry.sha256_file(p)==registry.sha256_file(frame)==hashlib.sha256(raw).hexdigest()
+    assert physical!=registry.sha256_file(p)
+    archive=tmp_path/'archive.tar.gz'
+    with tarfile.open(archive,'w:gz') as bundle:bundle.add(frame,arcname=frame.name,recursive=False)
+    with tarfile.open(archive) as bundle:
+        member=bundle.extractfile(frame.name);assert hashlib.file_digest(member,'sha256').hexdigest()==physical
+
+
+def test_plain_only_retirement_scan_refuses_compressed_references(tmp_path):
+    (tmp_path/'plain.json').write_text('{}');adapter.assert_plain_reference_scan([tmp_path])
+    storage.write_bytes(tmp_path/'retained.json',b'{"source":"must-stay"}',compressed=True)
+    with pytest.raises(storage.StorageError,match='reference scan'):adapter.assert_plain_reference_scan([tmp_path])
+    assert storage.read_json(tmp_path/'retained.json')=={'source':'must-stay'}
+
+
+def test_retirement_reference_scan_decodes_frames_and_spans_chunks(tmp_path,monkeypatch):
+    p=tmp_path/'retained.json';raw=b'{"source":"123456important-source"}'
+    storage.write_bytes(p,raw,compressed=True)
+    monkeypatch.setattr(storage,'CHUNK',8)
+    assert adapter.find_json_reference([tmp_path],'important-source')==p
+    assert adapter.find_json_reference([tmp_path],'absent-source') is None
+    storage.compressed_path(p).write_bytes(b'corrupt frame')
+    with pytest.raises(storage.StorageError):adapter.find_json_reference([tmp_path],'absent-source')
+    with pytest.raises(FileNotFoundError):adapter.find_json_reference([tmp_path/'missing'],'source')

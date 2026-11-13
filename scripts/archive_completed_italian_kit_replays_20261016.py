@@ -63,7 +63,7 @@ def main():
                     for p in storage_io.glob(locator.parent, '*', recursive=True) if storage_io.is_file(p)]
         if any(p.is_symlink() for p, _ in members):
             raise ValueError('symlink recovery metadata')
-        expected = {name: registry.sha256_file(path) for path, name in members}
+        expected = {name: storage_io.physical_sha256_file(path) for path, name in members}
         if len(expected) != len(members):
             raise ValueError('duplicate recovery names')
         destination = REMOTE + '/' + season + '-' + REPLAY + '.tar.gz'
@@ -98,7 +98,7 @@ with p.open('rb') as f:print(hashlib.file_digest(f,'sha256').hexdigest())
         safe_workspace(replay, season)
         prior.no_dependants(REPLAY, locator)
         prior.assert_equal_games(base, replay)
-        if any(registry.sha256_file(p) != expected[n] for p, n in members):
+        if any(storage_io.physical_sha256_file(p) != expected[n] for p, n in members):
             raise ValueError('local metadata changed')
         proof = dict(utc=datetime.now(UTC).isoformat(), machine='joe-Vostro-3350',
             source_session='01a0592d-fcd5-7262-a637-743a8253d9b4', season=season,

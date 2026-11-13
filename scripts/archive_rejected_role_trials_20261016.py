@@ -73,7 +73,7 @@ def run(*, baselines=None, skip_seasons=()):
                 items.append((locator, 'registered-locator.json'))
             if any(p.is_symlink() for p, _ in items):
                 raise ValueError('symlink in rejected role recovery inputs')
-            expected = {name: registry.sha256_file(path) for path, name in items}
+            expected = {name: storage_io.physical_sha256_file(path) for path, name in items}
             destination = REMOTE + '/' + baseline['season'] + '-' + rid[-5:] + '.tar.gz'
             command = 'test ! -e {p} && test ! -e {p}.partial && cat > {p}.partial'.format(p=shlex.quote(destination))
             process = subprocess.Popen(['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=8', HOST, command], stdin=subprocess.PIPE)
@@ -105,7 +105,7 @@ with p.open('rb') as f:print(hashlib.file_digest(f,'sha256').hexdigest())
             if (active(workspace) or registry.sha256_file(registry.CATALOG_PATH) != catalog_sha
                     or ssh('findmnt -n -o UUID --target /srv/hdd').strip() != UUID):
                 raise ValueError('state changed before retirement')
-            if any(registry.sha256_file(path) != expected[name] for path, name in items):
+            if any(storage_io.physical_sha256_file(path) != expected[name] for path, name in items):
                 raise ValueError('local rejected inputs changed during archival')
             proof = dict(utc=datetime.now(UTC).isoformat(), machine='joe-Vostro-3350',
                 source_session='01a0592d-fcd5-7262-a637-743a8253d9b4', season=baseline['season'],

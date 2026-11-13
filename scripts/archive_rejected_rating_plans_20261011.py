@@ -13,8 +13,9 @@ def main():
         plan=pipeline.read_json_file(path)
         if plan['kind']!='season-rating-calibration':raise ValueError('not a rejected v2 plan')
         if registry.load_preferred_release(plan['season']).release_id!=plan['release_id']:raise ValueError('preferred baseline changed')
+    targets=[storage_io.physical_path(path) for path in targets]
     archive=ROOT/'rejected-recovery/rejected26-source-plans.tar.gz'
-    expected={path.relative_to(ROOT).as_posix():registry.sha256_file(path) for path in targets}
+    expected={path.relative_to(ROOT).as_posix():storage_io.physical_sha256_file(path) for path in targets}
     if not storage_io.exists(archive):
         with tarfile.open(archive,'w:gz') as stream:
             for path in targets:stream.add(path,arcname=path.relative_to(ROOT).as_posix(),recursive=False)

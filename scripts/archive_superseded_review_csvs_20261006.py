@@ -64,7 +64,7 @@ def run(delete=False, review_root=None):
                 or storage_io.resolve(path) in references):
             raise ValueError('CSV is not an unreferenced exact superseded export')
         files.append({'path': registry.relative_workspace_path(path),
-            'sha256': registry.sha256_file(path), 'size': storage_io.size(path),
+            'sha256': storage_io.physical_sha256_file(path), 'size': storage_io.size(path),
             'allocated_bytes': storage_io.stat_result(path).st_blocks * 512})
     result = {'schema_version': 'pm99-superseded-review-csv-archive-v1',
         'host': archive.HOST, 'remote': remote, 'files': files,
@@ -85,7 +85,7 @@ def run(delete=False, review_root=None):
         row['remote_path'] = target
     checks = ''.join(row['sha256'] + '  ' + row['remote_path'] + '\n' for row in files)
     archive.remote('sha256sum --check --quiet', stdin=checks)
-    if any(registry.sha256_file(ROOT / row['path']) != row['sha256'] for row in files):
+    if any(storage_io.physical_sha256_file(ROOT / row['path']) != row['sha256'] for row in files):
         raise ValueError('local export changed during transfer')
     result['verification'] = 'remote SHA256 and fresh local SHA256; exact old CSV views only'
     archive.save(receipt, result)

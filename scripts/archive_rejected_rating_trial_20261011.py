@@ -33,7 +33,7 @@ def run():
             if storage_io.exists(jug):files.append(jug)
             items=[(p,p.relative_to(workspace).as_posix()) for p in files]
             if storage_io.exists(locator):items.append((locator,'registered-locator.json'))
-            expected={name:registry.sha256_file(path) for path,name in items}
+            expected={name:storage_io.physical_sha256_file(path) for path,name in items}
             if not storage_io.exists(archive):
                 with tarfile.open(archive,'w:gz',dereference=True) as stream:
                     for path,name in items:stream.add(path,arcname=name,recursive=False)

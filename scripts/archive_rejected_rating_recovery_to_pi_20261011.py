@@ -28,13 +28,14 @@ def run():
     if len(archives)!=20 or any(p.is_symlink() or storage_io.resolve(p.parent)!=storage_io.resolve(RECOVERY) for p in files):
         raise ValueError('unexpected rejected-trial archive scope')
     catalog_before=registry.sha256_file(registry.CATALOG_PATH)
-    expected=[dict(name=p.name,sha256=registry.sha256_file(p),size=storage_io.size(p)) for p in files]
+    expected=[dict(name=p.name,sha256=storage_io.physical_sha256_file(p),size=storage_io.size(p)) for p in files]
     subprocess.run(['rsync','-a','--checksum','--ignore-existing',str(RECOVERY)+'/',HOST+':'+REMOTE+'/'],check=True)
     metadata=[ROOT/n for n in ('rejected-trial-retirement-ledger.json','rejected-source-plan-archive-ledger.json',
         'rejected-recovery-representation-index.json')]
+    metadata=[storage_io.physical_path(p) for p in metadata]
     for p in metadata:
         subprocess.run(['rsync','-a','--checksum','--ignore-existing',str(p),HOST+':'+REMOTE+'/'],check=True)
-    expected.extend(dict(name=p.name,sha256=registry.sha256_file(p),size=storage_io.size(p)) for p in metadata)
+    expected.extend(dict(name=p.name,sha256=storage_io.physical_sha256_file(p),size=storage_io.size(p)) for p in metadata)
     code='''import hashlib,json,pathlib,sys
 root=pathlib.Path(sys.argv[1]);rows=json.load(sys.stdin)
 for row in rows:
@@ -53,7 +54,7 @@ print(json.dumps(dict(verified_files=len(rows),all_exact=True)))
     by_name={r['name']:r for r in expected};removed=[]
     for p in archives:
         row=by_name[p.name]
-        if registry.sha256_file(p)!=row['sha256'] or storage_io.size(p)!=row['size']:
+        if storage_io.physical_sha256_file(p)!=row['sha256'] or storage_io.size(p)!=row['size']:
             raise ValueError('local rejected archive changed before retirement')
     receipt=dict(utc=datetime.now(UTC).isoformat(),source_session='01a0592d-fcd5-7262-a637-743a8253d9b4',
         machine='joe-Vostro-3350',host=HOST,remote_root=REMOTE,mounted_volume_uuid=UUID,

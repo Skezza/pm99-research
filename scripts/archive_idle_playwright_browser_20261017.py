@@ -42,7 +42,7 @@ def manifest():
             raise ValueError('unexpected browser-cache member')
         if storage_io.is_file(path):
             rows[path.relative_to(TARGET.parent).as_posix()] = dict(
-                size=storage_io.size(path), sha256=registry.sha256_file(path))
+                size=storage_io.size(path), sha256=storage_io.physical_sha256_file(path))
     if not rows:
         raise ValueError('browser package has no files')
     return rows

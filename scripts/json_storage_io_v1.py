@@ -6,6 +6,7 @@ callers need container bytes). Use json_storage_v1 for explicit logical I/O.
 from __future__ import annotations
 
 import io
+import hashlib
 import fnmatch
 import os
 import shutil
@@ -13,10 +14,10 @@ from pathlib import Path
 
 try:
     from . import json_storage_v1 as storage
-    from .json_storage_policy_v2 import excluded
+    from .json_storage_policy_v2 import excluded, SKIP_DIRS
 except ImportError:
     import json_storage_v1 as storage
-    from json_storage_policy_v2 import excluded
+    from json_storage_policy_v2 import excluded, SKIP_DIRS
 
 ROOT = Path(__file__).resolve().parents[1]
 # Enabled only after the complete consumer audit and regression gate.
@@ -348,3 +349,49 @@ def replace_file(source,target):
 
 def rename_file(source,target):
     return move(Path(source),Path(target))
+
+
+def physical_path(value):
+    """Select the actual stored name for a logical JSON archive input."""
+    return storage.physical_path(Path(value)) if logical(value) else Path(value)
+
+
+def physical_sha256_file(value):
+    """Hash explicit filesystem/container bytes; never decode a .json.zst member."""
+    with Path(value).open('rb') as handle:
+        return hashlib.file_digest(handle,'sha256').hexdigest()
+
+
+def assert_plain_reference_scan(roots):
+    """Stop a legacy plain-only retirement guard from overlooking stored frames."""
+    for root in map(Path,roots):
+        for directory,dirs,files in os.walk(root,followlinks=False):
+            dirs[:]=[d for d in dirs if d not in SKIP_DIRS]
+            for name in files:
+                if name.endswith('.json.zst'):
+                    raise storage.StorageError('plain-only reference scan would miss compressed JSON: '+str(Path(directory,name))+'; use decoded storage readers before retiring sources')
+
+
+def find_json_reference(roots, needle):
+    """Find a literal reference in decoded metadata, failing closed on read errors."""
+    from contextlib import closing
+    encoded=needle.encode('utf8')
+    if not encoded:raise ValueError('reference needle must not be empty')
+    seen=set()
+    for root in map(Path,roots):
+        if not root.is_dir():raise FileNotFoundError(str(root))
+        def failed(error):raise error
+        for directory,dirs,files in os.walk(root,followlinks=False,onerror=failed):
+            dirs[:]=[d for d in dirs if d not in SKIP_DIRS]
+            for name in files:
+                if not name.endswith(('.json','.json.zst')):continue
+                path=storage.logical_path(Path(directory,name));selected=storage.physical_path(path)
+                meta=selected.stat();key=(meta.st_dev,meta.st_ino,meta.st_size,meta.st_mtime_ns,meta.st_ctime_ns)
+                if key in seen:continue
+                seen.add(key);tail=b''
+                with closing(storage.chunks(path)) as blocks:
+                    for block in blocks:
+                        combined=tail+block
+                        if encoded in combined:return path
+                        tail=combined[-(len(encoded)-1):] if len(encoded)>1 else b''
+    return None

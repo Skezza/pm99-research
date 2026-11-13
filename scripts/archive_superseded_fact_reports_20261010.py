@@ -29,7 +29,7 @@ def run(name=NAME):
         inherited(source)
         check_references(source)
         suffixes = ('.json', '.csv') if name.startswith('historical-roster-audit-') else ('.json',)
-        if any(p.is_symlink() or (storage_io.is_file(p) and p.suffix not in suffixes)
+        if any(p.is_symlink() or (storage_io.is_file(p) and p.suffix not in suffixes and not p.name.endswith('.json.zst'))
                for p in storage_io.glob(source, '*', recursive=True)):
             raise ValueError('superseded report tree contains non-report data or symlinks')
         for loc in storage_io.glob(archive.registry.LOCAL_ROOT / 'releases', '*/*/locator.json'):
@@ -39,11 +39,9 @@ def run(name=NAME):
             'historical-role-deltas-v1', 'season-release-registry-v1',
             'critical-path-repairs-20261007', 'editorial-closeout-20261008',
             'consolidated-audit-20261009')]
-        result = subprocess.run(['rg', '-l', '-F', '--glob', '*.json', name,
-                                 *map(str, roots)], capture_output=True, text=True)
-        if result.returncode != 1:
-            raise ValueError('report reference scan found a reference or failed: ' +
-                             result.stdout[:500] + result.stderr[:500])
+        reference = storage_io.find_json_reference(roots, name)
+        if reference is not None:
+            raise ValueError('report reference scan found a retained reference: '+str(reference))
 
     archive.guard = guard
     try:

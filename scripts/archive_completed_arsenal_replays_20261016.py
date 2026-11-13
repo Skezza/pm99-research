@@ -84,7 +84,7 @@ def main():
                     for p in storage_io.glob(locator.parent, '*', recursive=True) if storage_io.is_file(p)]
         if any(p.is_symlink() for p in storage_io.glob(workspace, '*', recursive=True)) or any(p.is_symlink() for p, _ in members):
             raise ValueError('symlink in replay recovery scope')
-        expected = {name: registry.sha256_file(path) for path, name in members}
+        expected = {name: storage_io.physical_sha256_file(path) for path, name in members}
         if len(expected) != len(members):
             raise ValueError('duplicate recovery member names')
         destination = REMOTE + '/' + rid + '.tar.gz'
@@ -120,7 +120,7 @@ with p.open('rb') as f:print(hashlib.file_digest(f,'sha256').hexdigest())
             raise ValueError('state changed before private replay removal')
         no_dependants(rid, locator)
         assert_equal_games(base, replay)
-        if any(registry.sha256_file(p) != expected[n] for p, n in members):
+        if any(storage_io.physical_sha256_file(p) != expected[n] for p, n in members):
             raise ValueError('local recovery metadata changed during transfer')
         proof = dict(utc=datetime.now(UTC).isoformat(), machine='joe-Vostro-3350',
             source_session='01a0592d-fcd5-7262-a637-743a8253d9b4', season='2021-22',
