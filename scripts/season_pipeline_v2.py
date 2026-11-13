@@ -33,6 +33,11 @@ from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
 from typing import Any
 
+try:
+    from . import json_storage_v1 as json_storage
+except ImportError:  # direct execution from scripts/
+    import json_storage_v1 as json_storage
+
 
 FILE_INVENTORY_SCHEMA = "pm99-file-inventory-v2"
 VERIFIED_BASE_SCHEMA = "pm99-verified-base-v2"
@@ -325,8 +330,8 @@ def external_artifact_descriptor(*, artifact_id: str, path: Path, role: str = "i
         "schema": EXTERNAL_ARTIFACT_SCHEMA,
         "id": _require_identifier(artifact_id, label="artifact_id"),
         "role": role,
-        "sha256": sha256_file(path),
-        "size": path.stat().st_size,
+        "sha256": json_storage.sha256_file(path),
+        "size": json_storage.size(path),
     }
 
 
@@ -371,10 +376,10 @@ def canonical_json_document_descriptor(path: Path, *, document_id: str) -> dict[
     """Read a JSON object and describe its semantic, canonical content."""
 
     path = path.expanduser().resolve()
-    if not path.is_file() or path.is_symlink():
+    if not json_storage.is_file(path) or path.is_symlink():
         raise PipelineError(f"season document must be a regular file: {path}")
     try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload = json_storage.read_json(path)
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise PipelineError(f"season document is not valid UTF-8 JSON: {path}") from exc
     if not isinstance(payload, dict):
@@ -603,19 +608,22 @@ def validate_release_manifest(manifest: Any) -> dict[str, Any]:
     return manifest
 
 
-def write_canonical_json(path: Path, payload: Any) -> str:
+def write_canonical_json(path: Path, payload: Any, *, compressed: bool = False) -> str:
     """Write a new canonical JSON file; never silently overwrite evidence."""
 
     path = path.expanduser()
-    if path.exists() or path.is_symlink():
+    if json_storage.is_file(path) or path.exists() or path.is_symlink():
         raise PipelineError(f"refusing to overwrite existing release evidence: {path}")
     path = path.resolve()
     if not path.parent.is_dir():
         raise PipelineError(f"output parent must already exist: {path.parent}")
     encoded = canonical_json_bytes(payload) + b"\n"
     try:
-        with path.open("xb") as handle:
-            handle.write(encoded)
+        if compressed:
+            json_storage.write_bytes(path, encoded, compressed=True)
+        else:
+            with path.open("xb") as handle:
+                handle.write(encoded)
     except FileExistsError as exc:
         raise PipelineError(f"refusing to overwrite existing release evidence: {path}") from exc
     return sha256_bytes(encoded)
@@ -623,10 +631,10 @@ def write_canonical_json(path: Path, payload: Any) -> str:
 
 def read_json_file(path: Path) -> Any:
     path = path.expanduser().resolve()
-    if not path.is_file() or path.is_symlink():
+    if not json_storage.is_file(path) or path.is_symlink():
         raise PipelineError(f"expected a regular JSON file: {path}")
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return json_storage.read_json(path)
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise PipelineError(f"invalid JSON file: {path}") from exc
 

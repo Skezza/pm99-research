@@ -17,6 +17,7 @@ if str(ROOT) not in sys.path:
 
 from scripts import season_pipeline_v2 as pipeline  # noqa: E402
 from scripts import season_package_v2 as package_v2  # noqa: E402
+from scripts import json_storage_v1 as json_storage  # noqa: E402
 
 
 CATALOG_PATH = ROOT / "data/preferred-season-releases-v1.json"
@@ -42,7 +43,7 @@ class RegistryError(ValueError):
 
 def _read_json(path: Path, *, label: str) -> Any:
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return json_storage.read_json(path)
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise RegistryError(f"cannot read {label}: {path}") from exc
 
@@ -55,7 +56,7 @@ def _workspace_path(value: str, *, label: str, must_exist: bool = True) -> Path:
         path.relative_to(ROOT.resolve())
     except ValueError as exc:
         raise RegistryError(f"{label} escapes the workspace: {value}") from exc
-    if must_exist and not path.exists():
+    if must_exist and not (path.exists() or json_storage.is_file(path)):
         raise RegistryError(f"{label} does not exist: {value}")
     return path
 
@@ -68,11 +69,7 @@ def relative_workspace_path(path: Path) -> str:
 
 
 def sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for block in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(block)
-    return digest.hexdigest()
+    return json_storage.sha256_file(path)
 
 
 def canonical_document_sha256(path: Path) -> str:

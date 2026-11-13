@@ -61,3 +61,18 @@ Commit style in history is concise and imperative (example: `Implement v1 game-r
 - Merge in upstream repos first, then commit PM99RE submodule pointer bumps.
 - PRs should state: scope, touched repo(s), commands run, and evidence (logs/JSON/screenshots for GUI or gate changes).
 - Never include proprietary binaries (`*.FDI`, `*.PKF`, `*.EXE`), backups, or ad hoc exports in commits.
+
+## JSON storage compatibility pilot
+
+Before changing JSON I/O, hashes, copying, discovery, or historical qualification
+inputs, read `docs/JSON_STORAGE_HANDOVER_2026-11-13.md`. Six inactive snapshots
+now use `.json.zst` physical files at the logical `.json` paths recorded in
+`.local/json-compression-pilot-20261113/manifest.json`. Preserve
+`scripts/json_storage_v1.py` and its pipeline/package/registry integration.
+Readers of compressed inputs must use the shared storage APIs; direct Path
+reads/existence checks/globs are not transparently intercepted. Hashes for
+logical JSON inputs still describe original uncompressed bytes; game/tree
+inventories remain physical byte inventories. New output stays plain unless
+compression is explicitly selected. Do not expand migration to registered
+inputs or revert this compatibility work as incidental cleanup. The handover
+contains the exact tested rollback and regression commands.

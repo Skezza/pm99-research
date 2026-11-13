@@ -19,6 +19,11 @@ from collections import OrderedDict
 from pathlib import Path
 from typing import Any, Iterable
 
+try:
+    from . import json_storage_v1 as json_storage
+except ImportError:  # direct execution from scripts/
+    import json_storage_v1 as json_storage
+
 
 SCHEMA_VERSION = "pm99-season-package-v2"
 ROOT = Path(__file__).resolve().parents[1]
@@ -76,20 +81,25 @@ def sha256_bytes(payload: bytes) -> str:
 
 
 def sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+    return json_storage.sha256_file(path)
 
 
-def write_canonical_package(path: Path, package: dict[str, Any]) -> None:
+def write_canonical_package(path: Path, package: dict[str, Any], *, compressed: bool | None = None) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(canonical_json_bytes(package))
+    encoded = canonical_json_bytes(package)
+    # Preserve the established plain writer (including non-POSIX callers).
+    # Opted-in files keep their compressed representation on subsequent writes.
+    is_json = path.name.endswith((".json", ".json.zst"))
+    packed = json_storage.compressed_path(path) if is_json else None
+    has_compressed = packed is not None and (packed.exists() or packed.is_symlink())
+    if compressed is not True and not has_compressed:
+        path.write_bytes(encoded)
+    else:
+        json_storage.write_bytes(path, encoded, compressed=compressed, overwrite=True)
 
 
 def read_canonical_package(path: Path) -> dict[str, Any]:
-    raw = path.read_bytes()
+    raw = json_storage.read_bytes(path)
     try:
         decoded = raw.decode("utf-8")
         package = json.loads(decoded)
@@ -663,7 +673,7 @@ def validate_package(package: dict[str, Any], *, strict: bool = False) -> None:
 
 def _load_json(path: Path) -> Any:
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return json_storage.read_json(path)
     except (OSError, json.JSONDecodeError) as exc:
         raise PackageValidationError(f"cannot read {path}: {exc}") from exc
 

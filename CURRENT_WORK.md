@@ -1,3 +1,21 @@
+## Inline JSON storage pilot complete — 2026-11-13T14:17:15.181187+00:00
+
+Machine: joe-Vostro-3350. Source session: 01a1c97b-1165-7fa0-a47f-2f9698bcb4a1.
+
+User authorised a small compression subset before broader rollout and requested an agent handover. Implemented `scripts/json_storage_v1.py` and explicit hash-locked `scripts/migrate_json_storage_v1.py`, with integrations in pipeline/package/registry JSON readers and logical input descriptors. Plain output remains default; compressed package updates preserve their existing format. Canonical checks, immutable-evidence no-overwrite rules and physical game inventories remain intact. POSIX directory locking, corruption/ambiguity rejection, decoded-size limits, source-change checks and shared-inode refusal are covered by tests.
+
+Converted ONLY six inactive 2005/06 qualification `receipts/season-package.effective.json` snapshots (r2/r3/r4/r5-a/r6-a/r6-b listed in `.local/json-compression-pilot-20261113/manifest.json`). 97.37 MiB original content now occupies about 5.16 MiB; initial allocated release 96,755,712 bytes. Actual inline reads/hashes/descriptors/discovery and a full restore-to-original-bytes/reapply cycle passed. Six snapshots have identical original bytes; no whole-estate compression estimate is inferred. No preferred/current registered input or game was migrated.
+
+Validation: 73 passed in 3.99s; workbook/amendment regression: 69 passed / 1 scenario-dependent skip. All 26 preferred release validations pass; original 2015 full inventory/playable validation passes. Boundary and diff whitespace checks pass. Evidence `.local/json-compression-pilot-20261113/completed.json` and sibling logs. Handover/pasteable agent prompt `docs/JSON_STORAGE_HANDOVER_2026-11-13.md`, linked from AGENTS.md. Next bounded rollout must audit direct Path/hash/existence/discovery/copy consumers in one active workbook→build/replay route before migrating its inputs. Broad compression is NOT implemented; preserve these adapters while continuing other work. Unrelated staged reconstruction and dirty docs/experiments/submodules remain untouched.
+
+## Storage cleanup complete — 2026-11-12T23:54:43.539954+00:00
+
+Machine: joe-Vostro-3350. Source session: 01a1c97b-1165-7fa0-a47f-2f9698bcb4a1.
+
+User authorised removal of the identified duplicate screenshot storage and regenerable caches. Replaced 9,844 byte-identical historical PNG copies under `upstream/pm99-runner/docs/artifacts/pm99_runner/` with same-filesystem hard links. Independently verified all 14,369 original screenshot paths, byte hashes, sizes and access modes after replacement. Screenshot allocation released 2,064,023,552 bytes. Removed only standard Python/test caches and `.local/qa-browser-20261112/node_modules` (40,427,520 allocated file bytes); package manifests and lockfile retained. Browser QA dependencies can be restored with `npm ci --prefix .local/qa-browser-20261112`; Python/test caches regenerate.
+
+Ledger: `.local/cleanup-20261112-space-first/completed.json`, `screenshots-before.json`, `replacements.jsonl`, `cache-removal-plan.json`. Preferred catalogue hash unchanged; no source, current game, research input or Wine environment removed. Free space observed 6,541,725,696 → 8,629,354,496 bytes during concurrent work; released allocation and live free-space delta are distinct. Existing dirty/staged work preserved. Inline Zstd support remains a proposal, with no application code changes in this task.
+
 ## Reusable generator planning review complete — 2026-11-12T21:10:39.373543+00:00
 
 Machine: joe-Vostro-3350. Source Codex session: 01a0592d-fcd5-7262-a637-743a8253d9b4.
