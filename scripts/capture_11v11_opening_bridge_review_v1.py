@@ -11,6 +11,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import capture_match_archive_sources_v1 as capture
 from scripts import season_11v11_opening_source_v1 as archive
 from scripts import season_historical_transfer_review_v1 as transfer
@@ -20,26 +21,26 @@ from scripts import season_pipeline_v2 as pipeline
 
 
 def run(club, season, competition, schedule_url, person_input, cache, output, expected_games=46):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('archive original opening bridge review is immutable')
     schedule = capture.capture(schedule_url, cache)
-    schedule_raw = (ROOT / schedule['path']).read_bytes()
+    schedule_raw = storage_io.read_bytes(ROOT / schedule['path'])
     fixture = archive.first_fixture(schedule_raw, club, season, competition, expected_games)
     match = capture.capture(fixture['url'], cache)
-    parsed = archive.verify_pair(schedule_raw, (ROOT / match['path']).read_bytes(),
+    parsed = archive.verify_pair(schedule_raw, storage_io.read_bytes(ROOT / match['path']),
                                  club, season, competition, expected_games)
     people, _, _, snapshot = transfer.load_snapshot(
         ROOT / '.local/external-sources/transfermarkt-datasets/transfermarkt-datasets.duckdb',
         ROOT / '.local/season-pipeline-v2/world-2015-transfermarkt-opening-fixtures-20260831.json')
     person_sha = registry.sha256_file(person_input)
-    people, summary = persons.merge(people, json.loads(person_input.read_text()))
+    people, summary = persons.merge(people, json.loads(storage_io.read_text(person_input)))
     rows = []
     for player in parsed['starting_xi'] + parsed['published_linked_bench']:
         row = {'archive_player': player}
         try:
             source = capture.capture(player['source_profile_url'], cache)
             row['original_biography'] = source
-            row['identity_bridge'] = archive.bridge_person((ROOT / source['path']).read_bytes(), player, people)
+            row['identity_bridge'] = archive.bridge_person(storage_io.read_bytes(ROOT / source['path']), player, people)
             row['status'] = 'original-full-name-DOB-bridge-reparsed'
         except (OSError, ValueError) as exc:
             row.update(status='original-archive-identity-gap', reason=str(exc))

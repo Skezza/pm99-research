@@ -8,6 +8,7 @@ from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_soccerbase_duplicate_source_policy_v1 as policy
 from scripts import season_duplicate_ownership_plan_v1 as planner
 from scripts import season_historical_roster_audit_v1 as roster
@@ -27,8 +28,8 @@ def main():
     p.add_argument('--history',type=Path,required=True)
     p.add_argument('--output',type=Path,required=True)
     args=p.parse_args()
-    if args.output.exists():raise ValueError('source-policy preview is immutable')
-    original=json.loads(args.original_review.read_text());pin=original['snapshot_binding']
+    if storage_io.exists(args.output):raise ValueError('source-policy preview is immutable')
+    original=json.loads(storage_io.read_text(args.original_review));pin=original['snapshot_binding']
     people,events,_,actualpin=transfer.load_snapshot(ROOT/pin['path'],ROOT/pin['pinned_receipt_path'])
     if actualpin!=pin:raise ValueError('source preview snapshot binding changed')
     bindings={'snapshot':pin,'published_person_supplement':original['published_person_binding'],
@@ -44,7 +45,7 @@ def main():
         clubs=[c for _,pkg,_ in layers for c in pkg['clubs']]
         players=[q for _,pkg,_ in layers for q in pkg['players']]
         by_id={c['id']:c for c in clubs}
-        opening=json.loads((args.source_root/'opening'/season/'opening-review.json').read_text())
+        opening=json.loads(storage_io.read_text(args.source_root / 'opening' / season / 'opening-review.json'))
         transfer.verify_opening_sources(opening)
         existing={r['club_id']:planner.source_evidence(r,opening) for r in opening['clubs']
             if r['status']=='original-first-fixture-reparsed' and r['club_id'] in by_id

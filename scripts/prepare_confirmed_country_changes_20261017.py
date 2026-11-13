@@ -2,6 +2,7 @@
 
 Produces a proposal only. Never installs, publishes, or writes native games.
 """
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
 from scripts import season_source_verified_player_changes_v1 as changes
@@ -18,15 +19,15 @@ def main():
             source=dict(**case['evidence'],url=identity['source_profile_url'],
                         provider_player_id=identity['provider_player_id'])))
     destination=root/'country-only-source-input.json'
-    if destination.exists():
+    if storage_io.exists(destination):
         assert pipeline.read_json_file(destination)==request
     else:
         pipeline.write_canonical_json(destination,request)
     base=registry.load_registered_release(proof['season'],proof['release_id'])
     plan=changes.prepare(base,destination)
     changes.verify(base,plan)
-    before=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    before=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     after,after_eq=changes.apply(before,eq,plan)
     assert changes.apply(after,after_eq,plan)==(after,after_eq)
     assert sum(a!=b for a,b in zip(before,after))==5 and after_eq==eq

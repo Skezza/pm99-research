@@ -7,6 +7,7 @@ import copy
 import tempfile
 from pathlib import Path
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import prepare_monagas_2002_original_people_v1 as opening
 from scripts import season_monagas_2002_missing_birthday_v1 as missing
 from scripts import season_august_source_fallback_v1 as fallback
@@ -28,7 +29,7 @@ ROLES = ['G', 'D', 'D', 'D', 'D', 'M', 'M', 'M', 'M', 'F', 'F', 'M', 'F', 'D', '
 
 
 def prepare(output, baseline_release_id=None):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('original allocation evidence is immutable')
     with tempfile.TemporaryDirectory(prefix='pm99-monagas-source-') as temporary:
         original = opening.prepare(Path(temporary) / 'original-links.json')
@@ -71,7 +72,7 @@ def prepare(output, baseline_release_id=None):
     slots = [person for person in package['players'] if person['club_id'] == club['id']]
     if len(slots) != 16:
         raise ValueError('native fixed16 capacity changed')
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     selected = {actor['source_player_id'] for actor in original['people']}
     fitted = allocation.allocate(jug, slots, desired, display.claims(biography),
         published_families=families.claims(biography, selected & persons.keys()),

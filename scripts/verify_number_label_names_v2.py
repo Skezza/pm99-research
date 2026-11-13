@@ -3,6 +3,7 @@ from datetime import date
 
 from app.editor_actions import _indexed_variable_name_runtime_segments
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_number_label_names_v2 as source
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts.audit_compiled_player_birth_dates_v1 import inspect
@@ -10,7 +11,7 @@ from scripts import probe_dd6361_skill_patch as skills
 
 
 def verify(season, release_id, plan_path, output):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('numeric-label independent evidence is immutable')
     plan = pipeline.read_json_file(plan_path)
     base = registry.load_registered_release(season, plan['release_id'])
@@ -19,8 +20,8 @@ def verify(season, release_id, plan_path, output):
     saved = registry.ROOT / release.locator['sourced_player_name_only_plan_path']
     if pipeline.read_json_file(saved) != plan:
         raise ValueError('published numeric-label plan differs')
-    before = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    after = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    before = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    after = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     old_index, new_index = IndexedFDIFile.from_bytes(before), IndexedFDIFile.from_bytes(after)
     old_entries, new_entries = {e.record_id: e for e in old_index.entries}, {e.record_id: e for e in new_index.entries}
     selected = {r['carrier_id']: r for r in plan['updates']}

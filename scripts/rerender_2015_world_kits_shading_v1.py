@@ -24,6 +24,7 @@ for candidate in (ROOT, EDITOR):
         sys.path.insert(0, str(candidate))
 
 from app.minifoto_bitmap_archive import iter_obfuscated_bmp_records, validate_minifoto_bitmap  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts.materialise_2015_world_fifaindex_kits import render_fifaindex_candidate  # noqa: E402
 from scripts.materialise_2015_world_kits import (  # noqa: E402
     ARCHIVES,
@@ -58,7 +59,7 @@ def _records(dbdat: Path) -> dict[str, dict[int, Any]]:
     output: dict[str, dict[int, Any]] = {}
     for archive in ARCHIVES:
         path = dbdat / archive
-        if not path.is_file():
+        if not storage_io.is_file(path):
             raise KitRerenderError(f"missing clean compact-kit archive: {path}")
         records: dict[int, Any] = {}
         for record in iter_obfuscated_bmp_records(path, file_name_pattern=r"^EQ96\d{4}\.BMP$"):
@@ -74,7 +75,7 @@ def _records(dbdat: Path) -> dict[str, dict[int, Any]]:
 def _require_hash_bound_file(value: Mapping[str, Any], path_key: str, hash_key: str, label: str) -> Path:
     path = Path(str(value.get(path_key) or ""))
     expected = str(value.get(hash_key) or "")
-    if not path.is_file() or not re.fullmatch(r"[0-9a-f]{64}", expected):
+    if not storage_io.is_file(path) or not re.fullmatch(r"[0-9a-f]{64}", expected):
         raise KitRerenderError(f"{label} lacks an existing hash-bound source")
     if sha256_file(path) != expected:
         raise KitRerenderError(f"{label} hash differs from its materialisation receipt")
@@ -158,7 +159,7 @@ def rerender(*, materialisation: Mapping[str, Any], dbdat: Path, output_dir: Pat
             path, digest = _write_content_addressed(payload, output_dir / "candidate-bmps" / archive, ".bmp")
             new_assets[archive] = {
                 **dict(old_asset),
-                "path": str(path.resolve()),
+                "path": str(storage_io.resolve(path)),
                 "sha256": digest,
                 "bitmap_length": len(payload),
                 "rerendered_from_sha256": sha256_file(prior_path),
@@ -195,7 +196,7 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     try:
-        source_bytes = args.materialisation.read_bytes()
+        source_bytes = storage_io.read_bytes(args.materialisation)
         result = rerender(
             materialisation=json.loads(source_bytes),
             dbdat=args.clean_dbdat,
@@ -205,7 +206,7 @@ def main() -> int:
         parser.error(str(exc))
     result["renderer"]["source_materialisation_file_sha256"] = sha256_bytes(source_bytes)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_json_bytes(result))
+    storage_io.write_bytes(args.output, canonical_json_bytes(result))
     print(json.dumps({"rerendered": result["coverage"]["sprite_safe_rerendered_carrier_count"], "output": str(args.output)}, sort_keys=True))
     return 0
 

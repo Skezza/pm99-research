@@ -1,6 +1,7 @@
 """Close one additional alias defect; never inflate the frozen38 denominator."""
 import copy
 from datetime import UTC,datetime
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import publish_historical_role_delta_v1 as publisher
 from scripts import attest_registered_season_runtime_v1 as runtime
@@ -25,7 +26,7 @@ def check_bobb_visual(visual,values):
 def run():
     prior=ROOT.parent/'release-delivery-checklist-v38.json'
     output=ROOT.parent/'release-delivery-checklist-v39.json'
-    if output.exists():raise ValueError('completed alias checkpoint must not repeat')
+    if storage_io.exists(output):raise ValueError('completed alias checkpoint must not repeat')
     result=copy.deepcopy(pipeline.read_json_file(prior))
     old={row['season']:row for row in result['current_release_bindings']}
     release=registry.load_registered_release(SEASON,RELEASE)

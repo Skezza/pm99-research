@@ -8,6 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
 from scripts import publish_historical_role_delta_v1 as publisher
@@ -17,16 +18,16 @@ from scripts.attest_registered_season_runtime_v1 import _atomic_replace_json
 def apply_one(season, plan_root, release_id):
     current = registry.load_preferred_release(season)
     if current.release_id == release_id:
-        receipt = json.loads(current.compiler_receipt_path.read_text())
+        receipt = json.loads(storage_io.read_text(current.compiler_receipt_path))
         return {'season': season, 'release_id': release_id, 'publication_reused': True,
             'changed_clubs': receipt['clubs_written'], 'changed_managers': receipt['managers_written'],
             'changed_players': receipt['players_written'], 'historical_verification_complete': False}
     directory = plan_root / season
-    club_plan = json.loads((directory / 'club-plan.json').read_text())
+    club_plan = json.loads(storage_io.read_text(directory / 'club-plan.json'))
     if not club_plan['updates']:
         return {'season': season, 'release_id': current.release_id, 'skipped': 'no unambiguous label repair',
             'changed_clubs': 0, 'changed_managers': 0, 'changed_players': 0, 'historical_verification_complete': False}
-    if registry.locator_path(season, release_id).exists():
+    if storage_io.exists(registry.locator_path(season, release_id)):
         publisher.register_completed_delta(season, release_id)
         return apply_one(season, plan_root, release_id)
     return publisher.publish(season, directory / 'role-plan.json', release_id=release_id, register=True,
@@ -45,13 +46,13 @@ def main():
     args.output.mkdir(parents=True, exist_ok=True); results = []
     for season in seasons:
         destination = args.output / season / 'application.json'
-        if destination.exists():
-            row = json.loads(destination.read_text())
+        if storage_io.exists(destination):
+            row = json.loads(storage_io.read_text(destination))
             if registry.load_preferred_release(season).release_id != row['release_id']:
                 raise ValueError('saved club repair application has been superseded')
         else:
             deadline = time.monotonic() + args.wait_seconds
-            while not (args.plan_root / season / 'club-plan.json').exists():
+            while not storage_io.exists(args.plan_root / season / 'club-plan.json'):
                 if registry.load_preferred_release(season).release_id == args.release_id: break
                 if time.monotonic() >= deadline: raise TimeoutError('missing source-backed club plan: ' + season)
                 time.sleep(2)

@@ -8,6 +8,7 @@ from pathlib import Path
 import subprocess
 import time
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import build_country_policy_v2_cohort_20261017 as old
 from scripts import build_resolved_period_country_20261017 as new
 from scripts.capture_country_policy_v2_cohort_20261017 import tag as old_tag
@@ -35,16 +36,16 @@ def launch_only_disk_refusal(root, release):
 
 
 def main(archive_pid):
-    if ROOT.exists():
+    if storage_io.exists(ROOT):
         raise ValueError('existing disk recovery needs inspection; never blind resume')
     ROOT.mkdir()
     tasks = [('2015-16',old,old_tag),('2016-17',new,new_tag),('2017-18',new,new_tag)]
     retained(ROOT/'input.json',dict(archive_controller_pid=archive_pid,
         tasks=[dict(season=s,release_id=m.RELEASE) for s,m,_ in tasks],
         no_successful_capture_or_native_build_repeated=True,automatic_visual_approval=False))
-    while not (archive.ROOT/'completed.json').exists():
+    while not storage_io.exists(archive.ROOT / 'completed.json'):
         try:
-            cmd=Path(f'/proc/{archive_pid}/cmdline').read_bytes()
+            cmd=storage_io.read_bytes(Path(f'/proc/{archive_pid}/cmdline'))
         except FileNotFoundError as exc:
             raise ValueError('runner backup stopped without verified removal; inspect before retrying captures') from exc
         if b'scripts.archive_old_runner_prefix_to_pi_20261017' not in cmd:
@@ -54,7 +55,7 @@ def main(archive_pid):
         folder=module.ROOT/season
         release=registry.load_registered_release(season,module.RELEASE)
         launch_only_disk_refusal(folder,release)
-        if (folder/'startup-transport-remote-disk-refusal-v1.json').exists():
+        if storage_io.exists(folder / 'startup-transport-remote-disk-refusal-v1.json'):
             raise ValueError('disk recovery already started for this game')
         spec=pipeline.read_json_file(folder/'runtime-profile-spec.json')
         if (spec['season'],spec['release_id'],spec['manifest_sha256'])!=(season,module.RELEASE,release.manifest_sha256):
@@ -72,8 +73,8 @@ def main(archive_pid):
             original_capture_spec_sha256=registry.sha256_file(folder/'runtime-profile-spec.json'),
             original_exit_code=3,original_local_evidence_launch_only=True,new_startup_run_tag=new_tag_value,
             minimum_remote_reserve_GiB=12,safety_guard_overridden=False))
-        (folder/'startup-transport.json').rename(folder/'startup-transport-remote-disk-refusal-v1.json')
-        (folder/'runtime-profile-spec.json').rename(folder/'runtime-profile-spec-before-disk-recovery-v1.json')
+        storage_io.move(folder / 'startup-transport.json', folder / 'startup-transport-remote-disk-refusal-v1.json')
+        storage_io.move(folder / 'runtime-profile-spec.json', folder / 'runtime-profile-spec-before-disk-recovery-v1.json')
         retained(folder/'runtime-profile-spec.json',dict(spec,startup_run_tag_override=new_tag_value))
         capture(0,0,folder=folder,release_id=module.RELEASE,run_tag=new_tag_value,
             season=season,profile=spec['profiles'][0])

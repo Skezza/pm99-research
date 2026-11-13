@@ -28,6 +28,7 @@ for candidate in (ROOT, EDITOR):
     if str(candidate) not in sys.path:
         sys.path.insert(0, str(candidate))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts.audit_2015_world_release_semantics_v1 import (  # noqa: E402
     SemanticQaError,
     audit_kits,
@@ -93,7 +94,7 @@ def _canonical_bytes(value: Any) -> bytes:
 
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
@@ -101,7 +102,7 @@ def _sha256(path: Path) -> str:
 
 def _read_object(path: Path, label: str) -> dict[str, Any]:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(storage_io.read_text(path, encoding='utf-8'))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise QaError(f"cannot read {label}: {path}") from exc
     if not isinstance(value, dict):
@@ -132,7 +133,7 @@ def resolve_package(season: str) -> Path:
 
 def _latest_manager_layer(season: str) -> Path | None:
     root = ROOT / ".local/season-english-source-chain-v1" / season
-    candidates = list(root.glob("*/english-manager-layer.json"))
+    candidates = list(storage_io.glob(root, '*/english-manager-layer.json'))
     if not candidates:
         return None
 
@@ -148,7 +149,7 @@ def _manager_reference_rows(season: str) -> tuple[list[dict[str, Any]], Path | N
         path = ROOT / ".local/season-2015-16/2015-16-opening-manager-ledger.json"
     else:
         path = _latest_manager_layer(season)
-    if path is None or not path.is_file():
+    if path is None or not storage_io.is_file(path):
         return [], path
     value = _read_object(path, "opening manager reference")
     rows = value.get("rows")
@@ -309,7 +310,7 @@ def audit_manager_sources(season: str, package: Mapping[str, Any]) -> dict[str, 
         else:
             provisional_foreign += 1
     return {
-        "reference_path": str(path.relative_to(ROOT)) if path is not None and path.exists() else None,
+        "reference_path": str(path.relative_to(ROOT)) if path is not None and storage_io.exists(path) else None,
         "english_club_count": len(referenced_club_ids),
         "reference_row_count": len(rows),
         "matched_count": len(matched),
@@ -567,7 +568,7 @@ def audit_compiled_managers(package: Mapping[str, Any], *, game: Path, season: s
             superseded_input_aliases += len(historical)
     failures = []
     if declarations:
-        data = (game / 'DBDAT/ENT98030.FDI').read_bytes()
+        data = storage_io.read_bytes(game / 'DBDAT/ENT98030.FDI')
         entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(data).entries}
         for manager in declarations:
             carrier = manager['carrier_id']
@@ -818,7 +819,7 @@ def audit_compiled_nationalities(package: Mapping[str, Any], *, game: Path) -> d
     xxx_code = country_codes.get("XXX")
     if not isinstance(xxx_code, int):
         raise QaError("PM99 TEXTOS table has no numeric XXX country code")
-    jug_data = jug_path.read_bytes()
+    jug_data = storage_io.read_bytes(jug_path)
     payloads = {
         int(entry.record_id): entry.decode_payload(jug_data)
         for entry in IndexedFDIFile.from_bytes(jug_data).entries
@@ -920,10 +921,10 @@ def audit_runtime(season: str) -> dict[str, Any]:
     release = release_registry.load_preferred_release(season)
     root = _runtime_evidence_path(season)
     summary_path = root / "summary.json"
-    if not summary_path.is_file():
+    if not storage_io.is_file(summary_path):
         return {"passed": False, "artifact_root": str(root.relative_to(ROOT)), "reason": "matching-calendar runner summary missing"}
     summary = _read_object(summary_path, "runner summary")
-    screenshots = sorted((root / "screens").glob("*line_up_inspect*.png"))
+    screenshots = sorted(storage_io.glob(root / 'screens', '*line_up_inspect*.png'))
     phase = str(summary.get("phase_reached") or "")
     manifest_bound = (
         release.manifest_sha256 is not None
@@ -963,7 +964,7 @@ def audit_runtime(season: str) -> dict[str, Any]:
 
 def audit_binary_receipt(season: str, game: Path) -> dict[str, Any]:
     receipt_path = release_registry.load_preferred_release(season).compiler_receipt_path
-    if receipt_path is None or not receipt_path.is_file():
+    if receipt_path is None or not storage_io.is_file(receipt_path):
         return {"receipt": None, "checked_file_count": 0, "mismatch_count": 0, "mismatches": [], "warning": "compiler receipt unavailable"}
     receipt = _read_object(receipt_path, "compiler receipt")
     outputs = receipt.get("outputs")
@@ -998,10 +999,10 @@ def audit_binary_receipt(season: str, game: Path) -> dict[str, Any]:
         ROOT / ".local/season-direct-target-manager-repairs-v2" / f"{season}.json",
         ROOT / ".local/season-direct-target-manager-repairs-v1" / f"{season}.json",
     ]
-    manager_repair_path = next((path for path in manager_repair_candidates if path.is_file()), manager_repair_candidates[-1])
+    manager_repair_path = next((path for path in manager_repair_candidates if storage_io.is_file(path)), manager_repair_candidates[-1])
     manager_repair_hashes: dict[str, str] = {}
     manager_repair: Mapping[str, Any] | None = None
-    if manager_repair_path.is_file():
+    if storage_io.is_file(manager_repair_path):
         candidate = _read_object(manager_repair_path, "direct target-manager repair receipt")
         refresh = candidate.get("runtime_refresh")
         if (
@@ -1021,7 +1022,7 @@ def audit_binary_receipt(season: str, game: Path) -> dict[str, Any]:
                 manager_repair = candidate
     nationality_repair_path = ROOT / ".local/season-nationality-repair-v1" / season / "repair-receipt.json"
     nationality_repair: Mapping[str, Any] | None = None
-    if nationality_repair_path.is_file():
+    if storage_io.is_file(nationality_repair_path):
         candidate = _read_object(nationality_repair_path, "direct nationality repair receipt")
         expected_runtime = str(game.relative_to(ROOT))
         if (
@@ -1080,7 +1081,7 @@ def audit_binary_receipt(season: str, game: Path) -> dict[str, Any]:
         )
     ]
     for direct_receipt_path, schema_version, delta_key in receipt_candidates:
-        if not direct_receipt_path.is_file():
+        if not storage_io.is_file(direct_receipt_path):
             continue
         candidate = _read_object(direct_receipt_path, "direct alpha repair receipt")
         refresh = candidate.get("runtime_refresh")
@@ -1120,7 +1121,7 @@ def audit_binary_receipt(season: str, game: Path) -> dict[str, Any]:
         relative = str(row.get("path") or "")
         expected = str(row.get("sha256") or "")
         path = game / relative
-        if relative and re.fullmatch(r"[0-9a-f]{64}", expected) and path.is_file():
+        if relative and re.fullmatch(r"[0-9a-f]{64}", expected) and storage_io.is_file(path):
             checked += 1
             actual = _sha256(path)
             if actual != expected:
@@ -1184,7 +1185,7 @@ def audit_binary_receipt(season: str, game: Path) -> dict[str, Any]:
 def audit_calendar(season: str, game: Path) -> dict[str, Any]:
     expected_path = ROOT / ".local/calendar-v1" / season / "MANAGPRE.EXE"
     actual_path = game / "MANAGPRE.EXE"
-    if not expected_path.is_file():
+    if not storage_io.is_file(expected_path):
         return {"passed": False, "reason": "season calendar input missing", "expected_path": str(expected_path.relative_to(ROOT))}
     expected, actual = _sha256(expected_path), _sha256(actual_path)
     result = {"passed": expected == actual, "expected_path": str(expected_path.relative_to(ROOT)), "expected_sha256": expected, "actual_sha256": actual}
@@ -1195,7 +1196,7 @@ def audit_calendar(season: str, game: Path) -> dict[str, Any]:
         sys.path.insert(0, str(ROOT / 'upstream/pm99-skezmod-patcher'))
         from player_birth_year_guard import patch_native_birth_year_guard
         try:
-            patched, receipt = patch_native_birth_year_guard(expected_path.read_bytes())
+            patched, receipt = patch_native_birth_year_guard(storage_io.read_bytes(expected_path))
         except ValueError:
             return result
         if hashlib.sha256(patched).hexdigest() == actual:
@@ -1227,9 +1228,9 @@ def _artwork_chain_through_unchanged_role_deltas(season, release, manifest):
         if not digest or digest in seen:
             raise QaError('invalid/cyclic inherited artwork ancestry')
         seen.add(digest)
-        candidates = sorted((release_registry.LOCAL_ROOT / 'releases' / season).glob('*/build-chain.json'))
+        candidates = sorted(storage_io.glob(release_registry.LOCAL_ROOT / 'releases' / season, '*/build-chain.json'))
         path = next((p for p in candidates if _sha256(p) == digest), None)
-        if path is None or not any(a.get('sha256') == digest and a.get('size') == path.stat().st_size for a in descriptors):
+        if path is None or not any(a.get('sha256') == digest and a.get('size') == storage_io.size(path) for a in descriptors):
             raise QaError('inherited artwork predecessor is not hash-bound')
         previous = _read_object(path, 'inherited artwork predecessor')
         if previous.get('season') != season:
@@ -1260,7 +1261,7 @@ def _paired_kit_patch_hashes(season,game,release,application_path,application,ma
     for stage in manifest.get('stages',[]):
         descriptors.extend(stage.get('external_artifacts',[]))
     def bound(path,digest):
-        if _sha256(path)!=digest or not any(a.get('sha256')==digest and a.get('size')==path.stat().st_size for a in descriptors):
+        if _sha256(path)!=digest or not any(a.get('sha256')==digest and a.get('size')==storage_io.size(path) for a in descriptors):
             raise QaError('coupled kit input is not hash-bound to the release')
     bound(application_path,_sha256(application_path))
     if application.get('season')!=season:raise QaError('coupled kit application is another season')
@@ -1268,7 +1269,7 @@ def _paired_kit_patch_hashes(season,game,release,application_path,application,ma
     bound(previous.build_chain_path,application['source_build_chain_sha256'])
     documents={}
     for label in ('candidate_receipt','native_proof','identity_proof'):
-        binding=application[label];path=ROOT/binding['path'];path.resolve().relative_to(ROOT.resolve())
+        binding=application[label];path=ROOT/binding['path'];storage_io.resolve(path).relative_to(storage_io.resolve(ROOT))
         bound(path,binding['sha256']);documents[label]=_read_object(path,'coupled kit '+label)
     digest=application['candidate_receipt']['sha256'];native=documents['native_proof'];identity=documents['identity_proof']
     if (native.get('candidate_receipt_sha256')!=digest or identity.get('candidate_receipt_sha256')!=digest
@@ -1301,7 +1302,7 @@ def _registered_kit_patch_hashes(season: str, game: Path, *, _release=None) -> d
         raise QaError("kit patch release manifest is not registered")
     manifest_for_ancestry = _read_object(release.release_manifest_path, 'artwork release manifest')
     application_path=ROOT/relative
-    application_path.resolve().relative_to(ROOT.resolve())
+    storage_io.resolve(application_path).relative_to(storage_io.resolve(ROOT))
     paired=_read_object(application_path,'artwork application')
     if paired.get('schema_version')=='pm99-coupled-club-kit-application-v1':
         return _paired_kit_patch_hashes(season,game,release,application_path,paired,manifest_for_ancestry)
@@ -1318,26 +1319,26 @@ def _registered_kit_patch_hashes(season: str, game: Path, *, _release=None) -> d
             stage_id = str(stage.get('id', ''))
             if not stage_id.startswith('portrait-'): continue
             old_path = release_registry.locator_path(season, stage_id[len('portrait-'):])
-            if not old_path.is_file(): continue
+            if not storage_io.is_file(old_path): continue
             old = _read_object(old_path, 'artwork ancestor locator')
             candidate = old.get('kit_patch_application_path') or old.get('portrait_patch_application_path')
             if not candidate: continue
             path = ROOT / candidate
-            path.resolve().relative_to(ROOT.resolve())
-            if not path.is_file() or _sha256(path) != stage.get('receipt_sha256'): continue
+            storage_io.resolve(path).relative_to(storage_io.resolve(ROOT))
+            if not storage_io.is_file(path) or _sha256(path) != stage.get('receipt_sha256'): continue
             previous = _read_object(path, 'artwork ancestor application')
             if any(r.get('path') in {'DBDAT/MINIESC.PKF', 'DBDAT/NANOESC.PKF', 'DBDAT/RIDIESC.PKF'}
                    for r in previous.get('difference', {}).get('changed', [])):
                 relative = candidate
                 break
     receipt_path = ROOT / relative
-    receipt_path.resolve().relative_to(ROOT.resolve())
+    storage_io.resolve(receipt_path).relative_to(storage_io.resolve(ROOT))
     if release.release_manifest_path is None or _sha256(release.release_manifest_path) != release.manifest_sha256:
         raise QaError("kit patch release manifest is not registered")
     manifest = _read_object(release.release_manifest_path, "kit patch release manifest")
     digest = _sha256(receipt_path)
     descriptors = [row for row in manifest.get("external_artifacts", []) if row.get("sha256") == digest]
-    if len(descriptors) != 1 or descriptors[0].get("size") != receipt_path.stat().st_size:
+    if len(descriptors) != 1 or descriptors[0].get("size") != storage_io.size(receipt_path):
         raise QaError("kit patch application is not hash-bound to the release")
     application = _read_object(receipt_path, "kit patch application")
     if application.get("season") != season or application.get("unrelated_files_unchanged") is not True:
@@ -1366,14 +1367,14 @@ def _registered_kit_patch_hashes(season: str, game: Path, *, _release=None) -> d
             if not candidate:
                 raise QaError('kit ancestor application is missing')
             bound_path = ROOT / candidate
-            bound_path.resolve().relative_to(ROOT.resolve())
+            storage_io.resolve(bound_path).relative_to(storage_io.resolve(ROOT))
             bound = _read_object(bound_path, 'kit ancestor application')
         else:
             continue
         bound_digest = _sha256(bound_path)
         descriptors = [a for a in manifest.get('external_artifacts', []) if a.get('sha256') == bound_digest]
         if (bound_digest != stage.get('receipt_sha256') or len(descriptors) != 1
-                or descriptors[0].get('size') != bound_path.stat().st_size):
+                or descriptors[0].get('size') != storage_io.size(bound_path)):
             raise QaError('kit ancestor application is not hash-bound to the release')
         if bound.get('season') != season or bound.get('unrelated_files_unchanged') is not True:
             raise QaError('kit ancestor application has invalid scope')
@@ -1426,8 +1427,8 @@ def _apply_2015_kit_patch_history(receipt, patches):
             step['stage_index'] for step in item[1].values())):
         application = _read_object(ROOT / relative, '2015 kit patch application')
         materialisation_path = Path(application.get('materialisation_path', ''))
-        materialisation_path.resolve().relative_to(ROOT.resolve())
-        if (not materialisation_path.is_file()
+        storage_io.resolve(materialisation_path).relative_to(storage_io.resolve(ROOT))
+        if (not storage_io.is_file(materialisation_path)
                 or _sha256(materialisation_path) != application['materialisation_sha256']):
             raise QaError('2015 kit patch materialisation is not hash-bound')
         materialisation = _read_object(materialisation_path, '2015 kit pattern materialisation')
@@ -1454,7 +1455,7 @@ def audit_kit_outputs(season: str, game: Path) -> dict[str, Any]:
         v5_receipt = ROOT / ".local/season-kit-runtime-overlays-v1/2015-16/v5/foreign-kit-application-receipt.json"
         receipt_path = (
             v5_receipt
-            if v5_receipt.is_file()
+            if storage_io.is_file(v5_receipt)
             else ROOT / ".local/season-workspace-v1/2015-16-final-build/foreign-kit-application-receipt.json"
         )
         receipt = _read_object(receipt_path, "2015/16 foreign kit receipt")
@@ -1487,18 +1488,18 @@ def audit_kit_outputs(season: str, game: Path) -> dict[str, Any]:
         raise QaError(f"registered {season} release has no kit revision binding")
     overlay_receipt = ROOT / ".local/season-kit-runtime-overlays-v1" / season / "v5" / "receipt.json"
     receipt_path = ROOT / ".local/season-kit-archives-v1" / season / f"source-backed-{revision}" / "kit-archive-materialisation-receipt-v1.json"
-    if overlay_receipt.is_file():
+    if storage_io.is_file(overlay_receipt):
         overlay = _read_object(overlay_receipt, "V5 runtime kit overlay receipt")
         provenance = overlay.get("provenance") if isinstance(overlay.get("provenance"), Mapping) else {}
         relative = str(provenance.get("v5_archive_receipt") or "")
         candidate = ROOT / relative
         try:
-            candidate.resolve().relative_to(ROOT.resolve())
+            storage_io.resolve(candidate).relative_to(storage_io.resolve(ROOT))
         except ValueError:
             candidate = Path()
-        if relative and candidate.is_file():
+        if relative and storage_io.is_file(candidate):
             receipt_path = candidate
-    if not receipt_path.is_file():
+    if not storage_io.is_file(receipt_path):
         return {
             "receipt": None,
             "patched_carrier_count": 0,
@@ -1524,7 +1525,7 @@ def audit_kit_outputs(season: str, game: Path) -> dict[str, Any]:
             accepted_patches.append({"archive": archive, **patch})
             expected = patch["after"]
         actual_path = game / "DBDAT" / archive
-        actual = _sha256(actual_path) if actual_path.is_file() else None
+        actual = _sha256(actual_path) if storage_io.is_file(actual_path) else None
         if not re.fullmatch(r"[0-9a-f]{64}", expected) or actual != expected:
             failures.append({"archive": archive, "expected_sha256": expected or None, "actual_sha256": actual})
     expected_dimensions = {
@@ -1561,7 +1562,7 @@ def audit_kit_outputs(season: str, game: Path) -> dict[str, Any]:
 
 def audit_compiled_player_identities(*, game: Path) -> dict[str, Any]:
     """Check every native JUG record, not only the visible first XI."""
-    data = (game / 'DBDAT/JUG98030.FDI').read_bytes()
+    data = storage_io.read_bytes(game / 'DBDAT/JUG98030.FDI')
     checked = 0
     failures = []
     for entry in IndexedFDIFile.from_bytes(data).entries:
@@ -1577,7 +1578,7 @@ def audit_compiled_player_identities(*, game: Path) -> dict[str, Any]:
 
 def audit_compiled_roles(package: Mapping[str, Any], *, game: Path) -> dict[str, Any]:
     """Explicit roles must match native bytes; preserved roles are not verified."""
-    raw = (game / 'DBDAT/JUG98030.FDI').read_bytes()
+    raw = storage_io.read_bytes(game / 'DBDAT/JUG98030.FDI')
     entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(raw).entries}
     failures, inherited_conflicts, unresolved = [], [], []
     checked = 0
@@ -1630,7 +1631,7 @@ def audit_season(season: str) -> dict[str, Any]:
                                count=roles_binary['unresolved_role_count'], inherited_conflicts=roles_binary['inherited_conflict_count']))
     from scripts.audit_compiled_player_birth_dates_v1 import inspect as inspect_birth_dates
     try:
-        birth_dates_binary = inspect_birth_dates(package, (game / 'DBDAT/JUG98030.FDI').read_bytes())
+        birth_dates_binary = inspect_birth_dates(package, storage_io.read_bytes(game / 'DBDAT/JUG98030.FDI'))
         if birth_dates_binary['failure_count']:
             blockers.append(_issue('compiled-player-birth-date-mismatch',
                 'literal recipe birthdays disagree with actual native records',
@@ -1777,7 +1778,7 @@ def audit_season(season: str) -> dict[str, Any]:
 
 def _write(path: Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(_canonical_bytes(value))
+    storage_io.write_bytes(path, _canonical_bytes(value))
 
 
 def main(argv: Sequence[str] | None = None) -> int:

@@ -8,6 +8,7 @@ import hashlib
 import re
 
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_published_person_identity_v1 as people
 from scripts import season_published_transfer_history_v1 as histories
@@ -71,7 +72,7 @@ def parse_match(raw,*,url=URL):
 
 
 def prepare(output):
-    if output.exists():raise ValueError('Mladost source review is immutable')
+    if storage_io.exists(output):raise ValueError('Mladost source review is immutable')
     path,raw,binding=source_rows('partizanopedia-2001-original-season')
     receipt=pipeline.read_json_file(path.with_suffix('.source.json'))
     actual=parse_match(raw,url=receipt['url'])

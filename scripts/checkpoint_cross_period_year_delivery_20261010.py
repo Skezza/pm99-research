@@ -6,6 +6,7 @@ convert a source-acquisition gap or a wrong recipe date into a closed issue.
 import copy
 from datetime import UTC, datetime
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import build_registered_quality_release_v1 as builder
 from scripts import attest_registered_season_runtime_v1 as runtime
@@ -17,7 +18,7 @@ from scripts.build_cross_period_birth_years_20261010 import ROOT, RELEASE
 
 def run():
     output = ROOT.parent / 'release-delivery-checklist-v16.json'
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('completed release checkpoint must not be repeated')
     prior = ROOT.parent / 'release-delivery-checklist-v15.json'
     result = copy.deepcopy(pipeline.read_json_file(prior))
@@ -69,7 +70,7 @@ def run():
         evidence_dir = registry.ROOT / (f'.local/runlogs/pm99_runner/cross_period_year_r70a_{season.replace("-", "_")}_20261010')
         attestation = runtime.attest(season=season, evidence_dir=evidence_dir)
         path = ROOT / (season + '-final-attestation.json')
-        if path.exists():
+        if storage_io.exists(path):
             if pipeline.read_json_file(path) != attestation:
                 raise ValueError('retained R70 attestation differs')
         else:

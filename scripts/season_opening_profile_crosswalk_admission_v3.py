@@ -15,6 +15,7 @@ from urllib.parse import urlsplit
 
 from bs4 import BeautifulSoup
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_opening_identity_exchange_v1 as exchange
 from scripts import season_release_registry_v1 as registry
 from scripts.capture_2015_source_tail_squads_v1 import NATIONALITY_CODES
@@ -50,22 +51,22 @@ PROFILE_POSITION_TO_BROAD = {
 
 
 def _sha(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def _binding(value: object, *, webtool: bool = False) -> tuple[dict, Path, bytes, dict]:
     expected_keys = WEB_KEYS if webtool else HTTP_KEYS
     if not isinstance(value, dict) or set(value) != expected_keys:
         raise ValueError('profile source binding has unknown or missing fields')
-    path = (ROOT / value['path']).resolve(strict=True)
-    receipt_path = (ROOT / value['receipt_path']).resolve(strict=True)
-    if (not path.is_relative_to(ROOT.resolve()) or not receipt_path.is_relative_to(ROOT.resolve())
+    path = storage_io.resolve(ROOT / value['path'], strict=True)
+    receipt_path = storage_io.resolve(ROOT / value['receipt_path'], strict=True)
+    if (not path.is_relative_to(storage_io.resolve(ROOT)) or not receipt_path.is_relative_to(storage_io.resolve(ROOT))
             or _sha(path) != value['sha256'] or _sha(receipt_path) != value['receipt_sha256']):
         raise ValueError('profile source or receipt hash/path differs')
     url = urlsplit(value['url'])
     if url.scheme != 'https' or not url.netloc:
         raise ValueError('profile source URL must be HTTPS')
-    receipt = json.loads(receipt_path.read_text(encoding='utf-8'))
+    receipt = json.loads(storage_io.read_text(receipt_path, encoding='utf-8'))
     schema = WEBTOOL_SCHEMA if webtool else HTTP_SCHEMA
     if receipt.get('schema') != schema or receipt.get('sha256') != value['sha256']:
         raise ValueError('profile source receipt schema/body hash differs')
@@ -79,7 +80,7 @@ def _binding(value: object, *, webtool: bool = False) -> tuple[dict, Path, bytes
     elif (receipt.get('status') != 200
           or receipt.get('representation') != 'original HTTP response body; bytes saved unchanged'):
         raise ValueError('profile source is not a retained original HTTP body')
-    return value, path, path.read_bytes(), receipt
+    return value, path, storage_io.read_bytes(path), receipt
 
 
 def _parse_pl(selection: dict, evidence: dict) -> dict:
@@ -228,10 +229,10 @@ def _verify_match(selection: dict, evidence: dict, season: str, club: dict) -> d
     fixture_host = urlsplit(fixture['url']).hostname or ''
     if fixture_host != 'transfermarkt.co.uk' and not fixture_host.endswith('.transfermarkt.co.uk'):
         raise ValueError('fixture report must be from the retained Transfermarkt source family')
-    capture_path = (ROOT / fixture['first_league_capture']['path']).resolve(strict=True)
-    if not capture_path.is_relative_to(ROOT.resolve()) or _sha(capture_path) != fixture['first_league_capture']['sha256']:
+    capture_path = storage_io.resolve(ROOT / fixture['first_league_capture']['path'], strict=True)
+    if not capture_path.is_relative_to(storage_io.resolve(ROOT)) or _sha(capture_path) != fixture['first_league_capture']['sha256']:
         raise ValueError('first-league capture manifest hash differs')
-    capture = json.loads(capture_path.read_text(encoding='utf-8'))
+    capture = json.loads(storage_io.read_text(capture_path, encoding='utf-8'))
     if (capture.get('season_start_year') != year
             or capture.get('source', {}).get('base_url') != fixture['first_league_capture']['url']):
         raise ValueError('first-league capture year or base URL differs')

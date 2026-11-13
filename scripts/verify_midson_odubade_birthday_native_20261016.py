@@ -2,6 +2,7 @@
 import copy
 from datetime import date
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_kit_render_bindings_v1
 from app.fdi_indexed import IndexedFDIFile
 from scripts import season_historical_roster_audit_v1 as roster
@@ -15,8 +16,8 @@ def verify(season):
     plan = pipeline.read_json_file(root / 'birthday-plan.json')
     base = registry.load_registered_release(season, plan['release_id'])
     actual = registry.load_registered_release(season, RELEASE)
-    old = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    new = (actual.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    old = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    new = storage_io.read_bytes(actual.game_path / 'DBDAT/JUG98030.FDI')
     row = plan['updates'][0]; carrier = row['carrier_id']
     entry = next(e for e in IndexedFDIFile.from_bytes(new).entries if e.record_id == carrier)
     payload = entry.decode_payload(new)

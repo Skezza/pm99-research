@@ -13,6 +13,7 @@ from bs4 import BeautifulSoup
 from app.fdi_indexed import IndexedFDIFile
 from app.indexed_jug_nationality import rewrite_indexed_native_nationalities
 from app.indexed_jug_roles import rewrite_indexed_native_primary_roles
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_original_country_policy_v2 as countries
 from scripts import season_historical_roster_audit_v1 as roster
 from scripts import season_opening_order_repair_v1 as ownership
@@ -55,7 +56,7 @@ def originals():
         if binding['url']!=url or metadata.get('sha256')!=binding['sha256']:
             raise ValueError('original source URL/content receipt differs')
         result[key]=binding
-    raw=[(registry.ROOT/b['path']).read_bytes() for b in result.values()]
+    raw=[storage_io.read_bytes(registry.ROOT / b['path']) for b in result.values()]
     return result,parse_sources(*raw)
 
 
@@ -66,7 +67,7 @@ def prepare(base):
     matches=[p for p in package['players'] if p['carrier_id']==carrier]
     if len(matches)!=1:raise ValueError('unique recipe actor required')
     player=matches[0];club=next(c for c in package['clubs'] if c['id']==player['club_id'])
-    jug=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes();eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    jug=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI');eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     entries=[e for e in IndexedFDIFile.from_bytes(jug).entries if e.record_id==carrier]
     if len(entries)!=1:raise ValueError('unique actual native actor required')
     payload=entries[0].decode_payload(jug);native=roster.native_player(payload,carrier);end=native['name_end']
@@ -110,7 +111,7 @@ def bind(package,plan):
 def apply(jug,eq,plan):
     if plan.get('schema')!=SCHEMA:raise ValueError('Preetz native schema differs')
     base=registry.load_registered_release(plan['season'],plan['release_id'])
-    before=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    before=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
     if digest(before)!=plan['jug_sha256'] or digest(eq)!=plan['eq_sha256']:raise ValueError('Preetz whole native preimage differs')
     verify(base,plan)
     patched,_=rewrite_indexed_native_primary_roles(before,{plan['carrier_id']:(9,12)})
@@ -130,7 +131,7 @@ def reconstruction(previous,release_id):
     base=registry.load_registered_release(previous.season,plan['release_id']);verify(base,plan)
     package=pipeline.read_json_file(previous.package_path)
     artifact=next(a for a in package['artifacts'] if a['id']==PREFIX+previous.season)
-    if (path.resolve()!=(previous.package_path.parent/FILENAME).resolve() or registry.sha256_file(path)!=artifact['sha256']
+    if (storage_io.resolve(path)!=storage_io.resolve(previous.package_path.parent / FILENAME) or registry.sha256_file(path)!=artifact['sha256']
             or bind(pipeline.read_json_file(base.package_path),plan)!=package):raise ValueError('Preetz SOURCE would discard edited recipe')
     descriptor=previous.package_path.parent/'role-delta-input.json'
     if pipeline.read_json_file(descriptor)!=dict(season=base.season,release_id=base.release_id,
@@ -140,5 +141,5 @@ def reconstruction(previous,release_id):
     publisher.publish(previous.season,descriptor,release_id=release_id,source_release_id=base.release_id,profile_assignment_plan_path=path)
     rebuilt=registry.load_registered_release(previous.season,release_id)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path,pipeline.read_json_file(previous.inventory_path))
-    if rebuilt.package_path.read_bytes()!=previous.package_path.read_bytes():raise ValueError('Preetz complete SOURCE recipe differs')
+    if storage_io.read_bytes(rebuilt.package_path)!=storage_io.read_bytes(previous.package_path):raise ValueError('Preetz complete SOURCE recipe differs')
     return dict(season=previous.season,complete_game_inventory_identical=True,complete_recipe_identical=True,compilation_mode=MODE)

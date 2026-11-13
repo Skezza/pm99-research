@@ -3,6 +3,14 @@
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -25,7 +33,7 @@ def _bytes(value: Any) -> bytes:
 
 def _load(path: Path, label: str) -> tuple[dict[str, Any], str]:
     try:
-        payload = path.read_bytes()
+        payload = storage_io.read_bytes(path)
         value = json.loads(payload.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise LineupCompositionError(f"cannot read {label}: {path}") from exc
@@ -107,7 +115,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
-        if args.output.exists():
+        if storage_io.exists(args.output):
             raise LineupCompositionError(f"refusing to overwrite composed opening lineups: {args.output}")
         primary, primary_sha = _load(args.primary, "primary opening lineups")
         supplement, supplement_sha = _load(args.supplement, "opening-lineup supplement")
@@ -118,7 +126,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (OSError, LineupCompositionError) as exc:
         parser.error(str(exc))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(_bytes(result))
+    storage_io.write_bytes(args.output, _bytes(result))
     print(json.dumps(result["summary"], sort_keys=True))
     return 0
 

@@ -10,6 +10,7 @@ import hashlib
 from datetime import date
 
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import review_profile_addition_duplicate_assignments_v1 as source
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
@@ -169,10 +170,10 @@ def prepare(release, case, profile_root, profile_receipt):
             annual_player=annual_people[0], numeric_first_match_player_id=id,
             original_annual=annual, annual_numeric_id_claimed=False)
     else:
-        numeric=source.annual_numeric_identity(annual_path.read_bytes(),profile['published_full_name'],id)
-    jug=(release.game_path/'DBDAT/JUG98030.FDI').read_bytes();eq=(release.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+        numeric=source.annual_numeric_identity(storage_io.read_bytes(annual_path),profile['published_full_name'],id)
+    jug=storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI');eq=storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
     factory_path=registry.ROOT/'.local/season-pipeline-v2/pm99-base-clean/DBDAT/JUG98030.FDI'
-    factory=factory_path.read_bytes()
+    factory=storage_io.read_bytes(factory_path)
     if hashlib.sha256(factory).hexdigest()!=FACTORY_JUG_SHA256:
         raise ValueError('independently pinned factory player database differs')
     if payload(jug,bad['carrier_id'])!=payload(factory,bad['carrier_id']):

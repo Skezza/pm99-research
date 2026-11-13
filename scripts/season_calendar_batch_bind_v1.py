@@ -27,6 +27,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_calendar_package_overlay_v1 as overlay  # noqa: E402
 from scripts import season_package_v2 as package_v2  # noqa: E402
 
@@ -58,7 +59,7 @@ def _season_id(package: Mapping[str, Any]) -> str:
 
 def _read_receipt(path: Path) -> tuple[dict[str, Any], bytes]:
     try:
-        payload = path.read_bytes()
+        payload = storage_io.read_bytes(path)
         value = json.loads(payload.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise CalendarBatchBindError(f"cannot read calendar receipt: {path}: {exc}") from exc
@@ -84,9 +85,9 @@ def _bind_one(
     calendar_dir = calendar_root / season_id
     receipt_path = calendar_dir / "calendar-receipt.json"
     executable_path = calendar_dir / "MANAGPRE.EXE"
-    if not receipt_path.is_file() or receipt_path.is_symlink():
+    if not storage_io.is_file(receipt_path) or receipt_path.is_symlink():
         raise CalendarBatchBindError(f"calendar receipt is missing: {receipt_path}")
-    if not executable_path.is_file() or executable_path.is_symlink():
+    if not storage_io.is_file(executable_path) or executable_path.is_symlink():
         raise CalendarBatchBindError(f"calendar executable is missing: {executable_path}")
     receipt, receipt_bytes = _read_receipt(receipt_path)
     package_out, audit = overlay.bind_calendar(
@@ -104,7 +105,7 @@ def _bind_one(
     if audit["output_package_sha256"] != actual_package_sha256:
         raise CalendarBatchBindError(f"calendar overlay wrote a mismatched package receipt for {season_id}")
     audit_output.parent.mkdir(parents=True, exist_ok=True)
-    audit_output.write_bytes(_bytes(audit))
+    storage_io.write_bytes(audit_output, _bytes(audit))
     return {
         "season": season_id,
         "input_draft_sha256": _sha256_file(package_path),
@@ -126,21 +127,21 @@ def bind_batch(*, input_root: Path, calendar_root: Path, output_root: Path,
     absent.  That makes a retry either byte-identical in a fresh directory or
     visibly refused; it cannot mutate an earlier receipt beneath a handover.
     """
-    input_root = input_root.resolve()
-    calendar_root = calendar_root.resolve()
-    output_root = output_root.resolve()
+    input_root = storage_io.resolve(input_root)
+    calendar_root = storage_io.resolve(calendar_root)
+    output_root = storage_io.resolve(output_root)
     if not input_root.is_dir() or input_root.is_symlink():
         raise CalendarBatchBindError(f"input root must be an ordinary directory: {input_root}")
     if not calendar_root.is_dir() or calendar_root.is_symlink():
         raise CalendarBatchBindError(f"calendar root must be an ordinary directory: {calendar_root}")
-    if output_root.exists():
+    if storage_io.exists(output_root):
         raise CalendarBatchBindError(f"refusing to replace output root: {output_root}")
     if not receipt_root_relative.startswith(".local/") or ".." in Path(receipt_root_relative).parts:
         raise CalendarBatchBindError("receipt root relative path must be a safe .local path")
     if not isinstance(workers, int) or isinstance(workers, bool) or not 1 <= workers <= 8:
         raise CalendarBatchBindError("workers must be an integer from 1 to 8")
 
-    package_paths = sorted(input_root.glob("*/draft-season-package.json"))
+    package_paths = sorted(storage_io.glob(input_root, '*/draft-season-package.json'))
     if not package_paths:
         raise CalendarBatchBindError("input root has no draft-season-package.json files")
     seen: set[str] = set()
@@ -179,7 +180,7 @@ def bind_batch(*, input_root: Path, calendar_root: Path, output_root: Path,
         },
     }
     matrix_path = output_root / "calendar-binding-matrix.json"
-    matrix_path.write_bytes(_bytes(result))
+    storage_io.write_bytes(matrix_path, _bytes(result))
     return result
 
 

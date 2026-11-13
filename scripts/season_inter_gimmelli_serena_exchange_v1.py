@@ -17,6 +17,7 @@ from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 from app.fdi_indexed import IndexedFDIFile
 from app.indexed_jug_roles import read_indexed_native_roles
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_duplicate_ownership_delta_v1 as delta
 from scripts import season_editorial_ratings_v1 as ratings
 from scripts import season_historical_role_plan_v1 as historical_roles
@@ -64,18 +65,18 @@ def exact_parent(base) -> dict:
     game = base.game_path
     result = {
         'manifest_sha256': base.manifest_sha256,
-        'package_sha256': sha(Path(base.package_path).read_bytes()),
-        'jug_sha256': sha((game / 'DBDAT/JUG98030.FDI').read_bytes()),
-        'eq_sha256': sha((game / 'DBDAT/EQ98030.FDI').read_bytes()),
-        'minifoto_sha256': sha((game / 'DBDAT/MINIFOTO.PKF').read_bytes()),
-        'inventory_sha256': sha(Path(base.inventory_path).read_bytes()),
+        'package_sha256': sha(storage_io.read_bytes(Path(base.package_path))),
+        'jug_sha256': sha(storage_io.read_bytes(game / 'DBDAT/JUG98030.FDI')),
+        'eq_sha256': sha(storage_io.read_bytes(game / 'DBDAT/EQ98030.FDI')),
+        'minifoto_sha256': sha(storage_io.read_bytes(game / 'DBDAT/MINIFOTO.PKF')),
+        'inventory_sha256': sha(storage_io.read_bytes(Path(base.inventory_path))),
     }
     loose = {}
     for carrier in (4211, 14660):
         path = game / 'DBDAT/MINIFOTO' / f'J96{carrier:05d}.BMP'
         if path.is_symlink():
             raise ValueError('selected loose bitmap is a symlink')
-        raw = path.read_bytes() if path.is_file() else None
+        raw = storage_io.read_bytes(path) if storage_io.is_file(path) else None
         loose[str(carrier)] = {'path': f'DBDAT/MINIFOTO/J96{carrier:05d}.BMP',
             'present': raw is not None, 'sha256': sha(raw) if raw is not None else None,
             'bytes': len(raw) if raw is not None else 0}
@@ -97,10 +98,10 @@ def read_sources(request: dict) -> tuple[dict, dict]:
             path = ROOT / path
         if path.is_symlink():
             raise ValueError('source path must not be a symlink: ' + name)
-        path = path.resolve()
-        if not path.is_relative_to(ROOT.resolve()) or not path.is_file():
+        path = storage_io.resolve(path)
+        if not path.is_relative_to(storage_io.resolve(ROOT)) or not storage_io.is_file(path):
             raise ValueError('source is not a retained workspace file: ' + name)
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         if sha(raw) != row['sha256']:
             raise ValueError('source SHA differs: ' + name)
         bodies[name] = raw
@@ -214,7 +215,7 @@ def validate_sources(bodies: dict) -> dict:
 
 def rating_for_gimmelli(actor, request):
     model_path = ROOT / 'scripts/season_editorial_ratings_v1.py'
-    if sha(model_path.read_bytes()) != request['rating_policy']['model_sha256']:
+    if sha(storage_io.read_bytes(model_path)) != request['rating_policy']['model_sha256']:
         raise ValueError('pinned editorial model hash differs')
     policy = request['rating_policy']
     value = {
@@ -245,12 +246,12 @@ def prepare(base, input_path) -> dict:
     request_path = Path(input_path)
     if not request_path.is_absolute():
         request_path = ROOT / request_path
-    if request_path.is_symlink() or not request_path.is_file():
+    if request_path.is_symlink() or not storage_io.is_file(request_path):
         raise ValueError('request must be a regular workspace file')
-    request_path = request_path.resolve()
-    if not request_path.is_relative_to(ROOT.resolve()):
+    request_path = storage_io.resolve(request_path)
+    if not request_path.is_relative_to(storage_io.resolve(ROOT)):
         raise ValueError('request must be a retained non-symlink workspace file')
-    request = json.loads(request_path.read_text(encoding='utf-8'))
+    request = json.loads(storage_io.read_text(request_path, encoding='utf-8'))
     if request.get('schema') != INPUT_SCHEMA or request.get('case_id') != CASE_ID:
         raise ValueError('exact typed two-slot request required')
     if base.season != '2000-01' or base.release_id != request.get('release_id'):
@@ -260,9 +261,9 @@ def prepare(base, input_path) -> dict:
         raise ValueError('exact parent manifest/package/JUG/EQ/MINIFOTO hashes differ')
     bodies, source_bindings = read_sources(request)
     source_facts = validate_sources(bodies)
-    package = json.loads(Path(base.package_path).read_text(encoding='utf-8'))
-    jug = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    package = json.loads(storage_io.read_text(Path(base.package_path), encoding='utf-8'))
+    jug = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     by_carrier = {p['carrier_id']: p for p in package['players']}
     by_club = {c['carrier_id']: c for c in package['clubs']}
     if any(row.get('id') == MODEL_ID for row in package.get('sources', [])):
@@ -318,7 +319,7 @@ def prepare(base, input_path) -> dict:
     plan = {
         'schema': SCHEMA, 'mode': MODE, 'case_id': CASE_ID, 'season': base.season,
         'release_id': base.release_id, 'source_input': {
-            'path': str(request_path.relative_to(ROOT)), 'sha256': sha(request_path.read_bytes())},
+            'path': str(request_path.relative_to(ROOT)), 'sha256': sha(storage_io.read_bytes(request_path))},
         'parent': parent, 'package_document_sha256': sha(canonical(package)),
         'sources': source_bindings, 'source_facts': source_facts,
         'native_before': native_before,
@@ -336,7 +337,7 @@ def prepare(base, input_path) -> dict:
                   'build_source_runtime_publication': 'not performed'},
     }
     from scripts import season_editorial_ratings_v1 as er
-    if sha((ROOT / 'scripts/season_editorial_ratings_v1.py').read_bytes()) != request['rating_policy']['model_sha256']:
+    if sha(storage_io.read_bytes(ROOT / 'scripts/season_editorial_ratings_v1.py')) != request['rating_policy']['model_sha256']:
         raise ValueError('rating model file snapshot changed')
     g = rating_for_gimmelli(before[4211], request)
     gimmelli_rating = copy.deepcopy(g['stored'])
@@ -519,11 +520,11 @@ def _is_exact_post_package(package: dict, plan: dict) -> bool:
 def apply_pair(base, jug: bytes, eq: bytes, plan: dict) -> tuple[bytes, bytes]:
     if exact_parent(base) != plan['parent']:
         raise ValueError('registered parent changed')
-    original = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    original_eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    original = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    original_eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     if eq != original_eq:
         raise ValueError('EQ is invariant for this transaction')
-    package = json.loads(Path(base.package_path).read_text(encoding='utf-8'))
+    package = json.loads(storage_io.read_text(Path(base.package_path), encoding='utf-8'))
     post_package = materialize_package(package, plan)
     codes = compiler._extract_country_codes_from_textos(base.game_path / 'DBDAT/TEXTOS.PKF')
     selected = {slot['player_id'] for slot in plan['slots'].values()}
@@ -570,16 +571,16 @@ def verify(base, plan: dict) -> None:
     if plan.get('schema') != SCHEMA or plan.get('mode') != MODE:
         raise ValueError('wrong Serena/Gimmelli schema or mode')
     registered = _bound_base(plan)
-    if (Path(registered.package_path).resolve() != Path(base.package_path).resolve()
-            or Path(registered.game_path).resolve() != Path(base.game_path).resolve()):
+    if (storage_io.resolve(Path(registered.package_path)) != storage_io.resolve(Path(base.package_path))
+            or storage_io.resolve(Path(registered.game_path)) != storage_io.resolve(Path(base.game_path))):
         raise ValueError('verify requires the exact registered release object')
     input_path = Path(plan['source_input']['path'])
     if not input_path.is_absolute():
         input_path = ROOT / input_path
-    if input_path.is_symlink() or not input_path.is_file():
+    if input_path.is_symlink() or not storage_io.is_file(input_path):
         raise ValueError('bound source request is missing or is a symlink')
-    input_path = input_path.resolve()
-    if not input_path.is_relative_to(ROOT.resolve()) or sha(input_path.read_bytes()) != plan['source_input']['sha256']:
+    input_path = storage_io.resolve(input_path)
+    if not input_path.is_relative_to(storage_io.resolve(ROOT)) or sha(storage_io.read_bytes(input_path)) != plan['source_input']['sha256']:
         raise ValueError('bound source request path/hash changed')
     reproduced = prepare(registered, input_path)
     if canonical(reproduced) != canonical(plan):
@@ -589,7 +590,7 @@ def verify(base, plan: dict) -> None:
 def bind(package: dict, plan: dict) -> dict:
     base = _bound_base(plan)
     verify(base, plan)
-    raw = Path(base.package_path).read_bytes()
+    raw = storage_io.read_bytes(Path(base.package_path))
     original = json.loads(raw)
     if sha(raw) != plan['parent']['package_sha256'] or sha(canonical(original)) != plan['package_document_sha256']:
         raise ValueError('exact complete registered recipe preimage differs')
@@ -604,8 +605,8 @@ def bind(package: dict, plan: dict) -> dict:
 def apply(jug: bytes, eq: bytes, plan: dict) -> tuple[bytes, bytes]:
     base = _bound_base(plan)
     verify(base, plan)
-    original_jug = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    original_eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    original_jug = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    original_eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     if sha(original_jug) != plan['parent']['jug_sha256'] or sha(original_eq) != plan['parent']['eq_sha256']:
         raise ValueError('exact registered JUG/EQ parent differs')
     return apply_pair(base, jug, eq, plan)
@@ -620,7 +621,7 @@ def selected_carriers(plan: dict) -> set[int]:
 def apply_minifoto(data: bytes, plan: dict) -> bytes:
     base = _bound_base(plan)
     verify(base, plan)
-    original = (base.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
+    original = storage_io.read_bytes(base.game_path / 'DBDAT/MINIFOTO.PKF')
     if sha(original) != plan['parent']['minifoto_sha256']:
         raise ValueError('exact registered MINIFOTO parent differs')
     expected, _ = delta.no_photo_archive(original, selected_carriers(plan))
@@ -666,15 +667,15 @@ def _source_preflight(previous):
     relative = getattr(previous, 'locator', {}).get('sourced_profile_assignment_plan_path')
     if not relative:
         raise ValueError('Serena/Gimmelli SOURCE receipt lacks assignment-plan locator')
-    plan_path = (ROOT / relative).resolve()
-    if not plan_path.is_relative_to(ROOT.resolve()):
+    plan_path = storage_io.resolve(ROOT / relative)
+    if not plan_path.is_relative_to(storage_io.resolve(ROOT)):
         raise ValueError('SOURCE assignment plan escaped the workspace')
     plan = pipeline.read_json_file(plan_path)
     if plan.get('schema') != SCHEMA or plan.get('mode') != MODE:
         raise ValueError('SOURCE locator names a different adapter plan')
     base = _bound_base(plan)
     verify(base, plan)
-    expected_plan_path = (Path(previous.package_path).parent / filename(plan)).resolve()
+    expected_plan_path = storage_io.resolve(Path(previous.package_path).parent / filename(plan))
     if (plan_path != expected_plan_path
             or registry.sha256_file(plan_path) != receipt.get('original_profile_assignment_plan_sha256')):
         raise ValueError('SOURCE plan path or raw file SHA differs from its compiler receipt')
@@ -716,7 +717,7 @@ def reconstruction(previous, release_id: str):
         source_release_id=base.release_id, profile_assignment_plan_path=plan_path)
     rebuilt = registry.load_registered_release(base.season, release_id)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path, prepared['inventory'])
-    if Path(rebuilt.package_path).read_bytes() != package_path.read_bytes():
+    if storage_io.read_bytes(Path(rebuilt.package_path)) != storage_io.read_bytes(package_path):
         raise ValueError('SOURCE complete recipe bytes differ after reconstruction')
     return {'season': base.season, 'release_id': release_id,
         'complete_game_inventory_identical': True, 'complete_recipe_identical': True,
@@ -735,12 +736,12 @@ def rebase_request(base, output_path: str | Path, template_path: str | Path) -> 
     template = Path(template_path)
     if not template.is_absolute():
         template = ROOT / template
-    if template.is_symlink() or not template.is_file():
+    if template.is_symlink() or not storage_io.is_file(template):
         raise ValueError('request template must be a retained regular file')
-    template = template.resolve()
-    if not template.is_relative_to(ROOT.resolve()):
+    template = storage_io.resolve(template)
+    if not template.is_relative_to(storage_io.resolve(ROOT)):
         raise ValueError('request template escaped the workspace')
-    request = json.loads(template.read_text(encoding='utf-8'))
+    request = json.loads(storage_io.read_text(template, encoding='utf-8'))
     if request.get('schema') != INPUT_SCHEMA or request.get('case_id') != CASE_ID:
         raise ValueError('request template schema/case differs')
     read_sources(request)
@@ -750,13 +751,13 @@ def rebase_request(base, output_path: str | Path, template_path: str | Path) -> 
     output = Path(output_path)
     if not output.is_absolute():
         output = ROOT / output
-    resolved_parent = output.parent.resolve()
-    if not resolved_parent.is_relative_to(ROOT.resolve()):
+    resolved_parent = storage_io.resolve(output.parent)
+    if not resolved_parent.is_relative_to(storage_io.resolve(ROOT)):
         raise ValueError('rebase output must remain in the retained workspace')
     output = resolved_parent / output.name
-    if output.exists() or output.is_symlink():
+    if storage_io.exists(output) or output.is_symlink():
         raise ValueError('rebase output must be a new path; preserve prior requests')
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_bytes(canonical(request))
-    return {'path': str(output.resolve().relative_to(ROOT)), 'sha256': sha(output.read_bytes()),
+    storage_io.write_bytes(output, canonical(request))
+    return {'path': str(storage_io.resolve(output).relative_to(ROOT)), 'sha256': sha(storage_io.read_bytes(output)),
             'parent': request['parent'], 'release_id': base.release_id}

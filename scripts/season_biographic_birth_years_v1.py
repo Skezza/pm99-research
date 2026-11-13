@@ -10,6 +10,7 @@ import hashlib
 import sys
 
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import audit_compiled_player_birth_dates_v1 as readback
 from scripts import season_historical_roster_audit_v1 as audit
 from scripts import season_opening_order_repair_v1 as order
@@ -42,12 +43,12 @@ def unique_date_witnesses(captures, name, birthday):
 def prepare(release):
     sys.path.insert(0, str(registry.ROOT / 'upstream/pm99-skezmod-patcher'))
     from player_birth_year_guard import patch_native_birth_year_guard
-    exe = (release.game_path / 'MANAGPRE.EXE').read_bytes()
+    exe = storage_io.read_bytes(release.game_path / 'MANAGPRE.EXE')
     if patch_native_birth_year_guard(exe)[0] != exe:
         raise ValueError('modern birthdays need the already verified executable guard')
     package = pipeline.read_json_file(release.package_path)
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (release.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
     owners = order.native_owners(eq)
     people = {p['carrier_id']: p for p in package['players']}
     clubs = {c['id']: c for c in package['clubs']}
@@ -143,7 +144,7 @@ def reconstruction(previous, release_id):
     plan = pipeline.read_json_file(path)
     if plan.get('policy') != POLICY:
         return None
-    if (path.resolve() != (previous.package_path.parent / FILENAME).resolve()
+    if (storage_io.resolve(path) != storage_io.resolve(previous.package_path.parent / FILENAME)
             or registry.sha256_file(path) != receipt['birth_year_plan_sha256']):
         raise ValueError('biographic replay source path/hash differs')
     from scripts import publish_historical_role_delta_v1 as publisher

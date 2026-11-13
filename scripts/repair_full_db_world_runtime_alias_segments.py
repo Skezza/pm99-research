@@ -29,6 +29,7 @@ from app.editor_actions import write_player_staged_records  # noqa: E402
 from app.editor_helpers import _player_display_name  # noqa: E402
 from app.fdi_indexed import IndexedFDIFile  # noqa: E402
 from app.models import PlayerRecord  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts.repair_full_db_world_runtime_payloads import _assignment_rows  # noqa: E402
 
 
@@ -139,7 +140,7 @@ def _patch_runtime_segments(
 
 
 def _player_rows_by_id(player_file: Path) -> tuple[dict[int, Any], bytes]:
-    file_data = player_file.read_bytes()
+    file_data = storage_io.read_bytes(player_file)
     indexed = IndexedFDIFile.from_bytes(file_data)
     return {int(entry.record_id): entry for entry in indexed.entries}, file_data
 
@@ -202,9 +203,9 @@ def repair_runtime_alias_segments(
     allow_payload_length_change: bool,
 ) -> dict[str, Any]:
     player_file = game_root / "DBDAT" / "JUG98030.FDI"
-    if not player_file.is_file():
+    if not storage_io.is_file(player_file):
         raise FileNotFoundError(f"Missing player file: {player_file}")
-    if not assignment_path.is_file():
+    if not storage_io.is_file(assignment_path):
         raise FileNotFoundError(f"Missing assignment file: {assignment_path}")
 
     target_rows = _assignment_rows(assignment_path, game_root=game_root, include_assigned=True)
@@ -434,15 +435,15 @@ def main() -> int:
     args = parser.parse_args()
 
     result = repair_runtime_alias_segments(
-        game_root=Path(args.game_root).expanduser().resolve(),
-        assignment_path=Path(args.assignment).expanduser().resolve(),
+        game_root=storage_io.resolve(Path(args.game_root).expanduser()),
+        assignment_path=storage_io.resolve(Path(args.assignment).expanduser()),
         dry_run=bool(args.dry_run),
         create_backup=not bool(args.no_backup),
         allow_payload_length_change=bool(args.allow_payload_length_change),
     )
-    output_path = Path(args.output_json).expanduser().resolve()
+    output_path = storage_io.resolve(Path(args.output_json).expanduser())
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(output_path, json.dumps(result, indent=2, sort_keys=True) + '\n', encoding='utf-8')
     print(json.dumps({k: result[k] for k in ("ok", "counts", "method_counts")}, indent=2, sort_keys=True))
     return 0 if result["ok"] else 1
 

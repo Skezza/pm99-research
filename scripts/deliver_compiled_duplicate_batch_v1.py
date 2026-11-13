@@ -15,6 +15,7 @@ from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import closeout_duplicate_ownership_batch_v1 as batch
 from scripts import season_release_registry_v1 as registry
 from scripts import publish_historical_role_delta_v1 as publisher
@@ -48,10 +49,10 @@ def identity_difference(before, after):
 
 def deliver(root, plan_root, release_id, label, prior_label, person_path, enriched_before=None):
     proof_path = root / f'native-verification-{label}-final.json'
-    proof = json.loads(proof_path.read_text())
-    if proof['release_id'] != release_id or not (root / f'closeout-{prior_label}-final/summary.json').exists():
+    proof = json.loads(storage_io.read_text(proof_path))
+    if proof['release_id'] != release_id or not storage_io.exists(root / f'closeout-{prior_label}-final/summary.json'):
         raise ValueError('exact batch proof and frozen prior closeout required')
-    plans = {s: json.loads((plan_root / s / 'ownership-plan.json').read_text())
+    plans = {s: json.loads(storage_io.read_text(plan_root / s / 'ownership-plan.json'))
              for s in registry.supported_seasons()}
     changed = verify_batch_size(plans, proof)
     for row in proof['seasons']:
@@ -79,7 +80,7 @@ def deliver(root, plan_root, release_id, label, prior_label, person_path, enrich
         identities.run(output, person_supplement=person_path if enriched else None)
         previous = (enriched_before if enriched and enriched_before is not None
                     else root / f'published-identities-after-{prior_label}{suffix}.json')
-        difference = identity_difference(json.loads(previous.read_text()), json.loads(output.read_text()))
+        difference = identity_difference(json.loads(storage_io.read_text(previous)), json.loads(storage_io.read_text(output)))
         pipeline.write_canonical_json(root / f'published-identity-difference-{label}{suffix}.json', difference)
         print(json.dumps({'identity_difference': difference}), flush=True)
     cumulative = ledger.run(root / f'repair-and-portrait-ledger-{prior_label}.json', [plan_root],

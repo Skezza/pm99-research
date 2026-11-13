@@ -16,6 +16,7 @@ from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
 from scripts.season_art_transaction_v1 import atomic_bytes
@@ -53,9 +54,9 @@ def parse(original, requested):
 
 
 def run(discovery, cache, output):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('public club discovery capture is immutable')
-    original = json.loads(discovery.read_text())
+    original = json.loads(storage_io.read_text(discovery))
     if original.get('schema_version') != 'pm99-original-history-club-query-discovery-v1':
         raise ValueError('unsupported original historical query discovery')
     ids = original['query_club_ids']
@@ -67,12 +68,12 @@ def run(discovery, cache, output):
         endpoint = url(requested)
         key = hashlib.sha256(endpoint.encode()).hexdigest()
         path, receipt = cache / (key + '.json'), cache / (key + '.source.json')
-        if path.exists():
-            raw = path.read_bytes()
-            if json.loads(receipt.read_text()) != {'url': endpoint, 'sha256': hashlib.sha256(raw).hexdigest()}:
+        if storage_io.exists(path):
+            raw = storage_io.read_bytes(path)
+            if json.loads(storage_io.read_text(receipt)) != {'url': endpoint, 'sha256': hashlib.sha256(raw).hexdigest()}:
                 raise ValueError('original public club receipt changed')
         else:
-            if receipt.exists():
+            if storage_io.exists(receipt):
                 raise ValueError('original club receipt lacks its response')
             with urlopen(Request(endpoint, headers={'User-Agent': 'PM99 historical football research',
                     'Accept': 'application/json'}), timeout=25) as response:

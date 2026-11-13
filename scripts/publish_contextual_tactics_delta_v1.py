@@ -14,6 +14,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_package_v2 as package_v2
 from scripts import season_pipeline_v2 as pipeline
@@ -29,7 +30,7 @@ def verify_recipe_artifact(path: Path, expected_sha256: str):
     if raw_sha == expected_sha256:
         return {'hash_contract': 'raw-file', 'raw_sha256': raw_sha}
     if path.suffix.lower() == '.json':
-        semantic_sha = hashlib.sha256(pipeline.canonical_json_bytes(json.loads(path.read_text()))).hexdigest()
+        semantic_sha = hashlib.sha256(pipeline.canonical_json_bytes(json.loads(storage_io.read_text(path)))).hexdigest()
         if semantic_sha == expected_sha256:
             return {'hash_contract': 'canonical-semantic-json', 'raw_sha256': raw_sha,
                     'canonical_sha256': semantic_sha}
@@ -40,38 +41,38 @@ def verify_completion(candidate: Path, save_run: Path, reload_run: Path, match_r
     """Require a genuinely changed native save and a negative-control reload."""
     from app.eq_initial_tactics import GRID_BYTES, read_initial_tactics
     from scripts.verify_contextual_tactics_runtime_v1 import verify
-    original = json.loads((candidate / 'candidate-receipt.json').read_text())
-    eq = tactics.payloads((candidate / 'DBDAT/EQ98030.FDI').read_bytes())[307]
+    original = json.loads(storage_io.read_text(candidate / 'candidate-receipt.json'))
+    eq = tactics.payloads(storage_io.read_bytes(candidate / 'DBDAT/EQ98030.FDI'))[307]
     offset = read_initial_tactics(eq).grid_offset
     grid = eq[offset:offset + GRID_BYTES]
     source_game = Path(original['source_game_path'])
-    source_eq = tactics.payloads((source_game / 'DBDAT/EQ98030.FDI').read_bytes())[307]
+    source_eq = tactics.payloads(storage_io.read_bytes(source_game / 'DBDAT/EQ98030.FDI'))[307]
     source_offset = read_initial_tactics(source_eq).grid_offset
     if source_eq[source_offset:source_offset + GRID_BYTES] == grid:
         raise ValueError('reload baseline already contains the candidate tactics')
-    saves = [p for p in (save_run / 'tactics_library').glob('TACTIC.*')
-             if p.read_bytes().startswith(b'\xff') and p.read_bytes().endswith(grid)
-             and (source_game / 'TACTICS' / p.name).is_file()
-             and p.read_bytes() != (source_game / 'TACTICS' / p.name).read_bytes()]
+    saves = [p for p in storage_io.glob(save_run / 'tactics_library', 'TACTIC.*')
+             if storage_io.read_bytes(p).startswith(b'\xff') and storage_io.read_bytes(p).endswith(grid)
+             and storage_io.is_file(source_game / 'TACTICS' / p.name)
+             and storage_io.read_bytes(p) != storage_io.read_bytes(source_game / 'TACTICS' / p.name)]
     if len(saves) != 1:
         raise ValueError('game did not produce one independently changed native tactics save')
     saved = saves[0]
     def launch(folder):
-        return json.loads((folder / 'control_launch.json').read_text())['child_command']
+        return json.loads(storage_io.read_text(folder / 'control_launch.json'))['child_command']
     def argument(command, name):
         if name not in command:
             raise ValueError('missing runtime validation argument: ' + name)
         return command[command.index(name) + 1]
     save_command, reload_command, match_command = map(launch, (save_run, reload_run, match_run))
-    if Path(argument(save_command, '--dbdat-dir')).resolve() != (candidate / 'DBDAT').resolve():
+    if storage_io.resolve(Path(argument(save_command, '--dbdat-dir'))) != storage_io.resolve(candidate / 'DBDAT'):
         raise ValueError('native save did not come from this candidate')
-    if (Path(argument(reload_command, '--dbdat-dir')).resolve() != (source_game / 'DBDAT').resolve()
-            or Path(argument(reload_command, '--tactics-override-file')).resolve() != saved.resolve()
+    if (storage_io.resolve(Path(argument(reload_command, '--dbdat-dir'))) != storage_io.resolve(source_game / 'DBDAT')
+            or storage_io.resolve(Path(argument(reload_command, '--tactics-override-file'))) != storage_io.resolve(saved)
             or '--tactics-load-row' not in reload_command):
         raise ValueError('reload was not an independent old-baseline negative control')
     reload_proof = verify(candidate, reload_run)
-    summary = json.loads((match_run / 'summary.json').read_text())
-    if (Path(argument(match_command, '--dbdat-dir')).resolve() != (candidate / 'DBDAT').resolve()
+    summary = json.loads(storage_io.read_text(match_run / 'summary.json'))
+    if (storage_io.resolve(Path(argument(match_command, '--dbdat-dir'))) != storage_io.resolve(candidate / 'DBDAT')
             or not summary.get('success') or not summary.get('dashboard_reached')
             or summary.get('crash_detected') or summary.get('wine_debugger_detected')
             or summary.get('match_count', 0) < 1 or not summary.get('skip_initial_tactics_strategy')):
@@ -98,7 +99,7 @@ def publish(candidate: Path, run: Path, *, release_id: str, register: bool = Fal
     if register and save_run is None:
         raise ValueError('registration requires independent save/reload and match proof')
     completion = verify_completion(candidate, save_run, reload_run, match_run) if save_run else None
-    original = json.loads((candidate / 'candidate-receipt.json').read_text())
+    original = json.loads(storage_io.read_text(candidate / 'candidate-receipt.json'))
     release = registry.load_preferred_release(original['season'])
     if (release.release_id, registry.canonical_document_sha256(release.package_path),
             registry.sha256_file(release.game_path / 'DBDAT/EQ98030.FDI'),
@@ -106,27 +107,27 @@ def publish(candidate: Path, run: Path, *, release_id: str, register: bool = Fal
             original['source_release_id'], original['source_package_sha256'],
             original['source_eq_sha256'], original['source_jug_sha256']):
         raise ValueError('tactics candidate no longer extends the current release')
-    layer = json.loads((candidate / 'contextual-tactics.json').read_text())
+    layer = json.loads(storage_io.read_text(candidate / 'contextual-tactics.json'))
     if len(layer['clubs']) != 1 or layer['clubs'][0]['carrier_id'] != 307:
         raise ValueError('Stoke pilot publisher cannot publish a multi-club rollout; require formation coverage gates')
-    before_eq = (release.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    before_eq = storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     after_eq = tactics.apply_layer(before_eq, jug, layer)
-    if (after_eq != (candidate / 'DBDAT/EQ98030.FDI').read_bytes() or
+    if (after_eq != storage_io.read_bytes(candidate / 'DBDAT/EQ98030.FDI') or
             hashlib.sha256(after_eq).hexdigest() != original['output_eq_sha256'] or
             tactics.apply_layer(after_eq, jug, layer) != after_eq):
         raise ValueError('candidate tactics bytes changed or are not deterministic')
-    launch = json.loads((run / 'control_launch.json').read_text())['child_command']
-    if Path(launch[launch.index('--dbdat-dir') + 1]).resolve() != (candidate / 'DBDAT').resolve():
+    launch = json.loads(storage_io.read_text(run / 'control_launch.json'))['child_command']
+    if storage_io.resolve(Path(launch[launch.index('--dbdat-dir') + 1])) != storage_io.resolve(candidate / 'DBDAT'):
         raise ValueError('runtime evidence belongs to a different candidate')
     destination = registry.locator_path(release.season, release_id).parent
     workspace = candidate.parent / release_id
-    if workspace.exists() or destination.exists():
+    if storage_io.exists(workspace) or storage_io.exists(destination):
         raise ValueError('tactics release exists; never overwrite')
     before, runtime_drift = source_inventory(release)
     if shutil.disk_usage(candidate.parent).free < before['total_bytes'] + 512 * 1024 * 1024:
         raise ValueError('insufficient space for an independent playable tactics release')
-    package = json.loads((candidate / 'season-package.json').read_text())
+    package = json.loads(storage_io.read_text(candidate / 'season-package.json'))
     package['artifacts'].append({'id': 'english-contextual-package-2015-16', 'kind': 'season-input',
         'sha256': registry.sha256_file(candidate / 'english-season-package.json'),
         'media_type': 'application/json', 'relative_path': 'english-season-package.json'})
@@ -142,9 +143,9 @@ def publish(candidate: Path, run: Path, *, release_id: str, register: bool = Fal
         if rel.is_absolute() or '..' in rel.parts:
             raise ValueError('unsafe inherited tactics recipe artifact path')
         options = (candidate / rel, release.package_path.parent / rel, ROOT / rel)
-        source = next((p for p in options if p.is_file()), options[0])
+        source = next((p for p in options if storage_io.is_file(p)), options[0])
         target = workspace / rel
-        if not source.is_file():
+        if not storage_io.is_file(source):
             raise ValueError('recipe-local input missing or its hash changed')
         binding = verify_recipe_artifact(source, artifact['sha256'])
         inherited_artifact_bindings.append({'id': artifact['id'], **binding})
@@ -157,13 +158,13 @@ def publish(candidate: Path, run: Path, *, release_id: str, register: bool = Fal
     # are safe; the helper falls back to independent ordinary copies.
     _copy_game_tree(release.game_path, game)
     temporary = workspace / 'EQ98030.FDI.partial'
-    temporary.write_bytes(after_eq)
-    os.replace(temporary, game / 'DBDAT/EQ98030.FDI')
+    storage_io.write_bytes(temporary, after_eq)
+    storage_io.replace_file(temporary, game / 'DBDAT/EQ98030.FDI')
     for source, target in input_copies:
         target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(source, target)
+        storage_io.copy_file(source, target, metadata=True)
     package_path = workspace / 'season-package.json'
-    package_path.write_bytes(package_v2.canonical_json_bytes(package))
+    storage_io.write_bytes(package_path, package_v2.canonical_json_bytes(package))
     proof_path = workspace / 'tactics-visual-runtime-proof.json'
     pipeline.write_canonical_json(proof_path, proof)
     if completion:
@@ -173,7 +174,7 @@ def publish(candidate: Path, run: Path, *, release_id: str, register: bool = Fal
     if (difference['only_left'] or difference['only_right'] or
             [r['path'] for r in difference['changed']] != ['DBDAT/EQ98030.FDI']):
         raise ValueError('tactics delta changed unrelated game files')
-    outputs = [{'path': p, 'sha256': registry.sha256_file(game / p), 'size': (game / p).stat().st_size}
+    outputs = [{'path': p, 'sha256': registry.sha256_file(game / p), 'size': storage_io.size(game / p)}
                for p in ('DBDAT/JUG98030.FDI', 'DBDAT/EQ98030.FDI', 'DBDAT/ENT98030.FDI')]
     receipt = {'schema': 'pm99-native-contextual-tactics-delta-v1', 'season': release.season,
         'season_package_sha256': registry.canonical_document_sha256(package_path),
@@ -263,7 +264,7 @@ def main():
     parser.add_argument('--reload-run', type=Path)
     parser.add_argument('--match-run', type=Path)
     args = parser.parse_args()
-    print(json.dumps(publish(args.candidate.resolve(), args.run.resolve(),
+    print(json.dumps(publish(storage_io.resolve(args.candidate), storage_io.resolve(args.run),
         release_id=args.release_id, register=args.register,
         save_run=args.save_run, reload_run=args.reload_run, match_run=args.match_run), indent=2))
 

@@ -32,6 +32,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline
 
 
@@ -310,10 +311,10 @@ def load_canonical_build_plan(path: Path) -> tuple[dict[str, Any], str]:
     """Load a strictly canonical JSON plan and return it with its content hash."""
 
     path = path.expanduser()
-    if not path.is_file() or path.is_symlink():
+    if not storage_io.is_file(path) or path.is_symlink():
         raise BuildPlanError(f"build plan must be a regular non-symlink file: {path}")
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise BuildPlanError(f"build plan is not valid UTF-8 JSON: {path}") from exc
@@ -337,7 +338,7 @@ def _directory_set(root: Path) -> set[str]:
     if root.is_symlink():
         raise BuildPlanError(f"tree root must not be a symlink: {root}")
     directories = {""}
-    for path in root.rglob("*"):
+    for path in storage_io.glob(root, '*', recursive=True):
         if path.is_symlink():
             raise BuildPlanError(f"materialisation tree contains a symlink: {path}")
         if path.is_dir():
@@ -379,9 +380,9 @@ def _build_declared_output_inventory(root: Path, outputs: Sequence[str]) -> dict
     total_bytes = 0
     for relative in outputs:
         path = root / relative
-        if not path.is_file() or path.is_symlink():
+        if not storage_io.is_file(path) or path.is_symlink():
             raise BuildPlanError(f"declared stage output is missing or unsafe: {relative}")
-        size = path.stat().st_size
+        size = storage_io.size(path)
         files.append({"path": relative, "sha256": pipeline.sha256_file(path), "size": size})
         total_bytes += size
     inventory = {
@@ -412,9 +413,9 @@ def _command_mapping(specifications: Sequence[str], *, required_ids: set[str]) -
         if command_id in mapping:
             raise BuildPlanError(f"duplicate local command mapping: {command_id}")
         path = Path(raw_path).expanduser()
-        if path.is_symlink() or not path.is_file():
+        if path.is_symlink() or not storage_io.is_file(path):
             raise BuildPlanError(f"local command must be a regular non-symlink file: {path}")
-        path = path.resolve()
+        path = storage_io.resolve(path)
         if not os.access(path, os.X_OK):
             raise BuildPlanError(f"local command is not directly executable: {path}")
         mapping[command_id] = path
@@ -437,7 +438,7 @@ def _artifact_mapping(
         pipeline._require_identifier(artifact_id, label="external artifact id")
         if not raw_path or artifact_id in mapping:
             raise BuildPlanError(f"invalid or duplicate external artifact mapping: {artifact_id!r}")
-        mapping[artifact_id] = Path(raw_path).expanduser().resolve()
+        mapping[artifact_id] = storage_io.resolve(Path(raw_path).expanduser())
     expected_by_id = {descriptor["id"]: descriptor for descriptor in expected}
     if set(mapping) != set(expected_by_id):
         raise BuildPlanError(
@@ -450,9 +451,9 @@ def _artifact_mapping(
 
 
 def _prepare_clean_materialisation(*, base_tree: Path, materialisation_tree: Path, forbidden: Sequence[str]) -> set[str]:
-    base_tree = base_tree.expanduser().resolve()
+    base_tree = storage_io.resolve(base_tree.expanduser())
     materialisation_tree = materialisation_tree.expanduser()
-    if materialisation_tree.exists() or materialisation_tree.is_symlink():
+    if storage_io.exists(materialisation_tree) or materialisation_tree.is_symlink():
         raise BuildPlanError(
             f"materialisation tree must not already exist; use a fresh disposable directory: {materialisation_tree}"
         )
@@ -575,10 +576,10 @@ def execute_build_plan(
     ):
         if raw_path.expanduser().is_symlink():
             raise BuildPlanError(f"{label} must not be a symlink: {raw_path}")
-    base_tree = base_tree.expanduser().resolve()
-    season_package = season_package.expanduser().resolve()
-    materialisation_tree = materialisation_tree.expanduser().resolve()
-    metadata_dir = metadata_dir.expanduser().resolve()
+    base_tree = storage_io.resolve(base_tree.expanduser())
+    season_package = storage_io.resolve(season_package.expanduser())
+    materialisation_tree = storage_io.resolve(materialisation_tree.expanduser())
+    metadata_dir = storage_io.resolve(metadata_dir.expanduser())
     pipeline._ensure_disjoint_directories(base_tree, materialisation_tree, metadata_dir)
 
     if verified_base["base_id"] != plan["base"]["base_id"]:
@@ -602,7 +603,7 @@ def execute_build_plan(
         raise BuildPlanError("validated local command mapping does not match build plan")
     for stage in plan["stages"]:
         command_path = local_commands[stage["command"]["id"]]
-        if command_path.is_symlink() or not command_path.is_file() or not os.access(command_path, os.X_OK):
+        if command_path.is_symlink() or not storage_io.is_file(command_path) or not os.access(command_path, os.X_OK):
             raise BuildPlanError(f"local command is not directly executable: {command_path}")
         if pipeline.sha256_file(command_path) != stage["command"]["sha256"]:
             raise BuildPlanError(f"local command hash changed after validation: {stage['command']['id']}")

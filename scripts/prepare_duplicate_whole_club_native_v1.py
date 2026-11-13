@@ -17,6 +17,7 @@ import sys
 import tempfile
 
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import prepare_duplicate_club_disposition_v1 as source
 from scripts import season_duplicate_ownership_delta_v1 as delta
 from scripts import season_same_carrier_name_capacity_v1 as capacity
@@ -126,7 +127,7 @@ def preserve_other_records(before,after,permitted):
 
 
 def prepare(proposal_path,manager_path,output,input_overrides=None):
-    if output.exists():raise ValueError('whole-club native candidate is immutable; never overwrite')
+    if storage_io.exists(output):raise ValueError('whole-club native candidate is immutable; never overwrite')
     implementations={'whole_club_source':Path(source.__file__),'candidate_builder':Path(__file__),
         'fact_composer':Path(delta.__file__),'native_compiler':Path(delta.compiler.__file__),
         'original_opening_replayer':Path(source.replay.__file__),'public_input_binder':Path(source.public.__file__),
@@ -135,7 +136,7 @@ def prepare(proposal_path,manager_path,output,input_overrides=None):
         'capacity_checker':Path(capacity.__file__),'dated_manager_reader':Path(managers.__file__),
         'manager_display_policy':Path(manager_display.__file__)}
     implementation_hashes={key:registry.sha256_file(path) for key,path in implementations.items()}
-    proposal=json.loads(proposal_path.read_text())
+    proposal=json.loads(storage_io.read_text(proposal_path))
     if proposal.get('schema_version')!=source.SCHEMA or proposal.get('approved_for_native_publication') is not False:
         raise ValueError('whole-club candidate requires an explicit source-only proposal')
     # A PRIVATE candidate can use a registered, not-yet-promoted baseline.
@@ -155,32 +156,32 @@ def prepare(proposal_path,manager_path,output,input_overrides=None):
             original(proposal['bindings']['published_transfer_supplement']),original(proposal['entity_binding']),
             replay_path,capacity_bundle=proposal.get('capacity_policy_bundle'),
             baseline_release_id=proposal['release_id'],snapshot_binding=proposal['bindings'].get('snapshot'))
-        if json.loads(replay_path.read_text())!=proposal:raise ValueError('whole-club original source replay differs')
-    receipt=json.loads(manager_path.with_name(manager_path.name+'.source.json').read_text())
+        if json.loads(storage_io.read_text(replay_path))!=proposal:raise ValueError('whole-club original source replay differs')
+    receipt=json.loads(storage_io.read_text(manager_path.with_name(manager_path.name + '.source.json')))
     actual=proposal['original_opening'];team_id=actual['source_capture']['source_path'].split('/')[2]
     expected_url=f'https://www.soccerbase.com/teams/team.sd?team_id={team_id}&teamTabs=managers'
     if receipt!={'url':expected_url,'sha256':registry.sha256_file(manager_path)}:
         raise ValueError('dated manager source does not identify the same original team')
     from scripts.prepare_paired_whole_club_native_v1 import dated_manager_identity, recipe_inputs
     from scripts.publish_contextual_tactics_delta_v1 import verify_recipe_artifact
-    manager_name, source_manager_id=dated_manager_identity(manager_path.read_bytes(),actual['fixture']['date'])
+    manager_name, source_manager_id=dated_manager_identity(storage_io.read_bytes(manager_path),actual['fixture']['date'])
     short,_=manager_display.short_name(manager_name)
     if short is None:raise ValueError('dated manager needs an unambiguous native display name')
     native_names={'surname':short,'display_name':short}
-    package=json.loads(release.package_path.read_text());club,slots=validate_allocation(package,proposal)
+    package=json.loads(storage_io.read_text(release.package_path));club,slots=validate_allocation(package,proposal)
     holdings,names=_manager_graph(eq_path=release.game_path/'DBDAT/EQ98030.FDI',ent_path=release.game_path/'DBDAT/ENT98030.FDI')
     manager=next(m for m in package['managers'] if m['id']==club['manager_id']);mid=manager['carrier_id']
     if [c['carrier_id'] for c in holdings.get(mid,[])]!=[club['carrier_id']]:
         raise ValueError('whole-club target does not exclusively own its native coach')
     result,composition=compile_recipe(package,proposal)
-    patched_source=(release.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    patched_source=storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     for row in proposal['allocation']:
         if row.get('same_carrier_name_capacity') is not None:
             patched_source,claim=capacity.recover_slot(patched_source,row['carrier_id'],proposal['capacity_policy_bundle'])
             if claim!=row['same_carrier_name_capacity']:raise ValueError('whole-club capacity claim changed')
     countries=delta.compiler._extract_country_codes_from_textos(release.game_path/'DBDAT/TEXTOS.PKF')
     jug=delta.compile_players(patched_source,result,set(slots),countries)
-    before_orders=source.startup_orders((release.game_path/'DBDAT/JUG98030.FDI').read_bytes(),list(slots.values()))
+    before_orders=source.startup_orders(storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI'),list(slots.values()))
     after_orders=source.startup_orders(jug,list(slots.values()))
     if before_orders!=after_orders:raise ValueError('whole-club repair changed native startup control bytes')
     for row in proposal['allocation']:
@@ -188,13 +189,13 @@ def prepare(proposal_path,manager_path,output,input_overrides=None):
         if row.get('native_startup_order_before')!=order or not source.opening_edge(order,row['replacement']):
             raise ValueError('whole-club repair did not place the sourced XI and keeper in actual startup slots')
     target=next(c for c in result['clubs'] if c['id']==club['id']);players={p['id']:p for p in result['players']}
-    eq=(release.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    eq=storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
     eq=rewrite_roster(eq,club['carrier_id'],[players[p]['carrier_id'] for p in target['roster_player_ids']])
     e=next(e for e in IndexedFDIFile.from_bytes(eq).entries if e.record_id==club['carrier_id'])
     short,full,_=labels.prefix_parts(e.decode_payload(eq))
     eq,_=labels.rewrite_club_labels(eq,[{'carrier_id':club['carrier_id'],'native_before':short,
         'native_full_before':full,'native_after':delta.compiler._pm99_text(proposal['new_club'],label='sourced new club')}])
-    ent=(release.game_path/'DBDAT/ENT98030.FDI').read_bytes();ei=IndexedFDIFile.from_bytes(ent)
+    ent=storage_io.read_bytes(release.game_path / 'DBDAT/ENT98030.FDI');ei=IndexedFDIFile.from_bytes(ent)
     me=next(e for e in ei.entries if e.record_id==mid)
     changed=delta.compiler._patch_ent_name(me.decode_payload(ent),mid,
         delta.compiler._pm99_text(manager_name,label='dated whole-club manager'),native_names=native_names)
@@ -209,8 +210,8 @@ def prepare(proposal_path,manager_path,output,input_overrides=None):
     for filename,data,permitted in (
         ('JUG98030.FDI',jug,{r['carrier_id'] for r in proposal['allocation']}),
         ('EQ98030.FDI',eq,{club['carrier_id']}),('ENT98030.FDI',ent,{mid})):
-        preserve_other_records((release.game_path/'DBDAT'/filename).read_bytes(),data,permitted)
-    archive,photo_offsets=delta.no_photo_archive((release.game_path/'DBDAT/MINIFOTO.PKF').read_bytes(),
+        preserve_other_records(storage_io.read_bytes(release.game_path / 'DBDAT' / filename),data,permitted)
+    archive,photo_offsets=delta.no_photo_archive(storage_io.read_bytes(release.game_path / 'DBDAT/MINIFOTO.PKF'),
                                                {r['carrier_id'] for r in proposal['allocation']})
     inputs=recipe_inputs(result,release.package_path.parent,input_overrides)
     predicted=len(jug)+len(eq)+len(ent)+len(archive)+32*1024**2
@@ -219,24 +220,24 @@ def prepare(proposal_path,manager_path,output,input_overrides=None):
     output.mkdir(parents=True);shutil.copytree(release.game_path,output/'game',copy_function=os.link)
     for name,data in (('JUG98030.FDI',jug),('EQ98030.FDI',eq),('ENT98030.FDI',ent),('MINIFOTO.PKF',archive)):
         path=output/'game/DBDAT'/name
-        if path.read_bytes()!=data:
-            temporary=output/(name+'.partial');temporary.write_bytes(data);os.replace(temporary,path)
+        if storage_io.read_bytes(path)!=data:
+            temporary=output/(name+'.partial');storage_io.write_bytes(temporary, data);storage_io.replace_file(temporary,path)
     for carrier in photo_offsets:
         path=output/'game/DBDAT/MINIFOTO'/f'J96{carrier:05d}.BMP'
-        if path.exists():path.unlink()
+        if storage_io.exists(path):storage_io.unlink(path)
     pipeline.write_canonical_json(output/'season-package.json',result)
     pipeline.write_canonical_json(output/delta.plan_filename(composition),composition)
-    os.link(manager_path,output/'manager-original.html')
+    storage_io.link(manager_path, output / 'manager-original.html')
     for artifact in result['artifacts']:
         if not (relative:=artifact.get('relative_path')):continue
         relative=Path(relative)
         if relative.is_absolute() or '..' in relative.parts:raise ValueError('unsafe inherited recipe input')
         target=output/relative
-        if not target.exists():
+        if not storage_io.exists(target):
             previous,bound=inputs[relative]
             if verify_recipe_artifact(previous,artifact['sha256'])!=bound:
                 raise ValueError('inherited whole-club recipe input changed')
-            target.parent.mkdir(parents=True,exist_ok=True);os.link(previous,target)
+            target.parent.mkdir(parents=True,exist_ok=True);storage_io.link(previous, target)
         verify_recipe_artifact(target,artifact['sha256'])
     holders_after,names_after=_manager_graph(eq_path=output/'game/DBDAT/EQ98030.FDI',ent_path=output/'game/DBDAT/ENT98030.FDI')
     if names_after.get(mid)!=native_names['display_name'] or [c['carrier_id'] for c in holders_after.get(mid,[])]!=[club['carrier_id']]:

@@ -8,6 +8,14 @@ using manually encoded 2025/26-style home kit patterns.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -20,7 +28,7 @@ from typing import Any
 from PIL import Image, ImageDraw
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR_DIR = ROOT / "upstream" / "pm99-skezmod-db-editor"
 if str(EDITOR_DIR) not in sys.path:
     sys.path.insert(0, str(EDITOR_DIR))
@@ -215,7 +223,7 @@ def sha256_bytes(data: bytes) -> str:
 
 def load_dat_palette(game_root: Path) -> list[tuple[int, int, int]]:
     palette_path = game_root / "DAT.PKF"
-    data = palette_path.read_bytes()
+    data = storage_io.read_bytes(palette_path)
     if data[PALETTE_OFFSET : PALETTE_OFFSET + 4] != b"RIFF":
         raise RuntimeError(f"expected RIFF palette at {palette_path}:{PALETTE_OFFSET:#x}")
     chunk_size = int.from_bytes(data[PALETTE_OFFSET + 4 : PALETTE_OFFSET + 8], "little")
@@ -461,7 +469,7 @@ def team_id_from_record(record: Any) -> int | None:
 
 
 def load_assignments(path: Path) -> list[dict[str, Any]]:
-    data = json.loads(path.read_text(encoding="utf-8"))
+    data = json.loads(storage_io.read_text(path, encoding='utf-8'))
     assignments = data.get("assignments", [])
     if len(assignments) != 80:
         raise RuntimeError(f"expected 80 assignments, got {len(assignments)}")
@@ -495,7 +503,7 @@ def patch_archive(
     mapper: PaletteMapper,
     styles: dict[int, dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    original_archive = archive_path.read_bytes()
+    original_archive = storage_io.read_bytes(archive_path)
     patched_archive = bytearray(original_archive)
     records = iter_obfuscated_bmp_records(archive_path, file_name_pattern=r"^EQ96\d{4}\.BMP$")
     summaries: list[dict[str, Any]] = []
@@ -539,7 +547,7 @@ def patch_archive(
             }
         )
 
-    archive_path.write_bytes(bytes(patched_archive))
+    storage_io.write_bytes(archive_path, bytes(patched_archive))
     reread = iter_obfuscated_bmp_records(archive_path, file_name_pattern=r"^EQ96\d{4}\.BMP$")
     reread_by_file = {record.file_name.upper(): record for record in reread}
     for summary in summaries:
@@ -634,7 +642,7 @@ span{color:#667078}
         "References are league kit pages; artwork is manually encoded for PM99 scale.</p></header>"
         f"<main>{''.join(cards)}</main></body></html>"
     )
-    output_path.write_text(html, encoding="utf-8")
+    storage_io.write_text(output_path, html, encoding='utf-8')
 
 
 def main() -> int:
@@ -644,11 +652,11 @@ def main() -> int:
     parser.add_argument("--output-dir", required=True)
     args = parser.parse_args()
 
-    game_root = Path(args.game_root).resolve()
-    output_dir = Path(args.output_dir).resolve()
+    game_root = storage_io.resolve(Path(args.game_root))
+    output_dir = storage_io.resolve(Path(args.output_dir))
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "per_team_miniesc").mkdir(parents=True, exist_ok=True)
-    assignments = load_assignments(Path(args.assignment_path).resolve())
+    assignments = load_assignments(storage_io.resolve(Path(args.assignment_path)))
     styles = styles_by_carrier(assignments)
     palette = load_dat_palette(game_root)
     mapper = PaletteMapper(palette)
@@ -656,7 +664,7 @@ def main() -> int:
     patched: list[dict[str, Any]] = []
     for archive_name in ARCHIVES:
         archive_path = game_root / "DBDAT" / archive_name
-        if not archive_path.is_file():
+        if not storage_io.is_file(archive_path):
             raise FileNotFoundError(f"missing archive: {archive_path}")
         patched.extend(patch_archive(archive_path, output_dir, palette, mapper, styles))
 
@@ -676,7 +684,7 @@ def main() -> int:
     summary = {
         "schema": "pm99-english80-reference-kits-v2",
         "game_root": str(game_root),
-        "assignment_path": str(Path(args.assignment_path).resolve()),
+        "assignment_path": str(storage_io.resolve(Path(args.assignment_path))),
         "palette_path": str(game_root / "DAT.PKF"),
         "palette_offset": hex(PALETTE_OFFSET),
         "scope": "modern English-80 assignment carriers",
@@ -692,7 +700,7 @@ def main() -> int:
         "patched": patched,
     }
     summary_path = output_dir / "english80_reference_home_kits_v2_summary.json"
-    summary_path.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+    storage_io.write_text(summary_path, json.dumps(summary, indent=2) + '\n', encoding='utf-8')
     print(json.dumps(summary, indent=2))
     return 0
 

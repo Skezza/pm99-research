@@ -50,6 +50,7 @@ from prepare_stoke_2015_face_dbdat import (  # noqa: E402
     _build_palette_image,
     _build_replacement_bitmap,
 )
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2 as package_v2  # noqa: E402
 from scripts import season_pipeline_v2 as pipeline_v2  # noqa: E402
 from scripts.materialise_native_no_photo_v2 import _active_offsets_for_players  # noqa: E402
@@ -74,7 +75,7 @@ def _sha_bytes(payload: bytes) -> str:
 
 def _sha_file(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
@@ -82,7 +83,7 @@ def _sha_file(path: Path) -> str:
 
 def _read_json(path: Path) -> dict[str, Any]:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(storage_io.read_text(path, encoding='utf-8'))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise PortraitPipelineError(f"cannot read JSON: {path}") from exc
     if not isinstance(value, dict):
@@ -150,7 +151,7 @@ def _club_by_player(package: Mapping[str, Any]) -> dict[str, str]:
 
 def _load_edition_rows(path: Path) -> tuple[list[dict[str, str]], str]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         text = raw.decode("utf-8-sig")
         rows = [dict(row) for row in csv.DictReader(io.StringIO(text))]
     except (OSError, UnicodeDecodeError, csv.Error) as exc:
@@ -250,9 +251,9 @@ def build_plan(*, package_path: Path, edition_csv: Path, edition: int) -> dict[s
             "fallback": "native-no-photo; never retain an inherited carrier face",
         },
         "inputs": {
-            "package_path": str(package_path.resolve()),
+            "package_path": str(storage_io.resolve(package_path)),
             "package_canonical_sha256": package_hash,
-            "edition_csv_path": str(edition_csv.resolve()),
+            "edition_csv_path": str(storage_io.resolve(edition_csv)),
             "edition_csv_sha256": csv_hash,
             "edition": edition,
         },
@@ -284,9 +285,9 @@ def _cache_paths(cache_root: Path, url: str) -> tuple[Path, Path]:
 
 
 def _logical_size(root: Path) -> int:
-    if not root.exists():
+    if not storage_io.exists(root):
         return 0
-    return sum(path.stat().st_size for path in root.rglob("*") if path.is_file())
+    return sum(storage_io.size(path) for path in storage_io.glob(root, '*', recursive=True) if storage_io.is_file(path))
 
 
 def _fetch(row: Mapping[str, Any], *, cache_root: Path, timeout: int) -> dict[str, Any]:
@@ -298,15 +299,15 @@ def _fetch(row: Mapping[str, Any], *, cache_root: Path, timeout: int) -> dict[st
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     # Loans/duplicate roster references can ask for the same URL in parallel.
     # Serialize by URL across threads AND processes; retain immutable receipts.
-    with lock_path.open('a') as lock:
+    with storage_io.open_file(lock_path, 'a') as lock:
         fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
         return _fetch_locked(row, url, meta_path, payload_path, timeout)
 
 
 def _fetch_locked(row, url, meta_path, payload_path, timeout):
-    if meta_path.is_file() and payload_path.is_file():
+    if storage_io.is_file(meta_path) and storage_io.is_file(payload_path):
         meta = _read_json(meta_path)
-        payload = payload_path.read_bytes()
+        payload = storage_io.read_bytes(payload_path)
         if meta.get("url") == url and meta.get("source_sha256") == _sha_bytes(payload):
             return {**row, "fetch_status": "cache-hit", "payload": payload, "source_sha256": meta["source_sha256"], "source_dimensions": meta["source_dimensions"]}
     headers = {"User-Agent": USER_AGENT, "Accept": "image/png,image/*;q=0.9", "Referer": "https://sofifa.com/"}
@@ -319,26 +320,26 @@ def _fetch_locked(row, url, meta_path, payload_path, timeout):
     except Exception as exc:
         return {**row, "status": "native-no-photo", "reason": f"era-source-fetch-failed: {type(exc).__name__}: {exc}", "attempted_url": url}
     digest = _sha_bytes(payload)
-    if meta_path.exists():
+    if storage_io.exists(meta_path):
         meta = _read_json(meta_path)
         if meta.get('url') != url or meta.get('source_sha256') != digest:
             return {**row, 'status': 'native-no-photo',
                     'reason': 'recovered-source-does-not-match-retained-cache-receipt', 'attempted_url': url}
-        if payload_path.exists() and _sha_bytes(payload_path.read_bytes()) != digest:
+        if storage_io.exists(payload_path) and _sha_bytes(storage_io.read_bytes(payload_path)) != digest:
             return {**row, 'status': 'native-no-photo',
                     'reason': 'retained-cache-payload-is-corrupt', 'attempted_url': url}
-        if not payload_path.exists():
+        if not storage_io.exists(payload_path):
             payload_path.parent.mkdir(parents=True, exist_ok=True)
-            payload_path.write_bytes(payload)
+            storage_io.write_bytes(payload_path, payload)
         return {**row, 'fetch_status': 'recovered-hash-matching-payload', 'payload': payload,
                 'source_sha256': digest, 'source_dimensions': meta['source_dimensions']}
     meta_path.parent.mkdir(parents=True, exist_ok=True)
     payload_path.parent.mkdir(parents=True, exist_ok=True)
-    if payload_path.exists() and _sha_bytes(payload_path.read_bytes()) != digest:
+    if storage_io.exists(payload_path) and _sha_bytes(storage_io.read_bytes(payload_path)) != digest:
         return {**row, 'status': 'native-no-photo',
                 'reason': 'orphan-cache-payload-conflicts-with-downloaded-source', 'attempted_url': url}
-    if not payload_path.exists():
-        payload_path.write_bytes(payload)
+    if not storage_io.exists(payload_path):
+        storage_io.write_bytes(payload_path, payload)
     _write_json(meta_path, {"url": url, "source_sha256": digest, "source_dimensions": dimensions})
     return {**row, "fetch_status": "downloaded", "payload": payload, "source_sha256": digest, "source_dimensions": dimensions}
 
@@ -347,7 +348,7 @@ def materialise(*, plan_path: Path, minifoto_path: Path, cache_root: Path, outpu
     plan = _read_json(plan_path)
     if plan.get("schema_version") != PLAN_SCHEMA:
         raise PortraitPipelineError("portrait plan schema is unsupported")
-    if not minifoto_path.is_file():
+    if not storage_io.is_file(minifoto_path):
         raise PortraitPipelineError(f"missing MINIFOTO.PKF: {minifoto_path}")
     records = list(iter_minifoto_records(minifoto_path))
     if not records:
@@ -359,7 +360,7 @@ def materialise(*, plan_path: Path, minifoto_path: Path, cache_root: Path, outpu
     palette_image = _build_palette_image(palette_rgb)
     template = records[0]
     candidates = [row for row in plan["players"] if row.get("status") == "era-source-candidate"]
-    if shutil.disk_usage(output_root.parent if output_root.parent.exists() else ROOT).free < max_local_bytes:
+    if shutil.disk_usage(output_root.parent if storage_io.exists(output_root.parent) else ROOT).free < max_local_bytes:
         raise PortraitPipelineError("free disk space is below the requested portrait working budget")
     with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
         fetched = list(pool.map(lambda row: _fetch(row, cache_root=cache_root, timeout=timeout), candidates))
@@ -397,18 +398,18 @@ def materialise(*, plan_path: Path, minifoto_path: Path, cache_root: Path, outpu
         converted = output_root / "converted" / f"J96{int(row['carrier_id']):05d}.BMP"
         preview_path = output_root / "previews" / f"J96{int(row['carrier_id']):05d}.png"
         converted.parent.mkdir(parents=True, exist_ok=True)
-        converted.write_bytes(bitmap)
+        storage_io.write_bytes(converted, bitmap)
         if write_previews:
             preview_path.parent.mkdir(parents=True, exist_ok=True)
             preview.save(preview_path, format="PNG", optimize=False, compress_level=9)
-        logical_usage += len(bitmap) + (preview_path.stat().st_size if write_previews else 0)
+        logical_usage += len(bitmap) + (storage_io.size(preview_path) if write_previews else 0)
         if logical_usage > max_local_bytes:
             raise PortraitPipelineError("portrait output exceeded --max-local-bytes")
         result_rows.append({key: value for key, value in row.items() if key != "payload"} | {
             "status": "applied",
-            "converted_path": str(converted.resolve()),
+            "converted_path": str(storage_io.resolve(converted)),
             "converted_sha256": _sha_file(converted),
-            "preview_path": str(preview_path.resolve()) if write_previews else None,
+            "preview_path": str(storage_io.resolve(preview_path)) if write_previews else None,
             "preview_sha256": _sha_file(preview_path) if write_previews else None,
             "crop_dimensions": {"width": int(crop.width), "height": int(crop.height)},
         })
@@ -422,12 +423,12 @@ def materialise(*, plan_path: Path, minifoto_path: Path, cache_root: Path, outpu
         "season": plan["season"],
         "result": "complete",
         "inputs": {
-            "plan_path": str(plan_path.resolve()),
+            "plan_path": str(storage_io.resolve(plan_path)),
             "plan_sha256": _sha_file(plan_path),
             "package_canonical_sha256": plan["inputs"]["package_canonical_sha256"],
-            "minifoto_path": str(minifoto_path.resolve()),
+            "minifoto_path": str(storage_io.resolve(minifoto_path)),
             "minifoto_sha256": _sha_file(minifoto_path),
-            "palette_path": str(palette_path.resolve()),
+            "palette_path": str(storage_io.resolve(palette_path)),
             "palette_sha256": _sha_file(palette_path),
         },
         "policy": plan["policy"],
@@ -471,15 +472,15 @@ def copy_game_with_factory_media_links(source: Path, target: Path) -> dict:
     target = Path(target)
     if not source.is_dir() or source.is_symlink():
         raise ValueError("copy source must be a real directory")
-    if target.exists() or target.is_symlink():
+    if storage_io.exists(target) or target.is_symlink():
         raise FileExistsError(f"output game already exists: {target}")
-    if source.resolve() == target.resolve(strict=False) or source.resolve() in target.resolve(strict=False).parents:
+    if storage_io.resolve(source) == storage_io.resolve(target, strict=False) or storage_io.resolve(source) in storage_io.resolve(target, strict=False).parents:
         raise ValueError("output game cannot be inside its source tree")
 
     _reject_factory_media_copy_symlinks(source)
     before = pipeline_v2.build_tree_inventory(source)
     target.parent.mkdir(parents=True, exist_ok=True)
-    if source.stat().st_dev != target.parent.stat().st_dev:
+    if storage_io.stat_result(source).st_dev != storage_io.stat_result(target.parent).st_dev:
         raise OSError("factory-media hardlinks require source and output on the same filesystem")
     linked_rows = [row for row in before["files"] if _is_factory_media_path(row["path"])]
     regular_rows = [row for row in before["files"] if not _is_factory_media_path(row["path"])]
@@ -495,10 +496,10 @@ def copy_game_with_factory_media_links(source: Path, target: Path) -> dict:
     def copy_one(src: str, dst: str) -> str:
         rel = Path(src).relative_to(source).as_posix()
         if _is_factory_media_path(rel):
-            os.link(src, dst)
+            storage_io.link(src, dst)
             linked_paths.append(rel)
             return dst
-        return shutil.copy2(src, dst)
+        return storage_io.copy_file(src, dst, metadata=True)
 
     try:
         shutil.copytree(source, target, copy_function=copy_one, symlinks=False)
@@ -511,14 +512,14 @@ def copy_game_with_factory_media_links(source: Path, target: Path) -> dict:
         if len(linked_paths) != len(linked_set):
             raise RuntimeError("factory-media path was linked more than once")
         for rel in linked_paths:
-            src_stat = (source / rel).stat()
-            dst_stat = (target / rel).stat()
+            src_stat = storage_io.stat_result(source / rel)
+            dst_stat = storage_io.stat_result(target / rel)
             if (src_stat.st_dev, src_stat.st_ino) != (dst_stat.st_dev, dst_stat.st_ino):
                 raise RuntimeError(f"factory-media hardlink did not persist: {rel}")
         regular_paths = {row["path"] for row in before["files"]} - linked_set
         for rel in regular_paths:
-            src_stat = (source / rel).stat()
-            dst_stat = (target / rel).stat()
+            src_stat = storage_io.stat_result(source / rel)
+            dst_stat = storage_io.stat_result(target / rel)
             if (src_stat.st_dev, src_stat.st_ino) == (dst_stat.st_dev, dst_stat.st_ino):
                 raise RuntimeError(f"mutable/non-media file was unexpectedly hardlinked: {rel}")
         return {
@@ -537,13 +538,13 @@ def copy_game_with_factory_media_links(source: Path, target: Path) -> dict:
             "hardlink_failure_fallback": False,
         }
     except BaseException:
-        if target.exists():
+        if storage_io.exists(target):
             shutil.rmtree(target)
         raise
 
 
 def _copy_game_cow(source: Path, target: Path) -> None:
-    if target.exists() or target.is_symlink():
+    if storage_io.exists(target) or target.is_symlink():
         raise PortraitPipelineError(f"output game already exists: {target}")
     # Hard links are NOT copy-on-write: launching the game can mutate shared
     # configuration/save files, and later asset writes can corrupt the base.
@@ -584,14 +585,14 @@ def apply(*, materialisation_path: Path, base_game: Path, output_game: Path) -> 
         if row.get("identity_score", 0) < 85:
             raise PortraitPipelineError("portrait identity score is below 85: " + row["name"])
         converted = Path(str(row.get("converted_path") or ""))
-        if not converted.is_file() or _sha_file(converted) != row.get("converted_sha256"):
+        if not storage_io.is_file(converted) or _sha_file(converted) != row.get("converted_sha256"):
             raise PortraitPipelineError("converted portrait is missing or changed: " + row["name"])
-        validate_minifoto_bitmap(converted.read_bytes())
-    _copy_game_cow(base_game.resolve(), output_game.resolve())
-    archive_path = output_game.resolve() / "DBDAT/MINIFOTO.PKF"
-    original = archive_path.read_bytes()
+        validate_minifoto_bitmap(storage_io.read_bytes(converted))
+    _copy_game_cow(storage_io.resolve(base_game), storage_io.resolve(output_game))
+    archive_path = storage_io.resolve(output_game) / "DBDAT/MINIFOTO.PKF"
+    original = storage_io.read_bytes(archive_path)
     archive = bytearray(original)
-    loose_root = output_game.resolve() / "DBDAT/MINIFOTO"
+    loose_root = storage_io.resolve(output_game) / "DBDAT/MINIFOTO"
     loose_root.mkdir(parents=True, exist_ok=True)
     no_photo_ids = [int(row["carrier_id"]) for row in rows if row["status"] == "native-no-photo"]
     active = _active_offsets_for_players(archive, no_photo_ids)
@@ -603,20 +604,20 @@ def apply(*, materialisation_path: Path, base_game: Path, output_game: Path) -> 
         carrier_id = int(row["carrier_id"])
         loose = loose_root / f"J96{carrier_id:05d}.BMP"
         if row["status"] == "native-no-photo":
-            loose.unlink(missing_ok=True)
+            storage_io.unlink(loose, missing_ok=True)
             operations.append({"player_id": row["player_id"], "carrier_id": carrier_id, "status": "native-no-photo", "disabled_archive_records": active.get(carrier_id, [])})
             continue
         converted = Path(str(row.get("converted_path") or ""))
-        if not converted.is_file() or _sha_file(converted) != row.get("converted_sha256"):
+        if not storage_io.is_file(converted) or _sha_file(converted) != row.get("converted_sha256"):
             raise PortraitPipelineError(f"converted portrait is missing or changed: {row['player_id']}")
-        payload = converted.read_bytes()
+        payload = storage_io.read_bytes(converted)
         validate_minifoto_bitmap(payload)
         temporary = loose.with_suffix(".BMP.tmp")
-        temporary.write_bytes(payload)
-        os.replace(temporary, loose)
+        storage_io.write_bytes(temporary, payload)
+        storage_io.replace_file(temporary, loose)
         operations.append({"player_id": row["player_id"], "carrier_id": carrier_id, "status": "applied", "storage": "loose-DBDAT/MINIFOTO", "bitmap_sha256": _sha_bytes(payload), "era_grade": row.get("era_grade")})
-    archive_path.write_bytes(bytes(archive))
-    reread = {record.player_record_id for record in iter_minifoto_records_from_bytes(archive_path.name, archive_path.read_bytes())}
+    storage_io.write_bytes(archive_path, bytes(archive))
+    reread = {record.player_record_id for record in iter_minifoto_records_from_bytes(archive_path.name, storage_io.read_bytes(archive_path))}
     residual = sorted(set(no_photo_ids).intersection(reread))
     if residual:
         raise PortraitPipelineError(f"native no-photo carriers remain active: {residual[:10]}")
@@ -625,13 +626,13 @@ def apply(*, materialisation_path: Path, base_game: Path, output_game: Path) -> 
         "season": materialisation["season"],
         "result": "complete",
         "inputs": {
-            "materialisation_path": str(materialisation_path.resolve()),
+            "materialisation_path": str(storage_io.resolve(materialisation_path)),
             "materialisation_sha256": _sha_file(materialisation_path),
-            "base_game": str(base_game.resolve()),
-            "base_inventory_fingerprint": pipeline_v2.build_tree_inventory(base_game.resolve())["files_fingerprint"],
+            "base_game": str(storage_io.resolve(base_game)),
+            "base_inventory_fingerprint": pipeline_v2.build_tree_inventory(storage_io.resolve(base_game))["files_fingerprint"],
         },
         "output": {
-            "game": str(output_game.resolve()),
+            "game": str(storage_io.resolve(output_game)),
             "minifoto_sha256_before": _sha_bytes(original),
             "minifoto_sha256_after": _sha_file(archive_path),
             "applied_count": sum(row["status"] == "applied" for row in operations),
@@ -649,8 +650,8 @@ def validate(*, materialisation_path: Path, application_path: Path, game: Path) 
         issues.append({"code": "application-invalid"})
     if application.get("inputs", {}).get("materialisation_sha256") != _sha_file(materialisation_path):
         issues.append({"code": "materialisation-hash-mismatch"})
-    archive_path = game.resolve() / "DBDAT/MINIFOTO.PKF"
-    if not archive_path.is_file() or application.get("output", {}).get("minifoto_sha256_after") != _sha_file(archive_path):
+    archive_path = storage_io.resolve(game) / "DBDAT/MINIFOTO.PKF"
+    if not storage_io.is_file(archive_path) or application.get("output", {}).get("minifoto_sha256_after") != _sha_file(archive_path):
         issues.append({"code": "minifoto-archive-mismatch"})
         active_ids: set[int] = set()
     else:
@@ -659,18 +660,18 @@ def validate(*, materialisation_path: Path, application_path: Path, game: Path) 
     for operation in application.get("operations", []):
         row = by_player.get(operation.get("player_id"))
         carrier_id = int(operation.get("carrier_id") or 0)
-        loose = game.resolve() / "DBDAT/MINIFOTO" / f"J96{carrier_id:05d}.BMP"
+        loose = storage_io.resolve(game) / "DBDAT/MINIFOTO" / f"J96{carrier_id:05d}.BMP"
         if not isinstance(row, Mapping):
             issues.append({"code": "operation-player-missing", "player_id": operation.get("player_id")})
         elif operation.get("status") == "applied":
-            if not loose.is_file() or _sha_file(loose) != row.get("converted_sha256"):
+            if not storage_io.is_file(loose) or _sha_file(loose) != row.get("converted_sha256"):
                 issues.append({"code": "applied-bitmap-mismatch", "player_id": row["player_id"]})
             else:
                 try:
-                    validate_minifoto_bitmap(loose.read_bytes())
+                    validate_minifoto_bitmap(storage_io.read_bytes(loose))
                 except Exception as exc:
                     issues.append({"code": "applied-bitmap-invalid", "player_id": row["player_id"], "detail": str(exc)})
-        elif loose.exists() or carrier_id in active_ids:
+        elif storage_io.exists(loose) or carrier_id in active_ids:
             issues.append({"code": "native-no-photo-not-clean", "player_id": operation.get("player_id")})
     return {
         "schema_version": VALIDATION_SCHEMA,

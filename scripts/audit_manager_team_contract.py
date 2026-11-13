@@ -12,6 +12,14 @@ text.  Use ``--include-profile-text`` only for a local inspection file.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import json
 import sys
@@ -19,7 +27,7 @@ from collections import Counter
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR_ROOT = ROOT / "upstream" / "pm99-skezmod-db-editor"
 if str(EDITOR_ROOT) not in sys.path:
     sys.path.insert(0, str(EDITOR_ROOT))
@@ -40,8 +48,8 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    eq_bytes = args.eq.read_bytes()
-    ent_bytes = args.ent.read_bytes()
+    eq_bytes = storage_io.read_bytes(args.eq)
+    ent_bytes = storage_io.read_bytes(args.ent)
     eq = IndexedFDIFile.from_bytes(eq_bytes)
     ent = IndexedFDIFile.from_bytes(ent_bytes)
 
@@ -104,7 +112,7 @@ def main() -> int:
         "teams": rows,
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    storage_io.write_text(args.out, json.dumps(result, indent=2) + '\n', encoding='utf-8')
     print(json.dumps(result["summary"], indent=2))
     return 0
 

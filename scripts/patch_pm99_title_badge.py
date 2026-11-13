@@ -3,6 +3,14 @@
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -83,7 +91,7 @@ class PEImage:
 
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
@@ -100,7 +108,7 @@ def patch_title_badge(exe_path: Path, badge_text: str) -> dict[str, object]:
         raise ValueError("badge text must not contain NUL bytes")
 
     before_sha256 = sha256_file(exe_path)
-    raw = bytearray(exe_path.read_bytes())
+    raw = bytearray(storage_io.read_bytes(exe_path))
     image = PEImage(raw)
 
     format_bytes = image.read(TITLE_BADGE_FORMAT_VA, len(EXPECTED_FORMAT_BYTES))
@@ -129,7 +137,7 @@ def patch_title_badge(exe_path: Path, badge_text: str) -> dict[str, object]:
     image.write(TITLE_BADGE_STRING_VA, encoded_text + b"\x00")
     image.write(TITLE_BADGE_PUSH_VA + 1, struct.pack("<I", TITLE_BADGE_STRING_VA))
 
-    exe_path.write_bytes(raw)
+    storage_io.write_bytes(exe_path, raw)
     after_sha256 = sha256_file(exe_path)
 
     patched_push_bytes = bytes.fromhex(f"{EXPECTED_PUSH_OPCODE:02x}") + struct.pack("<I", TITLE_BADGE_STRING_VA)
@@ -141,7 +149,7 @@ def patch_title_badge(exe_path: Path, badge_text: str) -> dict[str, object]:
     }
 
     return {
-        "exe_path": str(exe_path.resolve()),
+        "exe_path": str(storage_io.resolve(exe_path)),
         "badge_text": badge_text,
         "before_sha256": before_sha256,
         "after_sha256": after_sha256,
@@ -167,8 +175,8 @@ def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
 
-    exe_path = Path(args.exe_path).expanduser().resolve()
-    if not exe_path.is_file():
+    exe_path = storage_io.resolve(Path(args.exe_path).expanduser())
+    if not storage_io.is_file(exe_path):
         parser.error(f"missing EXE: {exe_path}")
 
     try:
@@ -178,9 +186,9 @@ def main() -> int:
         return 1
 
     if args.json_out:
-        output_path = Path(args.json_out).expanduser().resolve()
+        output_path = storage_io.resolve(Path(args.json_out).expanduser())
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        storage_io.write_text(output_path, json.dumps(payload, indent=2, sort_keys=True) + '\n', encoding='utf-8')
 
     print(json.dumps(payload, indent=2, sort_keys=True))
     return 0

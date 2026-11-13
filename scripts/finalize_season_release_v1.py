@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2 as package_v2  # noqa: E402
 from scripts import season_pipeline_v2 as pipeline  # noqa: E402
 from scripts import season_release_registry_v1 as registry  # noqa: E402
@@ -33,7 +34,7 @@ class FinalizeError(ValueError):
 
 def _read(path: Path, *, label: str) -> dict[str, Any]:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(storage_io.read_text(path, encoding='utf-8'))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise FinalizeError(f"cannot read {label}: {path}") from exc
     if not isinstance(value, dict):
@@ -70,7 +71,7 @@ def _receipt_outputs(receipt: Mapping[str, Any], *, label: str) -> dict[str, str
 def _assert_hashes(game: Path, outputs: Mapping[str, str], *, label: str) -> None:
     for relative, expected in outputs.items():
         path = game / relative
-        actual = registry.sha256_file(path) if path.is_file() else None
+        actual = registry.sha256_file(path) if storage_io.is_file(path) else None
         if actual != expected:
             raise FinalizeError(
                 f"{label} does not match game {relative}: expected {expected}, found {actual}"
@@ -172,11 +173,11 @@ def finalize(
     base_already_verified: bool = False,
 ) -> dict[str, Any]:
     season = pipeline.normalise_season_id(season)
-    game, package = game.resolve(), package.resolve()
+    game, package = storage_io.resolve(game), storage_io.resolve(package)
     if game.is_symlink() or not game.is_dir():
         raise FinalizeError("game must be a real, non-symlink directory")
     for relative in registry.REQUIRED_GAME_FILES:
-        if not (game / relative).is_file():
+        if not storage_io.is_file(game / relative):
             raise FinalizeError(f"game is missing {relative}")
 
     verified_base = pipeline.read_json_file(verified_base_path)
@@ -203,7 +204,7 @@ def finalize(
     _assert_hashes(game, kit_outputs, label="kit receipt")
 
     release_dir = registry.locator_path(season, release_id).parent
-    if release_dir.exists():
+    if storage_io.exists(release_dir):
         raise FinalizeError(f"release ID already exists and will not be overwritten: {release_dir}")
     release_dir.parent.mkdir(parents=True, exist_ok=True)
     work_dir = Path(tempfile.mkdtemp(prefix=f".{release_id}.partial-", dir=release_dir.parent))
@@ -331,7 +332,7 @@ def finalize(
     locator_file = work_dir / "locator.json"
     _write(locator_file, locator)
     try:
-        work_dir.rename(release_dir)
+        storage_io.move(work_dir, release_dir)
     except Exception:
         shutil.rmtree(work_dir, ignore_errors=True)
         raise

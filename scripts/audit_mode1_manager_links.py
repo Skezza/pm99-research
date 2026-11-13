@@ -8,6 +8,14 @@ separate F.C. Barcelona fixtures only.
 """
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 from collections import Counter
 import json
@@ -39,14 +47,14 @@ def _team_label(raw_payload: bytes) -> str:
 
 def main() -> int:
     args = _args()
-    dbdat = args.dbdat.resolve()
+    dbdat = storage_io.resolve(args.dbdat)
     eq_path = dbdat / "EQ98030.FDI"
     ent_path = dbdat / "ENT98030.FDI"
-    if not eq_path.is_file() or not ent_path.is_file():
+    if not storage_io.is_file(eq_path) or not storage_io.is_file(ent_path):
         raise SystemExit("both EQ98030.FDI and ENT98030.FDI are required")
 
-    eq_data = eq_path.read_bytes()
-    ent_data = ent_path.read_bytes()
+    eq_data = storage_io.read_bytes(eq_path)
+    ent_data = storage_io.read_bytes(ent_path)
     ent_index = IndexedFDIFile.from_bytes(ent_data)
     ent_profiles: dict[int, dict[str, str]] = {}
     for entry in ent_index.entries:
@@ -101,7 +109,7 @@ def main() -> int:
         "carriers": rows,
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    storage_io.write_text(args.output, json.dumps(result, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
     print(json.dumps({key: result[key] for key in result if key != "carriers"}, indent=2))
     return 0 if not errors else 1
 

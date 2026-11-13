@@ -1,4 +1,5 @@
 """Prepare two visually reviewed period designs, without publishing games."""
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
 from scripts.prepare_reviewed_kit_delta_v1 import prepare
@@ -45,9 +46,9 @@ def main():
         output = ROOT / (season + '-v2')
         path = ROOT / (season + '-kit-catalogue.json')
         doc = catalogue(season)
-        if path.exists() and pipeline.read_json_file(path) != doc:
+        if storage_io.exists(path) and pipeline.read_json_file(path) != doc:
             raise ValueError('authored source contract changed')
-        if not path.exists():
+        if not storage_io.exists(path):
             pipeline.write_canonical_json(path, doc)
         print(dict(season=season, result=prepare(season, path, output), installed=False), flush=True)
 

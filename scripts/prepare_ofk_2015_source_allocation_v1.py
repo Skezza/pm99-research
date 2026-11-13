@@ -4,6 +4,7 @@ import itertools
 import tempfile
 from pathlib import Path
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import prepare_ofk_2004_source_allocation_v1 as source
 from scripts import capture_ofk_2015_original_roster_v1 as capture
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
@@ -17,7 +18,7 @@ from scripts import season_published_transfer_history_v1 as histories
 
 
 def prepare(output, *, baseline_release_id=None):
-    if output.exists(): raise ValueError('2015 source allocation evidence is immutable')
+    if storage_io.exists(output): raise ValueError('2015 source allocation evidence is immutable')
     path = source.AUDIT / 'ofk-2015-original-opening-and-history-v1.json'
     claims = pipeline.read_json_file(path)
     schedule, schedule_binding = source.original('ofk-beograd-2015-schedule')
@@ -70,7 +71,7 @@ def prepare(output, *, baseline_release_id=None):
         raise ValueError('2015 proposed club already exists')
     slots = [p for p in package['players'] if p['club_id']==club['id']]
     if len(slots)!=18: raise ValueError('2015 fixed roster capacity changed')
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     orders = allocation.startup_orders(jug,slots)
     def desired(ids):
         result=[]

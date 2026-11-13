@@ -4,6 +4,7 @@ Disappearance is insufficient: Brentford's original numeric XI must contain
 all11 publisher identities, and each unchanged native copy must remain there.
 """
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import season_historical_transfer_review_v1 as identities
 from scripts import season_opening_order_repair_v1 as ownership
@@ -46,9 +47,9 @@ def verify():
         person=identities.unique_person(p,people)
         if person is not None and person['source_player_id'] in expected:
             represented.setdefault(person['source_player_id'],[]).append(p['carrier_id'])
-    jug=(actual.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    original=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    eq=(actual.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    jug=storage_io.read_bytes(actual.game_path / 'DBDAT/JUG98030.FDI')
+    original=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq=storage_io.read_bytes(actual.game_path / 'DBDAT/EQ98030.FDI')
     owners=ownership.native_owners(eq)
     old_entries={e.record_id:e for e in IndexedFDIFile.from_bytes(original).entries}
     new_entries={e.record_id:e for e in IndexedFDIFile.from_bytes(jug).entries}

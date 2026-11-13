@@ -3,6 +3,14 @@
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import datetime as dt
 import json
@@ -13,10 +21,10 @@ from pathlib import Path
 from urllib.parse import quote
 
 
-REPO = Path(__file__).resolve().parents[1]
+REPO = storage_io.resolve(Path(__file__)).parents[1]
 ARTICLE_ROOT = Path("/home/joe/skezmod-web/public/articles")
-REPO_RESOLVED = REPO.resolve()
-ARTICLE_ROOT_RESOLVED = ARTICLE_ROOT.resolve()
+REPO_RESOLVED = storage_io.resolve(REPO)
+ARTICLE_ROOT_RESOLVED = storage_io.resolve(ARTICLE_ROOT)
 
 IMAGE_EXTENSIONS = {
     ".png",
@@ -289,9 +297,9 @@ def iter_image_files(
 
     for root in roots:
         root = root.expanduser().absolute()
-        if not root.exists():
+        if not storage_io.exists(root):
             continue
-        if root.is_file():
+        if storage_io.is_file(root):
             if add_candidate(root.parent, root):
                 return images
             continue
@@ -350,7 +358,7 @@ def build_run_groups(images: list[tuple[Path, Path]], *, stat_images: bool) -> l
         mtime = 0.0
         if stat_images:
             try:
-                stat = path.stat()
+                stat = storage_io.stat_result(path)
             except OSError:
                 continue
             size_bytes = stat.st_size
@@ -374,7 +382,7 @@ def build_run_groups(images: list[tuple[Path, Path]], *, stat_images: bool) -> l
 
     for group in groups.values():
         try:
-            group.mtime = group.run_dir.stat().st_mtime
+            group.mtime = storage_io.stat_result(group.run_dir).st_mtime
         except OSError:
             group.mtime = 0.0
         group.images.sort(key=lambda entry: natural_key(entry.rel_to_run.as_posix()))
@@ -1372,7 +1380,7 @@ def build_index_html() -> str:
 
 def main() -> int:
     args = parse_args()
-    output_dir = Path(args.output_dir).expanduser().resolve()
+    output_dir = storage_io.resolve(Path(args.output_dir).expanduser())
     output_dir.mkdir(parents=True, exist_ok=True)
 
     roots = [] if args.no_default_roots else default_roots()
@@ -1391,15 +1399,15 @@ def main() -> int:
         "generatedAt": dt.datetime.now().strftime("%Y-%m-%d %H:%M"),
         "imageCount": sum(run["count"] for run in runs),
         "runCount": len(runs),
-        "roots": [root_label(root.expanduser().resolve()) for root in roots if root.expanduser().exists()],
+        "roots": [root_label(storage_io.resolve(root.expanduser())) for root in roots if storage_io.exists(root.expanduser())],
         "runs": runs,
     }
 
     data_js = "window.ARTIFACT_BROWSER_DATA = "
     data_js += json.dumps(data, ensure_ascii=False, separators=(",", ":"))
     data_js += ";\n"
-    (output_dir / "artifact-data.js").write_text(data_js, encoding="utf-8")
-    (output_dir / "index.html").write_text(build_index_html(), encoding="utf-8")
+    storage_io.write_text(output_dir / 'artifact-data.js', data_js, encoding='utf-8')
+    storage_io.write_text(output_dir / 'index.html', build_index_html(), encoding='utf-8')
 
     print(f"Wrote {data['imageCount']} images across {data['runCount']} runs")
     print(output_dir / "index.html")

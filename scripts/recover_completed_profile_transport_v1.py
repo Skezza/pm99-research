@@ -7,6 +7,7 @@ failure; only the completed child receives a recovered transport receipt.
 import argparse
 from pathlib import Path
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
 
@@ -23,7 +24,7 @@ def validate_observation(observed):
             or not observed.get('outer_controller_pid') or not observed.get('child_pid')):
         raise ValueError('recovery needs explicit terminal143 and observed successful child statuses')
     for key in ('outer_controller_pid','child_pid'):
-        if (Path('/proc')/str(observed[key])/'cmdline').exists():
+        if storage_io.exists(Path('/proc') / str(observed[key]) / 'cmdline'):
             raise ValueError('original controller/child PID still exists; inspect before recovery')
 
 
@@ -38,12 +39,12 @@ def verify_mirrored_native_child(release, evidence):
     summary = pipeline.read_json_file(evidence / 'summary.json')
     if (lease.get('status') != 'exited' or lease.get('exit_code') != 0
             or lease.get('launcher') != 'run_stars_player_offer_probe_direct.sh'
-            or (evidence / 'remote_startup/container_exit_code.txt').read_text().strip() != '0'
+            or storage_io.read_text(evidence / 'remote_startup/container_exit_code.txt').strip() != '0'
             or summary.get('success') is not True or summary.get('wine_debugger_detected')
             or summary.get('crash_detected')
             or not summary.get('player_profile', {}).get('expected_name_token_satisfied')):
         raise ValueError('original remote profile child is not proven exited successfully')
-    text = (evidence / 'dbdat_override.sha256').read_text()
+    text = storage_io.read_text(evidence / 'dbdat_override.sha256')
     if '# source_root=' + str(release.game_path) not in text.splitlines():
         raise ValueError('original profile input belongs to another game root')
     hashes = {line.split()[1]: line.split()[0] for line in text.splitlines()
@@ -54,7 +55,7 @@ def verify_mirrored_native_child(release, evidence):
         if hashes.get('DBDAT/' + name) != registry.sha256_file(release.game_path / 'DBDAT' / name):
             raise ValueError('original mirrored child native input differs')
     frame = evidence / 'screens' / Path(summary['player_profile']['screenshot']).name
-    if not frame.is_file():
+    if not storage_io.is_file(frame):
         raise ValueError('original completed frame missing')
     return dict(release_manifest_sha256=release.manifest_sha256,
         evidence=binding(evidence / 'summary.json'), lease=binding(evidence / 'remote_startup/lease.json'),
@@ -75,24 +76,24 @@ def main(folder,season,release_id,label,observation):
         raise ValueError('recovered profile label is not an exact selected carrier')
     target=folder/'runtime'/label
     receipt=folder/(label+'-profile-transport.json')
-    if receipt.exists():raise ValueError('existing transport must not be overwritten/recovered twice')
-    summaries=list(target.rglob('summary.json'))
+    if storage_io.exists(receipt):raise ValueError('existing transport must not be overwritten/recovered twice')
+    summaries=list(storage_io.glob(target, 'summary.json', recursive=True))
     if len(summaries)!=1:raise ValueError('one exact returned completed original profile required')
     evidence=summaries[0].parent;summary=pipeline.read_json_file(summaries[0])
     exit_path=evidence/'remote_startup/container_exit_code.txt'
-    if (exit_path.read_text().strip()!='0' or summary.get('success') is not True
+    if (storage_io.read_text(exit_path).strip()!='0' or summary.get('success') is not True
             or summary.get('crash_detected') or summary.get('wine_debugger_detected')
             or not summary['player_profile'].get('expected_name_token_satisfied')):
         raise ValueError('returned original remote child did not succeed')
     if registry.sha256_file(evidence/'input-provenance.json')!=registry.sha256_file(release.compiler_receipt_path):
         raise ValueError('recovered original child compiler provenance differs')
-    hashes={line.split()[1]:line.split()[0] for line in (evidence/'dbdat_override.sha256').read_text().splitlines()
+    hashes={line.split()[1]:line.split()[0] for line in storage_io.read_text(evidence / 'dbdat_override.sha256').splitlines()
         if line and not line.startswith('#')}
     for name in ('JUG98030.FDI','EQ98030.FDI','ENT98030.FDI','MINIFOTO.PKF','RIDIESC.PKF','MINIESC.PKF','NANOESC.PKF'):
         if hashes.get('DBDAT/'+name)!=registry.sha256_file(release.game_path/'DBDAT'/name):
             raise ValueError('recovered original child native/asset input differs')
     screenshot=evidence/'screens'/Path(summary['player_profile']['screenshot']).name
-    if not screenshot.is_file():raise ValueError('original completed child frame missing')
+    if not storage_io.is_file(screenshot):raise ValueError('original completed child frame missing')
     recovery=folder/(label+'-controller-interruption-recovery.json')
     retained(recovery,dict(original_terminal_observation=binding(observation),
         outer_controller_exit_code=143,outer_interruption_cause='not established',

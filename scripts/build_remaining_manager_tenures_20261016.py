@@ -6,6 +6,7 @@ private candidates; runner review and independent verification precede promotion
 import argparse
 from pathlib import Path
 import time
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_remaining_manager_tenures_20261016 as source
 from scripts import build_cached_manager_repairs_20261016 as core
@@ -20,7 +21,7 @@ def wait_for_admission(pid):
     deadline = time.monotonic() + 1800
     while True:
         try:
-            command = (Path('/proc') / str(pid) / 'cmdline').read_bytes()
+            command = storage_io.read_bytes(Path('/proc') / str(pid) / 'cmdline')
         except FileNotFoundError:
             break
         if b'scripts.season_remaining_manager_tenures_20261016' not in command:
@@ -28,7 +29,7 @@ def wait_for_admission(pid):
         if time.monotonic() > deadline:
             raise ValueError('source wait expired; inspect exact live admission before retry')
         time.sleep(5)
-    if not (ROOT / 'source-admission-summary.json').is_file():
+    if not storage_io.is_file(ROOT / 'source-admission-summary.json'):
         raise ValueError('source job stopped without full admission; no games built')
 
 

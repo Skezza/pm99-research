@@ -19,6 +19,14 @@ no-write disposition.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -49,7 +57,7 @@ def canonical_json_bytes(value: Any) -> bytes:
 
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
@@ -57,7 +65,7 @@ def sha256_file(path: Path) -> str:
 
 def _read_json(path: Path, label: str) -> tuple[Any, str]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise AssetDispositionError(f"cannot read {label}: {path}") from exc
@@ -75,7 +83,7 @@ def _validate_reviewed_kit_row(carrier_id: int, row: Mapping[str, Any]) -> dict[
     if str(row.get("review_status") or "") not in {"approved", "reviewed-2015-16"}:
         raise AssetDispositionError(f"reviewed kit carrier {carrier_id} is not approved")
     source_path = Path(str(row.get("candidate_path") or row.get("source_path") or "")).expanduser()
-    if not source_path.is_file():
+    if not storage_io.is_file(source_path):
         raise AssetDispositionError(f"reviewed kit carrier {carrier_id} source is not a local file: {source_path}")
     actual_hash = sha256_file(source_path)
     declared_hash = str(row.get("source_sha256") or "").lower()
@@ -84,7 +92,7 @@ def _validate_reviewed_kit_row(carrier_id: int, row: Mapping[str, Any]) -> dict[
     source_url = str(row.get("source_url") or "")
     if not source_url.startswith(("https://", "http://")):
         raise AssetDispositionError(f"reviewed kit carrier {carrier_id} requires an HTTP source URL")
-    return {**row, "carrier_id": carrier_id, "source_path": str(source_path.resolve()), "source_sha256": actual_hash}
+    return {**row, "carrier_id": carrier_id, "source_path": str(storage_io.resolve(source_path)), "source_sha256": actual_hash}
 
 
 def _load_reviewed_kits(paths: Iterable[Path]) -> tuple[dict[int, dict[str, Any]], dict[str, str]]:
@@ -92,7 +100,7 @@ def _load_reviewed_kits(paths: Iterable[Path]) -> tuple[dict[int, dict[str, Any]
 
     indexed: dict[int, dict[str, Any]] = {}
     hashes: dict[str, str] = {}
-    for path in sorted({Path(item).resolve() for item in paths}, key=str):
+    for path in sorted({storage_io.resolve(Path(item)) for item in paths}, key=str):
         value, digest = _read_json(path, "reviewed kit ledger")
         hashes[str(path)] = digest
         if not isinstance(value, dict) or value.get("schema_version") != KIT_LEDGER_SCHEMA:
@@ -128,7 +136,7 @@ def _crop_candidate(source_path: Path, destination: Path, *, size: int = 32) -> 
             crop = image.crop((left, top, left + edge, top + edge)).resize((size, size), Image.Resampling.LANCZOS)
             destination.parent.mkdir(parents=True, exist_ok=True)
             crop.save(destination, format="PNG", optimize=False, compress_level=9)
-            return {"width": size, "height": size, "mode": "RGBA", "sha256": sha256_file(destination), "bytes": destination.stat().st_size}
+            return {"width": size, "height": size, "mode": "RGBA", "sha256": sha256_file(destination), "bytes": storage_io.size(destination)}
     except AssetDispositionError:
         raise
     except Exception as exc:
@@ -147,17 +155,17 @@ def _portrait_disposition(player: Mapping[str, Any], output_dir: Path | None) ->
     if status == "cached-approved-era":
         source_text = str(portrait.get("source_image_path") or "")
         source_path = Path(source_text).expanduser()
-        if not source_path.is_file():
+        if not storage_io.is_file(source_path):
             return {**base, "status": "native-no-photo", "action": "preserve-native-no-photo", "reason": "approved-source-unavailable-at-materialisation", "source_image_path": source_text}
         source_hash = sha256_file(source_path)
-        row = {**base, "status": "approved-crop-candidate", "action": "write-candidate-only", "source_image_path": str(source_path.resolve()), "source_sha256": source_hash, "source_url": str(portrait.get("source_url") or "")}
+        row = {**base, "status": "approved-crop-candidate", "action": "write-candidate-only", "source_image_path": str(storage_io.resolve(source_path)), "source_sha256": source_hash, "source_url": str(portrait.get("source_url") or "")}
         if output_dir is None:
             row["status"] = "approved-source-ready-crop-not-materialised"
             row["action"] = "no-write"
             row["reason"] = "portrait-output-dir-not-supplied"
             return row
         destination = output_dir / "portraits" / f"carrier-{int(player.get('player_carrier_id') or 0):05d}" / f"slot-{int(player.get('slot_index') or 0):02d}.png"
-        row["candidate_path"] = str(destination.resolve())
+        row["candidate_path"] = str(storage_io.resolve(destination))
         row["candidate_image"] = _crop_candidate(source_path, destination)
         return row
     if status == "fifa16-url-candidate":
@@ -208,12 +216,12 @@ def main(argv: list[str] | None = None) -> int:
     try:
         manifest, manifest_hash = _read_json(args.candidate_manifest, "candidate manifest")
         reviewed, kit_hashes = _load_reviewed_kits(args.reviewed_kit_ledger)
-        result = build_dispositions(manifest, reviewed_kits=reviewed, output_dir=args.portrait_output.resolve() if args.portrait_output else None)
+        result = build_dispositions(manifest, reviewed_kits=reviewed, output_dir=storage_io.resolve(args.portrait_output) if args.portrait_output else None)
     except AssetDispositionError as exc:
         parser.error(str(exc))
-    result["sources"] = {"candidate_manifest": {"path": str(args.candidate_manifest.resolve()), "sha256": manifest_hash}, "reviewed_kit_ledgers": {path: {"sha256": digest} for path, digest in sorted(kit_hashes.items())}}
+    result["sources"] = {"candidate_manifest": {"path": str(storage_io.resolve(args.candidate_manifest)), "sha256": manifest_hash}, "reviewed_kit_ledgers": {path: {"sha256": digest} for path, digest in sorted(kit_hashes.items())}}
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_json_bytes(result))
+    storage_io.write_bytes(args.output, canonical_json_bytes(result))
     print(json.dumps({"output": str(args.output), **result["coverage"]}, sort_keys=True))
     return 0
 

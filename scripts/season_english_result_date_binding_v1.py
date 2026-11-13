@@ -6,6 +6,7 @@ transfer brackets are still mandatory before any roster repair. No XIs,
 substitutes, managers, kits or current squads are invented or inherited here.
 """
 import json
+from scripts import json_storage_io_v1 as storage_io
 from scripts import capture_original_public_club_entities_v1 as public
 from scripts import season_football_data_opening_dates_v1 as dates
 from scripts import season_historical_roster_audit_v1 as roster
@@ -26,7 +27,7 @@ CSV_ALIASES = {
 
 
 def read_entities(path):
-    document = json.loads(path.read_text())
+    document = json.loads(storage_io.read_text(path))
     if document.get('schema_version') != 'pm99-original-public-club-entity-discovery-v1':
         raise ValueError('unsupported explicit public club discovery')
     result = {}
@@ -35,10 +36,10 @@ def read_entities(path):
         if registry.sha256_file(raw) != batch['raw_sha256']:
             raise ValueError('original club entity response changed')
         if batch['source_url'] != public.url(batch['requested_ids']) or json.loads(
-                (registry.ROOT / batch['receipt_path']).read_text()) != {
+                storage_io.read_text(registry.ROOT / batch['receipt_path'])) != {
                     'url': batch['source_url'], 'sha256': batch['raw_sha256']}:
             raise ValueError('original club entity URL/SHA receipt differs')
-        entities, gaps = public.parse(json.loads(raw.read_text()), batch['requested_ids'])
+        entities, gaps = public.parse(json.loads(storage_io.read_text(raw)), batch['requested_ids'])
         if (entities, gaps) != (batch['entities'], batch['missing_ids']):
             raise ValueError('explicit club discovery does not reproduce from original publisher')
         for entity in entities:
@@ -51,16 +52,16 @@ def read_entities(path):
 
 def read_results(row):
     raw = registry.ROOT / row['path']
-    receipt = json.loads((registry.ROOT / row['receipt_path']).read_text())
+    receipt = json.loads(storage_io.read_text(registry.ROOT / row['receipt_path']))
     if (registry.sha256_file(raw) != row['sha256'] or receipt != row['original_urls']
             or receipt['sha256'] != row['sha256']):
         raise ValueError('original league result URL/SHA differs')
     for key in ('requested_url', 'response_url'):
         dates.validate_url(receipt[key], row['season'], row['competition'])
-    matches = dates.parse(raw.read_bytes(), row['season'], row['competition'])
+    matches = dates.parse(storage_io.read_bytes(raw), row['season'], row['competition'])
     if len(matches) != row['matches'] or len({m['home'] for m in matches}) != row['clubs']:
         raise ValueError('original result summary differs from independently replayed archive')
-    return raw.read_bytes()
+    return storage_io.read_bytes(raw)
 
 
 def bind(capture, entities, raw, season):

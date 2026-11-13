@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import UTC, datetime
 import shutil
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import discover_original_country_defaults_20261017 as discovery
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_original_secondary_facts_v1 as source
@@ -46,7 +47,7 @@ def guard_source_person(row,candidate):
 
 def build_one(row,*,prepared_admission=None):
     season=row['season'];folder=ROOT/season;folder.mkdir(parents=True,exist_ok=True)
-    if registry.locator_path(season,RELEASE).exists() or (folder/'country-plan.json').exists():
+    if storage_io.exists(registry.locator_path(season, RELEASE)) or storage_io.exists(folder / 'country-plan.json'):
         raise ValueError('existing country plan/game needs inspection, not regeneration')
     base=registry.load_registered_release(season,OVERRIDES.get(season,row['release_id']))
     actors={p['carrier_id']:p for p in pipeline.read_json_file(base.package_path)['players']}
@@ -101,7 +102,7 @@ def build_one(row,*,prepared_admission=None):
     replay=source.reconstruction(actual,REPLAY)
     rebuilt=registry.load_registered_release(season,REPLAY)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path,pipeline.read_json_file(actual.inventory_path))
-    if rebuilt.package_path.read_bytes()!=actual.package_path.read_bytes():
+    if storage_io.read_bytes(rebuilt.package_path)!=storage_io.read_bytes(actual.package_path):
         raise ValueError('exact country full SOURCE recipe differs')
     share_verified(actual,rebuilt,folder)
     retained(folder/'complete-SOURCE-replay.json',replay)
@@ -113,10 +114,10 @@ def build_one(row,*,prepared_admission=None):
 
 
 def main():
-    if ROOT.exists():
+    if storage_io.exists(ROOT):
         raise ValueError('existing country batch needs per-season inspection, never blind rerun')
     cleanup=registry.ROOT/'.local/cleanup-20261017/shared-completed-role-SOURCE-copies/completed.json'
-    if not cleanup.exists():
+    if not storage_io.exists(cleanup):
         raise ValueError('verified disk sharing must finish before country batch allocation')
     ROOT.mkdir()
     document=pipeline.read_json_file(discovery.ROOT/'discovery.json')

@@ -16,6 +16,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
 
@@ -32,12 +33,12 @@ def _resolve(path: str | Path) -> Path:
     value = Path(path).expanduser()
     if not value.is_absolute():
         value = registry.ROOT / value
-    return value.resolve(strict=True)
+    return storage_io.resolve(value, strict=True)
 
 
 def _validate_target(path: str | Path, workspace_root: str | Path) -> tuple[Path, Path]:
     root = _resolve(registry.ROOT)
-    source_root = (root / KNOWN_SOURCE_ROOT).resolve(strict=True)
+    source_root = storage_io.resolve(root / KNOWN_SOURCE_ROOT, strict=True)
     workspace = _resolve(workspace_root)
     target = _resolve(path)
     requested_workspace = Path(workspace_root).expanduser()
@@ -48,11 +49,11 @@ def _validate_target(path: str | Path, workspace_root: str | Path) -> tuple[Path
         requested_target = root / requested_target
     if not workspace.is_dir() or not workspace.is_relative_to(source_root):
         raise ValueError("workspace must be a known historical-role-deltas release directory")
-    if requested_workspace.is_symlink() or requested_workspace.resolve(strict=True) != workspace:
+    if requested_workspace.is_symlink() or storage_io.resolve(requested_workspace, strict=True) != workspace:
         raise ValueError("workspace path may not traverse a symlink")
     if target == workspace or not target.is_relative_to(workspace):
         raise ValueError("artifact path must be inside the explicit workspace")
-    if requested_target.is_symlink() or requested_target.resolve(strict=True) != target or not target.is_file():
+    if requested_target.is_symlink() or storage_io.resolve(requested_target, strict=True) != target or not storage_io.is_file(target):
         raise ValueError("artifact must be an existing regular non-symlink file")
     return target, workspace
 
@@ -69,7 +70,7 @@ def plan_repair(
     ):
         raise ValueError("declared SHA-256 must be lowercase hexadecimal")
     target, workspace = _validate_target(path, workspace_root)
-    before = target.read_bytes()
+    before = storage_io.read_bytes(target)
     before_sha = _sha(before)
     if not before.endswith(b"\n\n"):
         try:
@@ -82,14 +83,14 @@ def plan_repair(
     else:
         raise ValueError("repeated final LF is not repairable")
     identity = {
-        "path": str(target.relative_to(registry.ROOT.resolve())),
-        "workspace_root": str(workspace.relative_to(registry.ROOT.resolve())),
+        "path": str(target.relative_to(storage_io.resolve(registry.ROOT))),
+        "workspace_root": str(workspace.relative_to(storage_io.resolve(registry.ROOT))),
         "declared_sha256": declared_sha256,
         "before_sha256": before_sha,
-        "inode": target.stat().st_ino,
-        "nlink": target.stat().st_nlink,
+        "inode": storage_io.stat_result(target).st_ino,
+        "nlink": storage_io.stat_result(target).st_nlink,
         "size": len(before),
-        "mode": stat.S_IMODE(target.stat().st_mode),
+        "mode": stat.S_IMODE(storage_io.stat_result(target).st_mode),
     }
     if before_sha == declared_sha256:
         return {"schema": SCHEMA, "status": "already-valid", **identity}
@@ -142,10 +143,10 @@ def _atomic_json(path: Path, document: dict[str, Any]) -> None:
             handle.write(payload)
             handle.flush()
             os.fsync(handle.fileno())
-        os.replace(temporary, path)
+        storage_io.replace_file(temporary, path)
         _fsync_dir(path.parent)
     finally:
-        temporary.unlink(missing_ok=True)
+        storage_io.unlink(temporary, missing_ok=True)
 
 
 def apply_repair(
@@ -163,7 +164,7 @@ def apply_repair(
         raise ValueError("repair plan schema mismatch")
     if plan.get("status") == "already-valid":
         target, _ = _validate_target(plan["path"], plan["workspace_root"])
-        raw = target.read_bytes()
+        raw = storage_io.read_bytes(target)
         if _sha(raw) != plan.get("declared_sha256") or _sha(raw) != plan.get("before_sha256"):
             raise ValueError("already-valid plan no longer matches the current artifact")
         return {"status": "already-valid", "changed": False, "path": plan.get("path")}
@@ -173,29 +174,29 @@ def apply_repair(
     fresh = plan_repair(target, plan["declared_sha256"], workspace_root=workspace)
     if fresh != plan:
         raise ValueError("repair plan no longer matches the current file")
-    root = registry.ROOT.resolve()
-    backup = _resolve(backup_path) if Path(backup_path).exists() else Path(backup_path).expanduser()
+    root = storage_io.resolve(registry.ROOT)
+    backup = _resolve(backup_path) if storage_io.exists(Path(backup_path)) else Path(backup_path).expanduser()
     ledger = Path(ledger_path).expanduser()
     if not backup.is_absolute():
         backup = root / backup
     if not ledger.is_absolute():
         ledger = root / ledger
-    backup = backup.parent.resolve(strict=True) / backup.name
-    ledger = ledger.parent.resolve(strict=True) / ledger.name
-    local_root = (root / ".local").resolve(strict=True)
+    backup = storage_io.resolve(backup.parent, strict=True) / backup.name
+    ledger = storage_io.resolve(ledger.parent, strict=True) / ledger.name
+    local_root = storage_io.resolve(root / '.local', strict=True)
     if not backup.is_relative_to(local_root) or not ledger.is_relative_to(local_root):
         raise ValueError("backup and ledger must remain under workspace .local")
     if backup == ledger:
         raise ValueError("backup and ledger must be distinct paths")
-    if backup.exists() or backup.is_symlink() or ledger.exists() or ledger.is_symlink():
+    if storage_io.exists(backup) or backup.is_symlink() or storage_io.exists(ledger) or ledger.is_symlink():
         raise ValueError("backup and ledger paths must be new, exclusive paths")
 
-    before = target.read_bytes()
+    before = storage_io.read_bytes(target)
     if _sha(before) != plan["before_sha256"]:
         raise ValueError("artifact changed after planning")
     candidate = before[:-1]
     _write_exclusive(backup, before)
-    if _sha(backup.read_bytes()) != plan["before_sha256"]:
+    if _sha(storage_io.read_bytes(backup)) != plan["before_sha256"]:
         raise ValueError("durable backup verification failed")
     _fsync_dir(backup.parent)
     ledger_row = {
@@ -221,19 +222,19 @@ def apply_repair(
             handle.flush()
             os.fchmod(handle.fileno(), plan["mode"])
             os.fsync(handle.fileno())
-        if _sha(temporary.read_bytes()) != plan["after_sha256"]:
+        if _sha(storage_io.read_bytes(temporary)) != plan["after_sha256"]:
             raise ValueError("staged repair bytes failed hash check")
-        if target.is_symlink() or not target.is_file() or _sha(target.read_bytes()) != plan["before_sha256"]:
+        if target.is_symlink() or not storage_io.is_file(target) or _sha(storage_io.read_bytes(target)) != plan["before_sha256"]:
             raise ValueError("target changed immediately before atomic replacement")
-        os.replace(temporary, target)
+        storage_io.replace_file(temporary, target)
         _fsync_dir(target.parent)
     finally:
-        temporary.unlink(missing_ok=True)
-    if _sha(target.read_bytes()) != plan["after_sha256"]:
+        storage_io.unlink(temporary, missing_ok=True)
+    if _sha(storage_io.read_bytes(target)) != plan["after_sha256"]:
         raise ValueError("post-replacement artifact hash differs")
     ledger_row["state"] = "complete"
-    ledger_row["replacement_sha256"] = _sha(target.read_bytes())
-    ledger_row["replacement_inode"] = target.stat().st_ino
+    ledger_row["replacement_sha256"] = _sha(storage_io.read_bytes(target))
+    ledger_row["replacement_inode"] = storage_io.stat_result(target).st_ino
     _atomic_json(ledger, ledger_row)
     return {"status": "complete", "changed": True, "path": plan["path"],
             "backup_path": str(backup.relative_to(root)), "ledger_path": str(ledger.relative_to(root)),

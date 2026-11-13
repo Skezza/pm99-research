@@ -9,13 +9,21 @@ repack.  The input archive is never modified.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
 from pathlib import Path
 import sys
 
-EDITOR_ROOT = Path(__file__).resolve().parents[1] / "upstream" / "pm99-skezmod-db-editor"
+EDITOR_ROOT = storage_io.resolve(Path(__file__)).parents[1] / "upstream" / "pm99-skezmod-db-editor"
 if str(EDITOR_ROOT) not in sys.path:
     sys.path.insert(0, str(EDITOR_ROOT))
 
@@ -79,20 +87,20 @@ def main() -> int:
     args = parser.parse_args()
 
     output, report = append_entry(
-        args.archive.read_bytes(),
+        storage_io.read_bytes(args.archive),
         target_id=args.target_player_id,
         donor_id=args.donor_player_id,
         disabled_ids=tuple(args.disable_player_id),
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(output)
+    storage_io.write_bytes(args.output, output)
     if args.loose_bitmap_output:
         record = next(record for record in iter_minifoto_records_from_bytes("MINIFOTO.PKF", output) if record.player_record_id == args.target_player_id)
         args.loose_bitmap_output.parent.mkdir(parents=True, exist_ok=True)
-        args.loose_bitmap_output.write_bytes(record.raw_bitmap)
+        storage_io.write_bytes(args.loose_bitmap_output, record.raw_bitmap)
     if args.json_output:
         args.json_output.parent.mkdir(parents=True, exist_ok=True)
-        args.json_output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+        storage_io.write_text(args.json_output, json.dumps(report, indent=2) + '\n', encoding='utf-8')
     print(json.dumps(report, indent=2))
     return 0
 

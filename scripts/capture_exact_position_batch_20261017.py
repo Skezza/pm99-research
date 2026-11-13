@@ -1,6 +1,7 @@
 """Capture the actual position-only game and every changed player's profile."""
 import argparse
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import build_exact_position_batch_20261017 as build
 from scripts.capture_shinnie_country_20261017 import main as capture,wait_owned
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
@@ -11,9 +12,9 @@ def tag(season):return 'explicit_primary_positions_'+season.replace('-','_')+'_r
 
 def main(season,builder_pid):
     folder=build.ROOT/season
-    if (folder/'runtime-profile-spec.json').exists():raise ValueError('existing position capture needs inspection, not restart')
+    if storage_io.exists(folder / 'runtime-profile-spec.json'):raise ValueError('existing position capture needs inspection, not restart')
     if builder_pid:wait_owned(builder_pid,'scripts.build_exact_position_batch_20261017')
-    if not (folder/'complete-SOURCE-replay.json').exists():raise ValueError('actual position SOURCE incomplete')
+    if not storage_io.exists(folder / 'complete-SOURCE-replay.json'):raise ValueError('actual position SOURCE incomplete')
     release=build.registry.load_registered_release(season,build.RELEASE)
     plan=build.pipeline.read_json_file(folder/'position-plan.json')
     profiles=[]

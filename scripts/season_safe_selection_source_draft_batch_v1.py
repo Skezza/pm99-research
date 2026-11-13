@@ -44,6 +44,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import materialise_opening_squad_preallocation_v1 as preallocation_v1  # noqa: E402
 from scripts import season_package_v2 as package_v2  # noqa: E402
 from scripts import season_source_club_selection_v1 as selection_v1  # noqa: E402
@@ -81,20 +82,20 @@ def _sha_document(value: Mapping[str, Any]) -> str:
 
 def _relative(path: Path) -> str:
     try:
-        return path.resolve().relative_to(ROOT).as_posix()
+        return storage_io.resolve(path).relative_to(ROOT).as_posix()
     except ValueError:
-        return path.resolve().as_posix()
+        return storage_io.resolve(path).as_posix()
 
 
 def _require_regular_file(path: Path, label: str) -> None:
-    if not path.is_file() or path.is_symlink():
+    if not storage_io.is_file(path) or path.is_symlink():
         raise SourceDraftBatchError(f"{label} must be an ordinary file: {path}")
 
 
 def _read_json(path: Path, label: str, *, canonical: bool = False) -> tuple[dict[str, Any], str]:
     _require_regular_file(path, label)
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise SourceDraftBatchError(f"cannot read {label}: {path}: {exc}") from exc
@@ -106,10 +107,10 @@ def _read_json(path: Path, label: str, *, canonical: bool = False) -> tuple[dict
 
 
 def _write_new(path: Path, value: Mapping[str, Any]) -> str:
-    if path.exists() or path.is_symlink():
+    if storage_io.exists(path) or path.is_symlink():
         raise SourceDraftBatchError(f"refusing to overwrite output: {path}")
     payload = _canonical_bytes(value)
-    path.write_bytes(payload)
+    storage_io.write_bytes(path, payload)
     return _sha_bytes(payload)
 
 
@@ -121,7 +122,7 @@ def _season_label(season_id: str) -> str:
 
 def _within(root: Path, candidate: Path) -> bool:
     try:
-        candidate.resolve().relative_to(root.resolve())
+        storage_io.resolve(candidate).relative_to(storage_io.resolve(root))
     except ValueError:
         return False
     return True
@@ -138,7 +139,7 @@ def _current_artifact(
     expected_sha256 = artifact.get("sha256")
     if not isinstance(relative, str) or not relative or not isinstance(expected_sha256, str):
         raise SourceDraftBatchError(f"current pointer {name!r} artifact is malformed")
-    candidate = (pointer_path.parent / relative).resolve()
+    candidate = storage_io.resolve(pointer_path.parent / relative)
     if not _within(pointer_path.parent, candidate):
         raise SourceDraftBatchError(f"current pointer {name!r} escapes its revision root")
     value, actual_sha256 = _read_json(candidate, f"current {name} artifact", canonical=canonical)
@@ -474,7 +475,7 @@ def _target_seasons(*, current_root: Path, seasons: Sequence[str] | None) -> lis
     if seasons:
         result = sorted(set(seasons))
     else:
-        result = sorted(path.parent.name for path in current_root.glob("*/current.json"))
+        result = sorted(path.parent.name for path in storage_io.glob(current_root, '*/current.json'))
     if not result:
         raise SourceDraftBatchError("no target seasons selected")
     for season_id in result:
@@ -494,11 +495,11 @@ def run_batch(
         raise SourceDraftBatchError(
             f"expected {expected_season_count} target seasons, found {len(target_seasons)}"
         )
-    output_root = output_root.resolve()
-    if output_root.exists() or output_root.is_symlink():
+    output_root = storage_io.resolve(output_root)
+    if storage_io.exists(output_root) or output_root.is_symlink():
         raise SourceDraftBatchError(f"refusing to overwrite batch output root: {output_root}")
     staging_root = output_root.parent / f".{output_root.name}.staging"
-    if staging_root.exists() or staging_root.is_symlink():
+    if storage_io.exists(staging_root) or staging_root.is_symlink():
         raise SourceDraftBatchError(
             f"refusing to reuse an existing incomplete staging root: {staging_root}"
         )
@@ -507,7 +508,7 @@ def run_batch(
     evaluated: list[tuple[str, Mapping[str, Any]]] = []
     for season_id in target_seasons:
         manifest_path = _manifest_path(selection_manifest_root, season_id)
-        if not manifest_path.is_file() or manifest_path.is_symlink():
+        if not storage_io.is_file(manifest_path) or manifest_path.is_symlink():
             evaluated.append(("skipped", _skipped_receipt(
                 season_id=season_id,
                 state="skipped-no-safe-selection-manifest",
@@ -595,7 +596,7 @@ def run_batch(
             },
         }
         _write_new(staging_root / "batch-receipt.json", receipt)
-        os.rename(staging_root, output_root)
+        storage_io.rename_file(staging_root, output_root)
     except BaseException:
         # Keep the uniquely named staging root for forensic inspection.  It is
         # deliberately never reused on a later invocation.

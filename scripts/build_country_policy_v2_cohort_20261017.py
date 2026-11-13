@@ -9,6 +9,7 @@ from datetime import UTC,datetime
 from pathlib import Path
 import time
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import season_original_country_policy_v2 as source
 from scripts import build_original_country_defaults_20261017 as initial
@@ -24,7 +25,7 @@ REPLAY='replayed-original-country-policy-cohort-20261017-r129b'
 
 
 def main(initial_builder_pid):
-    if ROOT.exists():
+    if storage_io.exists(ROOT):
         raise ValueError('existing country policy cohort requires inspection, never blind rerun')
     ROOT.mkdir()
     discovery=pipeline.read_json_file(DISCOVERY)
@@ -40,11 +41,11 @@ def main(initial_builder_pid):
         season=row['season'];folder=ROOT/season;folder.mkdir()
         if initial_rows[season]['candidates']:
             proof=initial.ROOT/season/'complete-SOURCE-replay.json'
-            while not proof.exists():
-                if any((proof.parent/name).exists() for name in ('source-gap.json','build-failure.json')):
+            while not storage_io.exists(proof):
+                if any(storage_io.exists(proof.parent / name) for name in ('source-gap.json','build-failure.json')):
                     raise ValueError('initial country parent has a retained failure; inspect before rebasing')
                 try:
-                    command=Path(f'/proc/{initial_builder_pid}/cmdline').read_bytes()
+                    command=storage_io.read_bytes(Path(f'/proc/{initial_builder_pid}/cmdline'))
                 except FileNotFoundError as exc:
                     raise ValueError('initial country builder stopped without SOURCE proof; do not rebuild it') from exc
                 if b'scripts.build_original_country_defaults_20261017' not in command:
@@ -53,7 +54,7 @@ def main(initial_builder_pid):
             base=registry.load_registered_release(season,initial.RELEASE)
         else:
             base=registry.load_preferred_release(season)
-        if (EARLY_ROOT/season/'complete-SOURCE-replay.json').exists():
+        if storage_io.exists(EARLY_ROOT / season / 'complete-SOURCE-replay.json'):
             base=registry.load_registered_release(season,EARLY_RELEASE)
         actors={p['carrier_id']:p for p in pipeline.read_json_file(base.package_path)['players']}
         admission=pipeline.read_json_file(registry.ROOT/row['admission']['path'])

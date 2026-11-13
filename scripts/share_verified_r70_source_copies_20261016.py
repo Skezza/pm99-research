@@ -6,6 +6,7 @@ independently match before and after, as in the existing manager replay builder.
 import os
 import shutil
 from datetime import UTC, datetime
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts.archive_completed_arsenal_replays_20261016 import assert_equal_games, active
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
@@ -17,22 +18,26 @@ REPLAY = 'replayed-cross-period-birth-years-20261010-r70b'
 
 
 def share_identical(original, duplicate):
-    if original.is_symlink() or duplicate.is_symlink() or original.resolve() == duplicate.resolve():
+    if original.is_symlink() or duplicate.is_symlink() or storage_io.resolve(original) == storage_io.resolve(duplicate):
         raise ValueError('unexpected or symlink sharing target')
     before = registry.sha256_file(original)
     if before != registry.sha256_file(duplicate):
         raise ValueError('SOURCE bytes differ; sharing forbidden')
-    if original.stat().st_dev != duplicate.stat().st_dev:
+    if storage_io.is_compressed(original) or storage_io.is_compressed(duplicate):
+        return dict(original=registry.relative_workspace_path(original), shared_copy=registry.relative_workspace_path(duplicate),
+            sha256=before, already_shared=False, former_unique_allocated_bytes=0,
+            both_paths_retained=True, sharing_skipped='compressed-json')
+    if storage_io.stat_result(original).st_dev != storage_io.stat_result(duplicate).st_dev:
         raise ValueError('different filesystems cannot share this proof')
     temporary = duplicate.with_name(duplicate.name + '.verified-r70-link')
-    if temporary.exists():
+    if storage_io.exists(temporary):
         raise ValueError('unreceipted old sharing temporary')
-    already = original.stat().st_ino == duplicate.stat().st_ino
-    recoverable = duplicate.stat().st_blocks * 512 if duplicate.stat().st_nlink == 1 and not already else 0
+    already = storage_io.stat_result(original).st_ino == storage_io.stat_result(duplicate).st_ino
+    recoverable = storage_io.stat_result(duplicate).st_blocks * 512 if storage_io.stat_result(duplicate).st_nlink == 1 and not already else 0
     if not already:
-        os.link(original, temporary)
-        os.replace(temporary, duplicate)
-    if original.stat().st_ino != duplicate.stat().st_ino or registry.sha256_file(duplicate) != before:
+        storage_io.link(original, temporary)
+        storage_io.replace_file(temporary, duplicate)
+    if (storage_io.stat_result(original).st_ino != storage_io.stat_result(duplicate).st_ino) and not storage_io.is_compressed(original) and not storage_io.is_compressed(duplicate) or registry.sha256_file(duplicate) != before:
         raise ValueError('shared SOURCE inode or original bytes differ')
     return dict(original=registry.relative_workspace_path(original), shared_copy=registry.relative_workspace_path(duplicate),
         sha256=before, already_shared=already, former_unique_allocated_bytes=recoverable,
@@ -40,18 +45,18 @@ def share_identical(original, duplicate):
 
 
 def main():
-    if (ROOT / 'completed.json').exists():
+    if storage_io.exists(ROOT / 'completed.json'):
         raise ValueError('completed sharing must not repeat')
     ROOT.mkdir(parents=True, exist_ok=True)
     catalog = registry.sha256_file(registry.CATALOG_PATH)
     free = shutil.disk_usage(registry.ROOT).free; rows = []
     for season in SEASONS:
         path = ROOT / (season + '.json')
-        if path.exists():
+        if storage_io.exists(path):
             proof = pipeline.read_json_file(path)
             for row in proof['shared_files']:
                 a, b = registry.ROOT / row['original'], registry.ROOT / row['shared_copy']
-                if a.stat().st_ino != b.stat().st_ino or registry.sha256_file(a) != row['sha256'] or registry.sha256_file(b) != row['sha256']:
+                if (storage_io.stat_result(a).st_ino != storage_io.stat_result(b).st_ino) and not storage_io.is_compressed(a) and not storage_io.is_compressed(b) or registry.sha256_file(a) != row['sha256'] or registry.sha256_file(b) != row['sha256']:
                     raise ValueError('recorded shared source changed')
             rows.append(dict(path=registry.relative_workspace_path(path), sha256=registry.sha256_file(path)))
             continue

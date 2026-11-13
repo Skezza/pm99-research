@@ -2,6 +2,7 @@
 import argparse
 from pathlib import Path
 import time
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts.build_year_bound_manager_repairs_20261016 import ROOT
 from scripts.capture_year_bound_manager_repairs_20261016 import main as capture
@@ -9,15 +10,15 @@ from scripts.capture_year_bound_manager_repairs_20261016 import main as capture
 
 def await_selected(season,build_pid):
     root=ROOT/season;deadline=time.monotonic()+14400
-    while not (root/'selected-delivery.json').exists():
+    while not storage_io.exists(root / 'selected-delivery.json'):
         proc=Path('/proc')/str(build_pid)/'cmdline'
-        if not proc.exists() or b'scripts.build_year_bound_manager_repairs_20261016' not in proc.read_bytes():
+        if not storage_io.exists(proc) or b'scripts.build_year_bound_manager_repairs_20261016' not in storage_io.read_bytes(proc):
             raise ValueError('owned year-bound manager builder stopped; inspect outcome, do not restart blindly')
         if time.monotonic()>deadline:raise ValueError('bounded owned manager build wait expired')
         time.sleep(10)
     selected=pipeline.read_json_file(root/'selected-delivery.json')
     evidence=registry.ROOT/selected['evidence_root']
-    if not (evidence/'complete-SOURCE-replay.json').exists():
+    if not storage_io.exists(evidence / 'complete-SOURCE-replay.json'):
         raise ValueError('selection was written before the exact full SOURCE proof')
 
 

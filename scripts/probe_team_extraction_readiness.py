@@ -26,6 +26,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from app.editor_sources import gather_player_records_strict  # type: ignore
+from scripts import json_storage_io_v1 as storage_io
 from scripts import probe_bio_trailer_stats as bio_probe  # type: ignore
 from scripts import probe_lineup_screenshot as lineup_probe  # type: ignore
 
@@ -328,7 +329,7 @@ def main(argv: list[str]) -> int:
     if args.json_output:
         out = Path(args.json_output)
         out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(text + "\n", encoding="utf-8")
+        storage_io.write_text(out, text + '\n', encoding='utf-8')
     print(text)
     return 0
 

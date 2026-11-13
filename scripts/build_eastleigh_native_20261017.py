@@ -1,5 +1,6 @@
 """Create one private actual-game correction after complete source fitting."""
 from datetime import UTC,datetime
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry,season_pipeline_v2 as pipeline
 from scripts import prepare_paired_whole_club_dispositions_v1 as paired
 from scripts import prepare_paired_whole_club_native_v1 as native
@@ -12,7 +13,7 @@ SOURCE=registry.ROOT/'.local/consolidated-audit-20261009/Eastleigh2014-current-s
 
 def main():
     pair_path=ROOT/'complete-singleton-source.json'
-    if pair_path.exists():raise ValueError('retained native attempt exists; inspect before continuing')
+    if storage_io.exists(pair_path):raise ValueError('retained native attempt exists; inspect before continuing')
     proposal=pipeline.read_json_file(SOURCE)
     if proposal['outside_collisions'] or proposal['allocation_gap'] or len(proposal['desired_people'])!=17:
         raise ValueError('complete source allocation not ready')

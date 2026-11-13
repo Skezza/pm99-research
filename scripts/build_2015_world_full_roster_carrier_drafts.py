@@ -22,6 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in __import__("sys").path:
     __import__("sys").path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import world_fixed_carrier_ledger_v2 as ledger  # noqa: E402
 
 
@@ -294,7 +295,7 @@ def main(argv: list[str] | None = None) -> int:
     except FullRosterDraftError as exc:
         parser.error(str(exc))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_json_bytes(result))
+    storage_io.write_bytes(args.output, canonical_json_bytes(result))
     print(json.dumps(result["coverage"], ensure_ascii=False, sort_keys=True))
     return 0
 

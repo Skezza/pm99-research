@@ -1,5 +1,6 @@
 """Independent literal readback and unchanged-data proof for five countries."""
 import copy
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_source_verified_player_changes_v1 as changes
 from scripts.publish_confirmed_country_changes_20261017 import FOLDER,RELEASE
 from scripts.season_within_club_reserve_repair_v1 import native_facts
@@ -11,8 +12,8 @@ def main():
     plan=changes.pipeline.read_json_file(plan_path)
     base=changes.registry.load_registered_release('2013-14',plan['release_id'])
     changes.verify(base,plan)
-    before=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    after=(actual.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    before=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    after=storage_io.read_bytes(actual.game_path / 'DBDAT/JUG98030.FDI')
     offsets=[i for i,(a,b) in enumerate(zip(before,after)) if a!=b]
     assert len(before)==len(after) and len(offsets)==5
     assert set(offsets)=={r['native_mask']['file_offset'] for r in plan['updates']}

@@ -9,6 +9,14 @@ No PM99 binary or database is written.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -25,7 +33,7 @@ def canonical_bytes(value: Any) -> bytes:
 
 
 def file_hash(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def build(*, draft: dict[str, Any], source_capture: dict[str, Any], draft_sha256: str, capture_sha256: str) -> dict[str, Any]:
@@ -109,11 +117,11 @@ def main() -> int:
     parser.add_argument("--source-capture", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
-    draft_raw, source_raw = args.draft.read_bytes(), args.source_capture.read_bytes()
+    draft_raw, source_raw = storage_io.read_bytes(args.draft), storage_io.read_bytes(args.source_capture)
     draft, source = json.loads(draft_raw), json.loads(source_raw)
     result = build(draft=draft, source_capture=source, draft_sha256=hashlib.sha256(draft_raw).hexdigest(), capture_sha256=hashlib.sha256(source_raw).hexdigest())
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_bytes(result))
+    storage_io.write_bytes(args.output, canonical_bytes(result))
     print(json.dumps(result["coverage"], sort_keys=True))
     return 0
 

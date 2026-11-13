@@ -16,6 +16,14 @@ general artwork importer and it does not alter database strings or rosters.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -26,7 +34,7 @@ from pathlib import Path
 from typing import Any
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR_ROOT = ROOT / "upstream" / "pm99-skezmod-db-editor"
 if str(EDITOR_ROOT) not in sys.path:
     sys.path.insert(0, str(EDITOR_ROOT))
@@ -78,9 +86,9 @@ def copy_art(
     for archive_name in archives:
         source_path = source_dir / archive_name
         target_path = target_dir / archive_name
-        if not source_path.is_file():
+        if not storage_io.is_file(source_path):
             raise FileNotFoundError(f"Missing source kit archive: {source_path}")
-        if not target_path.is_file():
+        if not storage_io.is_file(target_path):
             raise FileNotFoundError(f"Missing target kit archive: {target_path}")
 
         source_record = record_by_name(source_path, source_name)
@@ -97,12 +105,12 @@ def copy_art(
         ):
             raise ValueError(f"{archive_name}: source/target bitmap shapes differ; refusing to reinterpret pixels.")
 
-        before_archive = target_path.read_bytes()
+        before_archive = storage_io.read_bytes(target_path)
         patched = bytearray(before_archive)
         start = target_record.bitmap_offset
         end = start + target_record.bitmap_length
         patched[start:end] = source_record.raw_bitmap
-        target_path.write_bytes(bytes(patched))
+        storage_io.write_bytes(target_path, bytes(patched))
 
         reread = record_by_name(target_path, target_name)
         if reread.raw_bitmap != source_record.raw_bitmap:
@@ -159,8 +167,8 @@ def main() -> int:
     parser.add_argument("--summary", type=Path, help="Write the JSON proof here.")
     args = parser.parse_args()
 
-    source_dir = args.source_dir.resolve()
-    target_dir = args.target_dir.resolve()
+    source_dir = storage_io.resolve(args.source_dir)
+    target_dir = storage_io.resolve(args.target_dir)
     if source_dir == target_dir:
         raise SystemExit("--source-dir and --target-dir must be different; preserve the original archives.")
     if args.copy_source_archives:
@@ -168,10 +176,10 @@ def main() -> int:
         for archive_name in KIT_ARCHIVES:
             source = source_dir / archive_name
             target = target_dir / archive_name
-            if not source.is_file():
+            if not storage_io.is_file(source):
                 raise SystemExit(f"Missing source kit archive: {source}")
-            if not target.exists():
-                shutil.copy2(source, target)
+            if not storage_io.exists(target):
+                storage_io.copy_file(source, target, metadata=True)
 
     result = copy_art(
         source_dir=source_dir,
@@ -182,7 +190,7 @@ def main() -> int:
     )
     if args.summary:
         args.summary.parent.mkdir(parents=True, exist_ok=True)
-        args.summary.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+        storage_io.write_text(args.summary, json.dumps(result, indent=2) + '\n', encoding='utf-8')
     print(json.dumps(result, indent=2))
     return 0
 

@@ -12,6 +12,7 @@ import re
 
 from bs4 import BeautifulSoup
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry, season_pipeline_v2 as pipeline
 from scripts import season_package_v2 as packages, season_duplicate_ownership_delta_v1 as delta
 from scripts import season_historical_roster_audit_v1 as roster
@@ -150,8 +151,8 @@ def prepare(release):
     clubs={c['carrier_id']:c for c in package['clubs']}
     if {c:clubs[c]['name'] for c in (313,1,2802,504)}!={313:'Manchester City',1:'Barcelona',2802:'Palmeiras',504:'Lens'}:
         raise ValueError('opening exchange club identities changed')
-    jug=(release.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    eq=(release.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    jug=storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
+    eq=storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
     from scripts import season_opening_order_repair_v1 as ownership
     owners=ownership.native_owners(eq)
     expected={9244:('ilkaygundogan','1990-10-24'),9245:('vitorreis','2006-01-12'),
@@ -254,8 +255,8 @@ def bind(package,plan):
 
 def apply(jug,eq,plan):
     baseline=registry.load_registered_release(plan['season'],plan['release_id'])
-    original=(baseline.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    original_eq=(baseline.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    original=storage_io.read_bytes(baseline.game_path / 'DBDAT/JUG98030.FDI')
+    original_eq=storage_io.read_bytes(baseline.game_path / 'DBDAT/EQ98030.FDI')
     if (digest(original),digest(original_eq))!=(plan['jug_sha256'],plan['eq_sha256']):raise ValueError('opening exchange immutable native source changed')
     package=bind(pipeline.read_json_file(baseline.package_path),plan)
     selected={p['id'] for p in package['players'] if p['carrier_id'] in {r[k] for r in plan['exchanges'] for k in ('city_carrier','destination_carrier')}}
@@ -286,7 +287,7 @@ def reconstruction(previous,release_id):
     baseline=registry.load_registered_release(previous.season,plan['release_id']);verify(baseline,plan)
     package=pipeline.read_json_file(previous.package_path)
     artifacts=[a for a in package['artifacts'] if a['id']==PREFIX+previous.season]
-    if len(artifacts)!=1 or path.resolve()!=(previous.package_path.parent/FILENAME).resolve() or registry.sha256_file(path)!=artifacts[0]['sha256']:
+    if len(artifacts)!=1 or storage_io.resolve(path)!=storage_io.resolve(previous.package_path.parent / FILENAME) or registry.sha256_file(path)!=artifacts[0]['sha256']:
         raise ValueError('atomic City source replay artifact changed')
     if bind(pipeline.read_json_file(baseline.package_path),plan)!=package:raise ValueError('edited City recipe cannot be silently reconstructed')
     descriptor=previous.package_path.parent/'role-delta-input.json'

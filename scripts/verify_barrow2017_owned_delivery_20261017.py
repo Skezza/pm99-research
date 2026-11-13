@@ -1,4 +1,5 @@
 """Literal actual-game readback against the independently retained native proof."""
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_verified_owned_roster_transaction_v1 as transaction
 from scripts.publish_barrow2017_owned_transaction_20261017 import FOLDER,RELEASE
 from scripts.prepare_barrow2017_opening_source_20261017 import retained
@@ -11,9 +12,9 @@ def main():
     base=transaction.registry.load_registered_release(actual.season,plan['release_id'])
     transaction.verify(base,plan)
     proof=transaction.pipeline.read_json_file(FOLDER/'in-memory-native-proof.json')
-    jug=(actual.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    eq=(actual.game_path/'DBDAT/EQ98030.FDI').read_bytes()
-    if transaction.digest(jug)!=proof['new_jug_sha256'] or eq!=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes():
+    jug=storage_io.read_bytes(actual.game_path / 'DBDAT/JUG98030.FDI')
+    eq=storage_io.read_bytes(actual.game_path / 'DBDAT/EQ98030.FDI')
+    if transaction.digest(jug)!=proof['new_jug_sha256'] or eq!=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI'):
         raise ValueError('actual whole JUG/EQ differs from reviewed in-memory correction')
     if transaction.registry.sha256_file(actual.package_path)!=proof['package_sha256']:
         raise ValueError('actual whole recipe differs from reviewed in-memory correction')

@@ -26,6 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import capture_2015_wikipedia_player_facts_v1 as common  # noqa: E402
 from scripts import prepare_2015_world_fifa16_drafts as fifa  # noqa: E402
 from scripts import season_package_v2 as package_v2  # noqa: E402
@@ -64,7 +65,7 @@ def _facts(row: Mapping[str, str]) -> dict[str, Any]:
 
 
 def _read(path: Path, edition: int) -> tuple[list[dict[str, str]], dict[str, Any]]:
-    raw = path.read_bytes()
+    raw = storage_io.read_bytes(path)
     rows = list(csv.DictReader(raw.decode("utf-8-sig").splitlines()))
     required = {"sofifa_id", "short_name", "long_name", "dob", "height_cm", "weight_kg", "nationality"}
     if not rows or not required <= set(rows[0]):
@@ -161,7 +162,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args(argv)
     try:
-        if args.output.exists() or args.output.is_symlink():
+        if storage_io.exists(args.output) or args.output.is_symlink():
             raise SofifaFactError(f"refusing to overwrite output: {args.output}")
         if len({edition for edition, _path in args.snapshot}) != len(args.snapshot):
             raise SofifaFactError("each FIFA edition may be supplied once")
@@ -172,13 +173,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             for edition, path in sorted(args.snapshot)
         ]
         result = capture(
-            package=package, package_sha256=hashlib.sha256(args.package.read_bytes()).hexdigest(),
+            package=package, package_sha256=hashlib.sha256(storage_io.read_bytes(args.package)).hexdigest(),
             snapshots=snapshots,
         )
     except (OSError, UnicodeDecodeError, package_v2.PackageValidationError, SofifaFactError) as exc:
         parser.error(str(exc))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(package_v2.canonical_json_bytes(result))
+    storage_io.write_bytes(args.output, package_v2.canonical_json_bytes(result))
     print(json.dumps(result["coverage"], ensure_ascii=False, sort_keys=True))
     return 0
 

@@ -62,17 +62,17 @@ Commit style in history is concise and imperative (example: `Implement v1 game-r
 - PRs should state: scope, touched repo(s), commands run, and evidence (logs/JSON/screenshots for GUI or gate changes).
 - Never include proprietary binaries (`*.FDI`, `*.PKF`, `*.EXE`), backups, or ad hoc exports in commits.
 
-## JSON storage compatibility pilot
+## Inline JSON storage compatibility
 
-Before changing JSON I/O, hashes, copying, discovery, or historical qualification
-inputs, read `docs/JSON_STORAGE_HANDOVER_2026-11-13.md`. Six inactive snapshots
-now use `.json.zst` physical files at the logical `.json` paths recorded in
-`.local/json-compression-pilot-20261113/manifest.json`. Preserve
-`scripts/json_storage_v1.py` and its pipeline/package/registry integration.
-Readers of compressed inputs must use the shared storage APIs; direct Path
-reads/existence checks/globs are not transparently intercepted. Hashes for
-logical JSON inputs still describe original uncompressed bytes; game/tree
-inventories remain physical byte inventories. New output stays plain unless
-compression is explicitly selected. Do not expand migration to registered
-inputs or revert this compatibility work as incidental cleanup. The handover
-contains the exact tested rollback and regression commands.
+Before changing JSON I/O, hashes, copying, discovery or historical inputs, read
+`docs/JSON_STORAGE_HANDOVER_2026-11-13.md` and its linked consumer audit. Preserve
+`json_storage_v1`, `json_storage_io_v1`, `json_storage_policy_v2`, batch migration
+and consumer adaptations. A logical `.json` can be stored as `.json.zst`; direct
+Path/builtin I/O is not intercepted. Use the shared adapters and keep their
+regression guard passing. Logical input hashes describe decoded original bytes;
+game/tree/archive inventories describe physical bytes and names. Follow the
+explicit automatic-root policy; controls, preferred dependencies, original
+backup and game binaries stay outside migration. Do not overwrite shared frames,
+link frames into plain temporary names, revert this work incidentally, broaden
+migration from the mechanical module inventory, or resolve ambiguity by blind
+deletion. Restore/recovery uses a reviewed manifest and the original journal.

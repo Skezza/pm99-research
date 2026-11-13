@@ -23,6 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import capture_transfermarkt_opening_lineups_v1 as opening  # noqa: E402
 from scripts import transfermarkt_calendar_year_policy_v1 as calendar_year_policy  # noqa: E402
 from scripts import capture_opening_manager_history_supplements_v1 as history  # noqa: E402
@@ -43,7 +44,7 @@ def _bytes(value: Any) -> bytes:
 
 def _load(path: Path, label: str) -> tuple[dict[str, Any], str]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise AllocatedLineupError(f"cannot read {label}: {path}") from exc
@@ -211,7 +212,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--strict", action="store_true")
     args = parser.parse_args(argv)
     try:
-        if args.output.exists():
+        if storage_io.exists(args.output):
             raise AllocatedLineupError(f"refusing to overwrite opening-lineup supplement: {args.output}")
         source, source_sha = _load(args.source_capture, "source capture")
         allocation, allocation_sha = _load(args.carrier_allocation, "carrier allocation")
@@ -225,7 +226,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (OSError, AllocatedLineupError, opening.CaptureError) as exc:
         parser.error(str(exc))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(_bytes(result))
+    storage_io.write_bytes(args.output, _bytes(result))
     print(json.dumps(result["summary"], sort_keys=True))
     return 1 if args.strict and result["failures"] else 0
 

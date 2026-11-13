@@ -4,6 +4,7 @@ Name and DOB validation happens in the resolver before use. A downloaded page
 is not approval of a historical country; no game or preferred release changes.
 """
 from urllib.parse import quote
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import capture_stock_replacement_sources_20261010 as acquire
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
@@ -12,10 +13,10 @@ ROOT=registry.ROOT/'.local/consolidated-audit-20261009/cgo-biographies-v3-202610
 
 
 def main():
-    if (ROOT/'catalog.json').exists():raise ValueError('completed Congo biography collection must not repeat')
+    if storage_io.exists(ROOT / 'catalog.json'):raise ValueError('completed Congo biography collection must not repeat')
     ROOT.mkdir(parents=True,exist_ok=True)
     people={}
-    for path in sorted((ROOT.parent/'country-policy-v2-cohort-20261017').glob('*/country-plan.json')):
+    for path in sorted(storage_io.glob(ROOT.parent / 'country-policy-v2-cohort-20261017', '*/country-plan.json')):
         for row in pipeline.read_json_file(path)['updates']:
             if row['nationality']!='CGO':continue
             person=row['source_person'];id=person['source_player_id']

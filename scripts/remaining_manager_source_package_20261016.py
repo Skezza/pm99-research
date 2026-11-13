@@ -5,6 +5,7 @@ and four Altrincham claims with independently proven distinct same-name peers.
 Native/current-owner admission and actual delivery remain separate obligations.
 """
 from datetime import date
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import audit_deferred_manager_tenures_20261016 as history
 from scripts import capture_deferred_manager_originals_20261016 as fresh
@@ -27,7 +28,7 @@ def fresh_claim(row):
     downloaded = pipeline.read_json_file(receipt)
     if downloaded['url'] != source['url'] or downloaded['sha256'] != source['raw_sha256']:
         raise ValueError('new original download receipt URL/hash mismatch')
-    actual = history.tenure(raw.read_bytes(), row['source_club_id'], date(int(row['season'][:4]), 8, 1))
+    actual = history.tenure(storage_io.read_bytes(raw), row['source_club_id'], date(int(row['season'][:4]), 8, 1))
     if actual != row['claim']:
         raise ValueError('new original tenure claim no longer independently reparses')
     return actual, dict(path=source['raw_path'], sha256=source['raw_sha256'], url=source['url'])
@@ -40,7 +41,7 @@ def original_claim(case):
         raw = registry.ROOT / claim['path']
         if registry.sha256_file(raw) != claim['sha256']:
             raise ValueError('retained original raw tenure changed')
-        actual = history.tenure(raw.read_bytes(), case['source_club_id'], date(int(case['season'][:4]), 8, 1))
+        actual = history.tenure(storage_io.read_bytes(raw), case['source_club_id'], date(int(case['season'][:4]), 8, 1))
         if any(actual[k] != claim[k] for k in ('manager', 'source_manager_id', 'source_url', 'date')):
             raise ValueError('retained original coach claim does not reproduce')
         parsed.append(actual)
@@ -69,7 +70,7 @@ def same_name_peer(season):
         downloaded = pipeline.read_json_file(receipt)
         if downloaded['url'] != document['source']['url'] or downloaded['sha256'] != document['source']['sha256']:
             raise ValueError('Sunderland original download body changed')
-        result = history.tenure(raw.read_bytes(), 289, date(2020, 8, 1))
+        result = history.tenure(storage_io.read_bytes(raw), 289, date(2020, 8, 1))
         source = document['source']; club = 'Sunderland'; club_id = 289
     else:
         doc = pipeline.read_json_file(registry.ROOT / '.local/consolidated-audit-20261009/august-manager-tenures-v1/phil-parkinson-original-identities.json')

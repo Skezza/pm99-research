@@ -3,6 +3,14 @@
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -15,7 +23,7 @@ from typing import Any
 from PIL import Image, ImageDraw
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR_ROOT = REPO_ROOT / "upstream" / "pm99-skezmod-db-editor"
 if str(EDITOR_ROOT) not in sys.path:
     sys.path.insert(0, str(EDITOR_ROOT))
@@ -168,7 +176,7 @@ def sha256_bytes(data: bytes) -> str:
 
 def load_dat_palette(game_root: Path) -> list[tuple[int, int, int]]:
     palette_path = game_root / "DAT.PKF"
-    data = palette_path.read_bytes()
+    data = storage_io.read_bytes(palette_path)
     if data[PALETTE_OFFSET : PALETTE_OFFSET + 4] != b"RIFF":
         raise RuntimeError(f"expected RIFF palette in {palette_path} at {PALETTE_OFFSET:#x}")
     chunk_size = int.from_bytes(data[PALETTE_OFFSET + 4 : PALETTE_OFFSET + 8], "little")
@@ -438,7 +446,7 @@ def patch_archive(
     palette: list[tuple[int, int, int]],
     mapper: PaletteMapper,
 ) -> list[dict[str, Any]]:
-    original_archive = archive_path.read_bytes()
+    original_archive = storage_io.read_bytes(archive_path)
     patched_archive = bytearray(original_archive)
     records = list(iter_obfuscated_bmp_records(archive_path, file_name_pattern=r"^EQ96\d{4}\.BMP$"))
     by_team = {team_id_from_record(record): record for record in records if team_id_from_record(record) is not None}
@@ -531,7 +539,7 @@ def patch_archive(
             }
         )
 
-    archive_path.write_bytes(bytes(patched_archive))
+    storage_io.write_bytes(archive_path, bytes(patched_archive))
     reread = list(iter_obfuscated_bmp_records(archive_path, file_name_pattern=r"^EQ96\d{4}\.BMP$"))
     reread_by_file = {str(record.file_name).upper(): record for record in reread}
     for event in events:
@@ -594,8 +602,8 @@ def patch_english80_division_kits(
     output_dir: Path,
     kit_manifest_path: Path,
 ) -> dict[str, Any]:
-    game_root = game_root.resolve()
-    output_dir = output_dir.resolve()
+    game_root = storage_io.resolve(game_root)
+    output_dir = storage_io.resolve(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     plan = build_kit_plan(assignment_path, kit_manifest_path)
     palette = load_dat_palette(game_root)
@@ -603,7 +611,7 @@ def patch_english80_division_kits(
     events: list[dict[str, Any]] = []
     for archive_name in ARCHIVES:
         archive_path = game_root / "DBDAT" / archive_name
-        if not archive_path.exists():
+        if not storage_io.exists(archive_path):
             raise FileNotFoundError(archive_path)
         events.extend(patch_archive(archive_path, plan, palette, mapper))
     render_per_club_previews(game_root, output_dir, plan, palette)
@@ -628,10 +636,7 @@ def patch_english80_division_kits(
         "plan": plan,
         "events": events,
     }
-    (output_dir / "english80_division_kit_patch_summary.json").write_text(
-        json.dumps(summary, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
+    storage_io.write_text(output_dir / 'english80_division_kit_patch_summary.json', json.dumps(summary, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
     return summary
 
 

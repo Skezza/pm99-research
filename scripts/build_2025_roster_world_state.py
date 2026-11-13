@@ -9,6 +9,14 @@ in for investigation.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import difflib
 import json
@@ -22,7 +30,7 @@ from typing import Any
 
 import requests
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR_ROOT = REPO_ROOT / "upstream" / "pm99-skezmod-db-editor"
 if str(EDITOR_ROOT) not in sys.path:
     sys.path.insert(0, str(EDITOR_ROOT))
@@ -116,7 +124,7 @@ class _SpareCandidate:
 
 def _json_dump(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(path, json.dumps(payload, indent=2, sort_keys=True) + '\n', encoding='utf-8')
 
 
 def _slug(value: str) -> str:
@@ -264,12 +272,12 @@ class WikiClient:
     def fetch_page(self, title: str) -> WikiPage | None:
         safe = re.sub(r"[^A-Za-z0-9_.-]+", "_", title).strip("_")
         cache_path = self.cache_dir / f"{safe}.json"
-        if cache_path.exists() and not self.refresh:
-            payload = json.loads(cache_path.read_text(encoding="utf-8"))
+        if storage_io.exists(cache_path) and not self.refresh:
+            payload = json.loads(storage_io.read_text(cache_path, encoding='utf-8'))
         else:
             payload = self._fetch_payload(title)
             self.cache_dir.mkdir(parents=True, exist_ok=True)
-            cache_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            storage_io.write_text(cache_path, json.dumps(payload, indent=2, sort_keys=True) + '\n', encoding='utf-8')
             time.sleep(0.05)
         page = next(iter(payload.get("query", {}).get("pages", {}).values()), {})
         if "missing" in page:
@@ -774,7 +782,7 @@ def _find_layout_safe_spare(
 
 def load_player_carrier_records(game_root: Path) -> dict[int, PlayerCarrierRecord]:
     player_file = game_root / "DBDAT" / "JUG98030.FDI"
-    data = player_file.read_bytes()
+    data = storage_io.read_bytes(player_file)
     indexed = IndexedFDIFile.from_bytes(data)
     carriers: dict[int, PlayerCarrierRecord] = {}
     for entry in indexed.entries:
@@ -1399,10 +1407,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    cache_dir = Path(args.cache_dir).expanduser().resolve()
-    output_dir = Path(args.output_dir).expanduser().resolve()
-    selector_map_path = Path(args.selector_map).expanduser().resolve()
-    game_root = Path(args.game_root).expanduser().resolve()
+    cache_dir = storage_io.resolve(Path(args.cache_dir).expanduser())
+    output_dir = storage_io.resolve(Path(args.output_dir).expanduser())
+    selector_map_path = storage_io.resolve(Path(args.selector_map).expanduser())
+    game_root = storage_io.resolve(Path(args.game_root).expanduser())
 
     client = WikiClient(cache_dir, refresh=args.refresh)
     club_sources = collect_club_sources(client)
@@ -1413,7 +1421,7 @@ def main(argv: list[str] | None = None) -> int:
         output_dir=output_dir,
         include_team_renames=bool(args.include_team_renames),
     )
-    manifest = json.loads((output_dir / "manifest.json").read_text(encoding="utf-8"))
+    manifest = json.loads(storage_io.read_text(output_dir / 'manifest.json', encoding='utf-8'))
     print(json.dumps({"ok": bool(manifest["ok"]), "output_dir": str(output_dir), "counts": manifest["counts"], "world_state": str(output_dir / "world_2025_top80.json")}, indent=2, sort_keys=True))
     return 0 if len(world["clubs"]) == 80 and manifest["ok"] else 1
 

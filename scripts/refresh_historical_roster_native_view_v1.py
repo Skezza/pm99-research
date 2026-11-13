@@ -14,6 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_historical_roster_audit_v1 as audit
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
@@ -21,9 +22,9 @@ from app.fdi_indexed import IndexedFDIFile
 
 
 def refresh(season, original_path, destination):
-    old = json.loads(original_path.read_text())
+    old = json.loads(storage_io.read_text(original_path))
     release = registry.load_preferred_release(season)
-    package = json.loads(release.package_path.read_text())
+    package = json.loads(storage_io.read_text(release.package_path))
     clubs, players, legacy = audit.add_legacy_english(package, season)
     by_id = {p['id']: p for p in players}
     if old['season'] != season or old['schema_version'] != audit.SCHEMA:
@@ -36,7 +37,7 @@ def refresh(season, original_path, destination):
     for source in old['raw_sources']:
         if source.get('local_path') and registry.sha256_file(ROOT / source['local_path']) != source['source_sha256']:
             raise ValueError('original audited source bytes changed')
-    data = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    data = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(data).entries}
     result = copy.deepcopy(old)
     native = {}

@@ -15,6 +15,7 @@ from app.editor_actions import (
 )
 from app.fdi_indexed import IndexedFDIFile
 from app.player_name_capacity import recover_compact_name_window, stored_case_display
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_maccabi_namesake_review_v1 as source
 from scripts import season_package_compiler_v2 as compiler
 from scripts import season_package_v2 as packages
@@ -42,7 +43,7 @@ def records(data):
 
 def prepare(release):
     witness = source.prepare(release)
-    archive = BeautifulSoup((source.SOURCE_ROOT / source.SOURCES[0][0]).read_bytes().decode('utf-8'), 'lxml')
+    archive = BeautifulSoup(storage_io.read_bytes(source.SOURCE_ROOT / source.SOURCES[0][0]).decode('utf-8'), 'lxml')
     headings = {a.get('href'): ' '.join(a.get_text(' ', strip=True).split()) for a in archive.select('h1.entry-title a')}
     if (headings.get('https://www.maccabi-tlv.co.il/en/team/tal-ben-haim/') != 'Tal Ben Haim'
             or headings.get('https://www.maccabi-tlv.co.il/en/team/tal-ben-chaim/') != 'Tal Ben Chaim'):
@@ -52,8 +53,8 @@ def prepare(release):
     root = registry.ROOT / '.local/duplicate-ownership-v3'
     bundle = capacity.runtime_bundle(root / 'private-capacity-pilot-r1/private-pilot.json',
         root / 'capacity-runtime-pilot-evidence/factory_capacity_bugnet_profile_20261006t1457z')
-    factory = capacity.verify_bundle(bundle).read_bytes()
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    factory = storage_io.read_bytes(capacity.verify_bundle(bundle))
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     _, before = records(jug)
     _, originals = records(factory)
     updates = []
@@ -91,7 +92,7 @@ def apply(jug, plan):
     if (plan.get('schema') != SCHEMA or plan.get('season') != '2015-16'
             or tuple((r['carrier_id'], r['display_name']) for r in plan['updates']) != TARGETS):
         raise ValueError('unapproved name-only season/targets')
-    factory = capacity.verify_bundle(plan['capacity_bundle']).read_bytes()
+    factory = storage_io.read_bytes(capacity.verify_bundle(plan['capacity_bundle']))
     index, entries = records(jug)
     _, originals = records(factory)
     replacements = {}

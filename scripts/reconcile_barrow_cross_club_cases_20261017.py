@@ -6,6 +6,7 @@ current global identity, native ownership and dated retained first-XI readback.
 import copy
 from datetime import UTC, datetime
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_historical_opening_review_v1 as opening
 from scripts import season_opening_order_repair_v1 as ownership
@@ -27,7 +28,7 @@ def main():
     previous_path = ROOT / 'release-delivery-checklist-v107.json'
     output = ROOT / 'release-delivery-checklist-v108.json'
     proof_path = ROOT / 'luna-closeout-20261017/barrow-two-current-dispositions.json'
-    if output.exists() or proof_path.exists():
+    if storage_io.exists(output) or storage_io.exists(proof_path):
         raise ValueError('inspect immutable completed reconciliation instead of repeating it')
     previous = pipeline.read_json_file(previous_path)
     # A ledger-only update cannot disguise a changed preferred game.
@@ -52,8 +53,8 @@ def main():
     package = pipeline.read_json_file(base.package_path)
     actors = {p['carrier_id']: p for p in package['players']}
     clubs = {c['id']: c for c in package['clubs']}
-    jug = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    owners = ownership.native_owners((base.game_path / 'DBDAT/EQ98030.FDI').read_bytes())
+    jug = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    owners = ownership.native_owners(storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI'))
     source_path = registry.ROOT / '.local/transfermarkt-opening-plans-current-v1/2012-13/opening-lineups.json'
     sources = pipeline.read_json_file(source_path)
     captured = [c for c in sources['clubs'] if c['source_selector'].get('transfermarkt_club_id') == 3697]

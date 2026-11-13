@@ -12,6 +12,7 @@ from pathlib import Path
 
 from app.fdi_indexed import IndexedFDIFile
 from app.player_initial_order import read_initial_order
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_duplicate_ownership_delta_v1 as delta
 from scripts import season_opening_identity_exchange_v1 as exchange
 from scripts import season_opening_order_repair_v1 as order_writer
@@ -86,7 +87,7 @@ _EMPTY = {'moves': [], 'new_people': [], 'orders': [], 'retirements': []}
 
 
 def _sha(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def _read(binding):
@@ -97,7 +98,7 @@ def _read(binding):
     receipt = pipeline.read_json_file(receipt_path)
     if receipt != {'url': binding['url'], 'sha256': binding['sha256']}:
         raise ValueError('SoccerBase receipt URL/body binding differs')
-    return path.read_bytes()
+    return storage_io.read_bytes(path)
 
 
 def _validate_request(base, request):
@@ -232,8 +233,8 @@ def prepare(base, input_path, request=None):
     _validate_request(base, request)
     fixture, match, profiles = _source_proof(request)
     package = pipeline.read_json_file(base.package_path)
-    jug = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     club, players, player_rows, owner_sets = _actor_rows(package, jug, eq, request)
 
     # The stable provider IDs join source to the exact native-owned recipe
@@ -355,8 +356,8 @@ def bind(package, plan):
 def apply(jug, eq, plan):
     base = registry.load_registered_release(plan['season'], plan['release_id'])
     verify(base, plan)
-    original_jug = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    original_eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    original_jug = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    original_eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     if (exchange.digest(original_jug), exchange.digest(original_eq)) != (plan['jug_sha256'], plan['eq_sha256']):
         raise ValueError('opening order parent JUG/EQ pins changed')
     if eq != original_eq:

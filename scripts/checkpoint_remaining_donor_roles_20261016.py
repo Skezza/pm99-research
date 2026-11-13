@@ -3,6 +3,7 @@ import copy
 from datetime import UTC, datetime
 from app.fdi_indexed import IndexedFDIFile
 from app.indexed_jug_roles import read_indexed_native_roles
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_donor_keeper_role_delta_v1 as source
 from scripts import publish_historical_role_delta_v1 as publisher
@@ -33,9 +34,9 @@ def verify(season):
             'recipe_only_selected_roles_declared_countries_fallback_receipts_and_source_artifact_changed'))
         or not replay['complete_game_inventory_identical'] or not replay['complete_recipe_identical']):
         raise ValueError('native/full SOURCE proofs do not bind the final role game')
-    before=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    after=(release.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    before=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    after=storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
+    eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     if source.apply(before,eq,plan)!=(after,eq) or source.apply(after,eq,plan)!=(after,eq):
         raise ValueError('fresh exact native application/idempotence differs')
     if source.bind(pipeline.read_json_file(base.package_path),plan)!=pipeline.read_json_file(release.package_path):
@@ -81,7 +82,7 @@ def verify(season):
 def run():
     prior=ROOT.parent/'release-delivery-checklist-v47.json'
     output=ROOT.parent/'release-delivery-checklist-v48.json'
-    if output.exists():raise ValueError('completed donor-role batch checkpoint must not repeat')
+    if storage_io.exists(output):raise ValueError('completed donor-role batch checkpoint must not repeat')
     result=copy.deepcopy(pipeline.read_json_file(prior))
     originals={r['season']:r for r in result['current_release_bindings']}
     seasons=[s for s in registry.supported_seasons() if s!='2000-01']
@@ -103,7 +104,7 @@ def run():
         season=row['season'];root=ROOT/season
         retained(root/'prepublication-proof.json',row)
         publisher.register_completed_delta(season,RELEASE)
-        if not (root/'final-attestation.json').exists():
+        if not storage_io.exists(root / 'final-attestation.json'):
             retained(root/'final-attestation.json',runtime.attest(season=season,
                 evidence_dir=registry.ROOT/'.local/runlogs/pm99_runner'/tag(season)))
         validation=registry.validate_preferred_release(season,level='playable')

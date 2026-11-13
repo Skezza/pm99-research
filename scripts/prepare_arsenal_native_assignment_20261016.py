@@ -4,6 +4,7 @@ Keep represented Arsenal players in their own slots. Move the four positively
 identified outside actors, and reject unexplained same-birthday identities.
 This is preparation, never a completed game correction or duplicate closure.
 """
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry,season_pipeline_v2 as pipeline
 from scripts import arsenal_2021_opening_transaction_source_v1 as source
 from scripts import season_historical_transfer_review_v1 as identities
@@ -76,8 +77,8 @@ def prepare(base):
     if len(target)!=25:raise ValueError('native Arsenal capacity must remain25')
     free=[p for p in target if p['carrier_id'] not in kept.values()]
     incoming=[r for r in admitted['desired_people'] if r['source_person']['source_player_id'] not in kept]
-    jug=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    jug=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     owners=ownership.native_owners(eq)
     for carrier,cid in [(p['carrier_id'],309) for p in target]+[
             (r['carrier_id'],r['club_carrier_id']) for r in admitted['paired']]:

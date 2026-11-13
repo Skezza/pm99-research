@@ -3,6 +3,7 @@
 The source helper is already pinned by a real candidate. Keep it immutable;
 this orchestration handles the known absent legacy capture-path field only.
 """
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_cached_manager_repairs_20261016 as source
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
@@ -22,7 +23,7 @@ def main():
                 source_unavailable_on_internet_claimed=False,manager_approval=False))
             continue
         path=ROOT/'source-plans'/season/(release.release_id+'.json')
-        reused=path.exists()
+        reused=storage_io.exists(path)
         if reused:
             plan=pipeline.read_json_file(path)
             if plan['package_sha256']!=registry.sha256_file(release.package_path):

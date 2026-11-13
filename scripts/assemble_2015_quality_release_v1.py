@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import finalize_season_release_v1 as finalizer  # noqa: E402
 from scripts import season_pipeline_v2 as pipeline  # noqa: E402
 from scripts import season_release_registry_v1 as registry  # noqa: E402
@@ -21,7 +22,7 @@ from scripts import season_release_registry_v1 as registry  # noqa: E402
 
 SEASON = "2015-16"
 RELEASE_ID = "quality-bound-20260913-r1"
-SOURCE_GAME = (ROOT / ".local/releases/pm99-2015-16-world").resolve()
+SOURCE_GAME = storage_io.resolve(ROOT / '.local/releases/pm99-2015-16-world')
 DATABASE_TREE = ROOT / ".local/operations/2015-16/manager-facts-runner-game-r2-20260913"
 PACKAGE = ROOT / ".local/operations/2015-16/season-package.composed-facts-residual-managers-r3-20260913.json"
 COMPILER_RECEIPT = ROOT / ".local/operations/2015-16/manager-facts-compiler-receipt-r2-20260913.json"
@@ -34,7 +35,7 @@ ASSEMBLY_RECEIPT = OUTPUT_ROOT / "assembly-receipt.json"
 
 
 def _read(path: Path) -> dict[str, object]:
-    value = json.loads(path.read_text(encoding="utf-8"))
+    value = json.loads(storage_io.read_text(path, encoding='utf-8'))
     if not isinstance(value, dict):
         raise ValueError(f"expected JSON object: {path}")
     return value
@@ -45,7 +46,7 @@ def _write(path: Path, value: object) -> None:
 
 
 def main() -> int:
-    if OUTPUT_ROOT.exists():
+    if storage_io.exists(OUTPUT_ROOT):
         raise SystemExit(f"refusing to overwrite existing 2015/16 assembly: {OUTPUT_ROOT}")
     OUTPUT_ROOT.parent.mkdir(parents=True, exist_ok=True)
     temp_root = Path(tempfile.mkdtemp(prefix=".worldwide-quality-bound-20260913-r1.partial-", dir=OUTPUT_ROOT.parent))
@@ -57,8 +58,8 @@ def main() -> int:
             for relative in ("DBDAT/JUG98030.FDI", "DBDAT/EQ98030.FDI", "DBDAT/ENT98030.FDI")
         }
         for relative in ("DBDAT/JUG98030.FDI", "DBDAT/EQ98030.FDI", "DBDAT/ENT98030.FDI"):
-            shutil.copy2(DATABASE_TREE / relative, temp_game / relative)
-        shutil.copy2(CALENDAR, temp_game / "MANAGPRE.EXE")
+            storage_io.copy_file(DATABASE_TREE / relative, temp_game / relative, metadata=True)
+        storage_io.copy_file(CALENDAR, temp_game / 'MANAGPRE.EXE', metadata=True)
         after = {
             relative: registry.sha256_file(temp_game / relative)
             for relative in ("DBDAT/JUG98030.FDI", "DBDAT/EQ98030.FDI", "DBDAT/ENT98030.FDI")
@@ -76,7 +77,7 @@ def main() -> int:
             raise ValueError("manager graph is not bound to the selected compiler JUG")
         if after != expected_after:
             raise ValueError("assembled 2015/16 database hashes do not match the manager graph receipt")
-        temp_root.rename(OUTPUT_ROOT)
+        storage_io.move(temp_root, OUTPUT_ROOT)
     except Exception:
         shutil.rmtree(temp_root, ignore_errors=True)
         raise

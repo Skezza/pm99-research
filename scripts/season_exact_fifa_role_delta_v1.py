@@ -10,6 +10,7 @@ from datetime import date
 from functools import lru_cache
 from app.fdi_indexed import IndexedFDIFile
 from app.indexed_jug_roles import read_indexed_native_roles, rewrite_indexed_native_roles
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_package_v2 as packages, season_historical_roster_audit_v1 as roster
 from scripts import season_rating_calibration_v3 as identity
@@ -45,7 +46,7 @@ def names(player):
 @lru_cache(maxsize=2)
 def index(file_sha):
     result = {}
-    with identity.old.FIFA.open(newline='') as stream:
+    with storage_io.open_file(identity.old.FIFA, newline='') as stream:
         for row in csv.DictReader(stream):
             key = (int(row['fifa_version']), row['dob'])
             result.setdefault(key, []).append({k: row[k] for k in
@@ -87,7 +88,7 @@ def prepare(base):
     package = pipeline.read_json_file(base.package_path)
     file_sha = registry.sha256_file(identity.old.FIFA)
     source = index(file_sha)
-    raw = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    raw = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
     entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(raw).entries}
     updates, skipped = [], {}
     for player in package['players']:
@@ -164,8 +165,8 @@ def bind(package, plan):
 
 def apply(jug, eq, plan):
     base = registry.load_registered_release(plan['season'], plan['release_id'])
-    original = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    if registry.sha256_file(base.game_path / 'DBDAT/JUG98030.FDI') != plan['jug_sha256'] or eq != (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes():
+    original = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    if registry.sha256_file(base.game_path / 'DBDAT/JUG98030.FDI') != plan['jug_sha256'] or eq != storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI'):
         raise ValueError('role-only native/EQ baseline changed')
     selected = {r['carrier_id']: r['fine_roles'] for r in plan['updates']}
     if len(selected) != len(plan['updates']):
@@ -196,7 +197,7 @@ def reconstruction(previous, release_id):
     if bind(pipeline.read_json_file(base.package_path), plan) != package:
         raise ValueError('role SOURCE would discard recipe edits')
     artifact = next(a for a in package['artifacts'] if a['id'] == PREFIX + plan['transaction_id'])
-    if path.resolve() != (previous.package_path.parent / filename(plan)).resolve() or registry.sha256_file(path) != artifact['sha256']:
+    if storage_io.resolve(path) != storage_io.resolve(previous.package_path.parent / filename(plan)) or registry.sha256_file(path) != artifact['sha256']:
         raise ValueError('role SOURCE artifact path/hash differs')
     for release in (base, previous):
         pipeline.assert_tree_matches_inventory(release.game_path, pipeline.read_json_file(release.inventory_path))

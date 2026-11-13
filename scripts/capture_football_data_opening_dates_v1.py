@@ -10,6 +10,7 @@ from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_football_data_opening_dates_v1 as dates
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
@@ -21,15 +22,15 @@ def capture(season, code, cache):
     dates.validate_url(url, season, code)
     key = hashlib.sha256(url.encode()).hexdigest()
     path, receipt = cache / (key + '.csv'), cache / (key + '.source.json')
-    if path.exists():
-        raw = path.read_bytes()
-        original = json.loads(receipt.read_text())
+    if storage_io.exists(path):
+        raw = storage_io.read_bytes(path)
+        original = json.loads(storage_io.read_text(receipt))
         dates.validate_url(original['response_url'], season, code)
         if original['requested_url'] != url or original['sha256'] != hashlib.sha256(raw).hexdigest():
             raise ValueError('original league result URL/hash changed')
         reused = True
     else:
-        if receipt.exists():
+        if storage_io.exists(receipt):
             raise ValueError('original result receipt lacks its CSV')
         with urlopen(Request(url, headers={'User-Agent': 'PM99 historical football research'}), timeout=25) as response:
             response_url = response.geturl()

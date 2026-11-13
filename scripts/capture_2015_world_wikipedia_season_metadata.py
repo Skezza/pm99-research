@@ -17,6 +17,7 @@ from urllib.request import Request, urlopen
 
 ROOT=Path(__file__).resolve().parents[1]
 if str(ROOT) not in __import__('sys').path: __import__('sys').path.insert(0,str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts.audit_world_2015_source_coverage import strict_club_key
 
 SCHEMA='pm99-world-2015-wikipedia-season-metadata-v1'; DRAFT_SCHEMA='pm99-world-2015-source-carrier-drafts-v1'; API='https://en.wikipedia.org/w/api.php'; USER_AGENT='PM99RE-source-research/1.0 (https://github.com/openai/codex; source-research@example.invalid)'
@@ -96,9 +97,9 @@ def build(draft:Mapping[str,Any])->dict[str,Any]:
  matched=[r for r in rows if r['status']=='exact-season-infobox-match']
  return {'schema_version':SCHEMA,'policy':'deterministic-season-title-forms; strict-season-and-declared-club-label-validation; search-discovery-only; no-fuzzy-apply; source-facts-only','sources':{'source_draft_sha256':hashlib.sha256(canonical_json_bytes(draft)).hexdigest(),'mediawiki_api':API},'coverage':{'source_ready_carrier_count':len(rows),'exact_season_infobox_match_count':len(matched),'declared_presentation_title_form_match_count':sum(r.get('identity_method')=='declared-presentation-only-title-form' for r in matched),'manager_fact_count':sum(bool(r['facts']['manager']) for r in matched),'stadium_fact_count':sum(bool(r['facts']['stadium']) for r in matched),'season_scoped_capacity_fact_count':sum(bool(r['facts']['capacity']) for r in matched)},'rows':rows}
 def main()->int:
- p=argparse.ArgumentParser(description=__doc__);p.add_argument('--source-draft',required=True,type=Path);p.add_argument('--output',required=True,type=Path);a=p.parse_args();raw=a.source_draft.read_bytes();draft=json.loads(raw.decode());
+ p=argparse.ArgumentParser(description=__doc__);p.add_argument('--source-draft',required=True,type=Path);p.add_argument('--output',required=True,type=Path);a=p.parse_args();raw=storage_io.read_bytes(a.source_draft);draft=json.loads(raw.decode());
  if raw!=canonical_json_bytes(draft):p.error('source draft must be canonical JSON')
  try:r=build(draft)
  except CaptureError as e:p.error(str(e))
- a.output.parent.mkdir(parents=True,exist_ok=True);a.output.write_bytes(canonical_json_bytes(r));print(json.dumps(r['coverage'],sort_keys=True));return 0
+ a.output.parent.mkdir(parents=True,exist_ok=True);storage_io.write_bytes(a.output, canonical_json_bytes(r));print(json.dumps(r['coverage'],sort_keys=True));return 0
 if __name__=='__main__':raise SystemExit(main())

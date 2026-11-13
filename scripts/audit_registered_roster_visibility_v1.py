@@ -12,6 +12,7 @@ from pathlib import Path
 import sys
 
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_compiler_v2
 from scripts import season_release_registry_v1 as registry
 from scripts import season_duplicate_ownership_plan_v1 as planner
@@ -21,11 +22,11 @@ from app.eq_jug_linked import parse_eq_external_team_roster_payload
 
 
 def audit(output):
-    if output.exists():raise ValueError('visibility evidence is immutable')
+    if storage_io.exists(output):raise ValueError('visibility evidence is immutable')
     seasons=[]
     for season in registry.supported_seasons():
         release=registry.load_preferred_release(season)
-        eq_path=release.game_path/'DBDAT/EQ98030.FDI';eq=eq_path.read_bytes()
+        eq_path=release.game_path/'DBDAT/EQ98030.FDI';eq=storage_io.read_bytes(eq_path)
         records={e.record_id:e for e in IndexedFDIFile.from_bytes(eq).entries}
         findings=[];layers=[];club_count=0
         for label,package,path in planner.package_layers(release):

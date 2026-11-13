@@ -11,6 +11,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_opening_identity_exchange_v1 as exchange
 from scripts import coupled_manager_timeline_admission_20261016 as club_aliases
@@ -27,10 +28,10 @@ def _file(binding):
         current = current / part
         if current.is_symlink():
             raise ValueError('fixture path cannot contain symlink components')
-    resolved = (registry.ROOT / path).resolve()
-    if (not resolved.is_relative_to(registry.ROOT.resolve()) or not path.is_file()):
+    resolved = storage_io.resolve(registry.ROOT / path)
+    if (not resolved.is_relative_to(storage_io.resolve(registry.ROOT)) or not storage_io.is_file(path)):
         raise ValueError('fixture binding must be a retained workspace regular file')
-    raw = path.read_bytes()
+    raw = storage_io.read_bytes(path)
     if hashlib.sha256(raw).hexdigest() != binding.get('sha256'):
         raise ValueError('fixture body SHA differs')
     return path, raw

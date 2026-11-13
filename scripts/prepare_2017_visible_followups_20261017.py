@@ -1,4 +1,5 @@
 """Source-admit the visible2017 followups without altering any default/game."""
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry,season_pipeline_v2 as pipeline
 from scripts import season_exact_primary_position_delta_v1 as positions
 from scripts import season_number_label_names_v2 as names
@@ -9,7 +10,7 @@ BASE='sourced-resolved-period-country-20261017-r130a'
 
 
 def main():
-    if (ROOT/'source-admission.json').exists():raise ValueError('completed visible-facts admission must not repeat')
+    if storage_io.exists(ROOT / 'source-admission.json'):raise ValueError('completed visible-facts admission must not repeat')
     ROOT.mkdir(parents=True,exist_ok=True)
     base=registry.load_registered_release('2017-18',BASE)
     rows=[]

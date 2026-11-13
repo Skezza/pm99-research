@@ -15,6 +15,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_soccerbase_original_opening_v1 as original
 from scripts import season_historical_transfer_review_v1 as transfer
 from scripts import season_release_registry_v1 as registry
@@ -30,8 +31,8 @@ POLICY = 'replayed-original-Soccerbase-full-name-DOB-provider-bridge-source-only
 def read_original(cache, kind, id, proofs):
     path = cache / kind / (str(id)+'.html')
     receipt = path.with_name(path.name+'.source.json')
-    raw = path.read_bytes()
-    metadata = json.loads(receipt.read_text())
+    raw = storage_io.read_bytes(path)
+    metadata = json.loads(storage_io.read_text(receipt))
     digest = hashlib.sha256(raw).hexdigest()
     if set(metadata) != {'url', 'sha256'} or metadata['sha256'] != digest:
         raise ValueError('original Soccerbase URL/SHA receipt differs')
@@ -94,9 +95,9 @@ def replay_club(season, capture, people, allow_declared_unknown_details=False, *
 
 def review(season, people):
     source = ROOT / '.local' / ('season-'+season) / 'soccerbase-august-english-nonleague-v1.json'
-    if not source.is_file():
+    if not storage_io.is_file(source):
         return {'season': season, 'clubs': [], 'source_gap': 'original-Soccerbase-capture-not-present'}
-    captured = json.loads(source.read_text())
+    captured = json.loads(storage_io.read_text(source))
     if captured.get('season', {}).get('label') != season[:4]+'/'+season[-2:]:
         raise ValueError('original Soccerbase capture belongs to another season')
     release = registry.load_preferred_release(season)
@@ -127,7 +128,7 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--seasons', nargs='+', default=[f'{y}-{str(y+1)[-2:]}' for y in range(2000,2026)])
     args = parser.parse_args()
-    if args.output.exists():
+    if storage_io.exists(args.output):
         raise ValueError('source review is immutable; choose a new output')
     people, _, _, pin = transfer.load_snapshot(args.snapshot, args.snapshot_receipt)
     binding = public.binding(args.published_people, identities.POLICY)

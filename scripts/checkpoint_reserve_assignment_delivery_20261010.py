@@ -4,10 +4,11 @@ from datetime import UTC, datetime
 import json
 from pathlib import Path
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = storage_io.resolve(Path(__file__)).parents[1]
 AUDIT = ROOT / '.local/consolidated-audit-20261009'
 
 
@@ -18,13 +19,13 @@ def binding(path):
 
 def run():
     previous = AUDIT / 'release-delivery-checklist-v3.json'
-    original = json.loads(previous.read_text())
+    original = json.loads(storage_io.read_text(previous))
     result = copy.deepcopy(original)
     cases = {r['id']: r for r in result['within_club_cases']}
     evidence = AUDIT / 'reserve-assignment-delivery'
-    native = json.loads((evidence / 'native-byte-proof-v1.json').read_text())
-    replay = json.loads((evidence / 'rebuild-proof-v2.json').read_text())
-    profiles = json.loads((evidence / 'live-profile-proof-v1.json').read_text())
+    native = json.loads(storage_io.read_text(evidence / 'native-byte-proof-v1.json'))
+    replay = json.loads(storage_io.read_text(evidence / 'rebuild-proof-v2.json'))
+    profiles = json.loads(storage_io.read_text(evidence / 'live-profile-proof-v1.json'))
     changed = set()
     new_repairs = []
     for row in native['rows']:
@@ -49,8 +50,7 @@ def run():
             b = screens[0][name]
             if registry.sha256_file(ROOT / b['path']) != b['sha256']:
                 raise ValueError('live evidence changed')
-        plan = json.loads((release.package_path.parent /
-                           'sourced-profile-assignment-pruning.json').read_text())
+        plan = json.loads(storage_io.read_text(release.package_path.parent / 'sourced-profile-assignment-pruning.json'))
         for fixed in plan['fixed_cases']:
             case = cases[fixed['id']]
             if case['status'] != 'open-source-and-ownership-review':
@@ -68,7 +68,7 @@ def run():
             new_repairs.append(case['id'])
         changed.add(season)
     namesake_path = AUDIT / 'original-first-XI-namesake-dispositions-v1.json'
-    namesakes = json.loads(namesake_path.read_text())
+    namesakes = json.loads(storage_io.read_text(namesake_path))
     for row in namesakes['rows']:
         case = cases[row['case_id']]
         if case['status'] != 'open-source-and-ownership-review' or not row['duplicate_suspicion_cleared']:

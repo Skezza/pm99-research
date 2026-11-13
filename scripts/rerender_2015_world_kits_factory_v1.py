@@ -26,6 +26,7 @@ for candidate in (ROOT, EDITOR):
         sys.path.insert(0, str(candidate))
 
 from app.minifoto_bitmap_archive import iter_obfuscated_bmp_records, validate_minifoto_bitmap  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts.materialise_2015_world_kits import ARCHIVES, _write_content_addressed, canonical_json_bytes, sha256_bytes, sha256_file  # noqa: E402
 from scripts import pm99_factory_kit_renderer_v1 as factory_renderer  # noqa: E402
 from scripts.pm99_kit_palette_v1 import runtime_kit_palette  # noqa: E402
@@ -63,7 +64,7 @@ def _hash_bound_source(row: Mapping[str, Any], carrier: int) -> Path:
         raise FactoryRerenderError(f"carrier {carrier} has no FIFA source image")
     path = Path(str(image.get("cache_path") or ""))
     expected = str(image.get("sha256") or "")
-    if not path.is_file() or not re.fullmatch(r"[0-9a-f]{64}", expected):
+    if not storage_io.is_file(path) or not re.fullmatch(r"[0-9a-f]{64}", expected):
         raise FactoryRerenderError(f"carrier {carrier} FIFA source image is not hash-bound")
     if sha256_file(path) != expected:
         raise FactoryRerenderError(f"carrier {carrier} FIFA source image hash has changed")
@@ -186,7 +187,7 @@ def rerender(
             if not isinstance(prior_asset, Mapping) or not re.fullmatch(r"[0-9a-f]{64}", str(prior_asset.get("sha256") or "")):
                 raise FactoryRerenderError(f"carrier {carrier} prior {archive} asset has no receipt hash")
             assets[archive] = {
-                "path": str(path.resolve()),
+                "path": str(storage_io.resolve(path)),
                 "sha256": digest,
                 "bitmap_length": len(payload),
                 "file_name": str(target.file_name),
@@ -232,7 +233,7 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     try:
-        source_bytes = args.materialisation.read_bytes()
+        source_bytes = storage_io.read_bytes(args.materialisation)
         result = rerender(
             materialisation=json.loads(source_bytes),
             clean_dbdat=args.clean_dbdat,
@@ -243,7 +244,7 @@ def main() -> int:
         return 2
     result["renderer"]["source_materialisation_file_sha256"] = sha256_bytes(source_bytes)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_json_bytes(result))
+    storage_io.write_bytes(args.output, canonical_json_bytes(result))
     print(json.dumps({"rerendered": result["coverage"]["factory_template_rerendered_carrier_count"], "output": str(args.output)}, sort_keys=True))
     return 0
 

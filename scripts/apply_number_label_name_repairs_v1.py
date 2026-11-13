@@ -35,6 +35,7 @@ for candidate in (ROOT, EDITOR):
         sys.path.insert(0, str(candidate))
 
 from app.fdi_indexed import IndexedFDIFile  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_name_provenance_v1 as provenance  # noqa: E402
 from scripts import season_package_compiler_v2 as compiler  # noqa: E402
 from scripts import season_package_v2 as package_v2  # noqa: E402
@@ -52,7 +53,7 @@ class DirectRepairError(ValueError):
 
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
@@ -60,7 +61,7 @@ def _sha256(path: Path) -> str:
 
 def _read_object(path: Path, *, label: str) -> dict[str, Any]:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(storage_io.read_text(path, encoding='utf-8'))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise DirectRepairError(f"cannot read {label}: {path}") from exc
     if not isinstance(value, dict):
@@ -139,10 +140,10 @@ def _apply_to_package(
     after_sha256 = hashlib.sha256(payload).hexdigest()
     if apply and changes:
         temporary = path.with_name(f".{path.name}.number-label-repair.tmp")
-        if temporary.exists() or temporary.is_symlink():
+        if storage_io.exists(temporary) or temporary.is_symlink():
             raise DirectRepairError(f"temporary repair path already exists: {temporary}")
-        temporary.write_bytes(payload)
-        os.replace(temporary, path)
+        storage_io.write_bytes(temporary, payload)
+        storage_io.replace_file(temporary, path)
     return {
         "path": str(path),
         "before_sha256": before_sha256,
@@ -154,7 +155,7 @@ def _apply_to_package(
 
 
 def _decoded_payloads(path: Path) -> dict[int, bytes]:
-    data = path.read_bytes()
+    data = storage_io.read_bytes(path)
     return {
         int(entry.record_id): entry.decode_payload(data)
         for entry in IndexedFDIFile.from_bytes(data).entries
@@ -203,10 +204,10 @@ def _assert_only_repaired_names_changed(
 def _write_package_direct(path: Path, package: Mapping[str, Any]) -> str:
     payload = package_v2.canonical_json_bytes(dict(package))
     temporary = path.with_name(f".{path.name}.number-label-repair.tmp")
-    if temporary.exists() or temporary.is_symlink():
+    if storage_io.exists(temporary) or temporary.is_symlink():
         raise DirectRepairError(f"temporary repair path already exists: {temporary}")
-    temporary.write_bytes(payload)
-    os.replace(temporary, path)
+    storage_io.write_bytes(temporary, payload)
+    storage_io.replace_file(temporary, path)
     return hashlib.sha256(payload).hexdigest()
 
 
@@ -228,9 +229,9 @@ def _refresh_derived_packages(
         if isinstance(player, dict) and isinstance(player.get("id"), str)
     }
     jug_path = base_tree / "DBDAT/JUG98030.FDI"
-    if not jug_path.is_file():
+    if not storage_io.is_file(jug_path):
         raise DirectRepairError(f"clean base lacks JUG98030.FDI: {jug_path}")
-    jug_data = jug_path.read_bytes()
+    jug_data = storage_io.read_bytes(jug_path)
     entries = {int(entry.record_id): entry for entry in IndexedFDIFile.from_bytes(jug_data).entries}
     repaired_ids = {row["player_id"] for row in candidates}
     for candidate in candidates:
@@ -364,12 +365,12 @@ def _refresh_live_jug(
 ) -> dict[str, Any]:
     package = package_v2.read_canonical_package(package_path)
     package_v2.validate_package(package, strict=True)
-    runtime_game = runtime_game.resolve()
-    base_tree = base_tree.resolve()
+    runtime_game = storage_io.resolve(runtime_game)
+    base_tree = storage_io.resolve(base_tree)
     if not runtime_game.is_dir() or not base_tree.is_dir():
         raise DirectRepairError("runtime game and base tree must both be directories")
     live_jug = runtime_game / "DBDAT/JUG98030.FDI"
-    if not live_jug.is_file():
+    if not storage_io.is_file(live_jug):
         raise DirectRepairError(f"runtime game lacks JUG98030.FDI: {runtime_game}")
     players = package.get("players")
     if not isinstance(players, list):
@@ -381,7 +382,7 @@ def _refresh_live_jug(
     }
     if len(desired_by_carrier) != len(repaired_ids):
         raise DirectRepairError("not every direct repair player has one runtime carrier")
-    original = live_jug.read_bytes()
+    original = storage_io.read_bytes(live_jug)
     index = IndexedFDIFile.from_bytes(original)
     live_entries = {int(entry.record_id): entry for entry in index.entries}
     with tempfile.TemporaryDirectory(prefix="pm99-name-repair-", dir=runtime_game.parent) as temporary_root:
@@ -393,7 +394,7 @@ def _refresh_live_jug(
             materialisation_tree=materialisation,
         )
         compiled_jug = materialisation / "DBDAT/JUG98030.FDI"
-        compiled_bytes = compiled_jug.read_bytes()
+        compiled_bytes = storage_io.read_bytes(compiled_jug)
         compiled_entries = {
             int(entry.record_id): entry for entry in IndexedFDIFile.from_bytes(compiled_bytes).entries
         }
@@ -415,9 +416,9 @@ def _refresh_live_jug(
                 replacements[carrier_id] = compiled_payload
         rebuilt = compiler._rebuild_indexed(original, index, replacements)
     rebuilt_jug = live_jug.with_name(f".{live_jug.name}.number-label-repair.tmp")
-    if rebuilt_jug.exists() or rebuilt_jug.is_symlink():
+    if storage_io.exists(rebuilt_jug) or rebuilt_jug.is_symlink():
         raise DirectRepairError(f"temporary JUG repair path already exists: {rebuilt_jug}")
-    rebuilt_jug.write_bytes(rebuilt)
+    storage_io.write_bytes(rebuilt_jug, rebuilt)
     try:
         delta = _verify_jug_delta(
             before=live_jug,
@@ -428,10 +429,10 @@ def _refresh_live_jug(
         before_sha256 = _sha256(live_jug)
         after_sha256 = _sha256(rebuilt_jug)
         if apply:
-            os.replace(rebuilt_jug, live_jug)
+            storage_io.replace_file(rebuilt_jug, live_jug)
     finally:
-        if rebuilt_jug.exists() or rebuilt_jug.is_symlink():
-            rebuilt_jug.unlink()
+        if storage_io.exists(rebuilt_jug) or rebuilt_jug.is_symlink():
+            storage_io.unlink(rebuilt_jug)
     return {
         "package_path": str(package_path),
         "package_sha256": package_v2.sha256_bytes(package_v2.canonical_json_bytes(package)),
@@ -451,10 +452,10 @@ def _refresh_live_jug(
 def _write_receipt(path: Path, receipt: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f".{path.name}.tmp")
-    if temporary.exists() or temporary.is_symlink():
+    if storage_io.exists(temporary) or temporary.is_symlink():
         raise DirectRepairError(f"temporary receipt path already exists: {temporary}")
-    temporary.write_bytes(package_v2.canonical_json_bytes(dict(receipt)))
-    os.replace(temporary, path)
+    storage_io.write_bytes(temporary, package_v2.canonical_json_bytes(dict(receipt)))
+    storage_io.replace_file(temporary, path)
 
 
 def repair(
@@ -464,27 +465,27 @@ def repair(
 ) -> dict[str, Any]:
     if len(set(package_paths)) != len(package_paths):
         raise DirectRepairError("each --package path must be supplied only once")
-    resolved_packages = {path.resolve() for path in package_paths}
-    if compile_package_path.resolve() not in resolved_packages:
+    resolved_packages = {storage_io.resolve(path) for path in package_paths}
+    if storage_io.resolve(compile_package_path) not in resolved_packages:
         raise DirectRepairError("--compile-package must also be supplied through --package")
     sidecar = _read_object(provenance_path, label="provenance")
     candidates = _repair_candidates(sidecar)
     package_results = [
-        _apply_to_package(path=path.resolve(), candidates=candidates, apply=apply)
+        _apply_to_package(path=storage_io.resolve(path), candidates=candidates, apply=apply)
         for path in package_paths
     ]
     all_repair_ids = {row["player_id"] for row in candidates}
     package_results.extend(_refresh_derived_packages(
-        source_package_path=compile_package_path.resolve(),
-        alias_package_path=alias_package_path.resolve(),
-        reconciled_package_path=reconciled_package_path.resolve(),
+        source_package_path=storage_io.resolve(compile_package_path),
+        alias_package_path=storage_io.resolve(alias_package_path),
+        reconciled_package_path=storage_io.resolve(reconciled_package_path),
         base_tree=base_tree,
         verified_base_path=verified_base_path,
         candidates=candidates,
         apply=apply,
     ))
     live = _refresh_live_jug(
-        package_path=reconciled_package_path.resolve(), base_tree=base_tree,
+        package_path=storage_io.resolve(reconciled_package_path), base_tree=base_tree,
         runtime_game=runtime_game, repaired_ids=all_repair_ids, apply=apply,
     )
     season = sidecar.get("season")

@@ -3,6 +3,14 @@
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import json
 import shutil
@@ -12,12 +20,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR_ROOT = REPO_ROOT / "upstream" / "pm99-skezmod-db-editor"
 if str(EDITOR_ROOT) not in sys.path:
     sys.path.insert(0, str(EDITOR_ROOT))
-if str(Path(__file__).resolve().parent) not in sys.path:
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
+if str(storage_io.resolve(Path(__file__)).parent) not in sys.path:
+    sys.path.insert(0, str(storage_io.resolve(Path(__file__)).parent))
 
 from app.editor_actions import (  # noqa: E402
     _IndexedRawStageRecord,
@@ -40,7 +48,7 @@ DEFAULT_OUTPUT_ROOT = REPO_ROOT / "work" / "pm99" / "jug_variable_name_slice_bis
 
 def _json_dump(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(path, json.dumps(payload, indent=2, sort_keys=True) + '\n', encoding='utf-8')
 
 
 def _parse_args() -> argparse.Namespace:
@@ -79,7 +87,7 @@ def build(
     *,
     allow_unsafe_research_patcher: bool = False,
 ) -> dict[str, Any]:
-    if output_dir.exists():
+    if storage_io.exists(output_dir):
         if not force:
             raise SystemExit(f"Output exists; pass --force: {output_dir}")
         shutil.rmtree(output_dir)
@@ -90,7 +98,7 @@ def build(
     targets, preserve_only = _load_targets(player_file)
     selected = _slice_targets(targets, start, count)
 
-    data = player_file.read_bytes()
+    data = storage_io.read_bytes(player_file)
     indexed = IndexedFDIFile.from_bytes(data)
     entries_by_id = {int(entry.record_id): entry for entry in indexed.entries}
     stages: list[tuple[int, _IndexedRawStageRecord]] = []
@@ -174,8 +182,8 @@ def build(
 def main() -> int:
     args = _parse_args()
     summary = build(
-        base_game=Path(args.base_game).expanduser().resolve(),
-        output_dir=Path(args.output_dir).expanduser().resolve(),
+        base_game=storage_io.resolve(Path(args.base_game).expanduser()),
+        output_dir=storage_io.resolve(Path(args.output_dir).expanduser()),
         start=int(args.start),
         count=int(args.count),
         force=bool(args.force),

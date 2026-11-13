@@ -1,6 +1,7 @@
 """Promote the paired ownership fix only after actual runner verification."""
 import copy
 from datetime import UTC,datetime
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import publish_historical_role_delta_v1 as publisher
 from scripts import attest_registered_season_runtime_v1 as runtime
@@ -16,7 +17,7 @@ from scripts.capture_woking_owned_opening_20261011 import PROFILES,TAG
 def run():
     prior=ROOT.parent/'release-delivery-checklist-v40.json'
     output=ROOT.parent/'release-delivery-checklist-v41.json'
-    if output.exists():raise ValueError('completed Woking checkpoint must not repeat')
+    if storage_io.exists(output):raise ValueError('completed Woking checkpoint must not repeat')
     result=copy.deepcopy(pipeline.read_json_file(prior));old={r['season']:r for r in result['current_release_bindings']}
     release=registry.load_registered_release(SEASON,RELEASE)
     native=pipeline.read_json_file(ROOT/'native-byte-proof.json')

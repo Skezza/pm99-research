@@ -16,6 +16,7 @@ from app.ent_manager_profiles import parse_indexed_ent_manager_profile, replace_
 from app.xor import xor_decode, xor_encode
 from app.eq_jug_linked import parse_eq_external_team_roster_payload
 from app.editor_actions import edit_team_roster_eq_jug_linked
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as p, season_package_v2 as packages, season_release_registry_v1 as r
 from scripts import season_package_compiler_v2 as compiler
 from scripts import season_opening_cohort_delta_core_v1 as cohort
@@ -66,7 +67,7 @@ def new_input_payloads(request, package):
                 or str(relative) in seen or artifacts.get(str(relative), {}).get('sha256') != row['sha256']):
             raise ValueError('new country artifact is not an exact unique confined child recipe input')
         seen.add(str(relative))
-        result.append((relative, source.read_bytes()))
+        result.append((relative, storage_io.read_bytes(source)))
     return result
 
 
@@ -323,8 +324,8 @@ def _validate_factory_flag_authorization(before,after,request,policy):
 def validate_factory_flag_preimage(eq_data,before,after,request,policy):
     """Check exact clean-factory and parent EQ row bytes before mutation."""
     auth=policy['factory_flag_authorization']
-    factory_eq=(r.ROOT/auth['factory_eq_path']).resolve()
-    factory_jug=(r.ROOT/auth['factory_jug_path']).resolve()
+    factory_eq=storage_io.resolve(r.ROOT / auth['factory_eq_path'])
+    factory_jug=storage_io.resolve(r.ROOT / auth['factory_jug_path'])
     if (r.relative_workspace_path(factory_eq)!=auth['factory_eq_path']
             or r.relative_workspace_path(factory_jug)!=auth['factory_jug_path']):
         raise ValueError('factory source path must be an exact workspace-relative binding')
@@ -339,7 +340,7 @@ def validate_factory_flag_preimage(eq_data,before,after,request,policy):
         parsed=parse_eq_external_team_roster_payload(raw,{})
         if parsed is None: raise ValueError('factory or parent EQ team record has no parsed mode1 rows')
         return raw,parsed
-    cid=auth['club_carrier_id'];factory_raw,factory_team=raw_team(factory_eq.read_bytes(),cid)
+    cid=auth['club_carrier_id'];factory_raw,factory_team=raw_team(storage_io.read_bytes(factory_eq),cid)
     parent_raw,parent_team=raw_team(eq_data,cid)
     if digest(factory_raw)!=auth['factory_club_payload_sha256']:
         raise ValueError('registered factory club record differs from its exact row preimage binding')
@@ -354,7 +355,7 @@ def validate_factory_flag_preimage(eq_data,before,after,request,policy):
     if authorized_carriers!=factory_flag_one:
         raise ValueError('factory flag reset authorization must cover the exact set of flag-one rows')
     from scripts.season_within_club_reserve_repair_v1 import native_facts
-    fjug=factory_jug.read_bytes()
+    fjug=storage_io.read_bytes(factory_jug)
     for reset in auth['resets']:
         old=native_facts(fjug,reset['native_carrier_id'])
         if old.get('name')!=reset['factory_jug_name'] or old.get('birth_date')!=reset['factory_jug_birth_date']:
@@ -374,7 +375,7 @@ def apply_source_authored_factory_flag_resets(eq_data,jug_data,club,authorizatio
     from app.eq_jug_linked import parse_eq_external_team_roster_payload
     with tempfile.TemporaryDirectory(prefix='source-factory-row-flag-reset-') as directory:
         root=Path(directory);eq_path=root/'EQ98030.FDI';jug_path=root/'JUG98030.FDI'
-        eq_path.write_bytes(eq_data);jug_path.write_bytes(jug_data);current=eq_data
+        storage_io.write_bytes(eq_path, eq_data);storage_io.write_bytes(jug_path, jug_data);current=eq_data
         index=IndexedFDIFile.from_bytes(current);entry=next(e for e in index.entries if e.record_id==club['carrier_id'])
         team=parse_eq_external_team_roster_payload(current[entry.payload_offset:entry.payload_offset+entry.payload_length],{})
         if team is None: raise ValueError('post-prune selected EQ roster is unreadable')
@@ -387,7 +388,7 @@ def apply_source_authored_factory_flag_resets(eq_data,jug_data,club,authorizatio
             edit_team_roster_eq_jug_linked(team_file=str(eq_path),player_file=str(jug_path),
                 eq_record_id=club['carrier_id'],slot_number=matches[0].slot_index+1,
                 player_record_id=reset['native_carrier_id'],flag=reset['after_flag'],write_changes=True)
-            current=eq_path.read_bytes()
+            current=storage_io.read_bytes(eq_path)
             diffs=[i for i,(old,new) in enumerate(zip(before,current)) if old!=new]
             if len(before)!=len(current) or diffs!=[expected_offset] or current[expected_offset]!=0:
                 raise ValueError('canonical editor did not change only the authorized native flag byte')
@@ -395,7 +396,7 @@ def apply_source_authored_factory_flag_resets(eq_data,jug_data,club,authorizatio
             team=parse_eq_external_team_roster_payload(current[rowentry.payload_offset:rowentry.payload_offset+rowentry.payload_length],{})
             if team is None or any(row.player_record_id==reset['native_carrier_id'] and row.flag!=0 for row in team.rows):
                 raise ValueError('canonical editor flag reset failed exact native readback')
-        if jug_path.read_bytes()!=jug_data:
+        if storage_io.read_bytes(jug_path)!=jug_data:
             raise ValueError('native EQ flag reset unexpectedly changed JUG')
         return current
 
@@ -603,7 +604,7 @@ def prepare_name_capacity(oldjug, request, selected_carriers):
     if request.get('name_capacity'):
         from scripts import season_same_carrier_name_capacity_v1 as capacity
         from app.player_name_capacity import recover_compact_name_window
-        binding=request['name_capacity'];factory=capacity.verify_bundle(binding['bundle']).read_bytes()
+        binding=request['name_capacity'];factory=storage_io.read_bytes(capacity.verify_bundle(binding['bundle']))
         originals={e.record_id:e for e in IndexedFDIFile.from_bytes(factory).entries}
         current={e.record_id:e for e in IndexedFDIFile.from_bytes(oldjug).entries};recovered={}
         for claim in binding['claims']:
@@ -768,7 +769,7 @@ def _reconstruct(base, request):
             and (request.get('selection_kind') != 'players-only'
                  or not isinstance(request['static_forward_fine_role_repairs'], list))):
         raise ValueError('static forward repairs are restricted to explicit player-only witnesses')
-    oldeq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes();oldjug=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes();oldent=(base.game_path/'DBDAT/ENT98030.FDI').read_bytes()
+    oldeq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI');oldjug=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI');oldent=storage_io.read_bytes(base.game_path / 'DBDAT/ENT98030.FDI')
     if request.get('selection_kind') in ('players-only','players-and-openings'):
         from scripts import season_duplicate_ownership_delta_v1 as native_players
         from scripts.season_opening_order_repair_v1 import native_owners
@@ -986,7 +987,7 @@ def _reconstruct(base, request):
 
 
 def prepare(base,input_path):
-    path=paths._source_path(r.relative_workspace_path(Path(input_path).resolve()));request=p.read_json_file(path);_reconstruct(base,request)
+    path=paths._source_path(r.relative_workspace_path(storage_io.resolve(Path(input_path))));request=p.read_json_file(path);_reconstruct(base,request)
     plan=dict(schema=SCHEMA,season=base.season,release_id=base.release_id,parent=request['parent'],source_input=dict(path=r.relative_workspace_path(path),sha256=r.sha256_file(path)),package_sha256=r.sha256_file(base.package_path),jug_sha256=r.sha256_file(base.game_path/'DBDAT/JUG98030.FDI'),scope='Reviewed country recipe only: fixed country carrier totals and club capacities, explicit selected-country carrier exchanges, selected facts/skills/names and startup orders; selected club/coach names, grounds and contextual tactics; all other native records, memberships and kits preserved.')
     if request.get('selection_kind') == 'clubs':
         plan['scope']='Reviewed explicit clubs within one existing country only; fixed selected club capacities and carrier partition; selected actors, exclusive coaches and metadata; every unselected same-country or foreign club, player, coach and all kits preserved.'
@@ -1034,7 +1035,7 @@ def bind(package,plan):
 
 
 def apply(jug,eq,plan):
-    base=r.load_registered_release(plan['season'],plan['release_id']);out=_outputs(plan);before=((base.game_path/'DBDAT/JUG98030.FDI').read_bytes(),(base.game_path/'DBDAT/EQ98030.FDI').read_bytes());after=(out['jug'],out['eq'])
+    base=r.load_registered_release(plan['season'],plan['release_id']);out=_outputs(plan);before=(storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI'),storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI'));after=(out['jug'],out['eq'])
     if (jug,eq) not in (before,after):
         raise ValueError('country writer accepts complete parent or complete postimage only')
     return after
@@ -1042,7 +1043,7 @@ def apply(jug,eq,plan):
 
 def apply_ent(ent,plan):
     base=r.load_registered_release(plan['season'],plan['release_id']);after=_outputs(plan)['ent']
-    if ent not in ((base.game_path/'DBDAT/ENT98030.FDI').read_bytes(),after):
+    if ent not in (storage_io.read_bytes(base.game_path / 'DBDAT/ENT98030.FDI'),after):
         raise ValueError('country ENT preimage differs')
     return after
 
@@ -1050,7 +1051,7 @@ def apply_ent(ent,plan):
 def apply_minifoto(archive,plan):
     from scripts.season_duplicate_ownership_delta_v1 import no_photo_archive
     after=_outputs(plan)['package'];base=r.load_registered_release(plan['season'],plan['release_id']);before=p.read_json_file(base.package_path);old={x['player_id']:x for x in before['assets']['portraits']};actors={a['id']:a['carrier_id'] for a in after['players']};clear={actors[x['player_id']] for x in after['assets']['portraits'] if x!=old[x['player_id']] and x['status']=='native-no-photo'}
-    parent_archive=(base.game_path/'DBDAT/MINIFOTO.PKF').read_bytes()
+    parent_archive=storage_io.read_bytes(base.game_path / 'DBDAT/MINIFOTO.PKF')
     expected, offsets=no_photo_archive(parent_archive,clear)
     if archive not in (parent_archive,expected):
         raise ValueError('country portrait archive differs from the complete parent/postimage')
@@ -1066,13 +1067,13 @@ def reconstruction(previous,release_id,*,minimum_free_bytes=8*1024**3):
     from scripts import publish_historical_role_delta_v1 as publisher
     path=r.ROOT/previous.locator['sourced_profile_assignment_plan_path'];plan=p.read_json_file(path);base=r.load_registered_release(plan['season'],plan['release_id']);verify(base,plan)
     receipt=p.read_json_file(previous.compiler_receipt_path)
-    if path.resolve()!=(previous.package_path.parent/filename(plan)).resolve() or r.sha256_file(path)!=receipt.get('original_profile_assignment_plan_sha256'):
+    if storage_io.resolve(path)!=storage_io.resolve(previous.package_path.parent / filename(plan)) or r.sha256_file(path)!=receipt.get('original_profile_assignment_plan_sha256'):
         raise ValueError('country SOURCE child-owned plan hash/path differs')
     if p.read_json_file(previous.package_path)!=bind(p.read_json_file(base.package_path),plan):
         raise ValueError('country SOURCE recipe differs from its reviewed input')
     publisher.publish(base.season,previous.package_path.parent/'role-delta-input.json',release_id=release_id,source_release_id=base.release_id,profile_assignment_plan_path=path,minimum_free_bytes=minimum_free_bytes)
     child=r.load_registered_release(base.season,release_id);p.assert_tree_matches_inventory(child.game_path,p.read_json_file(previous.inventory_path))
-    if child.package_path.read_bytes()!=previous.package_path.read_bytes():
+    if storage_io.read_bytes(child.package_path)!=storage_io.read_bytes(previous.package_path):
         raise ValueError('country SOURCE recipe bytes differ')
     return dict(complete_recipe_identical=True,complete_game_inventory_identical=True)
 
@@ -1081,6 +1082,6 @@ def copy_new_inputs(workspace,plan):
     request=p.read_json_file(_bound(plan['source_input']));package=_outputs(plan)['package']
     for relative, raw in new_input_payloads(request, package):
         target=Path(workspace)/relative
-        if target.exists():
+        if storage_io.exists(target):
             raise ValueError('new country source input would overwrite an existing file')
-        target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(raw)
+        target.parent.mkdir(parents=True,exist_ok=True);storage_io.write_bytes(target, raw)

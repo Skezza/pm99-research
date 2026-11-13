@@ -10,6 +10,14 @@ not in the compiled club roster.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import csv
 import json
@@ -20,7 +28,7 @@ from pathlib import Path
 from typing import Any
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = storage_io.resolve(Path(__file__)).parents[1]
 PROFILE_NATIONALITY_TO_PM99 = {
     "antigua and barbuda": "XXX", "argentina": "ARG", "barbados": "XXX", "belgium": "BEL",
     "brazil": "BRA", "bulgaria": "BUL", "costa rica": "CRC", "cote divoire": "CIV",
@@ -45,13 +53,13 @@ def _normalise(value: str) -> str:
 
 
 def _load(path: Path) -> Any:
-    return json.loads(path.read_text(encoding="utf-8"))
+    return json.loads(storage_io.read_text(path, encoding='utf-8'))
 
 
 def _fifa_physical(path: Path) -> dict[str, Any]:
     exact: dict[tuple[str, str], tuple[int, int, str]] = {}
     by_dob: dict[str, list[tuple[str, int, int, str]]] = defaultdict(list)
-    with path.open(encoding="utf-8", newline="") as handle:
+    with storage_io.open_file(path, encoding='utf-8', newline='') as handle:
         for row in csv.DictReader(handle):
             name = _normalise(str(row.get("name") or row.get("short_name") or ""))
             date = str(row.get("birthdate") or row.get("dob") or "")
@@ -152,7 +160,7 @@ def main() -> int:
         "first_fixture_additions": {"count": added, "weight_fallback_count": fallback_weight, "height_fallback_count": fallback_height, "unsupported_nationality_count": unknown_nationality},
     })
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(output, indent=2, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(args.output, json.dumps(output, indent=2, ensure_ascii=False, sort_keys=True) + '\n', encoding='utf-8')
     print(json.dumps(output["first_fixture_additions"], sort_keys=True))
     return 0
 

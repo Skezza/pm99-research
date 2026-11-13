@@ -3,6 +3,7 @@
 Private three-size pixel-only patch. The source photograph is retained for
 inspection, not copied into a distributed game; logos/sponsors are simplified.
 """
+from scripts import json_storage_io_v1 as storage_io
 from scripts import prepare_ofk_2004_source_allocation_v1 as source
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_kit_render_bindings_v1 as render
@@ -44,7 +45,7 @@ def catalogue():
 
 def prepare(output, *, source_catalogue=None, season='2004-05', baseline_release_id=None,
             carrier=706, club_name='OFK Beograd'):
-    if output.exists(): raise ValueError('private kit candidate is immutable')
+    if storage_io.exists(output): raise ValueError('private kit candidate is immutable')
     doc = catalogue() if source_catalogue is None else source_catalogue
     if (doc['season']['start_year'] != int(season[:4]) or len(doc['rows']) != 1
             or doc['rows'][0]['carrier_id'] != carrier or doc['rows'][0]['club_name'] != club_name):
@@ -67,13 +68,13 @@ def prepare(output, *, source_catalogue=None, season='2004-05', baseline_release
         raise ValueError('private three-size kit did not reproduce exactly')
     changes = []
     for archive in render.ARCHIVES:
-        before = (release.game_path / 'DBDAT' / archive).read_bytes()
+        before = storage_io.read_bytes(release.game_path / 'DBDAT' / archive)
         records = render._record_index(release.game_path / 'DBDAT' / archive)
         record = records[carrier]
         artifact = next(a for a in binding['clubs'][0]['artifacts'] if a['id'].endswith('-' + archive[:-4].lower()))
         path = output / 'renders' / artifact['relative_path']
         if registry.sha256_file(path) != artifact['sha256']: raise ValueError('rendered kit bytes changed')
-        payload = pixel_payload(record, path.read_bytes())
+        payload = pixel_payload(record, storage_io.read_bytes(path))
         after = bytearray(before)
         after[record.bitmap_offset:record.bitmap_offset + record.bitmap_length] = payload
         intervals = [(record.bitmap_offset + lo, record.bitmap_offset + hi) for lo, hi in bitmap_pixel_ranges(record)]

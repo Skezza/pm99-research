@@ -24,6 +24,7 @@ for candidate in (ROOT, EDITOR):
     if str(candidate) not in sys.path:
         sys.path.insert(0, str(candidate))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts.apply_position_handling_repair_v1 import (  # noqa: E402
     HandlingRepairError,
     _refresh_live_jug,
@@ -93,8 +94,8 @@ def _target_ids(package: Mapping[str, Any], *, game: Path) -> tuple[set[str], li
 def repair(
     *, package_path: Path, base_tree: Path, runtime_game: Path, receipt_path: Path, apply: bool,
 ) -> dict[str, Any]:
-    package_path = package_path.resolve()
-    runtime_game = runtime_game.resolve()
+    package_path = storage_io.resolve(package_path)
+    runtime_game = storage_io.resolve(runtime_game)
     package = package_v2.read_canonical_package(package_path)
     package_v2.validate_package(package, strict=True)
     target_ids, accepted = _target_ids(package, game=runtime_game)
@@ -107,12 +108,12 @@ def repair(
         }
         if apply:
             receipt_path.parent.mkdir(parents=True, exist_ok=True)
-            receipt_path.write_bytes(package_v2.canonical_json_bytes(receipt))
+            storage_io.write_bytes(receipt_path, package_v2.canonical_json_bytes(receipt))
         return receipt
     try:
         live = _refresh_live_jug(
             package_path=package_path,
-            base_tree=base_tree.resolve(),
+            base_tree=storage_io.resolve(base_tree),
             runtime_game=runtime_game,
             target_ids=target_ids,
             apply=apply,
@@ -143,7 +144,7 @@ def repair(
     }
     if apply:
         receipt_path.parent.mkdir(parents=True, exist_ok=True)
-        receipt_path.write_bytes(package_v2.canonical_json_bytes(receipt))
+        storage_io.write_bytes(receipt_path, package_v2.canonical_json_bytes(receipt))
     return receipt
 
 

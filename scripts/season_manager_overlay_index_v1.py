@@ -9,6 +9,14 @@ until a new explicit manifest and index are made.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -18,7 +26,7 @@ from pathlib import Path
 from typing import Any
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = storage_io.resolve(Path(__file__)).parents[1]
 BASELINE_SCHEMA = "pm99-season-baseline-index-v1"
 OVERLAY_SCHEMA = "pm99-season-manager-overlay-v1"
 SELECTION_SCHEMA = "pm99-season-manager-overlay-selection-manifest-v1"
@@ -37,7 +45,7 @@ def _bytes(value: Any) -> bytes:
 
 def _load(path: Path, label: str) -> tuple[dict[str, Any], str]:
     try:
-        payload = path.read_bytes()
+        payload = storage_io.read_bytes(path)
         value = json.loads(payload.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise OverlayIndexError(f"cannot read {label}: {path}") from exc
@@ -49,15 +57,15 @@ def _load(path: Path, label: str) -> tuple[dict[str, Any], str]:
 def _safe_child(parent: Path, relative: object, label: str) -> Path:
     if not isinstance(relative, str) or not relative or Path(relative).is_absolute() or ".." in Path(relative).parts:
         raise OverlayIndexError(f"{label} path is unsafe")
-    result = (parent / relative).resolve()
-    if result != parent.resolve() and parent.resolve() not in result.parents:
+    result = storage_io.resolve(parent / relative)
+    if result != storage_io.resolve(parent) and storage_io.resolve(parent) not in result.parents:
         raise OverlayIndexError(f"{label} path escapes its parent")
     return result
 
 
 def _relative(path: Path, *, workspace_root: Path) -> str:
     try:
-        return path.resolve().relative_to(workspace_root.resolve()).as_posix()
+        return storage_io.resolve(path).relative_to(storage_io.resolve(workspace_root)).as_posix()
     except ValueError as exc:
         raise OverlayIndexError(f"artifact lies outside workspace root: {path}") from exc
 
@@ -140,7 +148,7 @@ def build_index(
         if not isinstance(base, Mapping) or base.get("baseline_index_sha256") != baseline_sha256:
             raise OverlayIndexError(f"{season}: manager overlay is bound to a different baseline")
         try:
-            ledger_sha = hashlib.sha256(ledger_path.read_bytes()).hexdigest()
+            ledger_sha = hashlib.sha256(storage_io.read_bytes(ledger_path)).hexdigest()
         except OSError as exc:
             raise OverlayIndexError(f"cannot read {season} selected manager ledger: {ledger_path}") from exc
         if not isinstance(outputs, Mapping) or outputs.get("opening_manager_ledger_sha256") != ledger_sha:
@@ -183,7 +191,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args(argv)
     try:
-        if args.output.exists():
+        if storage_io.exists(args.output):
             raise OverlayIndexError(f"refusing to overwrite overlay selection index: {args.output}")
         baseline, baseline_sha = _load(args.baseline_index, "baseline index")
         selection, selection_sha = _load(args.selection_manifest, "selection manifest")
@@ -195,7 +203,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (OSError, OverlayIndexError) as exc:
         parser.error(str(exc))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(_bytes(result))
+    storage_io.write_bytes(args.output, _bytes(result))
     print(json.dumps(result["summary"], sort_keys=True))
     return 0
 

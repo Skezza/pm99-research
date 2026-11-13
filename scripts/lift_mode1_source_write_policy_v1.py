@@ -30,6 +30,7 @@ for candidate in (ROOT, EDITOR):
     if str(candidate) not in sys.path:
         sys.path.insert(0, str(candidate))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_compiler_v2 as compiler_v2  # noqa: E402
 from scripts import season_package_v2 as package_v2  # noqa: E402
 from scripts import season_pipeline_v2 as pipeline_v2  # noqa: E402
@@ -53,7 +54,7 @@ def _sha256_bytes(value: bytes) -> str:
 
 def _read_verified_base(path: Path) -> dict[str, Any]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise SourceWritePolicyLiftError(f"cannot read verified base descriptor: {path}: {exc}") from exc
@@ -71,9 +72,9 @@ def lift_source_write_policy(
     pipeline_v2.verify_base_tree(tree=base_tree, verified_base=base)
     eq_path = base_tree / "DBDAT" / "EQ98030.FDI"
     jug_path = base_tree / "DBDAT" / "JUG98030.FDI"
-    if not eq_path.is_file() or not jug_path.is_file():
+    if not storage_io.is_file(eq_path) or not storage_io.is_file(jug_path):
         raise SourceWritePolicyLiftError("verified base is missing required DBDAT/EQ98030.FDI or JUG98030.FDI")
-    _owners, _rosters, modes = compiler_v2._source_roster_owners(eq_path.read_bytes())
+    _owners, _rosters, modes = compiler_v2._source_roster_owners(storage_io.read_bytes(eq_path))
     club_modes = {str(club["id"]): modes.get(int(club["carrier_id"])) for club in package["clubs"]}
     output = copy.deepcopy(package)
     changed: list[dict[str, Any]] = []
@@ -116,8 +117,8 @@ def lift_source_write_policy(
             "package_sha256": package_v2.sha256_file(package_path),
             "verified_base_sha256": package_v2.sha256_file(verified_base_path),
             "base_inventory_fingerprint": base["inventory"]["files_fingerprint"],
-            "base_eq98030_sha256": hashlib.sha256(eq_path.read_bytes()).hexdigest(),
-            "base_jug98030_sha256": hashlib.sha256(jug_path.read_bytes()).hexdigest(),
+            "base_eq98030_sha256": hashlib.sha256(storage_io.read_bytes(eq_path)).hexdigest(),
+            "base_jug98030_sha256": hashlib.sha256(storage_io.read_bytes(jug_path)).hexdigest(),
         },
         "lift": {
             "policy": "remove-whole-record-preserve-only-for-existing-source-bound-mode1-persons",
@@ -140,10 +141,10 @@ def lift_source_write_policy(
 
 
 def _write_new(path: Path, payload: bytes) -> str:
-    if path.exists() or path.is_symlink():
+    if storage_io.exists(path) or path.is_symlink():
         raise SourceWritePolicyLiftError(f"refusing to replace existing output: {path}")
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(payload)
+    storage_io.write_bytes(path, payload)
     return _sha256_bytes(payload)
 
 
@@ -155,22 +156,22 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--output-package", required=True, type=Path)
     parser.add_argument("--output-audit", required=True, type=Path)
     args = parser.parse_args(argv)
-    if args.output_package.resolve() == args.output_audit.resolve():
+    if storage_io.resolve(args.output_package) == storage_io.resolve(args.output_audit):
         print("mode-1 source write-policy lift error: output package and audit must differ", file=sys.stderr)
         return 2
-    if args.output_package.exists() or args.output_audit.exists():
-        existing = args.output_package if args.output_package.exists() else args.output_audit
-        print(f"mode-1 source write-policy lift error: refusing to replace existing output: {existing.resolve()}", file=sys.stderr)
+    if storage_io.exists(args.output_package) or storage_io.exists(args.output_audit):
+        existing = args.output_package if storage_io.exists(args.output_package) else args.output_audit
+        print(f"mode-1 source write-policy lift error: refusing to replace existing output: {storage_io.resolve(existing)}", file=sys.stderr)
         return 2
     try:
         output, audit = lift_source_write_policy(
-            package_path=args.package.resolve(),
-            base_tree=args.base_tree.resolve(),
-            verified_base_path=args.verified_base.resolve(),
+            package_path=storage_io.resolve(args.package),
+            base_tree=storage_io.resolve(args.base_tree),
+            verified_base_path=storage_io.resolve(args.verified_base),
         )
-        package_sha256 = _write_new(args.output_package.resolve(), _canonical_bytes(output))
+        package_sha256 = _write_new(storage_io.resolve(args.output_package), _canonical_bytes(output))
         audit["output"] = {"package_path": str(args.output_package), "package_sha256": package_sha256}
-        _write_new(args.output_audit.resolve(), _canonical_bytes(audit))
+        _write_new(storage_io.resolve(args.output_audit), _canonical_bytes(audit))
     except (
         SourceWritePolicyLiftError,
         package_v2.PackageValidationError,

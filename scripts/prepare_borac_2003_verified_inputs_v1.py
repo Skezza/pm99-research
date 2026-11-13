@@ -5,6 +5,7 @@ from pathlib import Path
 
 from bs4 import BeautifulSoup
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import prepare_borac_2003_source_allocation_v1 as source
 from scripts.capture_tachira_2014_original_people_v1 import source_rows
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
@@ -38,7 +39,7 @@ def apply_unpublished_physical_defaults(proposal):
 def prepare(output, baseline_release_id=None, *, fallback_defaults=False, preserve_skills=False):
     if preserve_skills and not fallback_defaults:
         raise ValueError('stable physical defaults require explicit fallback defaults')
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('verified foreign source inputs are immutable')
     with tempfile.TemporaryDirectory(prefix='pm99-borac2003-source-') as temporary:
         proposal = source.prepare(Path(temporary) / 'allocation.json', baseline_release_id)

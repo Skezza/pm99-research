@@ -3,6 +3,14 @@
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import html
@@ -19,7 +27,7 @@ from typing import Iterable
 from PIL import Image, ImageDraw, ImageFont
 
 
-ROOT_DIR = Path(__file__).resolve().parent.parent
+ROOT_DIR = storage_io.resolve(Path(__file__)).parent.parent
 EDITOR_DIR = ROOT_DIR / "upstream" / "pm99-skezmod-db-editor"
 if str(EDITOR_DIR) not in sys.path:
     sys.path.insert(0, str(EDITOR_DIR))
@@ -39,7 +47,7 @@ class PaletteCandidate:
 
 
 def _extract_palette_candidates(dat_path: Path) -> list[PaletteCandidate]:
-    data = dat_path.read_bytes()
+    data = storage_io.read_bytes(dat_path)
     candidates: list[PaletteCandidate] = []
     cursor = 0
     while True:
@@ -72,7 +80,7 @@ def _extract_palette_candidates(dat_path: Path) -> list[PaletteCandidate]:
 def _choose_palette(dat_paths: list[Path], preferred_hashes: Iterable[str]) -> PaletteCandidate:
     all_candidates: list[PaletteCandidate] = []
     for dat_path in dat_paths:
-        if dat_path.is_file():
+        if storage_io.is_file(dat_path):
             all_candidates.extend(_extract_palette_candidates(dat_path))
     if not all_candidates:
         raise FileNotFoundError("No DAT palette candidates found in provided --dat-archive paths")
@@ -125,7 +133,7 @@ def _render_record(
 
 
 def _load_rows(manifest_path: Path) -> list[dict]:
-    payload = json.loads(manifest_path.read_text())
+    payload = json.loads(storage_io.read_text(manifest_path))
     if isinstance(payload, dict):
         rows = payload.get("rows", [])
     elif isinstance(payload, list):
@@ -242,8 +250,8 @@ def _wrap_text(value: str, *, width: int, max_lines: int) -> list[str]:
 
 def _clean_generated_files(per_team_dir: Path) -> None:
     for pattern in ("*_datpal.png", "*_datpal_mask0.png"):
-        for file_path in per_team_dir.glob(pattern):
-            file_path.unlink(missing_ok=True)
+        for file_path in storage_io.glob(per_team_dir, pattern):
+            storage_io.unlink(file_path, missing_ok=True)
 
 
 def build_team_kit_review(
@@ -337,15 +345,7 @@ def build_team_kit_review(
     )
 
     review_path = output_dir / "review_each_team_datpal.html"
-    review_path.write_text(
-        _build_review_html(
-            palette_candidate=palette_candidate,
-            rows_count=len(rows),
-            missing_team_ids=missing_team_ids,
-            composite_name=composite_path.name,
-            body_rows="".join(top_rows_html),
-        )
-    )
+    storage_io.write_text(review_path, _build_review_html(palette_candidate=palette_candidate, rows_count=len(rows), missing_team_ids=missing_team_ids, composite_name=composite_path.name, body_rows=''.join(top_rows_html)))
 
     summary = {
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -365,7 +365,7 @@ def build_team_kit_review(
     }
 
     summary_path = output_dir / "dat_palette_review_summary.json"
-    summary_path.write_text(json.dumps(summary, indent=2))
+    storage_io.write_text(summary_path, json.dumps(summary, indent=2))
     return summary
 
 
@@ -476,17 +476,17 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    manifest_path = Path(args.manifest_path).expanduser().resolve()
-    kit_archive_path = Path(args.kit_archive).expanduser().resolve()
-    output_dir = Path(args.output_dir).expanduser().resolve()
+    manifest_path = storage_io.resolve(Path(args.manifest_path).expanduser())
+    kit_archive_path = storage_io.resolve(Path(args.kit_archive).expanduser())
+    output_dir = storage_io.resolve(Path(args.output_dir).expanduser())
     output_dir.mkdir(parents=True, exist_ok=True)
 
     dat_archives = (
-        [Path(path).expanduser().resolve() for path in args.dat_archive]
+        [storage_io.resolve(Path(path).expanduser()) for path in args.dat_archive]
         if args.dat_archive
         else [
-            (ROOT_DIR / "FDI-PKF" / "DAT.PKF").resolve(),
-            (ROOT_DIR / "DBDAT" / "DAT.PKF").resolve(),
+            storage_io.resolve(ROOT_DIR / 'FDI-PKF' / 'DAT.PKF'),
+            storage_io.resolve(ROOT_DIR / 'DBDAT' / 'DAT.PKF'),
         ]
     )
     preferred_palette_hashes = (
@@ -495,9 +495,9 @@ def main() -> int:
         else ["ba71c6264fdd9ad0", "2d2bceb5304c1937"]
     )
 
-    if not manifest_path.is_file():
+    if not storage_io.is_file(manifest_path):
         raise FileNotFoundError(f"Manifest file not found: {manifest_path}")
-    if not kit_archive_path.is_file():
+    if not storage_io.is_file(kit_archive_path):
         raise FileNotFoundError(f"Kit archive not found: {kit_archive_path}")
 
     summary = build_team_kit_review(

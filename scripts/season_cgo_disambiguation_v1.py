@@ -11,6 +11,7 @@ import re
 from urllib.parse import unquote, urlparse
 
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_historical_roster_audit_v1 as roster
 
@@ -48,7 +49,7 @@ def parse(raw,name,birthday,season):
 
 def verify(row,season,*,catalog=CATALOG):
     if row['nationality']!='CGO':return None
-    if not catalog.is_file():
+    if not storage_io.is_file(catalog):
         raise ValueError('ambiguous provider CGO requires independent dated country disambiguation')
     document=pipeline.read_json_file(catalog)
     if document.get('schema')!=SCHEMA:
@@ -64,7 +65,7 @@ def verify(row,season,*,catalog=CATALOG):
             or metadata.get('sha256')!=source['sha256'] or registry.sha256_file(path)!=source['sha256']
             or registry.sha256_file(receipt)!=source['receipt_sha256']):
         raise ValueError('independent original Congo biography URL/body/receipt changed')
-    result=parse(path.read_bytes(),person['name'],person['birth_date'],season)
+    result=parse(storage_io.read_bytes(path),person['name'],person['birth_date'],season)
     if result['country']!=row['nationality']:
         raise ValueError('ambiguous provider CGO disagrees with independent dated country: '+result['country'])
     return dict(source_player_id=person['source_player_id'],name=person['name'],**result,

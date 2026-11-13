@@ -1,12 +1,13 @@
 """Audit only new null-country actors against their already-bound originals."""
 import argparse
 from pathlib import Path
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import season_soccerbase_secondary_facts_v2 as source
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
 
 def run(season,release_id,proposal_path,output):
-    if output.exists():raise ValueError('completed bounded source audit must not repeat')
+    if storage_io.exists(output):raise ValueError('completed bounded source audit must not repeat')
     release=registry.load_registered_release(season,release_id)
     proposal=pipeline.read_json_file(proposal_path)
     package=pipeline.read_json_file(release.package_path);actors={p['carrier_id']:p for p in package['players']}
@@ -16,7 +17,7 @@ def run(season,release_id,proposal_path,output):
         if desired.get('nationality') is not None:continue
         evidence=person['raw_evidence'];path=registry.ROOT/evidence['local_path']
         if registry.sha256_file(path)!=evidence['source_sha256']:raise ValueError('bound original body changed')
-        found=source.country(path.read_bytes(),person_id=int(path.stem),name=desired['name'],birth_date=desired['birth_date'],
+        found=source.country(storage_io.read_bytes(path),person_id=int(path.stem),name=desired['name'],birth_date=desired['birth_date'],
             url='https://www.soccerbase.com/players/player.sd?player_id='+path.stem)
         actor=actors[row['carrier_id']]
         if (actor['source_name'],actor['facts']['birth_date'],actor['facts']['nationality'])!=(desired['name'],desired['birth_date'],'XXX'):

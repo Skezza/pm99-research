@@ -22,6 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts.pm99_season_play_v1 import REVISIONS  # noqa: E402
 from scripts.pm99_season_qa_v1 import (  # noqa: E402
     audit_compiled_handling,
@@ -35,7 +36,7 @@ SCHEMA = "pm99-season-quality-remediation-audit-v1"
 
 
 def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def _paths(season: str) -> tuple[Path, Path]:
@@ -48,7 +49,7 @@ def _paths(season: str) -> tuple[Path, Path]:
 
 def audit_season(season: str) -> dict[str, Any]:
     package_path, root = _paths(season)
-    package = json.loads(package_path.read_text(encoding="utf-8"))
+    package = json.loads(storage_io.read_text(package_path, encoding='utf-8'))
     if not isinstance(package, dict):
         raise ValueError(f"package is not an object: {package_path}")
     validate_package(package, strict=True)
@@ -56,14 +57,14 @@ def audit_season(season: str) -> dict[str, Any]:
     handling = audit_compiled_handling(package, game=root / "game")
     managers = audit_compiled_managers(package, game=root / "game", season=season)
     receipt_path = root / "compiler-receipt.json"
-    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    receipt = json.loads(storage_io.read_text(receipt_path, encoding='utf-8'))
     mismatches = []
     for row in receipt.get("outputs", []):
         if not isinstance(row, Mapping):
             continue
         path = root / "game" / str(row.get("path") or "")
         expected = str(row.get("sha256") or "")
-        actual = _sha256(path) if path.is_file() else None
+        actual = _sha256(path) if storage_io.is_file(path) else None
         if actual != expected:
             mismatches.append({"path": str(row.get("path") or ""), "expected": expected, "actual": actual})
     failures = {
@@ -124,11 +125,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         },
         "seasons": rows,
     }
-    output = args.output.resolve()
-    if output.exists() or output.is_symlink():
+    output = storage_io.resolve(args.output)
+    if storage_io.exists(output) or output.is_symlink():
         parser.error(f"refusing to replace output: {output}")
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_bytes(canonical_json_bytes(result))
+    storage_io.write_bytes(output, canonical_json_bytes(result))
     print(json.dumps(result["summary"], sort_keys=True))
     return 0 if result["summary"]["fail_count"] == 0 else 2
 

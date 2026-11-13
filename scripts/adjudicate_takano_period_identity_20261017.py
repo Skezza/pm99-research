@@ -1,5 +1,6 @@
 """Adjudicate a retained country fallback and disclose conflicting DOB sources."""
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import prepare_morecambe_owned_opening_20261017 as source
 from scripts import capture_stock_replacement_sources_20261010 as cache
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
@@ -10,7 +11,7 @@ def original(key):
     metadata=source.pipeline.read_json_file(receipt)
     if metadata['status']!='original-captured' or source.registry.sha256_file(path)!=metadata['sha256']:
         raise ValueError('Takano publisher original changed or was not captured')
-    return path.read_bytes(),dict(source.bind(path),url=metadata['url'],receipt=source.bind(receipt))
+    return storage_io.read_bytes(path),dict(source.bind(path),url=metadata['url'],receipt=source.bind(receipt))
 
 
 def parse_news(raw):
@@ -39,13 +40,13 @@ def parse_legacy(raw):
 
 def main():
     output=source.ROOT/'takano-country-and-birthday-source-choice-v1.json'
-    if output.exists():raise ValueError('existing Takano source adjudication must not be overwritten')
+    if storage_io.exists(output):raise ValueError('existing Takano source adjudication must not be overwritten')
     doc=source.pipeline.read_json_file(source.ROOT/'original-opening-equivalence.json')
     actual=doc['actual'];reviews=source.pipeline.read_json_file(source.ROOT/'provider-identity-and-bench-role-review-v2.json')
     review=next(r for r in reviews['resolutions'] if r['name']=='Kenny Takano')
     actors=[r['soccerbase_person'] for group in actual['identity_bridges'].values() for r in group]
     actor=next(a for a in actors if a['source_player_id']==review['source_provider_person_id'])
-    resolved=source.birthdays.resolve(review,actor,actual)
+    resolved=storage_io.resolve(source.birthdays, review, actor, actual)
     official=BeautifulSoup(source.birthdays.publisher_original(review['external_biography']),'lxml')
     text=official.get_text(' ',strip=True)
     if 'Real name Keisuke Takano' not in text or 'Born 30/09/1976 Japan' not in text:

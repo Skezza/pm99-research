@@ -1,4 +1,5 @@
 """Build only the bounded Arsenal2021 correction and exact SOURCE replay."""
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry,season_pipeline_v2 as pipeline
 from scripts import season_arsenal_2021_owned_opening_v1 as source
 from scripts import publish_historical_role_delta_v1 as publisher
@@ -15,10 +16,10 @@ REPLAY='replayed-arsenal-owned-opening-20261016-r111b'
 
 def proof(base,release,plan):
     before=pipeline.read_json_file(base.package_path);after=pipeline.read_json_file(release.package_path)
-    original=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
-    actual=(release.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    actual_eq=(release.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    original=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
+    actual=storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
+    actual_eq=storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
     if source.bind(before,plan)!=after or source.apply(original,eq,plan)!=(actual,actual_eq):
         raise ValueError('actual Arsenal game/recipe differs from exact source transaction')
     if source.apply(actual,actual_eq,plan)!=(actual,actual_eq):raise ValueError('actual Arsenal transaction not idempotent')
@@ -31,9 +32,9 @@ def proof(base,release,plan):
             preserved.append(dict(original_carrier=source_id,target_carrier=target,skills=right))
     if len(preserved)!=16:raise ValueError('exact16 native preserved rating profiles required')
     changed=source.selected_carriers(plan)
-    archive,_=delta.no_photo_archive((base.game_path/'DBDAT/MINIFOTO.PKF').read_bytes(),changed)
-    if archive!=(release.game_path/'DBDAT/MINIFOTO.PKF').read_bytes():raise ValueError('Arsenal portrait clear differs')
-    if any((release.game_path/f'DBDAT/MINIFOTO/J96{k:05d}.BMP').exists() for k in changed):raise ValueError('stale identity photo retained')
+    archive,_=delta.no_photo_archive(storage_io.read_bytes(base.game_path / 'DBDAT/MINIFOTO.PKF'),changed)
+    if archive!=storage_io.read_bytes(release.game_path / 'DBDAT/MINIFOTO.PKF'):raise ValueError('Arsenal portrait clear differs')
+    if any(storage_io.exists(release.game_path / f'DBDAT/MINIFOTO/J96{k:05d}.BMP') for k in changed):raise ValueError('stale identity photo retained')
     left={r['path']:r['sha256'] for r in pipeline.read_json_file(base.inventory_path)['files']}
     right={r['path']:r['sha256'] for r in pipeline.read_json_file(release.inventory_path)['files']}
     allowed={'DBDAT/JUG98030.FDI','DBDAT/EQ98030.FDI','DBDAT/MINIFOTO.PKF'}|{f'DBDAT/MINIFOTO/J96{k:05d}.BMP' for k in changed}
@@ -52,10 +53,10 @@ def proof(base,release,plan):
 
 def main():
     base=registry.load_registered_release(SEASON,BASE);path=ROOT/'opening-ownership-plan.json'
-    if path.exists():plan=pipeline.read_json_file(path)
+    if storage_io.exists(path):plan=pipeline.read_json_file(path)
     else:
         plan=source.prepare(base)
-        original=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes();eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+        original=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI');eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
         # No frozen plan or game write until the actual bounded writer passes.
         candidate,candidate_eq=source.apply(original,eq,plan)
         if source.apply(candidate,candidate_eq,plan)!=(candidate,candidate_eq):raise ValueError('Arsenal dry-run not idempotent')
@@ -63,12 +64,12 @@ def main():
     descriptor=ROOT/'inert.json'
     retained(descriptor,dict(season=SEASON,release_id=BASE,package_sha256=registry.sha256_file(base.package_path),
         jug_sha256=registry.sha256_file(base.game_path/'DBDAT/JUG98030.FDI'),updates=[],unresolved=[]))
-    if not registry.locator_path(SEASON,RELEASE).exists():
+    if not storage_io.exists(registry.locator_path(SEASON, RELEASE)):
         publisher.publish(SEASON,descriptor,release_id=RELEASE,source_release_id=BASE,profile_assignment_plan_path=path)
     release=registry.load_registered_release(SEASON,RELEASE)
-    if not (ROOT/'native-byte-proof.json').exists():proof(base,release,plan)
-    if not (ROOT/'complete-SOURCE-replay.json').exists():
-        if registry.locator_path(SEASON,REPLAY).exists():raise ValueError('unreceipted Arsenal replay exists; inspect before continuation')
+    if not storage_io.exists(ROOT / 'native-byte-proof.json'):proof(base,release,plan)
+    if not storage_io.exists(ROOT / 'complete-SOURCE-replay.json'):
+        if storage_io.exists(registry.locator_path(SEASON, REPLAY)):raise ValueError('unreceipted Arsenal replay exists; inspect before continuation')
         retained(ROOT/'complete-SOURCE-replay.json',source.reconstruction(release,REPLAY))
     print(dict(built=True,actual_Arsenal_source25=True,complete_SOURCE_game_and_recipe_exact=True,
         runtime_pending=True,preferred_unchanged=True),flush=True)

@@ -13,6 +13,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_duplicate_ownership_plan_v1 as planner
 from scripts import season_historical_opening_review_v1 as opening
 from scripts import season_historical_roster_audit_v1 as roster
@@ -35,11 +36,11 @@ def unique_capture(club, rows):
 
 
 def run(input_root, output_root, retry_failed_reparses=False):
-    if output_root.exists():
+    if storage_io.exists(output_root):
         raise ValueError('alias source backfill is immutable')
     for season in registry.supported_seasons():
         source = input_root / 'opening' / season / 'opening-review.json'
-        document = json.loads(source.read_text())
+        document = json.loads(storage_io.read_text(source))
         transfer.verify_opening_sources(document)
         result = copy.deepcopy(document)
         capture_path = document['bindings'].get('opening_capture_path')
@@ -48,7 +49,7 @@ def run(input_root, output_root, retry_failed_reparses=False):
             capture_file = ROOT / capture_path
             if registry.sha256_file(capture_file) != document['bindings']['opening_capture_sha256']:
                 raise ValueError('original opening capture changed')
-            capture = json.loads(capture_file.read_text())
+            capture = json.loads(storage_io.read_text(capture_file))
         clubs = {c['carrier_id']: c for _, package, _ in
                  planner.package_layers(registry.load_preferred_release(season)) for c in package['clubs']}
         added, gaps = [], []
@@ -68,7 +69,7 @@ def run(input_root, output_root, retry_failed_reparses=False):
                 cache = (ROOT / capture_path).parent / 'cache'
                 evidence = opening.verify_opening(raw, capture, cache)
                 match = next(r for r in evidence['raw_sources'] if r['url'] == evidence['source_url'])
-                events = substitutes.parse((ROOT / match['path']).read_bytes(),
+                events = substitutes.parse(storage_io.read_bytes(ROOT / match['path']),
                                             evidence['source_club_id'], evidence['starting_xi'])
                 for id, name in events['used_substitutes'].items():
                     if id in evidence['substitutes'] and transfer._normalise(evidence['substitutes'][id]) != transfer._normalise(name):
@@ -98,8 +99,8 @@ def run(input_root, output_root, retry_failed_reparses=False):
         parent.mkdir(parents=True, exist_ok=True)
         for name in ('report.json', 'roster-audit.json'):
             prior = input_root / 'reviews' / season / name
-            if prior.is_file():
-                os.link(prior, parent / name)
+            if storage_io.is_file(prior):
+                storage_io.link(prior, parent / name)
         print(json.dumps({'season': season, 'added': len(added), 'gaps': gaps}), flush=True)
 
 

@@ -9,6 +9,7 @@ from pathlib import Path
 from app.eq_jug_linked import parse_eq_external_team_roster_payload
 from app.fdi_indexed import IndexedFDIFile
 from app.player_initial_order import OrderReplacement, patch_initial_orders, read_initial_order
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_opening_identity_exchange_v1 as exchange
 from scripts import season_opening_order_repair_v1 as ownership
 from scripts import season_package_compiler_v2 as compiler
@@ -74,14 +75,14 @@ def _read_bound_source(spec, *, expected_url, expected_sha, source_kind):
     rel = Path(spec['path'])
     if rel.is_absolute() or '..' in rel.parts:
         raise ValueError('source path must be workspace-relative')
-    path = (ROOT / rel).resolve(strict=True)
-    if not path.is_relative_to(ROOT.resolve()):
+    path = storage_io.resolve(ROOT / rel, strict=True)
+    if not path.is_relative_to(storage_io.resolve(ROOT)):
         raise ValueError('source path escapes workspace')
-    raw = path.read_bytes()
+    raw = storage_io.read_bytes(path)
     if hashlib.sha256(raw).hexdigest() != expected_sha:
         raise ValueError('source original hash differs')
     receipt_path = path.with_suffix('.source.json')
-    receipt = json.loads(receipt_path.read_text(encoding='utf-8'))
+    receipt = json.loads(storage_io.read_text(receipt_path, encoding='utf-8'))
     if receipt != {'sha256': expected_sha, 'url': spec['url']}:
         raise ValueError('source receipt differs from exact original')
     text = raw.decode('utf-8', errors='strict')
@@ -191,7 +192,7 @@ def _prepare_case(release, package, jug, eq, source_evidence, parent):
     pre_path = ROOT / '.local/transfermarkt-opening-plans-current-v1/2005-06/opening-squad-preallocation.json'
     if registry.sha256_file(pre_path) != PREALLOCATION_SHA256:
         raise ValueError('original XI preallocation preimage differs')
-    pre = json.loads(pre_path.read_text())
+    pre = json.loads(storage_io.read_text(pre_path))
     groups = [g for g in pre['source_clubs'] if g.get('selector', {}).get('club_name') == 'Espanyol']
     if len(groups) != 1 or not groups[0].get('opening_xi_complete'):
         raise ValueError('exact Espanyol source preallocation XI required')
@@ -288,10 +289,10 @@ def prune_exact_payload(raw, expected_rows):
 def _safe_input(input_path):
     path=Path(input_path)
     if not path.is_absolute(): path=ROOT/path
-    path=path.resolve(strict=False)
-    if not path.is_relative_to(ROOT.resolve()): raise ValueError('input path escapes workspace')
-    path=path.resolve(strict=True)
-    raw=path.read_bytes(); doc=json.loads(raw)
+    path=storage_io.resolve(path, strict=False)
+    if not path.is_relative_to(storage_io.resolve(ROOT)): raise ValueError('input path escapes workspace')
+    path=storage_io.resolve(path, strict=True)
+    raw=storage_io.read_bytes(path); doc=json.loads(raw)
     if doc.get('schema')!=INPUT_SCHEMA: raise ValueError('wrong exact-case input schema')
     doc['_resolved_path']=path
     doc['_workspace_path']=path.relative_to(ROOT).as_posix()
@@ -304,7 +305,7 @@ def _source_bindings(doc, base):
     required={'season','release_id','manifest_sha256','package_sha256','jug_sha256','eq_sha256'}
     if not isinstance(parent,dict) or set(parent)!=required or parent['season']!='2005-06':
         raise ValueError('input needs explicit exact parent identity and all four hashes')
-    _verify_release(base,base.package_path.read_bytes(),(base.game_path/'DBDAT/JUG98030.FDI').read_bytes(),(base.game_path/'DBDAT/EQ98030.FDI').read_bytes(),parent)
+    _verify_release(base,storage_io.read_bytes(base.package_path),storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI'),storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI'),parent)
     expected_fixture={'report_path':'.local/transfermarkt-opening-plans-current-v1/2005-06/cache/report/37216.html',
         'url':'https://www.transfermarkt.co.uk/spielbericht/index/spielbericht/37216','sha256':FIXTURE_SHA256,
         'capture_path':'.local/transfermarkt-opening-plans-current-v1/2005-06/opening-lineups-transfermarkt.json',
@@ -316,9 +317,9 @@ def _source_bindings(doc, base):
     proof_results=[]
     for spec in doc.get('parent_proofs',[]):
         if set(spec)!={'path','sha256'}: raise ValueError('parent source proof must bind exact path and hash')
-        p=(ROOT/spec['path']).resolve(strict=True)
-        if not p.is_relative_to(ROOT.resolve()): raise ValueError('parent proof escapes workspace')
-        raw=p.read_bytes()
+        p=storage_io.resolve(ROOT / spec['path'], strict=True)
+        if not p.is_relative_to(storage_io.resolve(ROOT)): raise ValueError('parent proof escapes workspace')
+        raw=storage_io.read_bytes(p)
         if hashlib.sha256(raw).hexdigest()!=spec['sha256']: raise ValueError('r194 source proof changed')
         proof_results.append((spec['path'],json.loads(raw)))
     by_path={path:data for path,data in proof_results}
@@ -333,9 +334,9 @@ def _source_bindings(doc, base):
         raise ValueError('explicit carrier28340 Denmark country-plan proof missing')
     for key,spec in doc['retirement_sources'].items():
         source={k:spec[k] for k in ('path','sha256','url')}
-        receipt=(ROOT/spec['receipt_path']).resolve(strict=True)
-        if not receipt.is_relative_to(ROOT.resolve()): raise ValueError('retirement receipt escapes workspace')
-        rb=receipt.read_bytes()
+        receipt=storage_io.resolve(ROOT / spec['receipt_path'], strict=True)
+        if not receipt.is_relative_to(storage_io.resolve(ROOT)): raise ValueError('retirement receipt escapes workspace')
+        rb=storage_io.read_bytes(receipt)
         if hashlib.sha256(rb).hexdigest()!=spec['receipt_sha256'] or json.loads(rb)!={'sha256':spec['sha256'],'url':spec['url']}:
             raise ValueError(f'{key} source receipt does not match exact retained original')
     return {'parent':parent,'parent_proofs':[{'path':s['path'],'sha256':s['sha256']} for s in doc['parent_proofs']],
@@ -346,10 +347,10 @@ def _source_bindings(doc, base):
 def prepare(base,input_path):
     doc=_safe_input(input_path)
     bindings=_source_bindings(doc,base)
-    package=base.package_path.read_bytes(); jug=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes(); eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    package=storage_io.read_bytes(base.package_path); jug=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI'); eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     evidence={k:{name:spec[name] for name in ('path','sha256','url')} for k,spec in doc['retirement_sources'].items()}
     plan=_prepare_case(base,package,jug,eq,evidence,bindings['parent'])
-    pre_path=ROOT/doc['preallocation']['path']; pre= json.loads(pre_path.read_text(encoding='utf-8'))
+    pre_path=ROOT/doc['preallocation']['path']; pre= json.loads(storage_io.read_text(pre_path, encoding='utf-8'))
     group=next(g for g in pre['source_clubs'] if g.get('selector',{}).get('club_name')=='Espanyol')
     projected=sorted((p for p in group['players'] if type(p.get('opening_xi_order')) is int),key=lambda p:p['opening_xi_order'])
     actors={p['carrier_id']:p for p in json.loads(package)['players'] if p.get('club_id')==CLUB_ID}
@@ -445,7 +446,7 @@ def _native_candidate(package,jug,eq,plan):
 def apply(jug,eq,plan):
     base=registry.load_registered_release(plan['season'],plan['parent']['release_id'])
     verify(base,plan)
-    package=base.package_path.read_bytes();parent_jug=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes();parent_eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    package=storage_io.read_bytes(base.package_path);parent_jug=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI');parent_eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     incoming=(hashlib.sha256(jug).hexdigest(),hashlib.sha256(eq).hexdigest())
     before=(plan['parent']['jug_sha256'],plan['parent']['eq_sha256']);after=tuple(plan['output_hashes'])
     if incoming not in (before,after): raise ValueError('only complete exact parent or complete exact post-pair is accepted')
@@ -499,7 +500,7 @@ def reconstruction(previous, release_id):
         release_id=release_id, source_release_id=base.release_id, profile_assignment_plan_path=path)
     rebuilt = registry.load_registered_release(previous.season, release_id)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path, pipeline.read_json_file(previous.inventory_path))
-    if rebuilt.package_path.read_bytes() != previous.package_path.read_bytes():
+    if storage_io.read_bytes(rebuilt.package_path) != storage_io.read_bytes(previous.package_path):
         raise ValueError('Amavisca complete recipe SOURCE replay differs')
     if not registry.validate_preferred_release(previous.season, level='playable', release_id=release_id)['valid']:
         raise ValueError('Amavisca SOURCE replay failed registered playable gate')

@@ -2,6 +2,7 @@
 import subprocess
 import time
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts.capture_biographic_year_startups_20261010 import ROOT, RELEASE
 
@@ -11,7 +12,7 @@ def main():
     while True:
         paths = [ROOT / (f'{year}-{str(year+1)[-2:]}-startup-transport.json')
                  for year in range(2019, 2026)]
-        if all(path.exists() for path in paths):
+        if all(storage_io.exists(path) for path in paths):
             if any(pipeline.read_json_file(path)['exit_code'] for path in paths):
                 raise ValueError('a preceding startup transport failed')
             break
@@ -24,7 +25,7 @@ def main():
     if receipt['release_manifest_sha256'] != release.manifest_sha256:
         raise ValueError('age candidate belongs to another release')
     evidence = ROOT / 'runtime/bursik_age_2020_r67a_20261010'
-    if evidence.exists():
+    if storage_io.exists(evidence):
         raise ValueError('age evidence exists; inspect instead of overwrite')
     command = [str(registry.ROOT / 'scripts/run_stars_player_offer_probe_direct.sh'),
         '--run-tag', 'bursik_age_2020_r67a_20261010',

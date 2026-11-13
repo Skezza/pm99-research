@@ -7,6 +7,7 @@ remain ownership cases, never silently repaired as if ownership were proved.
 from datetime import date
 from bs4 import BeautifulSoup
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_kit_render_bindings_v1  # canonical editor imports
 from app.fdi_indexed import IndexedFDIFile
 from scripts import season_historical_roster_audit_v1 as roster
@@ -54,7 +55,7 @@ def main():
             continue
         path = ROOT / 'source-cache' / (key + '-original-birthday.html')
         capture(url, path)
-        text = BeautifulSoup(path.read_bytes(), 'html.parser').get_text(' ', strip=True)
+        text = BeautifulSoup(storage_io.read_bytes(path), 'html.parser').get_text(' ', strip=True)
         if name not in text or literal not in text:
             raise ValueError('original named biography/date differs')
         source_rows[key] = dict(path=registry.relative_workspace_path(path),
@@ -68,7 +69,7 @@ def main():
         club = next(c for c in package['clubs'] if c['id'] == player['club_id'])
         if club['name'] != expected_club or key not in player['name'].lower():
             raise ValueError('explicit actual player/club target changed')
-        raw = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+        raw = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
         entry = next(e for e in IndexedFDIFile.from_bytes(raw).entries if e.record_id == carrier)
         payload = entry.decode_payload(raw)
         native = roster.native_player(payload, carrier)

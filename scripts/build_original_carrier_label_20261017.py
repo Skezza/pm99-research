@@ -1,5 +1,6 @@
 """Restore one proved original club label, not its separate unresolved squad."""
 import shutil
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_original_carrier_label_restoration_v1 as source
 from scripts import publish_historical_role_delta_v1 as publisher
 from scripts import build_registered_quality_release_v1 as reconstruction
@@ -23,7 +24,7 @@ def external(key):
 
 def main():
     folder = ROOT / SEASON
-    if (folder/'club-plan.json').exists() or source.registry.locator_path(SEASON, RELEASE).exists():
+    if storage_io.exists(folder / 'club-plan.json') or storage_io.exists(source.registry.locator_path(SEASON, RELEASE)):
         raise ValueError('existing original-label transaction needs inspection, not regeneration')
     folder.mkdir(parents=True, exist_ok=True)
     base = source.registry.load_preferred_release(SEASON)

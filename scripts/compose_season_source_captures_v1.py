@@ -21,6 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts.merge_footballsquads_captures import MergeError, canonical_json_bytes
 from scripts import season_player_identity_v1 as identity_lib
 
@@ -51,7 +52,7 @@ def _check_identities(clubs: list[dict[str, Any]]) -> int:
 
 
 def read_capture(path: Path) -> tuple[dict[str, Any], str]:
-    raw = path.read_bytes()
+    raw = storage_io.read_bytes(path)
     value = json.loads(raw.decode("utf-8"))
     if not isinstance(value, dict) or raw != canonical_json_bytes(value):
         raise MergeError(f"capture {path} must be canonical JSON")
@@ -124,7 +125,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (OSError, json.JSONDecodeError, MergeError) as exc:
         parser.error(str(exc))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_json_bytes(result))
+    storage_io.write_bytes(args.output, canonical_json_bytes(result))
     print(json.dumps(result["summary"], sort_keys=True))
     return 0
 

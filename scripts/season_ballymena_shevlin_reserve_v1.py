@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy, datetime as dt, hashlib, json
 from pathlib import Path
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2 as packages
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
@@ -37,8 +38,8 @@ EXPECTED_LOI_SHA='b19dafe0d9dd3debe5a2114b27673c8dc8029ec29e1fc56ec8a8458e3bb20d
 def digest(raw: bytes) -> str: return hashlib.sha256(raw).hexdigest()
 def canon(value) -> bytes: return packages.canonical_json_bytes(value)
 def _path(value):
-    p=(registry.ROOT/value['path']).resolve(strict=True)
-    if not p.is_relative_to(registry.ROOT.resolve()) or digest(p.read_bytes())!=value['sha256']:
+    p=storage_io.resolve(registry.ROOT / value['path'], strict=True)
+    if not p.is_relative_to(storage_io.resolve(registry.ROOT)) or digest(storage_io.read_bytes(p))!=value['sha256']:
         raise ValueError('Ballymena original source path/hash binding differs')
     return p
 
@@ -47,7 +48,7 @@ def _source(request,key,sha,url):
     if (v.get('sha256'),v.get('url'))!=(sha,url): raise ValueError(f'{key} source hash/URL pin differs')
     return _path(v)
 
-def _text(path): return ' '.join(BeautifulSoup(path.read_bytes(),'html.parser').get_text(' ',strip=True).split())
+def _text(path): return ' '.join(BeautifulSoup(storage_io.read_bytes(path),'html.parser').get_text(' ',strip=True).split())
 
 def _parse_sources(request):
     profile=_source(request,'shevlin_profile',EXPECTED_PROFILE_SHA,'https://www.bufchistory.com/player.php?id=35')
@@ -56,21 +57,21 @@ def _parse_sources(request):
     rte=_source(request,'tom_derry_signing',EXPECTED_RTE_SHA,'https://www.rte.ie/sport/soccer/2017/0731/894245-loi-transfer-window-sligo-sign-moorhouse-and-mcdonagh/')
     loi=_source(request,'tom_transfer_list',EXPECTED_LOI_SHA,'https://www.leagueofireland.ie/news/complete-list-2018-transfers/')
     receipt=request['sources']['receipt']; rp=_path(receipt)
-    if digest(rp.read_bytes())!='d394b203ce355c0412604931947f6c106e3145496ed3b9f47c071bb800e23961':
+    if digest(storage_io.read_bytes(rp))!='d394b203ce355c0412604931947f6c106e3145496ed3b9f47c071bb800e23961':
         raise ValueError('Ballymena original-source receipt differs')
-    receipt_doc=json.loads(rp.read_text(encoding='utf-8'))
+    receipt_doc=json.loads(storage_io.read_text(rp, encoding='utf-8'))
     bykey={x['key']:x for x in receipt_doc['receipts']}
     for key,path,sha,url in [('player-profile',profile,EXPECTED_PROFILE_SHA,'https://www.bufchistory.com/player.php?id=35'),('opening-match',match,EXPECTED_MATCH_SHA,'https://www.bufchistory.com/matchdetails.php?id=456'),('season-arrivals',season,EXPECTED_SEASON_SHA,'https://www.bufchistory.com/season.php?id=9')]:
         row=bykey.get(key)
-        if not row or (row['sha256'],row['requested_url'],row['http_status'])!=(sha,url,200) or (registry.ROOT/row['path']).resolve()!=path:
+        if not row or (row['sha256'],row['requested_url'],row['http_status'])!=(sha,url,200) or storage_io.resolve(registry.ROOT / row['path'])!=path:
             raise ValueError('fetch receipt does not bind exact requested original response')
-    ps=BeautifulSoup(profile.read_bytes(),'html.parser')
+    ps=BeautifulSoup(storage_io.read_bytes(profile),'html.parser')
     pcanon=ps.select_one('link[rel="canonical"]')
     if not pcanon or pcanon.get('href')!='https://bufchistory.com/player.php?id=35': raise ValueError('Shevlin archive profile canonical differs')
     pt=_text(profile)
     for value in ('Full name Matthew Shevlin','Position Forward','Nationality Northern Ireland','Born 7 Dec 1998','returned to the Showgrounds and signed a new two year deal with his hometown club in May 2017'):
         if value not in pt: raise ValueError('Shevlin archive profile fact/membership text differs')
-    ms=BeautifulSoup(match.read_bytes(),'html.parser')
+    ms=BeautifulSoup(storage_io.read_bytes(match),'html.parser')
     mcanon=ms.select_one('link[rel="canonical"]')
     if not mcanon or mcanon.get('href')!='https://bufchistory.com/matchdetails.php?id=456': raise ValueError('opening match canonical differs')
     mt=_text(match)
@@ -116,7 +117,7 @@ def _validate_request(base,request_path):
     if registry.sha256_file(photo_archive)!=EXPECTED_MINIFOTO:
         raise ValueError('Ballymena current MINIFOTO parent differs')
     loose_photo=base.game_path/'DBDAT/MINIFOTO'/f'J96{TARGET:05d}.BMP'
-    if loose_photo.exists():
+    if storage_io.exists(loose_photo):
         raise ValueError('unexpected loose donor portrait requires separately reviewed removal')
     return request
 
@@ -145,7 +146,7 @@ def _player_preimage(base,package,jug,eq):
 
 def _build_plan(base,input_path):
     request=_validate_request(base,input_path)
-    package=pipeline.read_json_file(base.package_path);jug=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes();eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    package=pipeline.read_json_file(base.package_path);jug=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI');eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     actor,club,pre=_player_preimage(base,package,jug,eq); parsed=_parse_sources(request)
     replacement=request['replacement']
     if replacement!=dict(profile_key='shevlin_profile',match_key='opening_match',season_key='season_archive',full_name=EXPECTED_NAME,birth_date=EXPECTED_DOB,nationality='NIR',nationality_label='Northern Ireland',broad_position='F',fine_role=12,fine_role_policy='editorial-compatible-central-striker-from-source-broad-forward-v1',native_order_policy='preserve-exact-reserve-order-12; source membership proof is not native-XI representation',unknown_secondary_fact_policy='explicit-native-preserve-existing-fallback-not-identity-claim',ratings_policy='season_rating_calibration_v3 editorial formula; fixed 2017-08-01 snapshot, strength 60 default for northern-ireland, status unknown, no FIFA match, no unsubstantiated starting/reserve penalty'):
@@ -207,12 +208,12 @@ def verify_light(base,plan,package):
         raise ValueError('Ballymena source request changed')
     if _build_plan(base,registry.ROOT/plan['source_input']['path'])!=plan:
         raise ValueError('Ballymena binding plan does not reprepare')
-    if _player_preimage(base,package,(base.game_path/'DBDAT/JUG98030.FDI').read_bytes(),(base.game_path/'DBDAT/EQ98030.FDI').read_bytes())[2]!=plan['target']['before']:
+    if _player_preimage(base,package,storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI'),storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI'))[2]!=plan['target']['before']:
         raise ValueError('Ballymena target actor preimage changed')
 
 def apply(jug,eq,plan):
     base=registry.load_registered_release(plan['season'],plan['release_id']);verify(base,plan)
-    oldj=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes();olde=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    oldj=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI');olde=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     if (digest(oldj),digest(olde))!=(plan['parent']['jug_sha256'],plan['parent']['eq_sha256']): raise ValueError('Ballymena paired parent native bytes changed')
     if eq!=olde: raise ValueError('Ballymena correction requires the exact unchanged parent EQ payload')
     package=pipeline.read_json_file(base.package_path);result=bind(package,plan)
@@ -236,7 +237,7 @@ def selected_carriers(plan):
 
 def apply_minifoto(data,plan):
     base=registry.load_registered_release(plan['season'],plan['release_id']);verify(base,plan)
-    original=(base.game_path/'DBDAT/MINIFOTO.PKF').read_bytes()
+    original=storage_io.read_bytes(base.game_path / 'DBDAT/MINIFOTO.PKF')
     if digest(original)!=plan['parent']['minifoto_sha256']:
         raise ValueError('Ballymena exact MINIFOTO parent differs')
     expected,_=delta.no_photo_archive(original,selected_carriers(plan))
@@ -255,23 +256,23 @@ def reconstruction(previous,release_id):
     if receipt.get('compilation_mode')!=MODE:return None
     relative=getattr(previous,'locator',{}).get('sourced_profile_assignment_plan_path')
     if not relative:raise ValueError('Ballymena SOURCE receipt lacks the standard profile-assignment plan locator')
-    path=(registry.ROOT/relative).resolve()
-    if not path.is_relative_to(registry.ROOT.resolve()):raise ValueError('Ballymena SOURCE plan escaped workspace')
+    path=storage_io.resolve(registry.ROOT / relative)
+    if not path.is_relative_to(storage_io.resolve(registry.ROOT)):raise ValueError('Ballymena SOURCE plan escaped workspace')
     plan=pipeline.read_json_file(path)
     if plan.get('schema')!=SCHEMA or plan.get('mode')!=MODE:raise ValueError('Ballymena SOURCE locator points to another plan schema/mode')
-    expected_path=(previous.package_path.parent/filename(plan)).resolve()
+    expected_path=storage_io.resolve(previous.package_path.parent / filename(plan))
     if (path!=expected_path or registry.sha256_file(path)!=receipt.get('original_profile_assignment_plan_sha256')):
         raise ValueError('Ballymena SOURCE plan path/SHA differs from compiler receipt')
     artifact=source_artifact(plan)
     artifact_path=previous.package_path.parent/artifact['filename']
-    if not artifact_path.is_file() or registry.sha256_file(artifact_path)!=artifact['sha256']:
+    if not storage_io.is_file(artifact_path) or registry.sha256_file(artifact_path)!=artifact['sha256']:
         raise ValueError('Ballymena retained recipe source artifact hash differs')
     base=registry.load_registered_release(plan['season'],plan['release_id']);verify(base,plan)
     pipeline.assert_tree_matches_inventory(base.game_path,pipeline.read_json_file(base.inventory_path))
     pipeline.assert_tree_matches_inventory(previous.game_path,pipeline.read_json_file(previous.inventory_path))
     expected_package=bind(pipeline.read_json_file(base.package_path),plan)
     expected_bytes=packages.canonical_json_bytes(expected_package)
-    if previous.package_path.read_bytes()!=expected_bytes:raise ValueError('Ballymena SOURCE recipe does not reproduce exact canonical bytes')
+    if storage_io.read_bytes(previous.package_path)!=expected_bytes:raise ValueError('Ballymena SOURCE recipe does not reproduce exact canonical bytes')
     descriptor_path=previous.package_path.parent/'role-delta-input.json'
     descriptor=pipeline.read_json_file(descriptor_path)
     wanted={'season':plan['season'],'release_id':base.release_id,'package_sha256':plan['parent']['package_sha256'],
@@ -282,6 +283,6 @@ def reconstruction(previous,release_id):
         profile_assignment_plan_path=path)
     rebuilt=registry.load_registered_release(previous.season,release_id)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path,pipeline.read_json_file(previous.inventory_path))
-    if rebuilt.package_path.read_bytes()!=expected_bytes:raise ValueError('Ballymena complete SOURCE recipe replay differs')
+    if storage_io.read_bytes(rebuilt.package_path)!=expected_bytes:raise ValueError('Ballymena complete SOURCE recipe replay differs')
     return {'season':previous.season,'release_id':release_id,'complete_game_inventory_identical':True,
         'complete_recipe_identical':True,'compilation_mode':MODE}

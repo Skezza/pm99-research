@@ -61,6 +61,7 @@ from app.fdi_indexed import IndexedFDIFile  # noqa: E402
 from app.indexed_jug_identity import read_indexed_player_id, rebind_indexed_player_id  # noqa: E402
 from app.models import PlayerRecord  # noqa: E402
 from app.xor import xor_decode, xor_encode  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2 as package_v2  # noqa: E402
 from scripts import season_pipeline_v2 as pipeline_v2  # noqa: E402
 from scripts import season_review_v2 as review_v2  # noqa: E402
@@ -199,7 +200,7 @@ def _canonical_json_bytes(value: Any) -> bytes:
 
 def _read_canonical_json(path: Path, *, label: str) -> tuple[dict[str, Any], str]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise SeasonCompilerError(f"{label} is not valid UTF-8 JSON: {path}") from exc
@@ -564,8 +565,8 @@ def _derive_reviewed_package(
 
 
 def _ensure_clean_database_inputs(*, base_tree: Path, materialisation_tree: Path) -> dict[str, Path]:
-    base_tree = base_tree.expanduser().resolve()
-    materialisation_tree = materialisation_tree.expanduser().resolve()
+    base_tree = storage_io.resolve(base_tree.expanduser())
+    materialisation_tree = storage_io.resolve(materialisation_tree.expanduser())
     if base_tree == materialisation_tree:
         raise SeasonCompilerError("base tree and materialisation tree must be distinct")
     if not base_tree.is_dir() or not materialisation_tree.is_dir():
@@ -574,7 +575,7 @@ def _ensure_clean_database_inputs(*, base_tree: Path, materialisation_tree: Path
     for relative in (*DATABASE_RELATIVE_PATHS, COUNTRY_TABLE_RELATIVE_PATH):
         source = base_tree / relative
         target = materialisation_tree / relative
-        if not source.is_file() or source.is_symlink() or not target.is_file() or target.is_symlink():
+        if not storage_io.is_file(source) or source.is_symlink() or not storage_io.is_file(target) or target.is_symlink():
             raise SeasonCompilerError(f"required PM99 database file is missing or unsafe: {relative}")
         if _sha256_file(source) != _sha256_file(target):
             raise SeasonCompilerError(
@@ -603,7 +604,7 @@ def _extract_country_codes_from_textos(textos_pkf: Path) -> dict[str, int]:
     parser-backed extraction lives here as part of the compiler boundary.
     """
 
-    decoded = bytes(byte ^ 0x61 for byte in textos_pkf.read_bytes())
+    decoded = bytes(byte ^ 0x61 for byte in storage_io.read_bytes(textos_pkf))
     germany = decoded.find(b"GERMANY")
     if germany < 0:
         raise SeasonCompilerError("TEXTOS.PKF does not contain the English country-table anchor")
@@ -2042,7 +2043,7 @@ def _verify_output(
     jug_path: Path,
     eq_path: Path,
 ) -> None:
-    jug_data = jug_path.read_bytes()
+    jug_data = storage_io.read_bytes(jug_path)
     jug_index = IndexedFDIFile.from_bytes(jug_data)
     jug_entries = {entry.record_id: entry for entry in jug_index.entries}
     for carrier, entry in jug_entries.items():
@@ -2065,7 +2066,7 @@ def _verify_output(
         if observed.casefold() != _pm99_text(player["name"], label=f"player {player['id']} name").casefold():
             raise SeasonCompilerError(f"post-build player name read-back failed for {player['id']}: {observed!r}")
 
-    eq_data = eq_path.read_bytes()
+    eq_data = storage_io.read_bytes(eq_path)
     eq_index = IndexedFDIFile.from_bytes(eq_data)
     entries = {entry.record_id: entry for entry in eq_index.entries}
     player_carriers = {row["id"]: int(row["carrier_id"]) for row in package["players"]}
@@ -2221,9 +2222,9 @@ def compile_package_to_tree(
     jug_path = paths["DBDAT/JUG98030.FDI"]
     eq_path = paths["DBDAT/EQ98030.FDI"]
     ent_path = paths["DBDAT/ENT98030.FDI"]
-    jug_data = jug_path.read_bytes()
-    eq_data = eq_path.read_bytes()
-    ent_data = ent_path.read_bytes()
+    jug_data = storage_io.read_bytes(jug_path)
+    eq_data = storage_io.read_bytes(eq_path)
+    ent_data = storage_io.read_bytes(ent_path)
     source_parent_jug = jug_data
     source_parent_eq = eq_data
     from scripts import season_italian_opening_layer_v1 as italian_opening
@@ -2337,7 +2338,7 @@ def compile_package_to_tree(
     # A rejected mode-1 topology/finance request therefore leaves the tree
     # untouched; the outer build-plan can safely discard it and report the
     # precise package error.
-    jug_path.write_bytes(compiled_jug)
+    storage_io.write_bytes(jug_path, compiled_jug)
     if handling_rows:
         handling_receipt = _patch_dd6361_visible_handling(jug_path, handling_rows)
     else:
@@ -2347,17 +2348,17 @@ def compile_package_to_tree(
             "goalkeeper_count": 0,
             "changes": [],
         }
-    eq_path.write_bytes(compiled_eq)
-    ent_path.write_bytes(_rebuild_indexed(ent_data, IndexedFDIFile.from_bytes(ent_data), manager_replacements))
+    storage_io.write_bytes(eq_path, compiled_eq)
+    storage_io.write_bytes(ent_path, _rebuild_indexed(ent_data, IndexedFDIFile.from_bytes(ent_data), manager_replacements))
     _assert_mode1_roster_tails_match_plan(
         before=baseline_mode1_roster_tails,
-        after_eq_data=eq_path.read_bytes(),
+        after_eq_data=storage_io.read_bytes(eq_path),
         planned_player_ids=mode1_roster_plans,
     )
     _verify_output(package=package, jug_path=jug_path, eq_path=eq_path)
 
     outputs = [
-        {"path": relative, "sha256": _sha256_file(paths[relative]), "size": paths[relative].stat().st_size}
+        {"path": relative, "sha256": _sha256_file(paths[relative]), "size": storage_io.size(paths[relative])}
         for relative in DATABASE_RELATIVE_PATHS
     ]
     return {
@@ -2401,7 +2402,7 @@ def compile_package_to_tree(
 
 def write_canonical_receipt(path: Path, receipt: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(_canonical_json_bytes(dict(receipt)))
+    storage_io.write_bytes(path, _canonical_json_bytes(dict(receipt)))
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -2433,8 +2434,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             derived_package_id=args.derived_package_id,
         )
         if args.receipt is not None:
-            tree = args.tree.expanduser().resolve()
-            receipt_path = args.receipt.expanduser().resolve()
+            tree = storage_io.resolve(args.tree.expanduser())
+            receipt_path = storage_io.resolve(args.receipt.expanduser())
             if receipt_path.is_relative_to(tree):
                 raise SeasonCompilerError("compiler receipt must be outside the game materialisation tree")
             write_canonical_receipt(receipt_path, receipt)

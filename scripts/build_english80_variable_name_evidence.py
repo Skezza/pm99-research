@@ -3,6 +3,14 @@
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import html
 import json
@@ -12,7 +20,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 DEFAULT_LATEST_FILE = REPO_ROOT / ".local" / "latest_english80_2026_variable_names_dir.txt"
 SQUAD_SCREEN_DHASH_16 = int(
     "744c51cc87274f2719af192f192e1b2e592e5b2f192e1b2e1b2e1b2e1b2f859f",
@@ -23,19 +31,19 @@ SCREEN_DHASH_THRESHOLD = 40
 
 def _read_json(path: Path) -> Any | None:
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return json.loads(storage_io.read_text(path, encoding='utf-8'))
     except (OSError, json.JSONDecodeError):
         return None
 
 
 def _resolve_build_dir(value: str | None, latest_file: Path) -> Path:
     if value:
-        return Path(value).expanduser().resolve()
-    raw = latest_file.read_text(encoding="utf-8").strip()
+        return storage_io.resolve(Path(value).expanduser())
+    raw = storage_io.read_text(latest_file, encoding='utf-8').strip()
     if not raw:
         raise SystemExit(f"Latest variable-name build pointer is empty: {latest_file}")
     path = Path(raw)
-    return path.resolve() if path.is_absolute() else (REPO_ROOT / path).resolve()
+    return storage_io.resolve(path) if path.is_absolute() else storage_io.resolve(REPO_ROOT / path)
 
 
 def _relpath(path: Path, root: Path) -> str:
@@ -71,7 +79,7 @@ def _dhash_16(path: Path) -> int | None:
 @lru_cache(maxsize=2048)
 def _is_squad_screen(path_text: str) -> tuple[bool, int | None]:
     path = Path(path_text)
-    if not path.is_file():
+    if not storage_io.is_file(path):
         return False, None
     value = _dhash_16(path)
     if value is None:
@@ -86,20 +94,20 @@ def _local_screenshot_path(summary_path: Path, screenshot: str) -> Path | None:
         return None
     if not shot_path.is_absolute():
         candidate = summary_path.parent / shot_path
-        return candidate.resolve() if candidate.is_file() else None
-    if shot_path.is_file():
-        return shot_path.resolve()
+        return storage_io.resolve(candidate) if storage_io.is_file(candidate) else None
+    if storage_io.is_file(shot_path):
+        return storage_io.resolve(shot_path)
 
     parts = shot_path.parts
     if "clubs" in parts:
         index = parts.index("clubs")
         if len(parts) > index + 2 and parts[index + 1] == summary_path.parent.name:
             candidate = summary_path.parent.joinpath(*parts[index + 2 :])
-            return candidate.resolve() if candidate.is_file() else None
+            return storage_io.resolve(candidate) if storage_io.is_file(candidate) else None
     if "screens" in parts:
         index = parts.index("screens")
         candidate = summary_path.parent.joinpath(*parts[index:])
-        return candidate.resolve() if candidate.is_file() else None
+        return storage_io.resolve(candidate) if storage_io.is_file(candidate) else None
     return None
 
 
@@ -129,25 +137,25 @@ def _candidate_squad_screens(summary_path: Path, payload: dict[str, Any]) -> lis
         if "squad" in label:
             add(_local_screenshot_path(summary_path, str(screenshot)))
 
-    for path in sorted((summary_path.parent / "screens").glob("*squad*.png")):
-        add(path.resolve())
+    for path in sorted(storage_io.glob(summary_path.parent / 'screens', '*squad*.png')):
+        add(storage_io.resolve(path))
     return candidates
 
 
 def _discover_runner_matrix(build_dir: Path, explicit_matrix: str | None) -> Path | None:
     if explicit_matrix:
-        path = Path(explicit_matrix).expanduser().resolve()
+        path = storage_io.resolve(Path(explicit_matrix).expanduser())
         return path if path.is_dir() else None
     pointer = build_dir / "latest_80club_squad_matrix_dir.txt"
-    if pointer.is_file():
-        raw = pointer.read_text(encoding="utf-8").strip()
+    if storage_io.is_file(pointer):
+        raw = storage_io.read_text(pointer, encoding='utf-8').strip()
         if raw:
             path = Path(raw)
-            path = path.resolve() if path.is_absolute() else (REPO_ROOT / path).resolve()
+            path = storage_io.resolve(path) if path.is_absolute() else storage_io.resolve(REPO_ROOT / path)
             if path.is_dir():
                 return path
-    roots = sorted(build_dir.glob("runner_80club_squad_matrix_*"))
-    return roots[-1].resolve() if roots else None
+    roots = sorted(storage_io.glob(build_dir, 'runner_80club_squad_matrix_*'))
+    return storage_io.resolve(roots[-1]) if roots else None
 
 
 def _discover_runner_evidence(build_dir: Path, world: dict[str, Any], matrix_dir: Path | None) -> dict[str, Any]:
@@ -204,7 +212,7 @@ def _discover_runner_evidence(build_dir: Path, world: dict[str, Any], matrix_dir
                 if case.get("summary_path"):
                     row["summary"] = str(case["summary_path"])
 
-    for summary_path in sorted(matrix_dir.rglob("clubs/*/summary.json")):
+    for summary_path in sorted(storage_io.glob(matrix_dir, 'clubs/*/summary.json', recursive=True)):
         club_key = summary_path.parent.name
         if club_key not in club_rows:
             continue
@@ -215,7 +223,7 @@ def _discover_runner_evidence(build_dir: Path, world: dict[str, Any], matrix_dir
         row["summary"] = _relpath(summary_path, build_dir)
         row["ok"] = bool(row["ok"] or payload.get("success") or payload.get("phase_reached") in {"return_from_squad", "return_from_transfers"})
         candidates = _candidate_squad_screens(summary_path, payload)
-        row["screenshot_count"] = len(list((summary_path.parent / "screens").glob("*.png")))
+        row["screenshot_count"] = len(list(storage_io.glob(summary_path.parent / 'screens', '*.png')))
         scroll_screens = [path for path in candidates if "scroll" in path.name or "proof" in path.name]
         row["squad_scroll_screenshots"] = [_relpath(path, build_dir) for path in scroll_screens[:4]]
         for candidate in candidates:
@@ -507,7 +515,7 @@ def main() -> int:
     parser.add_argument("--matrix-dir", default="", help="Explicit runner matrix dir.")
     args = parser.parse_args()
 
-    latest_file = Path(args.latest_file).expanduser().resolve()
+    latest_file = storage_io.resolve(Path(args.latest_file).expanduser())
     build_dir = _resolve_build_dir(args.build_dir, latest_file)
     if not build_dir.is_dir():
         raise SystemExit(f"Build dir does not exist: {build_dir}")
@@ -517,8 +525,8 @@ def main() -> int:
     evidence_dir.mkdir(parents=True, exist_ok=True)
     json_path = evidence_dir / "english80_variable_name_evidence.json"
     html_path = evidence_dir / "english80_variable_name_evidence.html"
-    json_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    html_path.write_text(_render_html(report), encoding="utf-8")
+    storage_io.write_text(json_path, json.dumps(report, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+    storage_io.write_text(html_path, _render_html(report), encoding='utf-8')
     print(
         json.dumps(
             {

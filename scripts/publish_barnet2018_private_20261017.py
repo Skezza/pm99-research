@@ -4,6 +4,7 @@ Preferred releases stay unchanged until genuine runtime inspection is accepted.
 """
 from datetime import UTC, datetime
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry, season_pipeline_v2 as pipeline
 from scripts import publish_paired_whole_club_delta_v1 as publisher
 from scripts import season_paired_whole_club_reconstruction_v1 as source
@@ -22,7 +23,7 @@ REPLAY = 'replayed-barnet-original-opening-20261017-r143b'
 def resume_completed_native_replay(original, *, folder=FOLDER, season=SEASON, replay_id=REPLAY):
     """Resume only the guard-stopped asset stage, never recompile native work."""
     root = registry.ROOT / '.local/paired-whole-club-replays-v1' / season / replay_id
-    if registry.locator_path(season, replay_id).exists() or (root / 'complete').exists():
+    if storage_io.exists(registry.locator_path(season, replay_id)) or storage_io.exists(root / 'complete'):
         raise ValueError('inspect existing completed/partial replay publication')
     bound = source.bound_receipt(original)
     if bound is None:
@@ -30,7 +31,7 @@ def resume_completed_native_replay(original, *, folder=FOLDER, season=SEASON, re
     _, receipt = bound
     old_native = folder / 'native'
     rebuilt_native = root / 'native'
-    if (old_native / 'season-package.json').read_bytes() != (rebuilt_native / 'season-package.json').read_bytes():
+    if storage_io.read_bytes(old_native / 'season-package.json') != storage_io.read_bytes(rebuilt_native / 'season-package.json'):
         raise ValueError('completed native recipe replay differs before assets')
     old_receipt = pipeline.read_json_file(old_native / 'candidate-receipt.json')
     replay_receipt = pipeline.read_json_file(rebuilt_native / 'candidate-receipt.json')
@@ -46,7 +47,7 @@ def resume_completed_native_replay(original, *, folder=FOLDER, season=SEASON, re
     completed = root / 'complete'
     assets.prepare(rebuilt_native, root / 'assets', completed, ground_specs=specs)
     pipeline.assert_tree_matches_inventory(completed / 'game', pipeline.read_json_file(original.inventory_path))
-    if (completed / 'season-package.json').read_bytes() != original.package_path.read_bytes():
+    if storage_io.read_bytes(completed / 'season-package.json') != storage_io.read_bytes(original.package_path):
         raise ValueError('entire SOURCE recipe differs after resumed asset stage')
     native_proof, identity_proof = root / 'native-proof.json', root / 'identity-proof.json'
     readback.verify(completed, native_proof)
@@ -68,9 +69,9 @@ def resume_completed_native_replay(original, *, folder=FOLDER, season=SEASON, re
 def main(*, root=ROOT, folder=FOLDER, season=SEASON, release_id=RELEASE, replay_id=REPLAY,
          candidate_name='Barnet2018-complete-v1', proof_prefix='Barnet2018'):
     ROOT,FOLDER,SEASON,RELEASE,REPLAY=root,folder,season,release_id,replay_id
-    if (FOLDER / 'complete-SOURCE-replay.json').exists():
+    if storage_io.exists(FOLDER / 'complete-SOURCE-replay.json'):
         raise ValueError('completed SOURCE proof must not repeat')
-    registered = registry.locator_path(SEASON, RELEASE).exists()
+    registered = storage_io.exists(registry.locator_path(SEASON, RELEASE))
     if not registered:
         result = publisher.publish(ROOT / candidate_name,
             ROOT / (proof_prefix+'-native-readback.json'), ROOT / (proof_prefix+'-identity-readback.json'), RELEASE)
@@ -82,7 +83,7 @@ def main(*, root=ROOT, folder=FOLDER, season=SEASON, release_id=RELEASE, replay_
         raise ValueError('whole SOURCE reconstruction failed')
     rebuilt = registry.load_registered_release(SEASON, REPLAY)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path, pipeline.read_json_file(original.inventory_path))
-    if rebuilt.package_path.read_bytes() != original.package_path.read_bytes():
+    if storage_io.read_bytes(rebuilt.package_path) != storage_io.read_bytes(original.package_path):
         raise ValueError('whole SOURCE recipe bytes differ')
     retained(FOLDER / 'complete-SOURCE-replay.json', dict(utc=datetime.now(UTC).isoformat(), **result))
     print(dict(SOURCE_complete=True, preferred_changed=False, runner_pending=True), flush=True)

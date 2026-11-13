@@ -1,4 +1,5 @@
 """Independent reader-side proof for the private OFK source candidate."""
+from scripts import json_storage_io_v1 as storage_io
 from scripts import prepare_ofk_2004_source_allocation_v1 as source
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import prepare_duplicate_whole_club_native_v1 as native
@@ -36,7 +37,7 @@ def verify_native_owners(eq, ordered, carrier):
 
 
 def verify(candidate, output, *, proposal_path=None, source_bound_game=False):
-    if output.exists(): raise ValueError('native readback evidence is immutable')
+    if storage_io.exists(output): raise ValueError('native readback evidence is immutable')
     receipt_path = candidate / ('candidate-receipt.json' if source_bound_game else 'native-proof.json')
     receipt = pipeline.read_json_file(receipt_path)
     if receipt['registered'] or receipt['publication_authorised'] or receipt.get('duplicate_case_closed', False):
@@ -167,7 +168,7 @@ def verify(candidate, output, *, proposal_path=None, source_bound_game=False):
         if registry.sha256_file(path) != digest: raise ValueError('private native file changed')
         if not source_bound_game and registry.sha256_file(baseline.game_path / 'DBDAT' / name) != receipt['baseline_hashes'][name]:
             raise ValueError('private baseline native file changed')
-        data[name] = path.read_bytes()
+        data[name] = storage_io.read_bytes(path)
     club = next(c for c in package['clubs'] if c['carrier_id'] == carrier)
     eq = data['EQ98030.FDI']
     entry = next(e for e in native.IndexedFDIFile.from_bytes(eq).entries if e.record_id == carrier)
@@ -183,7 +184,7 @@ def verify(candidate, output, *, proposal_path=None, source_bound_game=False):
         raise ValueError('actual native target club/ground/roster differs from source recipe')
     jug = data['JUG98030.FDI']
     entries = {e.record_id: e for e in native.IndexedFDIFile.from_bytes(jug).entries}
-    baseline_jug = (baseline.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    baseline_jug = storage_io.read_bytes(baseline.game_path / 'DBDAT/JUG98030.FDI')
     baseline_entries = {e.record_id: e for e in native.IndexedFDIFile.from_bytes(baseline_jug).entries}
     countries = native.delta.compiler._extract_country_codes_from_textos(baseline.game_path / 'DBDAT/TEXTOS.PKF')
     rows = []
@@ -258,7 +259,7 @@ def verify(candidate, output, *, proposal_path=None, source_bound_game=False):
     if profile.display_name != native_manager or profile.surname != native_manager or manager['name'] != expected_manager:
         raise ValueError('actual native coach differs from dated original')
     for name, ids in [('JUG98030.FDI', set(ordered)), ('EQ98030.FDI', {carrier}), ('ENT98030.FDI', {manager['carrier_id']})]:
-        native.preserve_other_records((baseline.game_path / 'DBDAT' / name).read_bytes(), data[name], ids)
+        native.preserve_other_records(storage_io.read_bytes(baseline.game_path / 'DBDAT' / name), data[name], ids)
     keys = [(r['source_name'], r['birth_date']) for r in rows]
     collisions = [dict(carrier_id=p['carrier_id'], club_id=p['club_id'], name=p.get('source_name') or p['name'])
         for p in package['players'] if p['club_id'] != club['id']

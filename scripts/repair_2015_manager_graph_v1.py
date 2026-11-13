@@ -38,6 +38,7 @@ from app.eq_team_manager_links import (  # noqa: E402
 )
 from app.fdi_indexed import IndexedFDIFile  # noqa: E402
 from app.xor import xor_decode, xor_encode  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts.build_2015_english92_release import _patch_ent_name, _rebuild_indexed  # noqa: E402
 from scripts.season_english_mode0_package_adapter_v1 import _manager_candidates  # noqa: E402
 from scripts import season_package_v2 as package_v2  # noqa: E402
@@ -93,12 +94,12 @@ def _sha256_bytes(value: bytes) -> str:
 
 
 def _sha256_file(path: Path) -> str:
-    return _sha256_bytes(path.read_bytes())
+    return _sha256_bytes(storage_io.read_bytes(path))
 
 
 def _relative(path: Path) -> str:
     try:
-        return path.resolve().relative_to(ROOT).as_posix()
+        return storage_io.resolve(path).relative_to(ROOT).as_posix()
     except ValueError as exc:
         raise ManagerGraphError(f"path must be within workspace: {path}") from exc
 
@@ -109,12 +110,12 @@ def _read_package(path: Path, *, label: str, strict: bool = True) -> tuple[dict[
         package_v2.validate_package(package, strict=strict)
     except (OSError, package_v2.PackageValidationError) as exc:
         raise ManagerGraphError(f"invalid {label} package: {exc}") from exc
-    return package, path.read_bytes()
+    return package, storage_io.read_bytes(path)
 
 
 def _read_canonical_object(path: Path, *, schema: str, label: str) -> tuple[dict[str, Any], bytes]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise ManagerGraphError(f"cannot read {label}: {path}") from exc
@@ -233,9 +234,9 @@ def build_plan(
 
     eq_path = base_tree / "DBDAT/EQ98030.FDI"
     ent_path = base_tree / "DBDAT/ENT98030.FDI"
-    if not eq_path.is_file() or not ent_path.is_file():
+    if not storage_io.is_file(eq_path) or not storage_io.is_file(ent_path):
         raise ManagerGraphError("base tree is missing EQ98030.FDI or ENT98030.FDI")
-    eq_data, ent_data = eq_path.read_bytes(), ent_path.read_bytes()
+    eq_data, ent_data = storage_io.read_bytes(eq_path), storage_io.read_bytes(ent_path)
     eq_entries = {int(row.record_id): row for row in IndexedFDIFile.from_bytes(eq_data).entries}
     ent_entries = {int(row.record_id): row for row in IndexedFDIFile.from_bytes(ent_data).entries}
 
@@ -329,17 +330,17 @@ def apply_plan(*, plan: Mapping[str, Any], game: Path, apply: bool) -> dict[str,
         raise ManagerGraphError("manager graph plan has no inputs or targets")
     if len(targets) != 538:
         raise ManagerGraphError("manager graph plan must have 538 sourced targets")
-    game = game.resolve()
+    game = storage_io.resolve(game)
     jug_path, eq_path, ent_path = (game / "DBDAT/JUG98030.FDI", game / "DBDAT/EQ98030.FDI", game / "DBDAT/ENT98030.FDI")
     for path in (jug_path, eq_path, ent_path):
-        if not path.is_file() or path.is_symlink():
+        if not storage_io.is_file(path) or path.is_symlink():
             raise ManagerGraphError(f"game input is missing or unsafe: {path}")
     if _sha256_file(eq_path) != inputs.get("EQ98030.FDI_sha256"):
         raise ManagerGraphError("game EQ98030.FDI differs from the plan's verified base")
     if _sha256_file(ent_path) != inputs.get("ENT98030.FDI_sha256"):
         raise ManagerGraphError("game ENT98030.FDI differs from the plan's verified base")
 
-    eq_data, ent_data = eq_path.read_bytes(), ent_path.read_bytes()
+    eq_data, ent_data = storage_io.read_bytes(eq_path), storage_io.read_bytes(ent_path)
     eq_index, ent_index = IndexedFDIFile.from_bytes(eq_data), IndexedFDIFile.from_bytes(ent_data)
     eq_entries = {int(row.record_id): row for row in eq_index.entries}
     ent_entries = {int(row.record_id): row for row in ent_index.entries}
@@ -390,17 +391,17 @@ def apply_plan(*, plan: Mapping[str, Any], game: Path, apply: bool) -> dict[str,
     if apply:
         eq_temp = eq_path.with_name(f".{eq_path.name}.manager-graph.tmp")
         ent_temp = ent_path.with_name(f".{ent_path.name}.manager-graph.tmp")
-        if any(path.exists() or path.is_symlink() for path in (eq_temp, ent_temp)):
+        if any(storage_io.exists(path) or path.is_symlink() for path in (eq_temp, ent_temp)):
             raise ManagerGraphError("stale manager graph temporary output exists")
-        eq_temp.write_bytes(rebuilt_eq)
-        ent_temp.write_bytes(rebuilt_ent)
+        storage_io.write_bytes(eq_temp, rebuilt_eq)
+        storage_io.write_bytes(ent_temp, rebuilt_ent)
         try:
-            eq_temp.replace(eq_path)
-            ent_temp.replace(ent_path)
+            storage_io.move(eq_temp, eq_path, replace=True)
+            storage_io.move(ent_temp, ent_path, replace=True)
         finally:
             for path in (eq_temp, ent_temp):
-                if path.exists() or path.is_symlink():
-                    path.unlink()
+                if storage_io.exists(path) or path.is_symlink():
+                    storage_io.unlink(path)
     return {
         "schema_version": "pm99-world-2015-manager-graph-repair-application-v1",
         "season": "2015-16",
@@ -434,7 +435,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         if args.command == "build-plan":
-            if args.output_plan.exists() or args.output_plan.is_symlink():
+            if storage_io.exists(args.output_plan) or args.output_plan.is_symlink():
                 raise ManagerGraphError(f"refusing to overwrite plan: {args.output_plan}")
             foreign, foreign_raw = _read_package(args.foreign_package, label="foreign")
             # This legacy English V2 file is not a strict world package (it
@@ -447,24 +448,24 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             plan = build_plan(
                 foreign=foreign, foreign_raw=foreign_raw, english=english, english_raw=english_raw,
-                allocation=allocation, allocation_raw=allocation_raw, base_tree=args.base_tree.resolve(),
+                allocation=allocation, allocation_raw=allocation_raw, base_tree=storage_io.resolve(args.base_tree),
             )
             plan["inputs"]["foreign_package"]["path"] = _relative(args.foreign_package)
             plan["inputs"]["english_package"]["path"] = _relative(args.english_package)
             plan["inputs"]["manager_source_allocation"]["path"] = _relative(args.manager_source_allocation)
             args.output_plan.parent.mkdir(parents=True, exist_ok=True)
-            args.output_plan.write_bytes(_canonical(plan))
+            storage_io.write_bytes(args.output_plan, _canonical(plan))
             print(json.dumps(plan["coverage"], ensure_ascii=False, sort_keys=True))
             return 0
-        raw = args.plan.read_bytes()
+        raw = storage_io.read_bytes(args.plan)
         plan = json.loads(raw.decode("utf-8"))
         if not isinstance(plan, dict) or raw != _canonical(plan):
             raise ManagerGraphError("manager graph plan must be canonical JSON")
-        if args.output_audit.exists() or args.output_audit.is_symlink():
+        if storage_io.exists(args.output_audit) or args.output_audit.is_symlink():
             raise ManagerGraphError(f"refusing to overwrite audit: {args.output_audit}")
         result = apply_plan(plan=plan, game=args.game, apply=args.apply)
         args.output_audit.parent.mkdir(parents=True, exist_ok=True)
-        args.output_audit.write_bytes(_canonical(result))
+        storage_io.write_bytes(args.output_audit, _canonical(result))
         print(json.dumps({"state": result["state"], **result["coverage"], **result["byte_contract"]}, ensure_ascii=False, sort_keys=True))
         return 0
     except (OSError, UnicodeDecodeError, json.JSONDecodeError, ManagerGraphError, ValueError) as exc:

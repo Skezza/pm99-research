@@ -24,6 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts.reconcile_2015_world_source_player_facts import (
     _read_fifa_rows,
     build_reconciliation,
@@ -44,7 +45,7 @@ def digest(value: Any) -> str:
 
 
 def read_canonical(path: Path, label: str) -> tuple[dict[str, Any], str]:
-    raw = path.read_bytes()
+    raw = storage_io.read_bytes(path)
     value = json.loads(raw.decode("utf-8"))
     if not isinstance(value, dict) or raw != canonical_bytes(value):
         raise ValueError(f"{label} must be canonical JSON")
@@ -222,7 +223,7 @@ def main() -> int:
     capture, draft, reconciliation = integrate(registry=registry, base_capture=base_capture, base_draft=base_draft, ntf_capture=ntf_capture, fifa_csv=args.fifa16_player_csv)
     for path, value in ((args.integrated_capture_output, capture), (args.integrated_draft_output, draft), (args.reconciliation_output, reconciliation)):
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(canonical_bytes(value))
+        storage_io.write_bytes(path, canonical_bytes(value))
     print(json.dumps({"integrated_capture": capture["summary"], "draft": draft["coverage"], "reconciliation": reconciliation["coverage"]}, ensure_ascii=False, sort_keys=True))
     return 0
 

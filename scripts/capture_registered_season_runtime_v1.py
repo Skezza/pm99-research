@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import attest_registered_season_runtime_v1 as attester  # noqa: E402
 from scripts import season_pipeline_v2 as pipeline  # noqa: E402
 from scripts import season_release_registry_v1 as registry  # noqa: E402
@@ -33,7 +34,7 @@ class CaptureError(ValueError):
 
 
 def _selector(season: str) -> dict[str, Any]:
-    value = json.loads(SELECTORS.read_text(encoding="utf-8"))
+    value = json.loads(storage_io.read_text(SELECTORS, encoding='utf-8'))
     if value.get("schema_version") != "pm99-season-runtime-selectors-v1":
         raise CaptureError("runtime selector catalogue has an unsupported schema")
     matches = [row for row in value.get("seasons", []) if row.get("season") == season]
@@ -91,7 +92,7 @@ def capture_one(*, season: str, args: argparse.Namespace) -> dict[str, Any]:
         return _capture_one_unlocked(season=season, args=args)
     locks = ROOT / '.local/season-runtime-coordination-v1'
     locks.mkdir(parents=True, exist_ok=True)
-    with (locks / (season + '.lock')).open('a+b') as lock:
+    with storage_io.open_file(locks / (season + '.lock'), 'a+b') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         return _capture_one_unlocked(season=season, args=args)
 

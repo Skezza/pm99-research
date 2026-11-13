@@ -12,6 +12,7 @@ from app.fdi_indexed import IndexedFDIFile
 from app.indexed_jug_roles import read_indexed_native_roles, rewrite_indexed_native_primary_roles
 from app.eq_roster_pruning import prune_visible_mode1_roster_payload
 from app.player_initial_order import OrderReplacement, patch_owned_mode1_complete_orders
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_trabzon_opening_review_v1 as source
 from scripts import season_italian_opening_layer_v1 as native
 from scripts import season_package_compiler_v2 as compiler
@@ -27,9 +28,9 @@ ROLE_POLICY = 'original-positive-matchday-broad-role-conservative-primary-only-v
 
 def prepare(release):
     plan = source.prepare(release)
-    package = json.loads(release.package_path.read_text())
+    package = json.loads(storage_io.read_text(release.package_path))
     people = {p['carrier_id']: p for p in package['players']}
-    jug = (release.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(jug).entries}
     # Five source-present substitutes fit PM99's matchday bench. Preserve the
     # original published bench order, goalkeeper first; missing two stay gaps.

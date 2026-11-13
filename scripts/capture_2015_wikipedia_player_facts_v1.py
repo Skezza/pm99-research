@@ -34,6 +34,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import capture_2015_world_manager_history_v2 as wikipedia  # noqa: E402
 from scripts import capture_transfermarkt_opening_lineups_v1 as opening  # noqa: E402
 from scripts import prepare_2015_world_fifa16_drafts as fifa  # noqa: E402
@@ -335,7 +336,7 @@ def _load_package(path: Path) -> tuple[dict[str, Any], str]:
         package_v2.validate_package(value)
     except (OSError, package_v2.PackageValidationError) as exc:
         raise PlayerFactCaptureError(f"cannot use package: {exc}") from exc
-    raw = path.read_bytes()
+    raw = storage_io.read_bytes(path)
     return value, hashlib.sha256(raw).hexdigest()
 
 
@@ -351,7 +352,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--delay", type=float, default=1.0)
     args = parser.parse_args(argv)
     try:
-        if args.output.exists():
+        if storage_io.exists(args.output):
             raise PlayerFactCaptureError(f"refusing to overwrite source receipt: {args.output}")
         if not 1 <= args.batch_size <= 10:
             raise PlayerFactCaptureError(
@@ -373,7 +374,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (OSError, PlayerFactCaptureError, opening.CaptureError) as exc:
         parser.error(str(exc))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_json_bytes(result))
+    storage_io.write_bytes(args.output, canonical_json_bytes(result))
     print(json.dumps(result["coverage"], ensure_ascii=False, sort_keys=True))
     return 0
 

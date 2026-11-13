@@ -1,5 +1,6 @@
 """Capture the exact final private game and both sides of the ownership fix."""
 import os
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import capture_registered_season_runtime_v1 as capture
 from scripts.capture_city_opening_exchange_20261011 import captured
@@ -10,7 +11,7 @@ PROFILES = ((9171, 'wright_phillips', 'Wright'), (2774, 'kanchelskis', 'Kanchels
 
 def main(*, root=ROOT, release_id=RELEASE, tag=TAG):
     ROOT, RELEASE, TAG = root, release_id, tag
-    if not all((ROOT / name).exists() for name in ('native-byte-proof.json', 'complete-SOURCE-replay.json')):
+    if not all(storage_io.exists(ROOT / name) for name in ('native-byte-proof.json', 'complete-SOURCE-replay.json')):
         raise ValueError('final actual native/SOURCE proofs must precede runner capture')
     release = registry.load_registered_release(SEASON, RELEASE)
     env = dict(os.environ, PM99_RUNNER_ARCHIVE_COLD_RUNS='0', PM99_RUNNER_RUN_ROOT_BUDGET_ENFORCE='0')

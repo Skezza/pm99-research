@@ -11,6 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_package_compiler_v2 as compiler
@@ -20,12 +21,12 @@ from scripts.season_historical_player_facts_audit_v1 import country
 
 def plan(season, audit_path):
     release = registry.load_preferred_release(season)
-    report = json.loads(audit_path.read_text())
+    report = json.loads(storage_io.read_text(audit_path))
     if report['schema_version'] != 'pm99-historical-player-facts-audit-v1':
         raise ValueError('wrong nationality audit schema')
     if (report['season'], report['bindings']['package_sha256']) != (season, registry.sha256_file(release.package_path)):
         raise ValueError('nationality audit does not describe current recipe')
-    package = json.loads(release.package_path.read_text())
+    package = json.loads(storage_io.read_text(release.package_path))
     by_id = {p['id']: p for p in package['players']}
     codes = compiler._extract_country_codes_from_textos(release.game_path / 'DBDAT/TEXTOS.PKF')
     updates, unresolved = [], []

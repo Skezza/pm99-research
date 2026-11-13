@@ -3,6 +3,7 @@ import argparse
 from pathlib import Path
 import time
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import build_original_country_defaults_20261017 as build
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts.capture_shinnie_country_20261017 import main as capture,wait_owned
@@ -18,13 +19,13 @@ def main(builder_pid,previous_runner_pid):
     rows=pipeline.read_json_file(build.ROOT/'batch-input.json')['rows']
     for row in rows:
         season=row['season'];folder=build.ROOT/season
-        while not (folder/'complete-SOURCE-replay.json').exists():
-            if any((folder/name).exists() for name in ('source-gap.json','build-failure.json')):
+        while not storage_io.exists(folder / 'complete-SOURCE-replay.json'):
+            if any(storage_io.exists(folder / name) for name in ('source-gap.json','build-failure.json')):
                 print(dict(season=season,not_captured='retained refusal/partial state needs inspection'),flush=True)
                 break
             process=Path('/proc')/str(builder_pid)/'cmdline'
             try:
-                command=process.read_bytes()
+                command=storage_io.read_bytes(process)
             except FileNotFoundError as exc:
                 raise ValueError('country builder stopped without required proof; inspect, do not restart') from exc
             if b'scripts.build_original_country_defaults_20261017' not in command:

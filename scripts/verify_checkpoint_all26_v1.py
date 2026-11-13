@@ -2,13 +2,14 @@
 import argparse
 from datetime import UTC,datetime
 from pathlib import Path
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry,season_pipeline_v2 as pipeline
 from scripts.consolidated_season_discovery_v1 import bindings
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
 
 
 def verify(checklist,output):
-    if output.exists():raise ValueError('completed all26 evidence must not be overwritten')
+    if storage_io.exists(output):raise ValueError('completed all26 evidence must not be overwritten')
     document=pipeline.read_json_file(checklist);expected=document['current_release_bindings']
     if bindings()!=expected:raise ValueError('actual preferred bindings differ from completed checklist')
     rows=[]

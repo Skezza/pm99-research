@@ -3,6 +3,14 @@
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import collections
 import html
@@ -12,7 +20,7 @@ from pathlib import Path
 from typing import Any
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = storage_io.resolve(Path(__file__)).parents[1]
 DEFAULT_BUILD_DIR = ROOT / "work/pm99/english80_2026_division_structured/english80_2026_division_structured_20260501T212554Z"
 DEFAULT_OUTPUT_DIR = ROOT / "artifacts/english80_kit_corrected_20260501"
 DEFAULT_RUNNER_DIR = ROOT / "upstream/pm99-runner/docs/artifacts/pm99_runner/english80_kit_corrected_selector_dense_20260506"
@@ -53,16 +61,16 @@ EXISTING_ASSET_FALLBACK_KEYS = {
 
 
 def read_json(path: Path) -> Any:
-    return json.loads(path.read_text(encoding="utf-8"))
+    return json.loads(storage_io.read_text(path, encoding='utf-8'))
 
 
 def write_json(path: Path, data: Any) -> None:
-    path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(path, json.dumps(data, indent=2, sort_keys=True) + '\n', encoding='utf-8')
 
 
 def copy_asset(src: Path, dst: Path) -> str:
     dst.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(src, dst)
+    storage_io.copy_file(src, dst, metadata=True)
     return dst.as_posix()
 
 
@@ -107,20 +115,20 @@ def find_per_club_image(build_dir: Path, row: dict[str, Any]) -> Path | None:
     slot = int(row["slot"])
     key = safe_name(row["target_display_name"]).title().replace("_", "_")
     eq_id = int(row["carrier_eq_record_id"])
-    candidates = sorted(preview_dir.glob(f"{slot:02d}_*_EQ{eq_id:04d}.png"))
+    candidates = sorted(storage_io.glob(preview_dir, f'{slot:02d}_*_EQ{eq_id:04d}.png'))
     if candidates:
         return candidates[0]
-    candidates = sorted(preview_dir.glob(f"{slot:02d}_*.png"))
+    candidates = sorted(storage_io.glob(preview_dir, f'{slot:02d}_*.png'))
     if candidates:
         return candidates[0]
-    candidates = sorted(preview_dir.glob(f"*{key}*.png"))
+    candidates = sorted(storage_io.glob(preview_dir, f'*{key}*.png'))
     return candidates[0] if candidates else None
 
 
 def copy_kit_assets(build_dir: Path, output_dir: Path, plan: list[dict[str, Any]]) -> dict[str, str]:
     assets: dict[str, str] = {}
     contact_src = build_dir / "kit_patch/english80_division_kit_contact_sheet.png"
-    if contact_src.exists():
+    if storage_io.exists(contact_src):
         contact_dst = output_dir / "assets/english80_division_kit_contact_sheet.png"
         copy_asset(contact_src, contact_dst)
         assets["contact_sheet"] = rel(contact_dst, output_dir)
@@ -137,7 +145,7 @@ def copy_kit_assets(build_dir: Path, output_dir: Path, plan: list[dict[str, Any]
 def load_runner_screens(runner_dir: Path, output_dir: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     discovery_path = runner_dir / "selector_discovery.json"
     summary_path = runner_dir / "selector_discovery_summary.json"
-    if not discovery_path.exists():
+    if not storage_io.exists(discovery_path):
         return [], {
             "available": False,
             "runner_dir": runner_dir.as_posix(),
@@ -145,14 +153,14 @@ def load_runner_screens(runner_dir: Path, output_dir: Path) -> tuple[list[dict[s
         }
 
     discovery = read_json(discovery_path)
-    summary = read_json(summary_path) if summary_path.exists() else {}
+    summary = read_json(summary_path) if storage_io.exists(summary_path) else {}
     observations: list[dict[str, Any]] = []
     for division in discovery.get("divisions", []):
         div_key = division.get("division_key", "")
         for team in division.get("teams", []):
             remote_screen = Path(team.get("screenshot", ""))
             local_screen = runner_dir / "screens" / remote_screen.name
-            if not local_screen.exists():
+            if not storage_io.exists(local_screen):
                 continue
             dst = output_dir / "assets/screens" / local_screen.name
             copy_asset(local_screen, dst)
@@ -185,14 +193,14 @@ def preferred_squad_screen(screens_dir: Path) -> Path | None:
         "021_squad_inspect.png",
     ]:
         candidate = screens_dir / name
-        if candidate.exists():
+        if storage_io.exists(candidate):
             return candidate
-    candidates = sorted(screens_dir.glob("*squad_inspect*.png"))
+    candidates = sorted(storage_io.glob(screens_dir, '*squad_inspect*.png'))
     return candidates[-1] if candidates else None
 
 
 def load_visual_proofs(visual_dir: Path, output_dir: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    if not visual_dir.exists():
+    if not storage_io.exists(visual_dir):
         return [], {
             "available": False,
             "visual_dir": visual_dir.as_posix(),
@@ -200,9 +208,9 @@ def load_visual_proofs(visual_dir: Path, output_dir: Path) -> tuple[list[dict[st
         }
 
     summary_path = visual_dir / "summary.json"
-    summary = read_json(summary_path) if summary_path.exists() else {}
+    summary = read_json(summary_path) if storage_io.exists(summary_path) else {}
     cases: list[dict[str, Any]] = []
-    for club_dir in sorted((visual_dir / "clubs").glob("*")) if (visual_dir / "clubs").exists() else []:
+    for club_dir in sorted(storage_io.glob(visual_dir / 'clubs', '*')) if storage_io.exists(visual_dir / 'clubs') else []:
         if not club_dir.is_dir():
             continue
         club_key = club_dir.name
@@ -211,12 +219,12 @@ def load_visual_proofs(visual_dir: Path, output_dir: Path) -> tuple[list[dict[st
         squad_src = preferred_squad_screen(screens_dir)
         copied: dict[str, str] = {}
         for label, src in [("pick_team", pick_src), ("squad", squad_src)]:
-            if src and src.exists():
+            if src and storage_io.exists(src):
                 dst = output_dir / "assets/visual" / club_key / src.name
                 copy_asset(src, dst)
                 copied[label] = rel(dst, output_dir)
         status_path = visual_dir / "club_status" / f"{club_key}.status"
-        status = status_path.read_text(encoding="utf-8").strip() if status_path.exists() else ""
+        status = storage_io.read_text(status_path, encoding='utf-8').strip() if storage_io.exists(status_path) else ""
         cases.append(
             {
                 "club_key": club_key,
@@ -255,14 +263,14 @@ def load_existing_visual_proofs(output_dir: Path, previous_manifest: dict[str, A
         screens_dir = output_dir / "assets/visual" / club_key
         pick_src = screens_dir / "008_pick_team.png"
         squad_src = preferred_squad_screen(screens_dir)
-        if not pick_src.exists() and not squad_src:
+        if not storage_io.exists(pick_src) and not squad_src:
             continue
         cases.append(
             {
                 "club_key": club_key,
                 "ok": True,
                 "status": str(previous.get("status", 0)),
-                "pick_team": rel(pick_src, output_dir) if pick_src.exists() else "",
+                "pick_team": rel(pick_src, output_dir) if storage_io.exists(pick_src) else "",
                 "squad": rel(squad_src, output_dir) if squad_src else "",
                 "summary_path": str(previous.get("summary_path") or ""),
                 "source": "existing_output_assets",
@@ -733,24 +741,24 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    build_dir = args.build_dir.resolve()
-    runner_dir = args.runner_dir.resolve()
-    visual_dirs = [path.resolve() for path in (args.visual_dirs or DEFAULT_VISUAL_DIRS)]
-    output_dir = args.output_dir.resolve()
+    build_dir = storage_io.resolve(args.build_dir)
+    runner_dir = storage_io.resolve(args.runner_dir)
+    visual_dirs = [storage_io.resolve(path) for path in (args.visual_dirs or DEFAULT_VISUAL_DIRS)]
+    output_dir = storage_io.resolve(args.output_dir)
     manifest_path = build_dir / "kit_patch/english80_division_kit_patch_summary.json"
-    if not manifest_path.exists():
+    if not storage_io.exists(manifest_path):
         raise SystemExit(f"missing kit patch manifest: {manifest_path}")
 
     output_dir.mkdir(parents=True, exist_ok=True)
     previous_manifest_path = output_dir / "evidence_manifest.json"
-    previous_manifest = read_json(previous_manifest_path) if previous_manifest_path.exists() else None
+    previous_manifest = read_json(previous_manifest_path) if storage_io.exists(previous_manifest_path) else None
     manifest = read_json(manifest_path)
     kit_assets = copy_kit_assets(build_dir, output_dir, manifest["plan"])
     observations, runner_meta = load_runner_screens(runner_dir, output_dir)
     visual_cases, visual_meta = load_visual_proof_sources(visual_dirs, output_dir, previous_manifest)
     events_by_key = event_summary(manifest["events"])
     html_text = build_html(manifest, kit_assets, events_by_key, observations, runner_meta, visual_cases, visual_meta)
-    (output_dir / "index.html").write_text(html_text, encoding="utf-8")
+    storage_io.write_text(output_dir / 'index.html', html_text, encoding='utf-8')
     write_json(
         output_dir / "evidence_manifest.json",
         {

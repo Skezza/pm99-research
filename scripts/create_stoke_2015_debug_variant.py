@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import csv
 import json
@@ -11,12 +19,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR_ROOT = REPO_ROOT / "upstream" / "pm99-skezmod-db-editor"
 if str(EDITOR_ROOT) not in sys.path:
     sys.path.insert(0, str(EDITOR_ROOT))
-if str(Path(__file__).resolve().parent) not in sys.path:
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
+if str(storage_io.resolve(Path(__file__)).parent) not in sys.path:
+    sys.path.insert(0, str(storage_io.resolve(Path(__file__)).parent))
 
 from assert_pm99_isolated_input import core_file_hashes, resolve_fixture_root, resolve_game_root, sha256  # noqa: E402
 from app.fdi_indexed import IndexedFDIFile  # noqa: E402
@@ -66,7 +74,7 @@ def _parse_args() -> argparse.Namespace:
 
 def _copy_game_tree(source_game_root: Path, target_game_root: Path) -> None:
     target_game_root.parent.mkdir(parents=True, exist_ok=True)
-    if target_game_root.exists():
+    if storage_io.exists(target_game_root):
         raise RuntimeError(f"Target game root already exists: {target_game_root}")
     target_game_root.mkdir(parents=True, exist_ok=False)
     subprocess.run(
@@ -112,7 +120,7 @@ def _write_reverse_metadata_csv(
 
     pristine_entries = _indexed_entry_by_id(pristine_player_file)
     target_entries = _indexed_entry_by_id(target_player_file)
-    pristine_bytes = pristine_player_file.read_bytes()
+    pristine_bytes = storage_io.read_bytes(pristine_player_file)
 
     fieldnames = [
         "name",
@@ -133,7 +141,7 @@ def _write_reverse_metadata_csv(
 
     reverse_rows: list[dict[str, Any]] = []
     csv_path.parent.mkdir(parents=True, exist_ok=True)
-    with csv_path.open("w", newline="", encoding="utf-8") as handle:
+    with storage_io.open_file(csv_path, 'w', newline='', encoding='utf-8') as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()
         for row in batch_rows:
@@ -186,12 +194,12 @@ def main() -> int:
     args = _parse_args()
     source_game_root = resolve_game_root(args.source_game_root, require_writable=False)
     fixture_root = resolve_fixture_root()
-    metadata_manifest_path = Path(args.metadata_manifest).expanduser().resolve()
-    metadata_manifest = json.loads(metadata_manifest_path.read_text(encoding="utf-8"))
+    metadata_manifest_path = storage_io.resolve(Path(args.metadata_manifest).expanduser())
+    metadata_manifest = json.loads(storage_io.read_text(metadata_manifest_path, encoding='utf-8'))
 
     timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     variant_id = args.variant_id.strip() or f"stoke_2015_{args.mode}_{timestamp}"
-    variant_root = Path(args.output_root).expanduser().resolve() / variant_id
+    variant_root = storage_io.resolve(Path(args.output_root).expanduser()) / variant_id
     game_root = variant_root / "game"
     patch_dir = variant_root / "patches" / args.mode
     patch_dir.mkdir(parents=True, exist_ok=True)
@@ -203,11 +211,11 @@ def main() -> int:
     target_minifoto = game_root / "DBDAT" / "MINIFOTO.PKF"
 
     if args.mode in {"nofaces", "roster_only"}:
-        shutil.copy2(pristine_minifoto, target_minifoto)
+        storage_io.copy_file(pristine_minifoto, target_minifoto, metadata=True)
     if args.mode == "pristine_eq":
-        shutil.copy2(pristine_dbdat / "EQ98030.FDI", game_root / "DBDAT" / "EQ98030.FDI")
+        storage_io.copy_file(pristine_dbdat / 'EQ98030.FDI', game_root / 'DBDAT' / 'EQ98030.FDI', metadata=True)
     if args.mode == "pristine_jug":
-        shutil.copy2(pristine_dbdat / "JUG98030.FDI", game_root / "DBDAT" / "JUG98030.FDI")
+        storage_io.copy_file(pristine_dbdat / 'JUG98030.FDI', game_root / 'DBDAT' / 'JUG98030.FDI', metadata=True)
 
     reverse_rows: list[dict[str, Any]] = []
     reverse_csv_path = patch_dir / "reverse_metadata.csv"
@@ -233,17 +241,11 @@ def main() -> int:
             ]
         )
         if int(reverse_result["returncode"]) != 0:
-            (patch_dir / "reverse_metadata_apply_result.json").write_text(
-                json.dumps(reverse_result, indent=2) + "\n",
-                encoding="utf-8",
-            )
+            storage_io.write_text(patch_dir / 'reverse_metadata_apply_result.json', json.dumps(reverse_result, indent=2) + '\n', encoding='utf-8')
             raise RuntimeError(
                 f"Reverse metadata batch edit failed (exit {reverse_result['returncode']}): {reverse_csv_path}"
             )
-        (patch_dir / "reverse_metadata_apply_result.json").write_text(
-            json.dumps(reverse_result, indent=2) + "\n",
-            encoding="utf-8",
-        )
+        storage_io.write_text(patch_dir / 'reverse_metadata_apply_result.json', json.dumps(reverse_result, indent=2) + '\n', encoding='utf-8')
 
     validate_result = _run_editor_cli(
         [
@@ -261,10 +263,7 @@ def main() -> int:
             "--json",
         ]
     )
-    (patch_dir / "validate_database.json").write_text(
-        validate_result["stdout"] if validate_result["stdout"] else json.dumps(validate_result, indent=2) + "\n",
-        encoding="utf-8",
-    )
+    storage_io.write_text(patch_dir / 'validate_database.json', validate_result['stdout'] if validate_result['stdout'] else json.dumps(validate_result, indent=2) + '\n', encoding='utf-8')
     if int(validate_result["returncode"]) != 0:
         raise RuntimeError(f"validate-database failed for variant {variant_id}")
 
@@ -294,7 +293,7 @@ def main() -> int:
         },
     }
     manifest_path = patch_dir / "variant_manifest.json"
-    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(manifest_path, json.dumps(manifest, indent=2, sort_keys=True) + '\n', encoding='utf-8')
     print(
         json.dumps(
             {

@@ -5,6 +5,7 @@ The earlier stopped attempt remains recorded instead of being overwritten.
 """
 from datetime import UTC,datetime
 import shutil
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry,season_pipeline_v2 as pipeline
 from scripts import season_frozen_fixture_reserve_v2 as source
 from scripts import publish_historical_role_delta_v1 as publisher
@@ -23,7 +24,7 @@ def main():
     if cleanup['removed_paths'] or not cleanup['current26_unchanged']:
         raise ValueError('space recovery did not preserve all current games and paths')
     if shutil.disk_usage(registry.ROOT).free<8.15*1024**3:raise ValueError('unchanged8GiB reserve still at risk')
-    if registry.locator_path(season,RELEASE).exists() or (folder/'complete-SOURCE-replay.json').exists():
+    if storage_io.exists(registry.locator_path(season, RELEASE)) or storage_io.exists(folder / 'complete-SOURCE-replay.json'):
         raise ValueError('partial/completed native candidate exists; inspect, never recreate')
     path=folder/'ownership-plan.json';plan=pipeline.read_json_file(path)
     base=registry.load_registered_release(season,plan['release_id'])
@@ -41,7 +42,7 @@ def main():
     actual=registry.load_registered_release(season,RELEASE);result=source.reconstruction(actual,REPLAY)
     rebuilt=registry.load_registered_release(season,REPLAY)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path,pipeline.read_json_file(actual.inventory_path))
-    if rebuilt.package_path.read_bytes()!=actual.package_path.read_bytes():raise ValueError('whole SOURCE recipe differs')
+    if storage_io.read_bytes(rebuilt.package_path)!=storage_io.read_bytes(actual.package_path):raise ValueError('whole SOURCE recipe differs')
     share_verified(actual,rebuilt,folder)
     retained(folder/'complete-SOURCE-replay.json',dict(result,actual_release_id=RELEASE,replay_release_id=REPLAY,
         source_release_id=base.release_id,manifest_sha256=actual.manifest_sha256,

@@ -10,6 +10,14 @@ why Dely Valdes clone records surfaced as Panama in-game.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import csv
 import json
@@ -22,12 +30,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR_ROOT = REPO_ROOT / "upstream" / "pm99-skezmod-db-editor"
 if str(EDITOR_ROOT) not in sys.path:
     sys.path.insert(0, str(EDITOR_ROOT))
-if str(Path(__file__).resolve().parent) not in sys.path:
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
+if str(storage_io.resolve(Path(__file__)).parent) not in sys.path:
+    sys.path.insert(0, str(storage_io.resolve(Path(__file__)).parent))
 
 from app.eq_jug_linked import load_eq_linked_team_rosters  # noqa: E402
 from app.fdi_indexed import IndexedFDIFile  # noqa: E402
@@ -443,7 +451,7 @@ def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
         "attribute_basis",
         "source_url",
     ]
-    with path.open("w", newline="", encoding="utf-8") as handle:
+    with storage_io.open_file(path, 'w', newline='', encoding='utf-8') as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()
         for row in rows:
@@ -454,15 +462,15 @@ def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
 
 def main() -> int:
     args = _parse_args()
-    game_root = Path(args.game_root).expanduser().resolve()
-    output_dir = Path(args.output_dir).expanduser().resolve()
+    game_root = storage_io.resolve(Path(args.game_root).expanduser())
+    output_dir = storage_io.resolve(Path(args.output_dir).expanduser())
     dbdat = game_root / "DBDAT"
     team_file = dbdat / "EQ98030.FDI"
     player_file = dbdat / "JUG98030.FDI"
     coach_file = dbdat / "ENT98030.FDI"
     textos_pkf = dbdat / "TEXTOS.PKF"
     for path in (team_file, player_file, coach_file, textos_pkf):
-        if not path.is_file():
+        if not storage_io.is_file(path):
             raise SystemExit(f"Required PM99 file missing: {path}")
 
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -473,7 +481,7 @@ def main() -> int:
     if len(roster_rows) != len(STOKE_TARGETS):
         raise RuntimeError(f"Resolved {len(roster_rows)} Stoke rows, expected {len(STOKE_TARGETS)}")
 
-    file_bytes = player_file.read_bytes()
+    file_bytes = storage_io.read_bytes(player_file)
     indexed = IndexedFDIFile.from_bytes(file_bytes)
     entries_by_id = {int(entry.record_id): entry for entry in indexed.entries}
 
@@ -546,8 +554,8 @@ def main() -> int:
 
     if not args.dry_run:
         backup_path = player_file.with_suffix(player_file.suffix + f".semantic_patch_backup_{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}")
-        shutil.copy2(player_file, backup_path)
-        player_file.write_bytes(bytes(patched_file))
+        storage_io.copy_file(player_file, backup_path, metadata=True)
+        storage_io.write_bytes(player_file, bytes(patched_file))
     else:
         backup_path = None
 
@@ -559,9 +567,9 @@ def main() -> int:
     source_csv = output_dir / "stoke_2015_semantic_source_ledger.csv"
     readback_json = output_dir / "stoke_2015_semantic_readback.json"
     manifest_path = output_dir / "stoke_2015_semantic_manifest.json"
-    source_json.write_text(json.dumps(ledger_rows, indent=2), encoding="utf-8")
+    storage_io.write_text(source_json, json.dumps(ledger_rows, indent=2), encoding='utf-8')
     _write_csv(source_csv, ledger_rows)
-    readback_json.write_text(json.dumps(readback_rows, indent=2), encoding="utf-8")
+    storage_io.write_text(readback_json, json.dumps(readback_rows, indent=2), encoding='utf-8')
 
     manifest = {
         "generated_at_utc": datetime.now(UTC).isoformat(),
@@ -601,7 +609,7 @@ def main() -> int:
         "readback_ok": all(bool(row["matches"]) for row in readback_rows),
         "row_count": len(readback_rows),
     }
-    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    storage_io.write_text(manifest_path, json.dumps(manifest, indent=2), encoding='utf-8')
     print(json.dumps({"ok": bool(manifest["readback_ok"]), "manifest": str(manifest_path)}, indent=2))
     return 0 if manifest["readback_ok"] else 1
 

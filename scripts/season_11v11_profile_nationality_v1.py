@@ -19,6 +19,7 @@ from urllib.parse import urlsplit
 from bs4 import BeautifulSoup
 from app.fdi_indexed import IndexedFDIFile
 from app.indexed_jug_nationality import rewrite_indexed_native_nationalities
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2 as packages
 from scripts import season_package_compiler_v2 as compiler
 from scripts import season_pipeline_v2 as pipeline
@@ -44,8 +45,8 @@ def _workspace_file(relative: str) -> Path:
     path = Path(relative)
     if path.is_absolute():
         raise ValueError("source paths must be workspace relative")
-    resolved = (registry.ROOT / path).resolve()
-    if not resolved.is_relative_to(registry.ROOT.resolve()) or not resolved.is_file():
+    resolved = storage_io.resolve(registry.ROOT / path)
+    if not resolved.is_relative_to(storage_io.resolve(registry.ROOT)) or not storage_io.is_file(resolved):
         raise ValueError("source path is outside retained workspace evidence")
     return resolved
 
@@ -65,7 +66,7 @@ def _capture(source: dict) -> tuple[bytes, dict]:
         raise ValueError("11v11 canonical player URL/ID differs")
     body_path = _workspace_file(source["path"])
     receipt_path = _workspace_file(source["receipt_path"])
-    body = body_path.read_bytes()
+    body = storage_io.read_bytes(body_path)
     receipt = pipeline.read_json_file(receipt_path)
     row = receipt.get("sources", {}).get(source["receipt_key"])
     if (not isinstance(row, dict)
@@ -182,7 +183,7 @@ def _verify_period(raw: bytes, period: dict, *, full_name: str,
 def _capture_source(source: dict) -> tuple[bytes, dict]:
     body_path = _workspace_file(source["path"])
     receipt_path = _workspace_file(source["receipt_path"])
-    body = body_path.read_bytes()
+    body = storage_io.read_bytes(body_path)
     receipt = pipeline.read_json_file(receipt_path)
     row = receipt.get("sources", {}).get(source["receipt_key"])
     if (row is None or row.get("requested_url") != source["url"]
@@ -225,8 +226,8 @@ def prepare(base, input_path):
     path = Path(input_path)
     if not path.is_absolute():
         path = registry.ROOT / path
-    path = path.resolve()
-    if not path.is_relative_to(registry.ROOT.resolve()) or not path.is_file():
+    path = storage_io.resolve(path)
+    if not path.is_relative_to(storage_io.resolve(registry.ROOT)) or not storage_io.is_file(path):
         raise ValueError("11v11 country input must be retained in the workspace")
     request = pipeline.read_json_file(path)
     if (request.get("schema") != INPUT_SCHEMA or request.get("kind") != KIND
@@ -236,8 +237,8 @@ def prepare(base, input_path):
     package = pipeline.read_json_file(base.package_path)
     actors = {p["carrier_id"]: p for p in package["players"]}
     clubs = {c["id"]: c for c in package["clubs"]}
-    jug = (base.game_path / "DBDAT/JUG98030.FDI").read_bytes()
-    eq = (base.game_path / "DBDAT/EQ98030.FDI").read_bytes()
+    jug = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(jug).entries}
     owners = ownership.native_owners(eq)
     codes = compiler._extract_country_codes_from_textos(base.game_path / "DBDAT/TEXTOS.PKF")

@@ -8,6 +8,7 @@ import hashlib
 import json
 from pathlib import Path
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_compiler_v2 as compiler
 from scripts import season_release_registry_v1 as registry
 from app.fdi_indexed import IndexedFDIFile
@@ -29,7 +30,7 @@ def original(binding):
 
 
 def runtime_bundle(pilot_path,evidence):
-    summary=json.loads((evidence/'summary.json').read_text())
+    summary=json.loads(storage_io.read_text(evidence / 'summary.json'))
     shot=evidence/'screens'/Path(summary['player_profile']['screenshot']).name
     bundle={'policy':POLICY,'factory':bound(registry.ROOT/'.local/season-pipeline-v2/pm99-base-clean/DBDAT/JUG98030.FDI'),
         'runtime_pilot':bound(pilot_path),'runtime_summary':bound(evidence/'summary.json'),
@@ -41,7 +42,7 @@ def verify_bundle(bundle):
     if bundle.get('policy')!=POLICY or bundle.get('factory',{}).get('sha256')!=FACTORY_SHA:
         raise ValueError('capacity policy requires the independently pinned original factory JUG')
     paths={k:original(bundle[k]) for k in ('factory','runtime_pilot','runtime_summary','runtime_screenshot','visible_dbdat_hashes')}
-    pilot=json.loads(paths['runtime_pilot'].read_text());summary=json.loads(paths['runtime_summary'].read_text())
+    pilot=json.loads(storage_io.read_text(paths['runtime_pilot']));summary=json.loads(storage_io.read_text(paths['runtime_summary']))
     proof=pilot.get('native_proof',{});profile=summary.get('player_profile',{})
     fields=proof.get('native_fields_before')
     required={'birth_day','birth_month','birth_year','fine_role_codes','skills','handling',
@@ -61,7 +62,7 @@ def verify_bundle(bundle):
             or profile.get('player_name_ocr_normalized')!=pilot['pilot_display_name'].casefold()
             or Path(profile.get('screenshot','')).name!=paths['runtime_screenshot'].name):
         raise ValueError('capacity pilot did not render the requested name in a genuine live profile')
-    hashes={line.split()[1]:line.split()[0] for line in paths['visible_dbdat_hashes'].read_text().splitlines()
+    hashes={line.split()[1]:line.split()[0] for line in storage_io.read_text(paths['visible_dbdat_hashes']).splitlines()
             if line and not line.startswith('#')}
     if hashes.get('DBDAT/JUG98030.FDI')!=pilot['pilot_jug_sha256']:
         raise ValueError('capacity runner did not load the exact private pilot database')
@@ -69,7 +70,7 @@ def verify_bundle(bundle):
 
 
 def recover_slot(data,carrier,bundle):
-    factory_path=verify_bundle(bundle);factory=factory_path.read_bytes()
+    factory_path=verify_bundle(bundle);factory=storage_io.read_bytes(factory_path)
     entries=[e for e in IndexedFDIFile.from_bytes(data).entries if e.record_id==carrier]
     originals=[e for e in IndexedFDIFile.from_bytes(factory).entries if e.record_id==carrier]
     if len(entries)!=len(originals) or len(entries)!=1:raise ValueError('same-carrier capacity record is ambiguous')

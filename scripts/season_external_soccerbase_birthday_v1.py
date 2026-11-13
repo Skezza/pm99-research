@@ -10,6 +10,7 @@ from datetime import datetime,date
 import re
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import season_soccerbase_original_opening_v1 as biographies
 from scripts import season_original_soccerbase_reserves_v1 as careers
@@ -24,7 +25,7 @@ def raw_source(binding):
             or registry.sha256_file(receipt)!=binding['source_receipt_sha256']
             or pipeline.read_json_file(receipt)!=dict(url=binding['url'],sha256=binding['sha256'])):
         raise ValueError('secondary biography original URL/body/receipt changed')
-    return path.read_bytes()
+    return storage_io.read_bytes(path)
 
 
 def statscrew(raw,name,club,role,interval):

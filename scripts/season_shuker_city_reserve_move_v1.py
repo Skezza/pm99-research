@@ -17,6 +17,7 @@ from bs4 import BeautifulSoup
 from app.fdi_indexed import IndexedFDIFile
 from app.player_initial_order import OrderReplacement, patch_initial_orders, read_initial_order
 from app.xor import xor_encode, xor_decode
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2 as packages
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
@@ -60,22 +61,22 @@ def _parent(base) -> dict[str, Any]:
 def _implementations():
     from app import player_initial_order, eq_jug_linked
     return [dict(name=name,path=registry.relative_workspace_path(path),sha256=_sha_file(path))
-        for name,path in sorted({"adapter":Path(__file__).resolve(),
-            "package_schema":Path(packages.__file__).resolve(),
-            "order_writer":Path(player_initial_order.__file__).resolve(),
-            "eq_roster_codec":Path(eq_jug_linked.__file__).resolve()}.items())]
+        for name,path in sorted({"adapter":storage_io.resolve(Path(__file__)),
+            "package_schema":storage_io.resolve(Path(packages.__file__)),
+            "order_writer":storage_io.resolve(Path(player_initial_order.__file__)),
+            "eq_roster_codec":storage_io.resolve(Path(eq_jug_linked.__file__))}.items())]
 
 
 def _sources() -> dict[str, Any]:
     for path, expected in ((PROFILE,PROFILE_SHA),(RECEIPT,RECEIPT_SHA)):
-        if path.is_symlink() or not path.is_file() or _sha_file(path)!=expected:
+        if path.is_symlink() or not storage_io.is_file(path) or _sha_file(path)!=expected:
             raise ValueError("retained Shuker source or receipt changed")
     receipt=pipeline.read_json_file(RECEIPT)
     rows=[r for r in receipt.get("captures",[]) if r.get("path","").endswith("/chris_shuker_11v11.html")]
     if (len(rows)!=1 or rows[0].get("sha256")!=PROFILE_SHA or rows[0].get("http_status")!=200
         or rows[0].get("requested_url")!="https://www.11v11.com/players/chris-shuker-8124/"):
         raise ValueError("Shuker captured-source receipt does not bind exact provider profile")
-    raw=PROFILE.read_bytes()
+    raw=storage_io.read_bytes(PROFILE)
     text=" ".join(BeautifulSoup(raw,"html.parser").get_text(" ",strip=True).split())
     anchors=("Chris Shuker","Date of birth 09 May 1982","Nationality English",
         "Manchester City 21 Sep 1999 17 Mar 2004","Macclesfield Town 22 Mar 2001 05 May 2001 L",
@@ -99,9 +100,9 @@ def _sources() -> dict[str, Any]:
 def _read_request(input_path) -> tuple[Path,dict]:
     p=Path(input_path)
     if not p.is_absolute(): p=registry.ROOT/p
-    p=p.resolve()
+    p=storage_io.resolve(p)
     registry.relative_workspace_path(p)
-    if p.is_symlink() or not p.is_file(): raise ValueError("typed Shuker input must be retained regular file")
+    if p.is_symlink() or not storage_io.is_file(p): raise ValueError("typed Shuker input must be retained regular file")
     request=pipeline.read_json_file(p)
     if (set(request)!={"schema","mode","season","release_id","parent","case_id","actor","source_scope"}
         or request.get("schema")!=SCHEMA+"-input" or request.get("mode")!=MODE
@@ -133,7 +134,7 @@ def _postimages(base, request, input_path, expected=None):
         raise ValueError("registered parent files do not match the typed request")
     sources=_sources()
     implementations=_implementations()
-    input_sha=digest(input_path.read_bytes())
+    input_sha=digest(storage_io.read_bytes(input_path))
     cache_key=digest(packages.canonical_json_bytes({"parent":parent,"input_sha256":input_sha,
         "sources":sources,"implementations":implementations,"schema":SCHEMA,"mode":MODE}))
     if cache_key in _CACHE:
@@ -143,8 +144,8 @@ def _postimages(base, request, input_path, expected=None):
             raise ValueError("cached Shuker plan does not reproduce exact expected plan: "+repr(keys))
         return cached
     package=pipeline.read_json_file(base.package_path)
-    jug=(base.game_path/"DBDAT/JUG98030.FDI").read_bytes()
-    eq=(base.game_path/"DBDAT/EQ98030.FDI").read_bytes()
+    jug=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     city,macc=_club(package,CLUB_CITY),_club(package,CLUB_MACC)
     actor=_actor(package)
     if (city["name"],macc["name"],actor["id"],actor["name"],actor["source_name"],
@@ -211,7 +212,7 @@ def _postimages(base, request, input_path, expected=None):
         "reason":"The native value 7 is the former Macc carrier number; no City shirt number is sourced."})
     result["artifacts"]=[a for a in result["artifacts"] if a.get("id")!=aid]
     plan={"schema":SCHEMA,"mode":MODE,"season":SEASON,"release_id":base.release_id,
-        "source_input":{"path":registry.relative_workspace_path(input_path),"sha256":digest(input_path.read_bytes())},
+        "source_input":{"path":registry.relative_workspace_path(input_path),"sha256":digest(storage_io.read_bytes(input_path))},
         "request":request,"parent":parent,"source_evidence":sources,"implementation_bindings":implementations,
         "actor_before":before_actor,"city_roster_before":before_city,"macc_roster_before":before_macc,
         "macc_substitutes_before":before_subs,
@@ -370,7 +371,7 @@ def rebase_request(base,input_path=INPUT):
 def verify(base,plan):
     _validate_plan_shape(plan)
     path=registry.ROOT/plan["source_input"]["path"]
-    if digest(path.read_bytes())!=plan["source_input"]["sha256"] or _postimages(base,pipeline.read_json_file(path),path,expected=plan)["plan"]!=plan:
+    if digest(storage_io.read_bytes(path))!=plan["source_input"]["sha256"] or _postimages(base,pipeline.read_json_file(path),path,expected=plan)["plan"]!=plan:
         raise ValueError("Shuker retained source/current parent no longer reproduces exact plan")
 
 
@@ -410,11 +411,11 @@ def reconstruction(previous,release_id):
     if receipt.get("compilation_mode")!=MODE:return None
     relative=getattr(previous,"locator",{}).get("sourced_profile_assignment_plan_path")
     if not relative: raise ValueError("Shuker SOURCE receipt lacks assignment-plan locator")
-    path=(registry.ROOT/relative).resolve()
+    path=storage_io.resolve(registry.ROOT / relative)
     registry.relative_workspace_path(path)
     plan=pipeline.read_json_file(path)
     _validate_plan_shape(plan)
-    if path!=(previous.package_path.parent/filename(plan)).resolve() or digest(path.read_bytes())!=receipt.get("original_profile_assignment_plan_sha256"):
+    if path!=storage_io.resolve(previous.package_path.parent / filename(plan)) or digest(storage_io.read_bytes(path))!=receipt.get("original_profile_assignment_plan_sha256"):
         raise ValueError("Shuker SOURCE plan path/SHA differs from compiler receipt")
     base=registry.load_registered_release(SEASON,plan["release_id"])
     verify(base,plan)
@@ -423,7 +424,7 @@ def reconstruction(previous,release_id):
         raise ValueError("Shuker SOURCE artifact bytes differ from bound plan")
     expected_package=bind(pipeline.read_json_file(base.package_path),plan)
     expected_raw=packages.canonical_json_bytes(expected_package)
-    if previous.package_path.read_bytes()!=expected_raw:
+    if storage_io.read_bytes(previous.package_path)!=expected_raw:
         raise ValueError("Shuker SOURCE recipe is not byte-identical to complete expected package")
     descriptor=previous.package_path.parent/"role-delta-input.json"
     expected_descriptor={"season":SEASON,"release_id":base.release_id,
@@ -436,7 +437,7 @@ def reconstruction(previous,release_id):
         profile_assignment_plan_path=path)
     rebuilt=registry.load_registered_release(SEASON,release_id)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path,pipeline.read_json_file(previous.inventory_path))
-    if rebuilt.package_path.read_bytes()!=expected_raw:
+    if storage_io.read_bytes(rebuilt.package_path)!=expected_raw:
         raise ValueError("Shuker complete SOURCE recipe replay differs")
     return {"season":SEASON,"release_id":release_id,
         "complete_game_inventory_identical":True,"complete_recipe_identical":True,

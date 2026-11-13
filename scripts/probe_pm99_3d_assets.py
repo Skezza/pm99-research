@@ -7,6 +7,14 @@ copy without extracting or writing proprietary payloads.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -60,7 +68,7 @@ def entropy(sample: bytes) -> float:
 class PEImage:
     def __init__(self, path: Path) -> None:
         self.path = path
-        self.data = path.read_bytes()
+        self.data = storage_io.read_bytes(path)
         e_lfanew = struct.unpack_from("<I", self.data, 0x3C)[0]
         section_count = struct.unpack_from("<H", self.data, e_lfanew + 6)[0]
         optional_size = struct.unpack_from("<H", self.data, e_lfanew + 20)[0]
@@ -168,7 +176,7 @@ def scan_riff(data: bytes, *, limit: int = 50) -> list[dict[str, Any]]:
 
 
 def file_summary(path: Path) -> dict[str, Any]:
-    data = path.read_bytes()
+    data = storage_io.read_bytes(path)
     sample = data[: min(len(data), 1024 * 1024)]
     return {
         "path": str(path),
@@ -195,13 +203,13 @@ def main() -> int:
     root = args.game_root
     exe_path = root / "MANAGPRE.EXE"
     simuldat = root / "Simuldat"
-    if not exe_path.exists():
+    if not storage_io.exists(exe_path):
         raise SystemExit(f"MANAGPRE.EXE not found under {root}")
-    if not simuldat.exists():
+    if not storage_io.exists(simuldat):
         raise SystemExit(f"Simuldat directory not found under {root}")
 
     pe = PEImage(exe_path)
-    simuldat_files = sorted(path for path in simuldat.rglob("*") if path.is_file())
+    simuldat_files = sorted(path for path in storage_io.glob(simuldat, '*', recursive=True) if storage_io.is_file(path))
     key_files = [
         simuldat / "Modelos.pkf",
         simuldat / "Camaras.pkf",
@@ -214,22 +222,22 @@ def main() -> int:
         "game_root": str(root),
         "exe": {
             "path": str(exe_path),
-            "size": exe_path.stat().st_size,
-            "sha1": sha1_short(exe_path.read_bytes()),
+            "size": storage_io.size(exe_path),
+            "sha1": sha1_short(storage_io.read_bytes(exe_path)),
             "image_base": pe.image_base,
             "sections": pe.sections,
             "term_hits": pe.search_terms(),
         },
         "simuldat": {
             "file_count": len(simuldat_files),
-            "total_bytes": sum(path.stat().st_size for path in simuldat_files),
+            "total_bytes": sum(storage_io.size(path) for path in simuldat_files),
             "extension_counts": {
                 suffix or "<none>": sum(
                     1 for path in simuldat_files if (path.suffix.lower() or "<none>") == suffix
                 )
                 for suffix in sorted({path.suffix.lower() or "<none>" for path in simuldat_files})
             },
-            "key_files": [file_summary(path) for path in key_files if path.exists()],
+            "key_files": [file_summary(path) for path in key_files if storage_io.exists(path)],
         },
     }
     print(json.dumps(report, indent=2, sort_keys=True))

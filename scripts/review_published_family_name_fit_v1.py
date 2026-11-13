@@ -12,6 +12,7 @@ from pathlib import Path
 import sys
 
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_published_family_component_v1 as family
 from scripts import season_package_compiler_v2 as compiler
 from scripts import season_release_registry_v1 as registry
@@ -20,9 +21,9 @@ from app.fdi_indexed import IndexedFDIFile
 
 
 def run(plan_root,output):
-    if output.exists():raise ValueError('published family name-fit review is immutable')
-    paths=sorted(plan_root.glob('*/ownership-plan.json'))
-    documents=[(path,json.loads(path.read_text())) for path in paths]
+    if storage_io.exists(output):raise ValueError('published family name-fit review is immutable')
+    paths=sorted(storage_io.glob(plan_root, '*/ownership-plan.json'))
+    documents=[(path,json.loads(storage_io.read_text(path))) for path in paths]
     if not documents:raise ValueError('family name-fit review requires completed original plans')
     person_bindings=[d['bindings']['published_person_supplement'] for _,d in documents]
     if any(b!=person_bindings[0] for b in person_bindings):raise ValueError('family name-fit inputs use different original person sources')
@@ -39,7 +40,7 @@ def run(plan_root,output):
         release=registry.load_registered_release(doc['season'],doc['release_id'])
         jug=release.game_path/'DBDAT/JUG98030.FDI'
         if registry.sha256_file(jug)!=doc['jug_sha256']:raise ValueError('reviewed original native name window changed')
-        original=jug.read_bytes();entries={e.record_id:e for e in IndexedFDIFile.from_bytes(original).entries}
+        original=storage_io.read_bytes(jug);entries={e.record_id:e for e in IndexedFDIFile.from_bytes(original).entries}
         for problem in pending:
             player_id=problem['player_id'];candidate=next(p for p in problem['candidates'] if p['player_id']==player_id)
             raw=entries[candidate['carrier_id']].decode_payload(original);current=compiler._player_name(raw,record_id=candidate['carrier_id'])

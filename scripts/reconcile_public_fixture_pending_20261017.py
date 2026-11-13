@@ -6,6 +6,7 @@ already introduced by a pending game cannot be added to another native slot.
 import copy
 from datetime import UTC,datetime
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry,season_pipeline_v2 as pipeline
 from scripts import season_frozen_fixture_reserve_v2 as source
 from scripts.build_discovered_fixture_batches_20261017 import ROOT as PRIOR,RELEASE as PARENT
@@ -16,12 +17,12 @@ ROOT=PRIOR.parent/'frozen-fixture-next-batches-v2'
 
 def reconcile():
     output=ROOT/'reconciled-discovery.json'
-    if output.exists():raise ValueError('completed source reconciliation must not repeat')
+    if storage_io.exists(output):raise ValueError('completed source reconciliation must not repeat')
     original=ROOT/'discovery.json';result=copy.deepcopy(pipeline.read_json_file(original));decisions=[]
     for row in result['seasons']:
         if not row['candidates']:continue
         season=row['season'];proof_path=PRIOR/season/'complete-SOURCE-replay.json'
-        if not proof_path.exists():raise ValueError('expected pending source-complete parent is not proved')
+        if not storage_io.exists(proof_path):raise ValueError('expected pending source-complete parent is not proved')
         proof=pipeline.read_json_file(proof_path)
         if not proof['complete_game_inventory_identical'] or not proof['complete_recipe_identical']:
             raise ValueError('pending parent lacks whole SOURCE equality')
@@ -30,7 +31,7 @@ def reconcile():
         pipeline.assert_tree_matches_inventory(parent.game_path,pipeline.read_json_file(parent.inventory_path))
         old_players={p['carrier_id']:p for p in before['players']};new_players={p['carrier_id']:p for p in actual['players']}
         represented={source.identity(p)[0] for p in actual['players']}
-        before_jug=(old.game_path/'DBDAT/JUG98030.FDI').read_bytes();after_jug=(parent.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+        before_jug=storage_io.read_bytes(old.game_path / 'DBDAT/JUG98030.FDI');after_jug=storage_io.read_bytes(parent.game_path / 'DBDAT/JUG98030.FDI')
         before_entries={e.record_id:e for e in IndexedFDIFile.from_bytes(before_jug).entries}
         after_entries={e.record_id:e for e in IndexedFDIFile.from_bytes(after_jug).entries}
         accepted=[]

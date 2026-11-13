@@ -3,6 +3,7 @@ import copy
 import json
 import tempfile
 from pathlib import Path
+from scripts import json_storage_io_v1 as storage_io
 from scripts import prepare_estudiantes_2000_source_allocation_v1 as source
 from scripts import season_pipeline_v2 as pipeline
 
@@ -11,7 +12,7 @@ POLICY='original-August-cup-XI-and-published-bench-fixed16-with-unresolved-Gomez
 
 
 def prepare(output,baseline_release_id=None):
-    if output.exists():raise ValueError('verified source inputs are immutable')
+    if storage_io.exists(output):raise ValueError('verified source inputs are immutable')
     with tempfile.TemporaryDirectory(prefix='pm99-estudiantes-original-') as temporary:
         proposal=source.prepare(Path(temporary)/'allocation.json',baseline_release_id)
     facts={}

@@ -9,6 +9,7 @@ import re
 
 from bs4 import BeautifulSoup
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import monagas_2003_original_august_v1 as opening
 from scripts import season_historical_roster_audit_v1 as roster
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
@@ -22,7 +23,7 @@ LABELS = {'Hugo Luzardi': 'Hugo Lusardi', 'Jhony Alejo': 'Johny Alejo'}
 
 
 def prepare(output):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('original fixed16 identity review is immutable')
     _, raw, match_binding = source_rows('venezuela-2002-2003-original-RSSSF-Sudamericana-lineups')
     actual = opening.parse(raw)
@@ -55,7 +56,7 @@ def prepare(output):
         raw_path = registry.ROOT / batch['raw_path']
         if registry.sha256_file(raw_path) != batch['raw_sha256']:
             raise ValueError('original biography response changed')
-        response = json.loads(raw_path.read_bytes())
+        response = json.loads(storage_io.read_bytes(raw_path))
         for gap in batch['gaps']:
             if gap['reason'] != 'original-DOB-unpublished-or-unconfirmed':
                 continue

@@ -1,4 +1,5 @@
 """Verify complete foreign source replacement against the pinned identity graph."""
+from scripts import json_storage_io_v1 as storage_io
 from scripts import prepare_ofk_2004_source_allocation_v1 as source
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import audit_published_player_identities_v1 as identities
@@ -9,7 +10,7 @@ from scripts import season_duplicate_ownership_plan_v1 as planner
 
 
 def verify(candidate, output, proposal_path):
-    if output.exists(): raise ValueError('foreign identity evidence is immutable')
+    if storage_io.exists(output): raise ValueError('foreign identity evidence is immutable')
     receipt = pipeline.read_json_file(candidate / 'candidate-receipt.json')
     if registry.sha256_file(proposal_path) != receipt['source_proposal_sha256']:
         raise ValueError('private foreign source proposal changed')
@@ -45,9 +46,9 @@ def verify(candidate, output, proposal_path):
         if set(current) != {r['id'] for r in before[collection]} or any(
                 current[r['id']] != r for r in before[collection] if r['id'] not in allowed):
             raise ValueError('foreign source transaction changed another club/manager')
-    archive = (candidate / 'game/DBDAT/MINIFOTO.PKF').read_bytes()
+    archive = storage_io.read_bytes(candidate / 'game/DBDAT/MINIFOTO.PKF')
     cleared, _ = native.delta.no_photo_archive(archive, corrected)
-    if cleared != archive or any((candidate / 'game/DBDAT/MINIFOTO' / f'J96{id:05d}.BMP').exists() for id in corrected):
+    if cleared != archive or any(storage_io.exists(candidate / 'game/DBDAT/MINIFOTO' / f'J96{id:05d}.BMP') for id in corrected):
         raise ValueError('foreign replacement still has a displaced player portrait')
     rows = [p for p in after['players'] if p['carrier_id'] in corrected]
     count = len(proposal['allocation'])

@@ -10,6 +10,14 @@ on an empty, ambiguous, duplicate, or unmatched cell.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -19,7 +27,7 @@ from pathlib import Path
 from typing import Any
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR = ROOT / "upstream" / "pm99-skezmod-db-editor"
 if str(EDITOR) not in sys.path:
     sys.path.insert(0, str(EDITOR))
@@ -84,7 +92,7 @@ def _key(value: str) -> str:
 
 
 def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def _resolve_name(raw_label: str) -> str:
@@ -115,7 +123,7 @@ def _entry_for_label(label: str, catalog: dict[str, list[Any]]) -> Any:
 
 
 def build_map(*, selector_path: Path, eq_path: Path, jug_path: Path) -> dict[str, Any]:
-    capture = json.loads(selector_path.read_text(encoding="utf-8"))
+    capture = json.loads(storage_io.read_text(selector_path, encoding='utf-8'))
     divisions = list(capture.get("divisions") or [])
     if len(divisions) != 4:
         raise ValueError(f"Expected four selector divisions, got {len(divisions)}")
@@ -230,12 +238,12 @@ def main() -> int:
     args = parser.parse_args()
 
     result = build_map(
-        selector_path=args.selector_capture.resolve(),
-        eq_path=args.eq_file.resolve(),
-        jug_path=args.jug_file.resolve(),
+        selector_path=storage_io.resolve(args.selector_capture),
+        eq_path=storage_io.resolve(args.eq_file),
+        jug_path=storage_io.resolve(args.jug_file),
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(result, indent=2, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(args.output, json.dumps(result, indent=2, ensure_ascii=False, sort_keys=True) + '\n', encoding='utf-8')
     print(json.dumps({"status": result["status"], "output": str(args.output), "eq_record_ids": result["eq_record_ids"]}))
     return 0
 

@@ -3,6 +3,14 @@
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import copy
 import hashlib
@@ -22,8 +30,8 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--output-audit", type=Path, required=True)
     args = parser.parse_args()
-    source_raw = args.preallocation.read_bytes()
-    override_raw = args.overrides.read_bytes()
+    source_raw = storage_io.read_bytes(args.preallocation)
+    override_raw = storage_io.read_bytes(args.overrides)
     result = copy.deepcopy(json.loads(source_raw))
     overrides = json.loads(override_raw)
     if result.get("schema_version") != "pm99-opening-squad-preallocation-v1":
@@ -89,7 +97,7 @@ def main() -> int:
     }
     for path, value in ((args.output, result), (args.output_audit, audit)):
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(canonical(value))
+        storage_io.write_bytes(path, canonical(value))
     print(json.dumps({"applied_correction_count": len(applied)}, sort_keys=True))
     return 0
 

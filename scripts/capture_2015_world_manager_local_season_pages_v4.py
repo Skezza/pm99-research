@@ -25,6 +25,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts.capture_2015_world_manager_history_v2 import canonical_json_bytes
 from scripts.capture_2015_world_manager_multilingual_wikipedia_v3 import (
     DEFAULT_AS_OF,
@@ -169,9 +170,9 @@ def main() -> int:
     parser.add_argument("--as-of", default=DEFAULT_AS_OF)
     parser.add_argument("--jobs", default=4, type=int)
     args = parser.parse_args()
-    if args.output.exists():
+    if storage_io.exists(args.output):
         parser.error(f"refusing to overwrite existing output: {args.output}")
-    raw = args.multilingual_history.read_bytes()
+    raw = storage_io.read_bytes(args.multilingual_history)
     history = json.loads(raw.decode("utf-8"))
     if raw != canonical_json_bytes(history):
         parser.error("multilingual history receipt must use canonical JSON bytes")
@@ -180,7 +181,7 @@ def main() -> int:
     except CaptureError as exc:
         parser.error(str(exc))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_json_bytes(receipt))
+    storage_io.write_bytes(args.output, canonical_json_bytes(receipt))
     print(json.dumps(receipt["coverage"], sort_keys=True))
     return 0
 

@@ -10,13 +10,21 @@ foreign carrier to supply the stock English-only BIG* records.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import json
 import re
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR = ROOT / "upstream" / "pm99-skezmod-db-editor"
 for candidate in (ROOT, EDITOR):
     if str(candidate) not in sys.path:
@@ -50,12 +58,12 @@ def archive_ids(path: Path) -> set[int]:
 
 def main() -> int:
     args = parse_args()
-    dbdat = args.dbdat.resolve()
+    dbdat = storage_io.resolve(args.dbdat)
     eq_path = dbdat / "EQ98030.FDI"
-    if not eq_path.is_file():
+    if not storage_io.is_file(eq_path):
         raise SystemExit(f"missing indexed team database: {eq_path}")
 
-    eq_data = eq_path.read_bytes()
+    eq_data = storage_io.read_bytes(eq_path)
     indexed = IndexedFDIFile.from_bytes(eq_data)
     carrier_modes: dict[int, int] = {}
     for entry in indexed.entries:
@@ -68,7 +76,7 @@ def main() -> int:
     archive_id_sets: dict[str, set[int]] = {}
     for archive_name in ARCHIVES:
         path = dbdat / archive_name
-        if not path.is_file():
+        if not storage_io.is_file(path):
             raise SystemExit(f"missing kit archive: {path}")
         ids = archive_ids(path)
         archive_id_sets[archive_name] = ids
@@ -104,7 +112,7 @@ def main() -> int:
         },
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    storage_io.write_text(args.output, json.dumps(result, indent=2) + '\n', encoding='utf-8')
     print(json.dumps(result, indent=2))
     return 0
 

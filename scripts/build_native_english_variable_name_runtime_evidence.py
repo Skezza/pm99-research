@@ -3,6 +3,14 @@
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import html
 import json
@@ -11,7 +19,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 
 DEFAULT_PROBE_DIR = REPO_ROOT / ".local" / "full_game_variable_name_native_english30_20260503T_probe"
 DEFAULT_RUNNER_ROOT = REPO_ROOT / "upstream" / "pm99-runner" / "docs" / "artifacts" / "pm99_runner"
@@ -29,15 +37,15 @@ def _parse_args() -> argparse.Namespace:
 
 
 def _load_json(path: Path) -> Any:
-    if not path.is_file():
+    if not storage_io.is_file(path):
         return None
-    return json.loads(path.read_text(encoding="utf-8"))
+    return json.loads(storage_io.read_text(path, encoding='utf-8'))
 
 
 def _copy_screenshot(source: Path, dest_root: Path, relative: Path) -> str:
     destination = dest_root / "native_english30_screens" / relative
     destination.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(source, destination)
+    storage_io.copy_file(source, destination, metadata=True)
     return destination.relative_to(dest_root).as_posix()
 
 
@@ -45,9 +53,9 @@ def _find_proof_screens(club_dir: Path) -> list[Path]:
     screen_dir = club_dir / "screens"
     if not screen_dir.is_dir():
         return []
-    preferred = sorted(screen_dir.glob("*squad_inspect_filters_enabled*.png"))
-    preferred += sorted(screen_dir.glob("*squad_inspect.png"))
-    preferred += sorted(screen_dir.glob("*squad_inspect_scroll*.png"))
+    preferred = sorted(storage_io.glob(screen_dir, '*squad_inspect_filters_enabled*.png'))
+    preferred += sorted(storage_io.glob(screen_dir, '*squad_inspect.png'))
+    preferred += sorted(storage_io.glob(screen_dir, '*squad_inspect_scroll*.png'))
     seen: set[Path] = set()
     out: list[Path] = []
     for path in preferred:
@@ -57,13 +65,13 @@ def _find_proof_screens(club_dir: Path) -> list[Path]:
         out.append(path)
     if out:
         return out[:3]
-    return sorted(screen_dir.glob("*.png"))[-3:]
+    return sorted(storage_io.glob(screen_dir, '*.png'))[-3:]
 
 
 def build(args: argparse.Namespace) -> dict[str, Any]:
-    probe_dir = Path(args.probe_dir).expanduser().resolve()
-    runner_root = Path(args.runner_artifact_root).expanduser().resolve()
-    output_dir = Path(args.output_dir).expanduser().resolve()
+    probe_dir = storage_io.resolve(Path(args.probe_dir).expanduser())
+    runner_root = storage_io.resolve(Path(args.runner_artifact_root).expanduser())
+    output_dir = storage_io.resolve(Path(args.output_dir).expanduser())
     output_dir.mkdir(parents=True, exist_ok=True)
 
     probe_summary = _load_json(probe_dir / "summary.json")
@@ -91,7 +99,7 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
         batch_dir = runner_root / run_tag if run_tag else Path()
         safe_key = "".join(ch if ch.isalnum() or ch == "_" else "_" for ch in club_key)
         status_path = batch_dir / "club_status" / f"{safe_key}.status"
-        status = status_path.read_text(encoding="utf-8").strip() if status_path.is_file() else "missing"
+        status = storage_io.read_text(status_path, encoding='utf-8').strip() if storage_io.is_file(status_path) else "missing"
         club_dir = batch_dir / "clubs" / safe_key
         club_summary = _load_json(club_dir / "summary.json") or {}
         screenshots: list[str] = []
@@ -143,11 +151,8 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
             "family_counts": dict(Counter(str(row.get("family") or "") for row in readback)),
         },
     }
-    (output_dir / "native_english30_runtime_summary.json").write_text(
-        json.dumps(summary, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
-    (output_dir / "native_english30_runtime.html").write_text(_render_html(summary), encoding="utf-8")
+    storage_io.write_text(output_dir / 'native_english30_runtime_summary.json', json.dumps(summary, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+    storage_io.write_text(output_dir / 'native_english30_runtime.html', _render_html(summary), encoding='utf-8')
     return summary
 
 

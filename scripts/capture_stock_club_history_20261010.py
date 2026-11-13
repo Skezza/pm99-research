@@ -2,6 +2,7 @@
 from datetime import UTC, datetime
 import requests
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 
 ROOT = registry.ROOT / '.local/consolidated-audit-20261009/stock-club-history-v1'
@@ -16,7 +17,7 @@ def main():
     for filename, url in SOURCES.items():
         path = ROOT / filename
         receipt = ROOT / (filename + '.source.json')
-        if path.exists():
+        if storage_io.exists(path):
             old = pipeline.read_json_file(receipt)
             if old['url'] != url or old['sha256'] != registry.sha256_file(path):
                 raise ValueError('retained original history evidence changed')
@@ -25,7 +26,7 @@ def main():
         response.raise_for_status()
         if len(response.content) > 20 * 1024 ** 2:
             raise ValueError('history source exceeds bounded download')
-        path.write_bytes(response.content)
+        storage_io.write_bytes(path, response.content)
         pipeline.write_canonical_json(receipt, dict(url=url, utc=datetime.now(UTC).isoformat(),
             sha256=registry.sha256_file(path), bytes=len(response.content),
             approves_target_season_squad=False))

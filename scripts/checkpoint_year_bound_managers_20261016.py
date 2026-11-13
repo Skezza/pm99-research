@@ -5,6 +5,7 @@ Every selected game is checked before any preferred catalogue is changed.
 """
 import copy
 from datetime import UTC, datetime
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_cached_manager_repairs_v2_20261016 as source
 from scripts import checkpoint_cached_managers_20261016 as checks
@@ -33,7 +34,7 @@ def verify(season):
 def run():
     previous=ROOT.parent/'release-delivery-checklist-v48.json'
     output=ROOT.parent/'release-delivery-checklist-v49.json'
-    if output.exists():raise ValueError('completed manager checkpoint must not repeat')
+    if storage_io.exists(output):raise ValueError('completed manager checkpoint must not repeat')
     result=copy.deepcopy(pipeline.read_json_file(previous))
     originals={r['season']:r for r in result['current_release_bindings']}
     seasons=[s for s in registry.supported_seasons() if s!='2015-16']
@@ -58,7 +59,7 @@ def run():
         season=row['season'];root=registry.ROOT/row['evidence_root']
         retained(root/'prepublication-proof-v2.json',row)
         publisher.register_completed_delta(season,row['release_id'])
-        if not (root/'final-attestation-v2.json').exists():
+        if not storage_io.exists(root / 'final-attestation-v2.json'):
             retained(root/'final-attestation-v2.json',runtime.attest(season=season,
                 evidence_dir=registry.ROOT/'.local/runlogs/pm99_runner'/row['run_tag']))
         valid=registry.validate_preferred_release(season,level='playable')

@@ -5,6 +5,7 @@ leave identical inherited English source-package copies in every workspace.
 Scope only two years initially; never walk native game/ trees.
 """
 from collections import Counter, defaultdict
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
 
@@ -13,7 +14,7 @@ ROOT=registry.ROOT/'.local/cleanup-20261017/duplicated-ancestor-packages'
 
 def main():
     output=ROOT/'two-season-readonly-audit.json'
-    if output.exists():raise ValueError('completed metadata storage audit must not repeat')
+    if storage_io.exists(output):raise ValueError('completed metadata storage audit must not repeat')
     ROOT.mkdir(parents=True,exist_ok=True)
     rows=[];hashed={}
     for season in ('2016-17','2017-18'):
@@ -21,10 +22,10 @@ def main():
         for workspace in sorted(folder.iterdir()):
             if not workspace.is_dir() or workspace.is_symlink():continue
             path=workspace/'english-season-package.json'
-            if not path.is_file() or path.is_symlink():continue
-            info=path.stat();inode=(info.st_dev,info.st_ino)
+            if not storage_io.is_file(path) or path.is_symlink():continue
+            info=storage_io.stat_result(path);inode=(info.st_dev,info.st_ino)
             if inode not in hashed:hashed[inode]=registry.sha256_file(path)
-            after=path.stat()
+            after=storage_io.stat_result(path)
             if (info.st_dev,info.st_ino,info.st_size,info.st_mtime_ns)!=(after.st_dev,after.st_ino,after.st_size,after.st_mtime_ns):
                 raise ValueError('ancestor package changed during read-only storage audit')
             rows.append(dict(path=registry.relative_workspace_path(path),season=season,sha256=hashed[inode],

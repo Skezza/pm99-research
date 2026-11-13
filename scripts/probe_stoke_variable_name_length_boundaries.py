@@ -15,6 +15,14 @@ long case, recording both expected static failures without writing them.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import copy
 import json
@@ -24,9 +32,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR_ROOT = REPO_ROOT / "upstream" / "pm99-skezmod-db-editor"
-SCRIPT_DIR = Path(__file__).resolve().parent
+SCRIPT_DIR = storage_io.resolve(Path(__file__)).parent
 if str(EDITOR_ROOT) not in sys.path:
     sys.path.insert(0, str(EDITOR_ROOT))
 if str(SCRIPT_DIR) not in sys.path:
@@ -80,13 +88,13 @@ def _parse_args() -> argparse.Namespace:
 
 
 def _copy_root(clean_game_base: Path, fixed_stoke_dbdat: Path, out_game: Path, *, force: bool) -> None:
-    if out_game.exists():
+    if storage_io.exists(out_game):
         if not force:
             raise SystemExit(f"Output exists: {out_game}")
         shutil.rmtree(out_game)
     shutil.copytree(clean_game_base, out_game, symlinks=True)
     out_dbdat = out_game / "DBDAT"
-    if out_dbdat.exists():
+    if storage_io.exists(out_dbdat):
         shutil.rmtree(out_dbdat)
     shutil.copytree(fixed_stoke_dbdat, out_dbdat, symlinks=True)
 
@@ -143,9 +151,9 @@ def _patched_row(
 
 def main() -> int:
     args = _parse_args()
-    clean_game_base = Path(args.clean_game_base).expanduser().resolve()
-    fixed_stoke_dbdat = Path(args.fixed_stoke_dbdat).expanduser().resolve()
-    out_game = Path(args.out_game).expanduser().resolve()
+    clean_game_base = storage_io.resolve(Path(args.clean_game_base).expanduser())
+    fixed_stoke_dbdat = storage_io.resolve(Path(args.fixed_stoke_dbdat).expanduser())
+    out_game = storage_io.resolve(Path(args.out_game).expanduser())
     _copy_root(clean_game_base, fixed_stoke_dbdat, out_game, force=bool(args.force))
 
     artifact_dir = out_game / "artifacts" / "name_length_boundaries"
@@ -159,7 +167,7 @@ def main() -> int:
     roster_rows = _resolve_roster(team_file, player_file, args.team_query)
     roster_by_name = {_norm(str(row["player_name"])): row for row in roster_rows}
 
-    file_data = player_file.read_bytes()
+    file_data = storage_io.read_bytes(player_file)
     indexed = IndexedFDIFile.from_bytes(file_data)
     entries_by_id = {int(entry.record_id): entry for entry in indexed.entries}
 
@@ -251,8 +259,8 @@ def main() -> int:
             "MIDAS11.DLL": sha256(out_game / "MIDAS11.DLL"),
         },
     }
-    (artifact_dir / "boundary_manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
-    (artifact_dir / "boundary_patches.json").write_text(json.dumps(patches, indent=2), encoding="utf-8")
+    storage_io.write_text(artifact_dir / 'boundary_manifest.json', json.dumps(manifest, indent=2), encoding='utf-8')
+    storage_io.write_text(artifact_dir / 'boundary_patches.json', json.dumps(patches, indent=2), encoding='utf-8')
     print(json.dumps({"ok": True, "out_game": str(out_game), "manifest": str(artifact_dir / "boundary_manifest.json")}, indent=2))
     return 0
 

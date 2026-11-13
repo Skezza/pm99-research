@@ -26,6 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2 as package_v2
 
 
@@ -123,7 +124,7 @@ def _read_canonical_package(path: Path) -> dict[str, Any]:
 
 def _read_json(path: Path, *, label: str) -> dict[str, Any]:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(storage_io.read_text(path, encoding='utf-8'))
     except (OSError, json.JSONDecodeError) as exc:
         raise ReconciliationError(f"cannot read {label}: {path}: {exc}") from exc
     if not isinstance(value, dict):
@@ -385,7 +386,7 @@ def main(argv: list[str] | None = None) -> int:
             decisions = _read_json(args.decisions, label="opening-date decisions")
             result = apply_decisions(result, decisions)
         args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_bytes(_canonical_bytes(result))
+        storage_io.write_bytes(args.output, _canonical_bytes(result))
         print(json.dumps({"output": str(args.output), **result["summary"]}, sort_keys=True))
     except (ReconciliationError, package_v2.PackageValidationError, OSError) as exc:
         print(f"opening-date identity reconciliation error: {exc}", file=sys.stderr)

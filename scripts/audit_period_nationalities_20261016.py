@@ -10,6 +10,7 @@ from collections import Counter,defaultdict
 from datetime import date
 from pathlib import Path
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry,season_pipeline_v2 as pipeline
 from scripts import season_historical_roster_audit_v1 as roster
 from scripts import season_package_compiler_v2 as compiler
@@ -41,13 +42,13 @@ def unanimous(rows):
 def audit(season):
     path=ROOT/(season+'.json')
     base=registry.load_preferred_release(season)
-    if path.exists():
+    if storage_io.exists(path):
         saved=pipeline.read_json_file(path)
         if saved['release_id']!=base.release_id or saved['manifest_sha256']!=base.manifest_sha256:
             raise ValueError('completed nationality audit baseline changed; use a new version')
         print(dict(season=season,reused_completed_exact_audit=True,**saved['counts']),flush=True);return saved
     sources,status=source_index(season)
-    data=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    data=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
     index={e.record_id:e for e in IndexedFDIFile.from_bytes(data).entries}
     countries=compiler._extract_country_codes_from_textos(base.game_path/'DBDAT/TEXTOS.PKF')
     counts=Counter();candidates=[];unsupported=[];errors=[]

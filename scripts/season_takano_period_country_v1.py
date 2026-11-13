@@ -5,6 +5,7 @@ import hashlib
 from pathlib import Path
 from app.fdi_indexed import IndexedFDIFile
 from app.indexed_jug_nationality import rewrite_indexed_native_nationalities
+from scripts import json_storage_io_v1 as storage_io
 from scripts import adjudicate_takano_period_identity_20261017 as evidence
 from scripts import season_original_country_policy_v2 as countries
 
@@ -37,7 +38,7 @@ def prepare(base):
     review=next(r for r in reviews['resolutions'] if r['name']=='Kenny Takano')
     actor=next(r['soccerbase_person'] for group in opening['identity_bridges'].values() for r in group
         if r['soccerbase_person']['source_player_id']==review['source_provider_person_id'])
-    if source.birthdays.resolve(review,actor,opening)!=choice['official_identity_resolution']:
+    if storage_io.resolve(source.birthdays, review, actor, opening)!=choice['official_identity_resolution']:
         raise ValueError('exact original numeric actor/official nickname/DOB bridge differs')
     package=pipeline.read_json_file(base.package_path)
     matches=[p for p in package['players'] if p['carrier_id']==10992]
@@ -46,7 +47,7 @@ def prepare(base):
     if (source.roster.normalise(player.get('source_name') or player['name'])!='kennytakano'
             or player['facts']['birth_date']!='1976-09-30' or club['carrier_id']!=3312 or club['name']!='Morecambe'):
         raise ValueError('country actor is not the exact adopted source-bound Morecambe person')
-    jug=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes();eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    jug=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI');eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     entry=next(e for e in IndexedFDIFile.from_bytes(jug).entries if e.record_id==10992)
     payload=entry.decode_payload(jug);native=source.roster.native_player(payload,10992);end=native['name_end']
     birth=date(int.from_bytes(bytes(v^0x61 for v in payload[end+14:end+16]),'little'),payload[end+13]^0x61,payload[end+12]^0x61).isoformat()
@@ -84,7 +85,7 @@ def bind(package,plan):
 
 def apply(jug,eq,plan):
     base=registry.load_registered_release(plan['season'],plan['release_id'])
-    before=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    before=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
     if digest(before)!=plan['jug_sha256'] or digest(eq)!=plan['eq_sha256']:raise ValueError('Takano whole native preimage differs')
     after,_=rewrite_indexed_native_nationalities(before,{10992:plan['native_country_code']})
     if jug not in (before,after):raise ValueError('Takano input neither complete preimage nor postimage')
@@ -100,7 +101,7 @@ def reconstruction(previous,release_id):
     base=registry.load_registered_release(previous.season,plan['release_id']);verify(base,plan)
     package=pipeline.read_json_file(previous.package_path)
     artifact=next(a for a in package['artifacts'] if a['id']==PREFIX+previous.season)
-    if (path.resolve()!=(previous.package_path.parent/FILENAME).resolve() or registry.sha256_file(path)!=artifact['sha256']
+    if (storage_io.resolve(path)!=storage_io.resolve(previous.package_path.parent / FILENAME) or registry.sha256_file(path)!=artifact['sha256']
             or bind(pipeline.read_json_file(base.package_path),plan)!=package):raise ValueError('edited Takano country recipe cannot be silently reconstructed')
     descriptor=previous.package_path.parent/'role-delta-input.json'
     if pipeline.read_json_file(descriptor)!=dict(season=base.season,release_id=base.release_id,
@@ -110,5 +111,5 @@ def reconstruction(previous,release_id):
     publisher.publish(previous.season,descriptor,release_id=release_id,source_release_id=base.release_id,profile_assignment_plan_path=path)
     rebuilt=registry.load_registered_release(previous.season,release_id)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path,pipeline.read_json_file(previous.inventory_path))
-    if rebuilt.package_path.read_bytes()!=previous.package_path.read_bytes():raise ValueError('Takano full SOURCE recipe differs')
+    if storage_io.read_bytes(rebuilt.package_path)!=storage_io.read_bytes(previous.package_path):raise ValueError('Takano full SOURCE recipe differs')
     return dict(season=previous.season,complete_game_inventory_identical=True,complete_recipe_identical=True,compilation_mode=MODE)

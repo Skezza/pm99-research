@@ -11,6 +11,7 @@ import re
 from bs4 import BeautifulSoup
 from app.fdi_indexed import IndexedFDIFile
 from app.player_initial_order import OrderReplacement, patch_initial_orders, read_initial_order
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as p, season_release_registry_v1 as r
 from scripts import season_package_v2 as packages, season_package_compiler_v2 as compiler
 from scripts import season_source_bound_fixture_membership_v1 as fixture
@@ -78,7 +79,7 @@ def verify_chronology(request, actor, clubs):
     sky = request['identity']
     if not re.fullmatch(r'https://www\.skysports\.com/football/player/[1-9][0-9]*/[a-z0-9-]+', sky['url']):
         raise ValueError('original Sky player profile required')
-    page = BeautifulSoup(_original(sky, sky['url']).read_bytes(), 'lxml')
+    page = BeautifulSoup(storage_io.read_bytes(_original(sky, sky['url'])), 'lxml')
     if not page.title or page.title.get_text().split(' - ')[0] != actor['name']:
         raise ValueError('independent full identity differs')
     dob = datetime.strptime(actor['facts']['birth_date'], '%Y-%m-%d').strftime('%d/%m/%Y')
@@ -138,8 +139,8 @@ def _reconstruct(base, request):
     source_proof = verify_chronology(request, actor, clubs)
     overlay = fixture._layer_path(main, base.package_path, 'english-season-package.json')
     english = p.read_json_file(overlay)
-    eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
-    jug = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
+    jug = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
     facts = native._native_facts(jug, request['carrier_id'])
     if (fixture._identity_key(facts['name']) != fixture._identity_key(request['name'])
             or facts['birth_date'] != request['birth_date']):
@@ -193,7 +194,7 @@ def _reconstruct(base, request):
 
 
 def prepare(base, input_path):
-    path = fixture._source_path(r.relative_workspace_path(Path(input_path).resolve()))
+    path = fixture._source_path(r.relative_workspace_path(storage_io.resolve(Path(input_path))))
     request = p.read_json_file(path)
     if request.get('schema') != SCHEMA + '-input':
         raise ValueError('typed dated reserve input required')
@@ -241,7 +242,7 @@ def updated_english(plan):
 def apply(jug, eq, plan):
     base = r.load_registered_release(plan['season'], plan['release_id'])
     result = _outputs(plan)
-    before = ((base.game_path / 'DBDAT/JUG98030.FDI').read_bytes(), (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes())
+    before = (storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI'), storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI'))
     after = result['jug'], result['eq']
     if (jug, eq) not in (before, after):
         raise ValueError('reserve writer requires complete preimage or complete postimage')
@@ -259,7 +260,7 @@ def reconstruction(previous, release_id, *, minimum_free_bytes=8*1024**3):
     plan = p.read_json_file(path)
     base = r.load_registered_release(plan['season'], plan['release_id'])
     verify(base, plan)
-    if path.resolve() != (previous.package_path.parent / filename(plan)).resolve():
+    if storage_io.resolve(path) != storage_io.resolve(previous.package_path.parent / filename(plan)):
         raise ValueError('reserve SOURCE plan must be child-owned')
     receipt = p.read_json_file(previous.compiler_receipt_path)
     if r.sha256_file(path) != receipt.get('original_profile_assignment_plan_sha256'):
@@ -269,6 +270,6 @@ def reconstruction(previous, release_id, *, minimum_free_bytes=8*1024**3):
         profile_assignment_plan_path=path, minimum_free_bytes=minimum_free_bytes)
     rebuilt = r.load_registered_release(base.season, release_id)
     p.assert_tree_matches_inventory(rebuilt.game_path, p.read_json_file(previous.inventory_path))
-    if rebuilt.package_path.read_bytes() != previous.package_path.read_bytes():
+    if storage_io.read_bytes(rebuilt.package_path) != storage_io.read_bytes(previous.package_path):
         raise ValueError('reserve SOURCE recipe differs')
     return dict(complete_recipe_identical=True, complete_game_inventory_identical=True)

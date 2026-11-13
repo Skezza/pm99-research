@@ -1,6 +1,7 @@
 """Capture each actual new game once; retain failed evidence, never overwrite."""
 import os
 import time
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import capture_registered_season_runtime_v1 as capture
 from scripts.capture_city_opening_exchange_20261011 import captured
@@ -18,7 +19,7 @@ def main():
         # Wait only for this exact built/native-proved/full-SOURCE candidate,
         # not an old preferred release or an unrelated worker's readiness.
         deadline=time.monotonic()+7200
-        while not (root/'complete-SOURCE-replay.json').exists():
+        while not storage_io.exists(root / 'complete-SOURCE-replay.json'):
             if time.monotonic()>deadline:raise ValueError('bounded wait expired for '+season)
             time.sleep(10)
         release=registry.load_registered_release(season,release_id(season))

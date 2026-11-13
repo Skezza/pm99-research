@@ -42,6 +42,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2 as package_v2  # noqa: E402
 from scripts import season_source_intake_v1 as source_intake_v1  # noqa: E402
 from scripts import season_source_club_selection_v1 as source_club_selection_v1  # noqa: E402
@@ -1368,7 +1369,7 @@ def build_draft(
 
 def _read(path: Path, label: str) -> dict[str, Any]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise SourcePackageBuildError(f"cannot read {label}: {path}") from exc
@@ -1379,7 +1380,7 @@ def _read(path: Path, label: str) -> dict[str, Any]:
 
 def _write(path: Path, value: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(package_v2.canonical_json_bytes(dict(value)))
+    storage_io.write_bytes(path, package_v2.canonical_json_bytes(dict(value)))
 
 
 def _parser() -> argparse.ArgumentParser:

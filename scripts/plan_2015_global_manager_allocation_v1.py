@@ -32,6 +32,7 @@ for candidate in (ROOT, EDITOR):
 from app.eq_team_indexed_metadata import extract_indexed_team_payload_metadata
 from app.eq_team_manager_links import parse_indexed_eq_manager_links
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts.season_english_mode0_package_adapter_v1 import _manager_candidates
 from scripts.season_package_compiler_v2 import _source_roster_owners
 
@@ -62,7 +63,7 @@ def canonical_json_bytes(value: Any) -> bytes:
 
 
 def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def _club_name(raw: bytes) -> str:
@@ -397,25 +398,25 @@ def main() -> int:
     parser.add_argument("--base-tree", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
-    if args.output.exists():
+    if storage_io.exists(args.output):
         parser.error(f"refusing to overwrite existing output: {args.output}")
-    package_raw = args.world_package.read_bytes()
-    history_raw = args.history_receipt.read_bytes()
-    multilingual_raw = args.multilingual_history.read_bytes() if args.multilingual_history else None
+    package_raw = storage_io.read_bytes(args.world_package)
+    history_raw = storage_io.read_bytes(args.history_receipt)
+    multilingual_raw = storage_io.read_bytes(args.multilingual_history) if args.multilingual_history else None
     transfermarkt_snapshot_raw = (
-        args.transfermarkt_snapshot_history.read_bytes()
+        storage_io.read_bytes(args.transfermarkt_snapshot_history)
         if args.transfermarkt_snapshot_history else None
     )
     transfermarkt_exact_search_raw = (
-        args.transfermarkt_exact_search_history.read_bytes()
+        storage_io.read_bytes(args.transfermarkt_exact_search_history)
         if args.transfermarkt_exact_search_history else None
     )
     source_tail_manager_raw = (
-        args.source_tail_manager_history.read_bytes()
+        storage_io.read_bytes(args.source_tail_manager_history)
         if args.source_tail_manager_history else None
     )
     residual_manager_raw = (
-        args.residual_manager_history.read_bytes()
+        storage_io.read_bytes(args.residual_manager_history)
         if args.residual_manager_history else None
     )
     package = json.loads(package_raw.decode("utf-8"))
@@ -472,7 +473,7 @@ def main() -> int:
             transfermarkt_exact_search_history=transfermarkt_exact_search_history,
             source_tail_manager_history=source_tail_manager_history,
             residual_manager_history=residual_manager_history,
-            eq_data=eq_path.read_bytes(), ent_data=ent_path.read_bytes(),
+            eq_data=storage_io.read_bytes(eq_path), ent_data=storage_io.read_bytes(ent_path),
         )
     except (AllocationError, OSError) as exc:
         parser.error(str(exc))
@@ -500,7 +501,7 @@ def main() -> int:
         "ENT98030.FDI_sha256": _sha256(ent_path),
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_json_bytes(receipt))
+    storage_io.write_bytes(args.output, canonical_json_bytes(receipt))
     print(json.dumps(receipt["coverage"], sort_keys=True))
     return 0
 

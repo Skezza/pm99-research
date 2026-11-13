@@ -3,6 +3,14 @@
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import glob
 import html
@@ -67,11 +75,11 @@ def resolve_globs(patterns: Iterable[str]) -> list[Path]:
     for pattern in patterns:
         for item in sorted(glob.glob(pattern)):
             path = Path(item)
-            if not path.is_file():
+            if not storage_io.is_file(path):
                 continue
             if path.suffix.lower() not in IMAGE_EXTENSIONS:
                 continue
-            real = path.resolve()
+            real = storage_io.resolve(path)
             if real in seen:
                 continue
             seen.add(real)
@@ -96,22 +104,22 @@ def display_caption(path: Path) -> str:
 def shorten_path(path: Path) -> str:
     for base in (REPO, SKEZWEB, Path("/home/joe")):
         try:
-            rel = path.resolve().relative_to(base.resolve())
+            rel = storage_io.resolve(path).relative_to(storage_io.resolve(base))
             return f"~/{rel.as_posix()}"
         except Exception:
             pass
-    return str(path.resolve())
+    return str(storage_io.resolve(path))
 
 
 def to_file_url(path: Path) -> str:
-    return path.resolve().as_uri()
+    return storage_io.resolve(path).as_uri()
 
 
 def ensure_symlink(source: Path, target: Path) -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
-    if target.exists() or target.is_symlink():
-        target.unlink()
-    os.symlink(source.resolve(), target)
+    if storage_io.exists(target) or target.is_symlink():
+        storage_io.unlink(target)
+    os.symlink(storage_io.resolve(source), target)
 
 
 def build_entries(*, output_dir: Path, section_slug: str, subsection_slug: str, patterns: Iterable[str]) -> list[Entry]:
@@ -149,13 +157,13 @@ def pick_cover(output_dir: Path, section_slug: str, cover_pattern: str) -> str |
 
 def main() -> int:
     args = parse_args()
-    output_dir = Path(args.output_dir).expanduser().resolve()
+    output_dir = storage_io.resolve(Path(args.output_dir).expanduser())
     assets_dir = output_dir / "assets"
     validation_dir = output_dir / "validation"
 
-    if assets_dir.exists():
+    if storage_io.exists(assets_dir):
         shutil.rmtree(assets_dir)
-    if validation_dir.exists():
+    if storage_io.exists(validation_dir):
         shutil.rmtree(validation_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     assets_dir.mkdir(parents=True, exist_ok=True)
@@ -404,7 +412,7 @@ def main() -> int:
                             {
                                 "caption": entry.caption,
                                 "asset": entry.asset.as_posix(),
-                                "source": str(entry.source.resolve()),
+                                "source": str(storage_io.resolve(entry.source)),
                                 "source_display": entry.source_display,
                                 "source_url": entry.source_url,
                                 "search_text": entry.search_text,
@@ -418,7 +426,7 @@ def main() -> int:
             for section in sections
         ],
     }
-    (output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    storage_io.write_text(output_dir / 'manifest.json', json.dumps(manifest, indent=2), encoding='utf-8')
 
     nav_links = "\n".join(
         f"<a class='nav-pill' href='#{section['slug']}'>{html.escape(section['title'])}</a>"
@@ -803,7 +811,7 @@ def main() -> int:
         "</html>",
     ]
     html_text = "\n".join(parts)
-    (output_dir / "index.html").write_text(html_text, encoding="utf-8")
+    storage_io.write_text(output_dir / 'index.html', html_text, encoding='utf-8')
 
     summary = {
         "output_dir": str(output_dir),
@@ -814,7 +822,7 @@ def main() -> int:
             for section in sections
         ],
     }
-    (validation_dir / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    storage_io.write_text(validation_dir / 'summary.json', json.dumps(summary, indent=2), encoding='utf-8')
 
     print(json.dumps(summary, indent=2))
     return 0

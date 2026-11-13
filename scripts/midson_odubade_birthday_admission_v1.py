@@ -3,6 +3,7 @@ import copy
 from datetime import date
 from pathlib import Path
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_kit_render_bindings_v1  # canonical editor path
 from app.fdi_indexed import IndexedFDIFile
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
@@ -20,7 +21,7 @@ def original_profile(path, person_id):
     expected = f'https://www.soccerbase.com/players/player.sd?player_id={person_id}'
     if receipt != dict(url=expected, sha256=registry.sha256_file(path)):
         raise ValueError('original profile URL/SHA differs')
-    return path.read_bytes(), dict(path=registry.relative_workspace_path(path), **receipt)
+    return storage_io.read_bytes(path), dict(path=registry.relative_workspace_path(path), **receipt)
 
 
 def admit(base):
@@ -80,8 +81,8 @@ def admit(base):
         corroboration = dict(path=registry.relative_workspace_path(doc_path), sha256=registry.sha256_file(doc_path),
             raw_path=batch['raw_path'], raw_sha256=batch['raw_sha256'], source_url=batch['source_url'],
             accepted_person=accepted, rejected_other_provider_birth_date=person['birth_date'])
-    jug = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     if original.order.native_owners(eq).get(carrier) != {club['carrier_id']}:
         raise ValueError('birthday target is not exclusively owned by the exact expected club')
     entry = next(e for e in IndexedFDIFile.from_bytes(jug).entries if e.record_id == carrier)

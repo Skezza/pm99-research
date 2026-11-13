@@ -7,6 +7,7 @@ import copy
 import os
 from pathlib import Path
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import build_registered_quality_release_v1 as build
 from scripts import cascade_compact_kit_v6 as cascade
 from scripts import season_kit_render_bindings_v1 as render
@@ -73,7 +74,7 @@ def extend_complete_receipt(release, catalogue_path, patch_root, output):
             after_sha256=render.sha256_bytes(after[carrier].raw_bitmap),
             status='source-bound-rerendered', renderer=cascade.factory.RENDERER_ID,
             source=dict(club=source['club_name'], contract=source['render_contract'],
-                receipt=str(catalogue_path.resolve()), receipt_sha256=registry.sha256_file(catalogue_path)))
+                receipt=str(storage_io.resolve(catalogue_path)), receipt_sha256=registry.sha256_file(catalogue_path)))
     audit.update(release_id=release.release_id, renderer=cascade.factory.RENDERER_ID,
         historical_accuracy_certified=False, runtime_verified=False,
         reviewed_design_carriers=sorted(rows),
@@ -82,7 +83,7 @@ def extend_complete_receipt(release, catalogue_path, patch_root, output):
     output.mkdir(parents=True, exist_ok=True)
     target = output / 'complete-kit-audit.json'
     pipeline.write_canonical_json(target, audit)
-    complete.update(audit_path=str(target.resolve()), audit_sha256=registry.sha256_file(target),
+    complete.update(audit_path=str(storage_io.resolve(target)), audit_sha256=registry.sha256_file(target),
         renderer=cascade.factory.RENDERER_ID,
         archives={name: dict(sha256_after=registry.sha256_file(patch_root / 'DBDAT' / name))
                   for name in render.ARCHIVES},
@@ -91,7 +92,7 @@ def extend_complete_receipt(release, catalogue_path, patch_root, output):
     target = output / 'complete-kit-receipt.json'
     pipeline.write_canonical_json(target, complete)
     receipt = pipeline.read_json_file(patch_root / 'receipt.json')
-    receipt.update(complete_kit_receipt_path=str(target.resolve()),
+    receipt.update(complete_kit_receipt_path=str(storage_io.resolve(target)),
         complete_kit_receipt_sha256=registry.sha256_file(target))
     # prepare_batch's original evidence is immutable. Extend into a new
     # materialisation rather than overwriting its original receipt.
@@ -99,7 +100,7 @@ def extend_complete_receipt(release, catalogue_path, patch_root, output):
     for archive in render.ARCHIVES:
         target = completed / 'DBDAT' / archive
         target.parent.mkdir(parents=True, exist_ok=True)
-        os.link(patch_root / 'DBDAT' / archive, target)
+        storage_io.link(patch_root / 'DBDAT' / archive, target)
     pipeline.write_canonical_json(completed / 'receipt.json', receipt)
     return completed
 
@@ -113,7 +114,7 @@ def verify_sources(catalogue):
             raise ValueError('review has no original evidence')
         for source in evidence:
             path = registry.ROOT / source['path']
-            path.resolve().relative_to(registry.ROOT.resolve())
+            storage_io.resolve(path).relative_to(storage_io.resolve(registry.ROOT))
             receipt = pipeline.read_json_file(path.with_name(path.name + '.source.json'))
             if {k: receipt.get(k) for k in ('url', 'sha256')} != dict(url=source['url'], sha256=source['sha256']):
                 raise ValueError('period source receipt differs')
@@ -122,7 +123,7 @@ def verify_sources(catalogue):
 
 
 def prepare(season, catalogue_path, output, *, source_release=None):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('reviewed kit delta is immutable')
     catalogue = pipeline.read_json_file(catalogue_path)
     verify_sources(catalogue)

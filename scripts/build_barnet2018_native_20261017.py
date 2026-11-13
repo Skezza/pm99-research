@@ -5,6 +5,7 @@ This does not publish or close any frozen duplicate case.
 """
 from datetime import UTC, datetime
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
 from scripts import prepare_paired_whole_club_dispositions_v1 as paired
@@ -18,7 +19,7 @@ SOURCE = registry.ROOT / ('.local/consolidated-audit-20261009/'
 
 def main():
     pair_path = ROOT / 'complete-singleton-source.json'
-    if (ROOT / 'native').exists():
+    if storage_io.exists(ROOT / 'native'):
         raise ValueError('inspect retained native attempt; never overwrite or repeat')
     proposal = pipeline.read_json_file(SOURCE)
     if (proposal['outside_collisions'] or proposal['allocation_gap']
@@ -30,7 +31,7 @@ def main():
     if baseline.release_id != proposal['release_id']:
         raise ValueError('baseline advanced; preserve proposal and inspect changes')
     manager_path = ROOT / 'source-cache/manager/344.html'
-    manager, person = native.dated_manager_identity(manager_path.read_bytes(), '2018-08-04')
+    manager, person = native.dated_manager_identity(storage_io.read_bytes(manager_path), '2018-08-04')
     if (manager, person) != ('John Still', 844):
         raise ValueError('original numeric manager/dated tenure differs')
     pair = dict(schema_version=paired.SINGLETON_SCHEMA, season='2018-19',

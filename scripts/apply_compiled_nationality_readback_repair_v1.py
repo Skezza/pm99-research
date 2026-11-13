@@ -29,6 +29,7 @@ for candidate in (ROOT, EDITOR):
         sys.path.insert(0, str(candidate))
 
 from app.fdi_indexed import IndexedFDIFile  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_compiler_v2 as compiler  # noqa: E402
 from scripts.build_2015_english92_release import (  # noqa: E402
     UNKNOWN_NATIONALITY,
@@ -48,7 +49,7 @@ class NationalityRepairError(ValueError):
 
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
@@ -174,21 +175,21 @@ def _plan(package: Mapping[str, Any], *, jug_data: bytes, textos_path: Path) -> 
 
 
 def repair(*, package_path: Path, runtime_game: Path, receipt_path: Path, apply: bool) -> dict[str, Any]:
-    package_path = package_path.resolve()
-    runtime_game = runtime_game.resolve()
-    if not package_path.is_file() or not runtime_game.is_dir():
+    package_path = storage_io.resolve(package_path)
+    runtime_game = storage_io.resolve(runtime_game)
+    if not storage_io.is_file(package_path) or not runtime_game.is_dir():
         raise NationalityRepairError("package or runtime game is unavailable")
     try:
-        package = json.loads(package_path.read_text(encoding="utf-8"))
+        package = json.loads(storage_io.read_text(package_path, encoding='utf-8'))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise NationalityRepairError(f"cannot read package {package_path}") from exc
     if not isinstance(package, Mapping):
         raise NationalityRepairError("package root is not an object")
     jug_path = runtime_game / "DBDAT/JUG98030.FDI"
     textos_path = runtime_game / "DBDAT/TEXTOS.PKF"
-    if not jug_path.is_file() or not textos_path.is_file():
+    if not storage_io.is_file(jug_path) or not storage_io.is_file(textos_path):
         raise NationalityRepairError("runtime game lacks JUG98030.FDI or TEXTOS.PKF")
-    original = jug_path.read_bytes()
+    original = storage_io.read_bytes(jug_path)
     plan = _plan(package, jug_data=original, textos_path=textos_path)
     targets = plan["targets"]
     replacements: dict[int, bytes] = {}
@@ -231,10 +232,10 @@ def repair(*, package_path: Path, runtime_game: Path, receipt_path: Path, apply:
     after_sha256 = hashlib.sha256(rebuilt).hexdigest()
     if apply and targets:
         temporary = jug_path.with_name(f".{jug_path.name}.nationality-repair.tmp")
-        if temporary.exists() or temporary.is_symlink():
+        if storage_io.exists(temporary) or temporary.is_symlink():
             raise NationalityRepairError(f"temporary repair already exists: {temporary}")
-        temporary.write_bytes(rebuilt)
-        os.replace(temporary, jug_path)
+        storage_io.write_bytes(temporary, rebuilt)
+        storage_io.replace_file(temporary, jug_path)
         if _sha256(jug_path) != after_sha256:
             raise NationalityRepairError("live JUG hash differs after atomic nationality replacement")
 
@@ -266,10 +267,7 @@ def repair(*, package_path: Path, runtime_game: Path, receipt_path: Path, apply:
     }
     if apply:
         receipt_path.parent.mkdir(parents=True, exist_ok=True)
-        receipt_path.write_text(
-            json.dumps(receipt, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n",
-            encoding="utf-8",
-        )
+        storage_io.write_text(receipt_path, json.dumps(receipt, ensure_ascii=False, sort_keys=True, separators=(',', ':')) + '\n', encoding='utf-8')
     return receipt
 
 

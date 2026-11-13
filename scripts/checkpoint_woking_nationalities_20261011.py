@@ -1,6 +1,7 @@
 """Promote only actual byte-proven nationalities with inspected runner profiles."""
 import copy
 from datetime import UTC,datetime
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry,season_pipeline_v2 as pipeline
 from scripts import season_quality_only_delta_v1 as delta,season_package_compiler_v2 as compiler
 from scripts import season_historical_roster_audit_v1 as roster,publish_historical_role_delta_v1 as publisher
@@ -14,7 +15,7 @@ from app.fdi_indexed import IndexedFDIFile
 
 def run():
     prior=ROOT.parent/'release-delivery-checklist-v41.json';output=ROOT.parent/'release-delivery-checklist-v42.json'
-    if output.exists():raise ValueError('completed nationality checkpoint must not repeat')
+    if storage_io.exists(output):raise ValueError('completed nationality checkpoint must not repeat')
     result=copy.deepcopy(pipeline.read_json_file(prior));old={r['season']:r for r in result['current_release_bindings']}
     release=registry.load_registered_release('2003-04',RELEASE);plan=pipeline.read_json_file(ROOT/'quality-plan.json')
     baseline=registry.load_registered_release('2003-04',plan['release_id']);delta.verify(baseline,plan)
@@ -23,8 +24,8 @@ def run():
     if (proof['skills_changed'] or not proof['exact_native_reproduction'] or not proof['idempotent']
             or proof['actual_manifest_sha256']!=release.manifest_sha256
             or not replay['complete_game_inventory_identical'] or not replay['complete_recipe_identical']):raise ValueError('nationality actual/replay proof invalid')
-    original=(baseline.game_path/'DBDAT/JUG98030.FDI').read_bytes();eq=(baseline.game_path/'DBDAT/EQ98030.FDI').read_bytes()
-    actual=(release.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    original=storage_io.read_bytes(baseline.game_path / 'DBDAT/JUG98030.FDI');eq=storage_io.read_bytes(baseline.game_path / 'DBDAT/EQ98030.FDI')
+    actual=storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     if delta.apply(original,eq,plan)!=(actual,eq):raise ValueError('actual native file differs from source country plan')
     index=IndexedFDIFile.from_bytes(actual);entries={e.record_id:e for e in index.entries}
     readback=[]

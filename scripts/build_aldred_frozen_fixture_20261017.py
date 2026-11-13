@@ -1,4 +1,5 @@
 """Build only the sourced unused Blackpool slot; retain actual Accrington XI."""
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import season_frozen_fixture_reserve_v1 as source
 from scripts import publish_historical_role_delta_v1 as publisher
@@ -12,7 +13,7 @@ REPLAY='replayed-original-fixture-reserve-20261017-r122b'
 
 
 def main():
-    if registry.locator_path(SEASON,RELEASE).exists() or (ROOT/'native-byte-proof.json').exists():
+    if storage_io.exists(registry.locator_path(SEASON, RELEASE)) or storage_io.exists(ROOT / 'native-byte-proof.json'):
         raise ValueError('existing partial/completed native repair must be inspected, not overwritten')
     base=registry.load_registered_release(SEASON,BASE)
     plan=pipeline.read_json_file(ROOT/'ownership-plan.json')
@@ -28,7 +29,7 @@ def main():
     result=source.reconstruction(actual,REPLAY)
     rebuilt=registry.load_registered_release(SEASON,REPLAY)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path,pipeline.read_json_file(actual.inventory_path))
-    if rebuilt.package_path.read_bytes()!=actual.package_path.read_bytes():raise ValueError('entire SOURCE recipe differs')
+    if storage_io.read_bytes(rebuilt.package_path)!=storage_io.read_bytes(actual.package_path):raise ValueError('entire SOURCE recipe differs')
     retained(ROOT/'complete-SOURCE-replay.json',dict(result,source_release_id=BASE,actual_release_id=RELEASE,
         replay_release_id=REPLAY,manifest_sha256=actual.manifest_sha256,
         native_proof_sha256=registry.sha256_file(ROOT/'native-byte-proof.json'),ownership_plan_sha256=registry.sha256_file(path)))

@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 import sys
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_package_v2 as packages
@@ -22,9 +23,9 @@ def attach_pair_kit_receipts(source,candidate,destination,receipt,native_proof,i
     from scripts.build_registered_quality_release_v1 import _kit_receipt
     from scripts import season_kit_render_bindings_v1 as renderer
     previous=_kit_receipt(source.season,source_release=source)
-    complete=json.loads(previous.read_text());old_audit=Path(complete['audit_path'])
+    complete=json.loads(storage_io.read_text(previous));old_audit=Path(complete['audit_path'])
     if registry.sha256_file(old_audit)!=complete['audit_sha256']:raise ValueError('previous kit audit changed')
-    audit=json.loads(old_audit.read_text());audit=copy.deepcopy(audit)
+    audit=json.loads(storage_io.read_text(old_audit));audit=copy.deepcopy(audit)
     before=renderer._record_index(source.game_path/'DBDAT/NANOESC.PKF')
     after=renderer._record_index(candidate/'game/DBDAT/NANOESC.PKF')
     carriers={r['carrier_id'] for r in receipt['paired_asset_stage']['grounds']}
@@ -36,11 +37,11 @@ def attach_pair_kit_receipts(source,candidate,destination,receipt,native_proof,i
         if row['after_sha256']!=renderer.sha256_bytes(before[id].raw_bitmap):
             raise ValueError('previous kit bitmap source binding is stale')
         if id not in carriers:continue
-        path=candidate/f'kit-source-{id}.json';document=json.loads(path.read_text());source_row=document['catalogue_row']
+        path=candidate/f'kit-source-{id}.json';document=json.loads(storage_io.read_text(path));source_row=document['catalogue_row']
         row.update(club=source_row['club_name'],before_sha256=renderer.sha256_bytes(before[id].raw_bitmap),
             after_sha256=renderer.sha256_bytes(after[id].raw_bitmap),status='source-bound-rerendered',
             source={'club':source_row['club_name'],'contract':source_row['render_contract'],
-                'receipt':str(path.resolve()),'receipt_sha256':registry.sha256_file(path),
+                'receipt':str(storage_io.resolve(path)),'receipt_sha256':registry.sha256_file(path),
                 'expected':renderer.sha256_bytes(before[id].raw_bitmap)},
             renderer=document['render_row']['renderer'])
     audit.update(release_id=source.release_id,historical_accuracy_certified=False,runtime_verified=False,
@@ -48,19 +49,19 @@ def attach_pair_kit_receipts(source,candidate,destination,receipt,native_proof,i
         prior_audit={'path':registry.relative_workspace_path(old_audit),'sha256':registry.sha256_file(old_audit)})
     audit_path=destination/'paired-kit-audit.json';pipeline.write_canonical_json(audit_path,audit)
     complete=copy.deepcopy(complete)
-    complete.update(audit_path=str(audit_path.resolve()),audit_sha256=registry.sha256_file(audit_path),
+    complete.update(audit_path=str(storage_io.resolve(audit_path)),audit_sha256=registry.sha256_file(audit_path),
         archives={name:{'sha256_after':registry.sha256_file(candidate/'game/DBDAT'/name)} for name in renderer.ARCHIVES},
         padding_fix_scope='declared replacement clubs only; not an all-season/all-club padding-fix claim',
         prior_receipt={'path':registry.relative_workspace_path(previous),'sha256':registry.sha256_file(previous)})
     complete_path=destination/'complete-kit-receipt.json';pipeline.write_canonical_json(complete_path,complete)
     material_path=destination/'paired-kit-materialisation.json'
-    pipeline.write_canonical_json(material_path,{'complete_kit_receipt_path':str(complete_path.resolve()),
+    pipeline.write_canonical_json(material_path,{'complete_kit_receipt_path':str(storage_io.resolve(complete_path)),
         'complete_kit_receipt_sha256':registry.sha256_file(complete_path),'scope':'declared complete-club transaction assets'})
     application_path=destination/'paired-kit-application.json'
     pipeline.write_canonical_json(application_path,{'schema_version':'pm99-coupled-club-kit-application-v1',
         'season':source.season,'source_release_id':source.release_id,
         'source_build_chain_sha256':registry.sha256_file(source.build_chain_path),
-        'materialisation_path':str(material_path.resolve()),'materialisation_sha256':registry.sha256_file(material_path),
+        'materialisation_path':str(storage_io.resolve(material_path)),'materialisation_sha256':registry.sha256_file(material_path),
         'candidate_receipt':{'path':registry.relative_workspace_path(candidate/'candidate-receipt.json'),
             'sha256':registry.sha256_file(candidate/'candidate-receipt.json')},
         'native_proof':{'path':registry.relative_workspace_path(native_proof),'sha256':registry.sha256_file(native_proof)},
@@ -73,7 +74,7 @@ def attach_pair_kit_receipts(source,candidate,destination,receipt,native_proof,i
 def validate_original_source_replay(proof, proposal, season):
     """Bind replay evidence to the actual implementation, including failed receipt recovery."""
     from scripts import prepare_paired_whole_club_native_v1 as replay
-    implementation = Path(replay.__file__).resolve()
+    implementation = storage_io.resolve(Path(replay.__file__))
     expected = dict(path=registry.relative_workspace_path(implementation),
                     sha256=registry.sha256_file(implementation))
     if (proof.get('schema') != 'pm99-original-source-proposal-replay-evidence-v1'
@@ -101,9 +102,9 @@ def validate_original_source_replay(proof, proposal, season):
 
 def publish(candidate,native_proof,identity_proof,release_id, *, source_release_id=None, retained_source_replay_path=None):
     from scripts import season_owned_club_composition_v1 as retained
-    receipt_path=candidate/'candidate-receipt.json';receipt=json.loads(receipt_path.read_text())
+    receipt_path=candidate/'candidate-receipt.json';receipt=json.loads(storage_io.read_text(receipt_path))
     digest=registry.sha256_file(receipt_path)
-    readback=json.loads(native_proof.read_text());identities=json.loads(identity_proof.read_text())
+    readback=json.loads(storage_io.read_text(native_proof));identities=json.loads(storage_io.read_text(identity_proof))
     is_retained = receipt.get('schema_version') == retained.PRIVATE_SCHEMA
     if is_retained:
         native_bound = (readback.get('schema_version') == retained.PRIVATE_SCHEMA + '-native-and-artwork-replay'
@@ -128,19 +129,19 @@ def publish(candidate,native_proof,identity_proof,release_id, *, source_release_
         pair = dict(season=receipt['season'], release_id=receipt['source_release_id'])
         proposals = [transaction['whole_club_proposal']]
     else:
-        pair=json.loads(native.original(receipt['source_pair']).read_text())
+        pair=json.loads(storage_io.read_text(native.original(receipt['source_pair'])))
     source=(registry.load_registered_release(pair['season'],source_release_id)
             if source_release_id is not None else registry.load_preferred_release(pair['season']))
     if source.release_id!=pair['release_id']:raise ValueError('paired publication baseline no longer preferred')
-    original=json.loads(source.package_path.read_text())
-    package_path=candidate/'season-package.json';package=json.loads(package_path.read_text())
+    original=json.loads(storage_io.read_text(source.package_path))
+    package_path=candidate/'season-package.json';package=json.loads(storage_io.read_text(package_path))
     if registry.sha256_file(package_path)!=identities['package_sha256']:
         raise ValueError('independent identity proof is stale')
     packages.validate_package(package)
     for artifact in package['artifacts']:
         if artifact.get('relative_path'):verify_recipe_artifact(candidate/artifact['relative_path'],artifact['sha256'])
     if not is_retained:
-        proposals=[json.loads(native.original(b).read_text()) for b in pair['proposals']]
+        proposals=[json.loads(storage_io.read_text(native.original(b))) for b in pair['proposals']]
     # Publication rechecks the current source guard even when an earlier
     # private native/identity proof predates a newly discovered QA defect.
     from scripts.prepare_paired_whole_club_dispositions_v1 import source_guard
@@ -174,8 +175,8 @@ def publish(candidate,native_proof,identity_proof,release_id, *, source_release_
     if any(registry.sha256_file(game/'DBDAT'/name)!=sha for name,sha in receipt['native_hashes'].items()):
         raise ValueError('paired native outputs differ from proved candidate')
     destination=registry.locator_path(pair['season'],release_id).parent
-    if destination.exists():raise ValueError('paired registered metadata is immutable')
-    outputs=[{'path':'DBDAT/'+name,'sha256':sha,'size':(game/'DBDAT'/name).stat().st_size}
+    if storage_io.exists(destination):raise ValueError('paired registered metadata is immutable')
+    outputs=[{'path':'DBDAT/'+name,'sha256':sha,'size':storage_io.size(game / 'DBDAT' / name)}
         for name,sha in sorted(receipt['native_hashes'].items())]
     compiler={'schema':retained.REGISTERED_SCHEMA if is_retained else 'pm99-native-coupled-whole-club-delta-v1','season':pair['season'],
         'season_package_sha256':registry.canonical_document_sha256(package_path),

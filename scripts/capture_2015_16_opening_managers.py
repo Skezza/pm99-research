@@ -12,6 +12,14 @@ source URL and resolution method for review.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import json
 import re
@@ -27,7 +35,7 @@ from urllib.request import Request, urlopen
 from bs4 import BeautifulSoup
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = storage_io.resolve(Path(__file__)).parents[1]
 DEFAULT_SOURCE = ROOT / "upstream/.local/season-2015-16/2015-16-english-source-ledger.json"
 DEFAULT_OUTPUT = ROOT / ".local/season-2015-16/2015-16-opening-manager-ledger.json"
 SEASON_URLS = {
@@ -169,7 +177,7 @@ def main() -> int:
     parser.add_argument("--source", type=Path, default=DEFAULT_SOURCE)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     args = parser.parse_args()
-    clubs = list(json.loads(args.source.read_text(encoding="utf-8")).get("clubs") or [])
+    clubs = list(json.loads(storage_io.read_text(args.source, encoding='utf-8')).get("clubs") or [])
     by_division: dict[str, tuple[dict[str, str], dict[str, list[tuple[date, str]]]]] = {
         division: season_data(url) for division, url in SEASON_URLS.items()
     }
@@ -216,7 +224,7 @@ def main() -> int:
         "reviewed_opening_manager_count": len(OPENING_MANAGER_FALLBACKS),
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    storage_io.write_text(args.output, json.dumps(payload, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     print(json.dumps({"resolved": len(resolved), "unresolved": len(unresolved), "output": str(args.output)}, indent=2))
     return 0 if not unresolved else 2
 

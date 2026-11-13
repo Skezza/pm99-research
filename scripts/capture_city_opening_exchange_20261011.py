@@ -1,6 +1,7 @@
 """Capture actual final-game startup and all six corrected ownership profiles."""
 import os
 import subprocess
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import capture_registered_season_runtime_v1 as capture
 from scripts.build_city_opening_exchange_20261011 import ROOT,SEASON,RELEASE
@@ -15,10 +16,10 @@ TAG='city_opening_2024_r97a_20261011'
 
 
 def captured(command,evidence,path,release,env):
-    if path.exists():
+    if storage_io.exists(path):
         if pipeline.read_json_file(path)['exit_code']!=0:raise ValueError('failed prior transport: '+str(path))
         return
-    if evidence.exists():raise ValueError('unreceipted capture exists; inspect, never overwrite')
+    if storage_io.exists(evidence):raise ValueError('unreceipted capture exists; inspect, never overwrite')
     completed=subprocess.run(command,env=env,check=False)
     pipeline.write_canonical_json(path,dict(exit_code=completed.returncode,
         evidence=registry.relative_workspace_path(evidence),
@@ -27,7 +28,7 @@ def captured(command,evidence,path,release,env):
 
 
 def main():
-    if not all((ROOT/n).exists() for n in ('native-byte-proof.json','complete-SOURCE-replay.json')):
+    if not all(storage_io.exists(ROOT / n) for n in ('native-byte-proof.json','complete-SOURCE-replay.json')):
         raise ValueError('actual City native and complete SOURCE proofs missing')
     release=registry.load_registered_release(SEASON,RELEASE)
     env=dict(os.environ,PM99_RUNNER_ARCHIVE_COLD_RUNS='0',PM99_RUNNER_RUN_ROOT_BUDGET_ENFORCE='0')

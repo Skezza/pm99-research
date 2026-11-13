@@ -33,6 +33,7 @@ for candidate in (ROOT, EDITOR):
         sys.path.insert(0, str(candidate))
 
 from app.fdi_indexed import IndexedFDIFile  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts import reconcile_mode1_roster_base_v1 as base_rows  # noqa: E402
 from scripts import season_editorial_ratings_v1 as rating_model  # noqa: E402
 from scripts import season_package_compiler_v2 as compiler  # noqa: E402
@@ -50,7 +51,7 @@ class ProvisionalPreparationError(ValueError):
 
 
 def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def _duplicate_groups(package: Mapping[str, Any]) -> list[tuple[tuple[str, str], list[dict[str, Any]]]]:
@@ -139,7 +140,7 @@ def prepare(
     package = package_v2.read_canonical_package(package_path)
     package_v2.validate_package(package, strict=False)
     verified = pipeline.validate_verified_base_descriptor(
-        json.loads(verified_base_path.read_text(encoding="utf-8"))
+        json.loads(storage_io.read_text(verified_base_path, encoding='utf-8'))
     )
     pipeline.verify_base_tree(tree=base_tree, verified_base=verified)
     if PRESERVATION_ARTIFACT_ID not in base_rows._artifact_ids(package):
@@ -147,8 +148,8 @@ def prepare(
     if PRESERVATION_SOURCE_ID not in base_rows._source_ids(package):
         raise ProvisionalPreparationError("package lacks the clean-base preservation source")
 
-    eq_data = (base_tree / "DBDAT/EQ98030.FDI").read_bytes()
-    jug_data = (base_tree / "DBDAT/JUG98030.FDI").read_bytes()
+    eq_data = storage_io.read_bytes(base_tree / 'DBDAT/EQ98030.FDI')
+    jug_data = storage_io.read_bytes(base_tree / 'DBDAT/JUG98030.FDI')
     _owners, _rosters, modes = compiler._source_roster_owners(eq_data)
     jug_entries = {
         int(entry.record_id): entry for entry in IndexedFDIFile.from_bytes(jug_data).entries
@@ -320,11 +321,11 @@ def prepare(
 
 
 def _write_new(path: Path, value: Any) -> str:
-    if path.exists() or path.is_symlink():
+    if storage_io.exists(path) or path.is_symlink():
         raise ProvisionalPreparationError(f"refusing to replace output: {path}")
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = package_v2.canonical_json_bytes(value)
-    path.write_bytes(payload)
+    storage_io.write_bytes(path, payload)
     return hashlib.sha256(payload).hexdigest()
 
 
@@ -338,12 +339,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         package, audit = prepare(
-            package_path=args.package.resolve(), base_tree=args.base_tree.resolve(),
-            verified_base_path=args.verified_base.resolve(),
+            package_path=storage_io.resolve(args.package), base_tree=storage_io.resolve(args.base_tree),
+            verified_base_path=storage_io.resolve(args.verified_base),
         )
-        package_sha = _write_new(args.output_package.resolve(), package)
+        package_sha = _write_new(storage_io.resolve(args.output_package), package)
         audit["output"] = {"package_sha256": package_sha}
-        _write_new(args.output_audit.resolve(), audit)
+        _write_new(storage_io.resolve(args.output_audit), audit)
     except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
         parser.error(str(exc))
     print(json.dumps({

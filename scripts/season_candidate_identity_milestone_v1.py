@@ -21,6 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import foreign_carrier_assignment_v1 as assignment_lib  # noqa: E402
 from scripts import foreign_carrier_candidate_proposal_v1 as proposal_lib  # noqa: E402
 
@@ -38,7 +39,7 @@ def _read(path: Path, *, label: str) -> dict[str, Any]:
 
 
 def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def _select_bound_source(*, sources_dir: Path, expected_source_hash: object) -> tuple[Path, dict[str, Any]]:
@@ -53,7 +54,7 @@ def _select_bound_source(*, sources_dir: Path, expected_source_hash: object) -> 
     if not isinstance(expected_source_hash, str) or len(expected_source_hash) != 64:
         raise SeasonCandidateMilestoneError("base assignment has no valid source_capture_sha256")
     source_matches: list[tuple[Path, dict[str, Any]]] = []
-    for candidate_path in sorted(sources_dir.glob("footballsquads-*.json")):
+    for candidate_path in sorted(storage_io.glob(sources_dir, 'footballsquads-*.json')):
         candidate_capture = _read(candidate_path, label="historic squad capture")
         if hashlib.sha256(assignment_lib.canonical_json_bytes(candidate_capture)).hexdigest() == expected_source_hash:
             source_matches.append((candidate_path, candidate_capture))
@@ -63,7 +64,7 @@ def _select_bound_source(*, sources_dir: Path, expected_source_hash: object) -> 
 
 
 def run_milestone(*, season_dir: Path, replace: bool = False) -> dict[str, Any]:
-    season_dir = season_dir.resolve()
+    season_dir = storage_io.resolve(season_dir)
     registry_path = season_dir / "fixed-carrier-registry.json"
     assignment_path = season_dir / "foreign-carrier-assignment.json"
     queue_path = season_dir / "foreign-carrier-candidate-queue.json"
@@ -72,7 +73,7 @@ def run_milestone(*, season_dir: Path, replace: bool = False) -> dict[str, Any]:
         "derived_assignment": season_dir / "foreign-carrier-assignment-candidates.json",
         "audit": season_dir / "foreign-carrier-assignment-candidates-audit.json",
     }
-    existing = [name for name, path in outputs.items() if path.exists()]
+    existing = [name for name, path in outputs.items() if storage_io.exists(path)]
     if existing and not replace:
         raise SeasonCandidateMilestoneError("milestone outputs already exist: " + ", ".join(existing))
 

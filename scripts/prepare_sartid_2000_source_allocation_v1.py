@@ -9,6 +9,7 @@ import re
 
 from bs4 import BeautifulSoup
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_published_person_identity_v1 as people
 from scripts import season_published_transfer_history_v1 as histories
@@ -91,7 +92,7 @@ def fixture_candidates(replacement):
 
 
 def prepare(output, baseline_release_id=None):
-    if output.exists(): raise ValueError('original source allocation is immutable')
+    if storage_io.exists(output): raise ValueError('original source allocation is immutable')
     _,raw,match_binding=source_rows('partizanopedia-2000-original-season')
     receipt=pipeline.read_json_file(ROOT/'replacement-candidates/partizanopedia-2000-original-season.source.json')
     actual=parse_match(raw,url=receipt['url'])
@@ -157,7 +158,7 @@ def prepare(output, baseline_release_id=None):
         raise ValueError('obsolete club changed or replacement already represented')
     slots=[p for p in package['players'] if p['club_id']==club['id']]
     if len(slots)!=18: raise ValueError('fixed18 capacity changed')
-    jug=(release.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    jug=storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     ids={i for _,i,_ in actors}
     fitted=allocation.allocate(jug,slots,desired,display.claims(biography),
         published_families=families.claims(biography,ids),

@@ -10,6 +10,7 @@ from datetime import date
 from html.parser import HTMLParser
 from pathlib import Path
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_exact_primary_position_delta_v2 as native_writer
 from scripts import season_historical_roster_audit_v1 as roster
 from scripts import season_opening_order_repair_v1 as owners
@@ -38,7 +39,7 @@ URLS={
 }
 
 def _sha(b): return hashlib.sha256(b).hexdigest()
-def _file_sha(path): return _sha(Path(path).read_bytes())
+def _file_sha(path): return _sha(storage_io.read_bytes(Path(path)))
 def _canon(value): return packages.canonical_json_bytes(value)
 def _digest(value): return _sha(_canon(value))
 class _Text(HTMLParser):
@@ -46,24 +47,24 @@ class _Text(HTMLParser):
     def handle_data(self,data):
         if data.strip():self.parts.append(data.strip())
 def _html(path):
-    parser=_Text(); parser.feed(path.read_text(encoding='utf-8',errors='replace'))
+    parser=_Text(); parser.feed(storage_io.read_text(path, encoding='utf-8', errors='replace'))
     return ' '.join(parser.parts).lower()
 def _load_bound_sources():
     paths={k:ROOT/v[0] for k,v in SOURCES.items()}
     for k,p in paths.items():
         if _file_sha(p)!=SOURCES[k][1]:raise ValueError(f'Coady {k} source body SHA changed')
-    receipt=json.loads(RECEIPT.read_text(encoding='utf-8'))
+    receipt=json.loads(storage_io.read_text(RECEIPT, encoding='utf-8'))
     if receipt.get('schema')!='pm99-coady-source-capture-receipt-v1':raise ValueError('Coady source capture receipt schema differs')
     receipt_sources={x.get('path'):x for x in receipt.get('sources',[])}
     for k in ('wolves_2019','wolves_2022','opener'):
         rel='source-captures/'+paths[k].name; row=receipt_sources.get(rel)
         if not row or row.get('sha256')!=SOURCES[k][1] or row.get('url')!=URLS[k] or row.get('http_status')!=200:
             raise ValueError(f'Coady {k} source receipt is missing or does not bind body')
-    annual_lines=paths['annual'].read_text(encoding='utf-8').splitlines()
+    annual_lines=storage_io.read_text(paths['annual'], encoding='utf-8').splitlines()
     annual_matches=[(n,line) for n,line in enumerate(annual_lines,1) if 'Conor Coady' in line]
     expected_annual='16, Conor Coady, ENG, M, 1.85, 75, 25-02-93, Liverpool, Huddersfield T'
     if annual_matches!=[(12,expected_annual)]:raise ValueError('Coady annual M conflict source row changed')
-    with paths['fifa19'].open(newline='',encoding='utf-8-sig') as stream:
+    with storage_io.open_file(paths['fifa19'], newline='', encoding='utf-8-sig') as stream:
         fifa_rows=[x for x in csv.DictReader(stream) if x.get('sofifa_id')=='202048']
     if len(fifa_rows)!=1:raise ValueError('Coady FIFA19 ID missing or ambiguous')
     fifa=fifa_rows[0]
@@ -93,8 +94,8 @@ def prepare(base):
     if getattr(base,'season',None)!='2018-19' or not getattr(base,'release_id',None):
         raise ValueError('Coady role adapter requires a registered 2018-19 parent')
     registered=registry.load_registered_release(base.season,base.release_id)
-    if (Path(base.package_path).resolve()!=Path(registered.package_path).resolve()
-        or Path(base.game_path).resolve()!=Path(registered.game_path).resolve()
+    if (storage_io.resolve(Path(base.package_path))!=storage_io.resolve(Path(registered.package_path))
+        or storage_io.resolve(Path(base.game_path))!=storage_io.resolve(Path(registered.game_path))
         or base.manifest_sha256!=registered.manifest_sha256):
         raise ValueError('Coady parent is not the exact registered release')
     paths,fifa,annual_line=_load_bound_sources()
@@ -117,7 +118,7 @@ def prepare(base):
     if len(slots)!=1 or slots[0].get('role')!='LCB':
         raise ValueError('Coady opening tactical centre-back context differs')
     jug_path=Path(base.game_path)/'DBDAT/JUG98030.FDI'; eq_path=Path(base.game_path)/'DBDAT/EQ98030.FDI'
-    jug,eq=jug_path.read_bytes(),eq_path.read_bytes()
+    jug,eq=storage_io.read_bytes(jug_path),storage_io.read_bytes(eq_path)
     if _sha(jug)!=registry.sha256_file(jug_path) or _sha(eq)!=registry.sha256_file(eq_path):raise ValueError('Coady native bytes changed during read')
     entries={e.record_id:e for e in IndexedFDIFile.from_bytes(jug).entries}
     if TARGET not in entries:raise ValueError('Coady native carrier absent')
@@ -186,7 +187,7 @@ def apply(jug,eq,plan):
     base=registry.load_registered_release(plan['season'],plan['release_id'])
     verify(base,plan)
     if _sha(jug) not in (plan['parent']['native_files']['JUG98030.FDI'],):
-        original=(Path(base.game_path)/'DBDAT/JUG98030.FDI').read_bytes()
+        original=storage_io.read_bytes(Path(base.game_path) / 'DBDAT/JUG98030.FDI')
         post_expected=None
         if _sha(original)!=plan['parent']['native_files']['JUG98030.FDI']:
             raise ValueError('Coady native JUG parent changed')
@@ -213,12 +214,12 @@ def reconstruction(previous,release_id):
     if receipt.get('compilation_mode')!=MODE:return None
     relative=getattr(previous,'locator',{}).get('sourced_profile_assignment_plan_path')
     if not relative:raise ValueError('Coady SOURCE receipt lacks its typed plan path')
-    path=(ROOT/relative).resolve(strict=True)
+    path=storage_io.resolve(ROOT / relative, strict=True)
     plan=pipeline.read_json_file(path)
     _require_plan_header(plan)
     base=registry.load_registered_release(plan['season'],plan['release_id'])
     verify(base,plan)
-    if path!=(previous.package_path.parent/filename(plan)).resolve() or _file_sha(path)!=receipt.get('original_profile_assignment_plan_sha256'):
+    if path!=storage_io.resolve(previous.package_path.parent / filename(plan)) or _file_sha(path)!=receipt.get('original_profile_assignment_plan_sha256'):
         raise ValueError('Coady SOURCE plan path/hash differs from receipt')
     expected=bind(pipeline.read_json_file(base.package_path),plan)
     if _canon(pipeline.read_json_file(previous.package_path))!=_canon(expected):

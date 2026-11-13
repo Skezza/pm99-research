@@ -15,6 +15,7 @@ from app.fdi_indexed import IndexedFDIFile
 from app.indexed_jug_birth_date import rewrite_indexed_native_birth_dates
 from app.indexed_jug_roles import rewrite_indexed_native_roles
 from app.player_initial_order import OrderReplacement, patch_owned_mode1_complete_orders, read_initial_order
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_package_v2 as packages
@@ -65,7 +66,7 @@ def supplemental(key):
     path = ROOT / key
     if registry.sha256_file(path) != row['sha256']:
         raise ValueError('supplemental historical source changed')
-    return BeautifulSoup(path.read_bytes(), 'lxml'), dict(path=registry.relative_workspace_path(path),
+    return BeautifulSoup(storage_io.read_bytes(path), 'lxml'), dict(path=registry.relative_workspace_path(path),
         sha256=row['sha256'], url=row['url'], receipt_path=registry.relative_workspace_path(receipt),
         receipt_sha256=registry.sha256_file(receipt))
 
@@ -139,7 +140,7 @@ def prepare(release):
             if len(annual) != 1 or annual[0]['birth_date'] not in (None, birthday):
                 raise ValueError('original capture biography disagrees with numeric profile')
             raw = next(s for s in actual['raw_sources'] if s['url'] == bio['source_profile_url'])
-            parsed_facts = august.player_profile((registry.ROOT / raw['path']).read_bytes(),
+            parsed_facts = august.player_profile(storage_io.read_bytes(registry.ROOT / raw['path']),
                 fallback_name=row['published_match_name'], fallback_position=row['dated_match_position'])
             if parsed_facts != annual[0]:
                 raise ValueError('original profile does not reproduce captured secondary facts')
@@ -167,8 +168,8 @@ def prepare(release):
         expected = REPLACE.get(p['carrier_id']) or next(k for k, v in KEEP.items() if v == p['carrier_id'])
         if (p.get('source_name') or p['name']) != expected:
             raise ValueError('displaced or retained current full identity changed')
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (release.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
     from scripts import season_italian_opening_layer_v1 as linked
     from scripts import season_opening_order_repair_v1 as ownership
     owners = ownership.native_owners(eq)
@@ -298,7 +299,7 @@ def updated_package(package, plan):
 
 def compile_native(jug, eq, package, country_codes, plan):
     baseline = registry.load_registered_release(plan['season'], plan['release_id'])
-    original_jug = (baseline.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    original_jug = storage_io.read_bytes(baseline.game_path / 'DBDAT/JUG98030.FDI')
     if digest(original_jug) != plan['jug_sha256'] or digest(eq) != plan['eq_sha256']:
         raise ValueError('Stevenage native baseline changed')
     selected = {r['player_id'] for r in plan['replacements']}
@@ -343,7 +344,7 @@ def reconstruction(previous, release_id):
     from scripts import publish_historical_role_delta_v1 as publisher
     path = registry.ROOT / previous.locator['sourced_profile_assignment_plan_path']
     plan = pipeline.read_json_file(path)
-    if path.resolve() != (previous.package_path.parent / filename(plan)).resolve():
+    if storage_io.resolve(path) != storage_io.resolve(previous.package_path.parent / filename(plan)):
         raise ValueError('Stevenage replay locator differs from its exact current source layer')
     package = pipeline.read_json_file(previous.package_path)
     artifacts = [a for a in package['artifacts'] if a['id'] == PREFIX + previous.season]

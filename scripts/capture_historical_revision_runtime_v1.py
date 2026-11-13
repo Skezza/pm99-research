@@ -16,6 +16,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
 from scripts.attest_registered_season_runtime_v1 import _atomic_replace_json
@@ -55,7 +56,7 @@ def main():
     if not args.execute:
         print(json.dumps({'seasons': seasons, 'execution_requested': False}))
         return 0
-    if args.output_root.exists():
+    if storage_io.exists(args.output_root):
         raise ValueError('evidence output exists; never overwrite completed proof')
     args.output_root.mkdir(parents=True)
     stamp = datetime.now(UTC).strftime('%Y%m%dt%H%M%Sz')
@@ -80,7 +81,7 @@ def main():
         env['PM99_RUNNER_HOST_LOCK_CONCURRENCY'] = str(args.jobs)
         # Keep runner storage guardrails and lease isolation enabled.
         log = args.output_root / (season + '.log')
-        with log.open('w') as handle:
+        with storage_io.open_file(log, 'w') as handle:
             result = subprocess.run(command, cwd=ROOT, env=env, stdout=handle, stderr=subprocess.STDOUT)
         current = registry.load_preferred_release(season)
         exact = current.release_id == release.release_id and current.manifest_sha256 == release.manifest_sha256

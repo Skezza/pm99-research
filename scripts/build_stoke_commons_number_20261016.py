@@ -1,6 +1,7 @@
 """Complete the sourced alias reserve with one byte, not a squad regeneration."""
 import os
 import shutil
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_stoke_commons_number_v1 as source
 from scripts import publish_historical_role_delta_v1 as publisher
@@ -13,7 +14,7 @@ REPLAY = 'replayed-stoke-commons-number-20261016-r118b'
 
 
 def main():
-    if (ROOT / 'complete-SOURCE-replay.json').exists():
+    if storage_io.exists(ROOT / 'complete-SOURCE-replay.json'):
         raise ValueError('completed single-byte game must not repeat')
     if shutil.disk_usage(registry.ROOT).free < 8.3 * 1024**3:
         raise ValueError('shirt correction refuses to threaten8GiB reserve')
@@ -24,13 +25,13 @@ def main():
     descriptor = ROOT / 'inert.json'
     retained(descriptor, dict(season=SEASON, release_id=base.release_id,
         package_sha256=plan['package_sha256'], jug_sha256=plan['jug_sha256'], updates=[], unresolved=[]))
-    if not registry.locator_path(SEASON, RELEASE).exists():
+    if not storage_io.exists(registry.locator_path(SEASON, RELEASE)):
         publisher.publish(SEASON, descriptor, release_id=RELEASE, source_release_id=base.release_id,
             profile_assignment_plan_path=path)
     actual = registry.load_registered_release(SEASON, RELEASE)
-    original = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    native = (actual.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    original = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    native = storage_io.read_bytes(actual.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     if source.apply(original, eq, plan) != (native, eq) or source.apply(native, eq, plan) != (native, eq):
         raise ValueError('actual single shirt-byte reproduction/idempotence failed')
     diffs = [i for i,(a,b) in enumerate(zip(original,native)) if a != b]
@@ -47,7 +48,7 @@ def main():
         exact_native_byte_changes=1, allowed_offsets=diffs, all_other_game_files_identical=True,
         all_other_player_facts_ratings_roles_tactics_managers_and_artwork_identical=True,
         independently_reproduced=True, idempotent=True, shirt_before=5, shirt_after=24))
-    if registry.locator_path(SEASON, REPLAY).exists():
+    if storage_io.exists(registry.locator_path(SEASON, REPLAY)):
         raise ValueError('unreceipted shirt SOURCE copy exists; inspect rather than rerun')
     replay = source.reconstruction(actual, REPLAY)
     retained(ROOT / 'complete-SOURCE-replay.json', dict(replay, source_release_id=RELEASE,
@@ -57,10 +58,10 @@ def main():
             (actual.game_path/'DBDAT/JUG98030.FDI',rebuilt.game_path/'DBDAT/JUG98030.FDI')):
         if registry.sha256_file(a) != registry.sha256_file(b):
             raise ValueError('new shirt SOURCE bytes differ before verified content sharing')
-        if a.stat().st_ino != b.stat().st_ino:
+        if (storage_io.stat_result(a).st_ino != storage_io.stat_result(b).st_ino) and not storage_io.is_compressed(a) and not storage_io.is_compressed(b):
             temporary = b.with_name(b.name+'.verified-link')
-            if temporary.exists(): raise ValueError('unreceipted sharing temporary')
-            os.link(a,temporary);os.replace(temporary,b)
+            if storage_io.exists(temporary): raise ValueError('unreceipted sharing temporary')
+            storage_io.link(a, temporary);storage_io.replace_file(temporary,b)
     print(dict(actual_game_built=True, native_byte_changes=1, shirt_number=24,
         full_SOURCE_replay=True, preferred_unchanged=True, runner_pending=True), flush=True)
 

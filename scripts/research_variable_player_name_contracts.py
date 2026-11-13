@@ -9,6 +9,14 @@ links and the 80 playable selector map.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import csv
 import html
@@ -22,12 +30,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR_ROOT = REPO_ROOT / "upstream" / "pm99-skezmod-db-editor"
 if str(EDITOR_ROOT) not in sys.path:
     sys.path.insert(0, str(EDITOR_ROOT))
-if str(Path(__file__).resolve().parent) not in sys.path:
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
+if str(storage_io.resolve(Path(__file__)).parent) not in sys.path:
+    sys.path.insert(0, str(storage_io.resolve(Path(__file__)).parent))
 
 from app.eq_jug_linked import load_eq_linked_team_rosters  # noqa: E402
 from app.fdi_indexed import IndexedFDIFile  # noqa: E402
@@ -81,14 +89,14 @@ def _encoded_len(value: str) -> int:
 
 
 def _load_world_clubs(path: Path | None, selector_map: Path | None = None) -> list[dict[str, Any]]:
-    if selector_map is not None and selector_map.is_file():
-        payload = json.loads(selector_map.read_text(encoding="utf-8"))
+    if selector_map is not None and storage_io.is_file(selector_map):
+        payload = json.loads(storage_io.read_text(selector_map, encoding='utf-8'))
         selectors = [row for row in list(payload.get("selectors") or []) if isinstance(row, dict)]
         if selectors:
             return selectors
-    if path is None or not path.is_file():
+    if path is None or not storage_io.is_file(path):
         return []
-    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload = json.loads(storage_io.read_text(path, encoding='utf-8'))
     return [row for row in list(payload.get("clubs") or []) if isinstance(row, dict)]
 
 
@@ -395,7 +403,7 @@ def _contract_row(
 
 def _write_csv(path: Path, rows: list[ContractRow]) -> None:
     fields = list(ContractRow.__dataclass_fields__.keys())
-    with path.open("w", newline="", encoding="utf-8") as handle:
+    with storage_io.open_file(path, 'w', newline='', encoding='utf-8') as handle:
         writer = csv.DictWriter(handle, fieldnames=fields)
         writer.writeheader()
         for row in rows:
@@ -434,47 +442,7 @@ def _write_html(path: Path, payload: dict[str, Any]) -> None:
         "</tr>"
         for row in payload["sample_rows"][:250]
     )
-    path.write_text(
-        f"""<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>PM99 Variable Player Name Contract Research</title>
-<style>
-body {{ font-family: ui-sans-serif, system-ui, sans-serif; margin: 2rem; color: #1c1b18; }}
-table {{ border-collapse: collapse; width: 100%; margin: 1rem 0 2rem; font-size: 0.92rem; }}
-th, td {{ border: 1px solid #d7d0c3; padding: 0.45rem 0.55rem; vertical-align: top; }}
-th {{ background: #f3ead9; text-align: left; }}
-.cards {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 0.8rem; }}
-.card {{ background: #fbf7ee; border: 1px solid #d7d0c3; border-radius: 0.5rem; padding: 0.8rem; }}
-.num {{ font-size: 1.7rem; font-weight: 700; }}
-code {{ background: #f3ead9; padding: 0.1rem 0.25rem; border-radius: 0.2rem; }}
-</style>
-</head>
-<body>
-<h1>PM99 Variable Player Name Contract Research</h1>
-<p>Generated at <code>{html.escape(payload['generated_at'])}</code>.</p>
-<div class="cards">
-<div class="card"><div>Total indexed entries</div><div class="num">{summary['total_indexed_entries']}</div></div>
-<div class="card"><div>Parser-backed players</div><div class="num">{summary['parse_ok_count']}</div></div>
-<div class="card"><div>Opaque preserve-only</div><div class="num">{summary['opaque_or_non_player_count']}</div></div>
-<div class="card"><div>Playable-80 linked players</div><div class="num">{summary['playable_80_player_records']}</div></div>
-<div class="card"><div>Foreign/non-playable linked players</div><div class="num">{summary['foreign_or_non_playable_player_records']}</div></div>
-<div class="card"><div>Unlinked indexed players</div><div class="num">{summary['unlinked_player_records']}</div></div>
-</div>
-<h2>Contract Families</h2>
-<table><thead><tr><th>Family</th><th>Records</th><th>Playable 80</th><th>Foreign/non-playable</th><th>Unlinked</th><th>Status</th></tr></thead><tbody>{family_rows}</tbody></table>
-<h2>Contract Status Counts</h2>
-<table><thead><tr><th>Status</th><th>Records</th></tr></thead><tbody>{status_rows}</tbody></table>
-<h2>Representative Rows</h2>
-<table><thead><tr><th>ID</th><th>Name</th><th>Family</th><th>Len</th><th>Name start</th><th>Anchor</th><th>Max prefix</th><th>Playable refs</th><th>Foreign refs</th><th>Warning</th></tr></thead><tbody>{sample_rows}</tbody></table>
-<h2>Artifacts</h2>
-<p>JSON: <code>{html.escape(payload['artifacts']['json'])}</code></p>
-<p>CSV: <code>{html.escape(payload['artifacts']['csv'])}</code></p>
-</body></html>
-""",
-        encoding="utf-8",
-    )
+    storage_io.write_text(path, f'<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<title>PM99 Variable Player Name Contract Research</title>\n<style>\nbody {{ font-family: ui-sans-serif, system-ui, sans-serif; margin: 2rem; color: #1c1b18; }}\ntable {{ border-collapse: collapse; width: 100%; margin: 1rem 0 2rem; font-size: 0.92rem; }}\nth, td {{ border: 1px solid #d7d0c3; padding: 0.45rem 0.55rem; vertical-align: top; }}\nth {{ background: #f3ead9; text-align: left; }}\n.cards {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 0.8rem; }}\n.card {{ background: #fbf7ee; border: 1px solid #d7d0c3; border-radius: 0.5rem; padding: 0.8rem; }}\n.num {{ font-size: 1.7rem; font-weight: 700; }}\ncode {{ background: #f3ead9; padding: 0.1rem 0.25rem; border-radius: 0.2rem; }}\n</style>\n</head>\n<body>\n<h1>PM99 Variable Player Name Contract Research</h1>\n<p>Generated at <code>{html.escape(payload['generated_at'])}</code>.</p>\n<div class="cards">\n<div class="card"><div>Total indexed entries</div><div class="num">{summary['total_indexed_entries']}</div></div>\n<div class="card"><div>Parser-backed players</div><div class="num">{summary['parse_ok_count']}</div></div>\n<div class="card"><div>Opaque preserve-only</div><div class="num">{summary['opaque_or_non_player_count']}</div></div>\n<div class="card"><div>Playable-80 linked players</div><div class="num">{summary['playable_80_player_records']}</div></div>\n<div class="card"><div>Foreign/non-playable linked players</div><div class="num">{summary['foreign_or_non_playable_player_records']}</div></div>\n<div class="card"><div>Unlinked indexed players</div><div class="num">{summary['unlinked_player_records']}</div></div>\n</div>\n<h2>Contract Families</h2>\n<table><thead><tr><th>Family</th><th>Records</th><th>Playable 80</th><th>Foreign/non-playable</th><th>Unlinked</th><th>Status</th></tr></thead><tbody>{family_rows}</tbody></table>\n<h2>Contract Status Counts</h2>\n<table><thead><tr><th>Status</th><th>Records</th></tr></thead><tbody>{status_rows}</tbody></table>\n<h2>Representative Rows</h2>\n<table><thead><tr><th>ID</th><th>Name</th><th>Family</th><th>Len</th><th>Name start</th><th>Anchor</th><th>Max prefix</th><th>Playable refs</th><th>Foreign refs</th><th>Warning</th></tr></thead><tbody>{sample_rows}</tbody></table>\n<h2>Artifacts</h2>\n<p>JSON: <code>{html.escape(payload['artifacts']['json'])}</code></p>\n<p>CSV: <code>{html.escape(payload['artifacts']['csv'])}</code></p>\n</body></html>\n', encoding='utf-8')
 
 
 def _summarize(rows: list[ContractRow], playable_rosters: list[dict[str, Any]], unmatched_world: list[dict[str, Any]]) -> dict[str, Any]:
@@ -531,11 +499,11 @@ def main() -> int:
     parser.add_argument("--output-dir", required=True)
     args = parser.parse_args()
 
-    player_file = Path(args.player_file).expanduser().resolve()
-    team_file = Path(args.team_file).expanduser().resolve()
-    world_state = Path(args.world_state).expanduser().resolve() if args.world_state else None
-    selector_map = Path(args.selector_map).expanduser().resolve() if args.selector_map else None
-    output_dir = Path(args.output_dir).expanduser().resolve()
+    player_file = storage_io.resolve(Path(args.player_file).expanduser())
+    team_file = storage_io.resolve(Path(args.team_file).expanduser())
+    world_state = storage_io.resolve(Path(args.world_state).expanduser()) if args.world_state else None
+    selector_map = storage_io.resolve(Path(args.selector_map).expanduser()) if args.selector_map else None
+    output_dir = storage_io.resolve(Path(args.output_dir).expanduser())
     output_dir.mkdir(parents=True, exist_ok=True)
 
     world_clubs = _load_world_clubs(world_state, selector_map)
@@ -544,7 +512,7 @@ def main() -> int:
         player_file=player_file,
         world_clubs=world_clubs,
     )
-    file_bytes = player_file.read_bytes()
+    file_bytes = storage_io.read_bytes(player_file)
     indexed = IndexedFDIFile.from_bytes(file_bytes)
 
     rows: list[ContractRow] = []
@@ -610,7 +578,7 @@ def main() -> int:
             "html": str(html_path),
         },
     }
-    json_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(json_path, json.dumps(payload, indent=2, sort_keys=True) + '\n', encoding='utf-8')
     _write_html(html_path, payload)
     print(json.dumps({"success": True, **summary, "output_dir": str(output_dir)}, indent=2, sort_keys=True))
     return 0

@@ -3,6 +3,7 @@ import re
 from bs4 import BeautifulSoup
 from app.fdi_indexed import IndexedFDIFile
 from app.player_initial_order import read_initial_order
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import season_historical_roster_audit_v1 as roster
 from scripts import season_historical_opening_review_v1 as opening
@@ -90,7 +91,7 @@ def prepare(base):
         for r in plan['assignment']['replacements'] if r['before_recipe']['club_id']=='english-club-309'})
     if set(mapping)!=set(numbers):raise ValueError('shirt source actors do not reproduce corrected Arsenal25')
     players={p['carrier_id']:p for p in package['players']}
-    jug=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes();eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    jug=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI');eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     owners=ownership.native_owners(eq);entries={e.record_id:e for e in IndexedFDIFile.from_bytes(jug).entries}
     records=ownership.tactics.payloads(eq)
     if records[309][0x29]!=0:raise ValueError('shirt writes require the independently proven mode0 club')

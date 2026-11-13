@@ -1,6 +1,7 @@
 """Recover space from exact old SOURCE duplicates without removing any path."""
 import shutil
 from datetime import UTC, datetime
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts.archive_completed_arsenal_replays_20261016 import assert_equal_games, active
 from scripts.share_verified_r70_source_copies_20261016 import share_identical
@@ -14,7 +15,7 @@ PAIRS = (
 
 
 def main():
-    if (ROOT / 'completed.json').exists():
+    if storage_io.exists(ROOT / 'completed.json'):
         raise ValueError('completed cleanup must not repeat')
     ROOT.mkdir(parents=True, exist_ok=True)
     catalog = registry.sha256_file(registry.CATALOG_PATH)
@@ -22,14 +23,14 @@ def main():
     proofs = []
     for season in registry.supported_seasons():
         for actual_id, replay_id in PAIRS:
-            if not registry.locator_path(season, replay_id).exists():
+            if not storage_io.exists(registry.locator_path(season, replay_id)):
                 continue
             ledger = ROOT / (season + '-' + replay_id + '.json')
-            if ledger.exists():
+            if storage_io.exists(ledger):
                 proof = pipeline.read_json_file(ledger)
                 for row in proof['shared_files']:
                     a, b = registry.ROOT / row['original'], registry.ROOT / row['shared_copy']
-                    if (a.stat().st_ino != b.stat().st_ino
+                    if ((storage_io.stat_result(a).st_ino != storage_io.stat_result(b).st_ino) and not storage_io.is_compressed(a) and not storage_io.is_compressed(b)
                             or registry.sha256_file(a) != row['sha256']
                             or registry.sha256_file(b) != row['sha256']):
                         raise ValueError('previous shared bytes changed')

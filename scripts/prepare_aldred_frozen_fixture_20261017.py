@@ -1,4 +1,5 @@
 """Original Accrington owner + Blackpool opening bench, no new scraping."""
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry,season_pipeline_v2 as pipeline
 from scripts import season_frozen_fixture_reserve_v1 as source
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
@@ -9,7 +10,7 @@ BASE='sourced-eastleigh-original-opening-20261017-r121a'
 
 def main():
     path=ROOT/'opening-fixture-input-v2.json';plan_path=ROOT/'ownership-plan.json'
-    if plan_path.exists():raise ValueError('completed original pair plan must not repeat')
+    if storage_io.exists(plan_path):raise ValueError('completed original pair plan must not repeat')
     ROOT.mkdir(parents=True,exist_ok=True)
     retained(path,dict(schema=source.INPUT_SCHEMA,season='2014-15',cases=[
         dict(source_person_id=95076,displaced_carrier=9520,retained_carrier=9580,

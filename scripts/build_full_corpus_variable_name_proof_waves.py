@@ -12,6 +12,14 @@ Opaque/non-player records are preserved and listed explicitly.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import csv
 import json
@@ -27,12 +35,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR_ROOT = REPO_ROOT / "upstream" / "pm99-skezmod-db-editor"
 if str(EDITOR_ROOT) not in sys.path:
     sys.path.insert(0, str(EDITOR_ROOT))
-if str(Path(__file__).resolve().parent) not in sys.path:
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
+if str(storage_io.resolve(Path(__file__)).parent) not in sys.path:
+    sys.path.insert(0, str(storage_io.resolve(Path(__file__)).parent))
 
 from app.editor_actions import (  # noqa: E402
     _IndexedRawStageRecord,
@@ -135,20 +143,20 @@ def _parse_args() -> argparse.Namespace:
 
 def _json_dump(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(path, json.dumps(payload, indent=2, sort_keys=True) + '\n', encoding='utf-8')
 
 
 def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     if not rows:
-        path.write_text("", encoding="utf-8")
+        storage_io.write_text(path, '', encoding='utf-8')
         return
     fieldnames: list[str] = []
     for row in rows:
         for key in row:
             if key not in fieldnames:
                 fieldnames.append(key)
-    with path.open("w", newline="", encoding="utf-8") as handle:
+    with storage_io.open_file(path, 'w', newline='', encoding='utf-8') as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(rows)
@@ -182,19 +190,19 @@ def _should_skip_dir_name(name: str) -> bool:
 
 def _copy_or_link_file(source: Path, destination: Path, *, copy: bool) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
-    if destination.exists():
-        destination.unlink()
+    if storage_io.exists(destination):
+        storage_io.unlink(destination)
     if copy:
-        shutil.copy2(source, destination)
+        storage_io.copy_file(source, destination, metadata=True)
         return
     try:
-        os.link(source, destination)
+        storage_io.link(source, destination)
     except OSError:
-        shutil.copy2(source, destination)
+        storage_io.copy_file(source, destination, metadata=True)
 
 
 def _copy_lean_game_root(source_game: Path, output_game: Path, *, copy_db_files: set[str]) -> None:
-    if output_game.exists():
+    if storage_io.exists(output_game):
         shutil.rmtree(output_game)
     output_game.mkdir(parents=True)
     copy_db_files = {item.casefold() for item in copy_db_files}
@@ -389,7 +397,7 @@ def _patch_dd6360_native_stream_variable_name_payload(
 
 
 def _load_targets(player_file: Path) -> tuple[list[TargetRow], list[dict[str, Any]]]:
-    data = player_file.read_bytes()
+    data = storage_io.read_bytes(player_file)
     indexed = IndexedFDIFile.from_bytes(data)
     targets: list[TargetRow] = []
     preserve_only: list[dict[str, Any]] = []
@@ -435,7 +443,7 @@ def _patch_full_jug(
     *,
     dd6360_contract: str = "product",
 ) -> tuple[list[PatchRow], list[dict[str, Any]]]:
-    data = player_file.read_bytes()
+    data = storage_io.read_bytes(player_file)
     indexed = IndexedFDIFile.from_bytes(data)
     entries_by_id = {int(entry.record_id): entry for entry in indexed.entries}
     stages: list[tuple[int, _IndexedRawStageRecord]] = []
@@ -502,7 +510,7 @@ def _patch_full_jug(
 
 
 def _verify_jug(player_file: Path, patches: list[PatchRow]) -> list[dict[str, Any]]:
-    data = player_file.read_bytes()
+    data = storage_io.read_bytes(player_file)
     indexed = IndexedFDIFile.from_bytes(data)
     entries_by_id = {int(entry.record_id): entry for entry in indexed.entries}
     failures: list[dict[str, Any]] = []
@@ -531,7 +539,7 @@ def _verify_jug(player_file: Path, patches: list[PatchRow]) -> list[dict[str, An
 
 
 def _load_clubs(world_state: Path) -> list[dict[str, Any]]:
-    world = json.loads(world_state.read_text(encoding="utf-8"))
+    world = json.loads(storage_io.read_text(world_state, encoding='utf-8'))
     clubs = [row for row in list(world.get("clubs") or []) if isinstance(row, dict) and row.get("club_key")]
     if len(clubs) != 80:
         raise RuntimeError(f"Expected 80 playable clubs, got {len(clubs)} from {world_state}")
@@ -623,7 +631,7 @@ def _write_roster_csv(path: Path, carrier_slots: list[CarrierSlot], patches: lis
                 "target_name": patch.target_name,
             }
         )
-    with path.open("w", newline="", encoding="utf-8") as handle:
+    with storage_io.open_file(path, 'w', newline='', encoding='utf-8') as handle:
         writer = csv.DictWriter(handle, fieldnames=["team", "eq_record_id", "source", "slot", "player_id", "flag"])
         writer.writeheader()
         for row in rows:
@@ -693,7 +701,7 @@ def _build_waves(
         )
         backup_path = getattr(result, "backup_path", None)
         if backup_path:
-            Path(str(backup_path)).unlink(missing_ok=True)
+            storage_io.unlink(Path(str(backup_path)), missing_ok=True)
         readback = _readback_wave_rosters(game_dir, assignments)
         wave_club_keys = sorted({str(row["club_key"]) for row in assignments})
         wave_summary = {
@@ -767,17 +775,7 @@ def _build_waves(
             }
             runner_batches.append(batch)
             script_path = wave_dir / f"run_wave_{wave_no:02d}_batch_{batch_no:02d}.sh"
-            script_path.write_text(
-                "#!/usr/bin/env bash\n"
-                "set -euo pipefail\n"
-                f"cd {_shell_quote(REPO_ROOT)}\n"
-                "PM99_RUNNER_WORKER_LANE_COUNT=${PM99_RUNNER_WORKER_LANE_COUNT:-2} \\\n"
-                "PM99_RUNNER_DOCKER_TIMEOUT_SECONDS=${PM99_RUNNER_DOCKER_TIMEOUT_SECONDS:-1800} \\\n"
-                "PM99_RUNNER_SKIP_CLASSIFICATION=${PM99_RUNNER_SKIP_CLASSIFICATION:-1} \\\n"
-                + " ".join(_shell_quote(part) for part in command)
-                + "\n",
-                encoding="utf-8",
-            )
+            storage_io.write_text(script_path, f'#!/usr/bin/env bash\nset -euo pipefail\ncd {_shell_quote(REPO_ROOT)}\nPM99_RUNNER_WORKER_LANE_COUNT=${{PM99_RUNNER_WORKER_LANE_COUNT:-2}} \\\nPM99_RUNNER_DOCKER_TIMEOUT_SECONDS=${{PM99_RUNNER_DOCKER_TIMEOUT_SECONDS:-1800}} \\\nPM99_RUNNER_SKIP_CLASSIFICATION=${{PM99_RUNNER_SKIP_CLASSIFICATION:-1}} \\\n' + ' '.join((_shell_quote(part) for part in command)) + '\n', encoding='utf-8')
             script_path.chmod(0o755)
     return waves, runner_batches
 
@@ -822,17 +820,17 @@ def _write_runner_matrix(output_dir: Path, runner_batches: list[dict[str, Any]])
             "",
         ]
     )
-    script_path.write_text("\n".join(lines), encoding="utf-8")
+    storage_io.write_text(script_path, '\n'.join(lines), encoding='utf-8')
     script_path.chmod(0o755)
     return script_path
 
 
 def build(args: argparse.Namespace) -> dict[str, Any]:
-    base_game = Path(args.base_game).expanduser().resolve()
-    world_state = Path(args.world_state).expanduser().resolve()
-    selector_map = Path(args.selector_map).expanduser().resolve()
-    output_dir = Path(args.output_dir).expanduser().resolve()
-    if output_dir.exists():
+    base_game = storage_io.resolve(Path(args.base_game).expanduser())
+    world_state = storage_io.resolve(Path(args.world_state).expanduser())
+    selector_map = storage_io.resolve(Path(args.selector_map).expanduser())
+    output_dir = storage_io.resolve(Path(args.output_dir).expanduser())
+    if storage_io.exists(output_dir):
         if not args.force:
             raise FileExistsError(output_dir)
         shutil.rmtree(output_dir)

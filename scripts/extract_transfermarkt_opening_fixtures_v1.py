@@ -26,6 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import extract_2015_world_transfermarkt_opening_fixtures as extractor  # noqa: E402
 
 
@@ -40,7 +41,7 @@ def load_country_map(path: Path) -> tuple[dict[str, str], str]:
     """Load an exact, canonical country scope and return it with its hash."""
 
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         document = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise extractor.SourceReceiptError(f"cannot read country map: {path}") from exc
@@ -88,7 +89,7 @@ def main(argv: list[str] | None = None) -> int:
         "schema_version": COUNTRY_MAP_SCHEMA,
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(_canonical_json_bytes(receipt))
+    storage_io.write_bytes(args.output, _canonical_json_bytes(receipt))
     print(json.dumps(receipt["summary"], sort_keys=True))
     return 0
 

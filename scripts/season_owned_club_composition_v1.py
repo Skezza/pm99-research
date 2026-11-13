@@ -13,6 +13,7 @@ import shutil
 import tempfile
 from urllib.parse import parse_qs, urlparse
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_retained_native_transfer_v1 as transfer
 from app.player_initial_order import OrderReplacement, read_initial_order, patch_owned_mode1_complete_orders
 from scripts import season_verified_opening_roster_sources_v1 as sources
@@ -86,15 +87,15 @@ def materialise_private(base, proposal_path, retained_binding_path, request, out
     from scripts.publish_contextual_tactics_delta_v1 import verify_recipe_artifact
 
     output = Path(output)
-    if output.is_symlink() or output.exists():
+    if output.is_symlink() or storage_io.exists(output):
         raise ValueError('private composition output must be new and immutable')
-    if not output.resolve().is_relative_to((registry.ROOT / '.local').resolve()):
+    if not storage_io.resolve(output).is_relative_to(storage_io.resolve(registry.ROOT / '.local')):
         raise ValueError('private composition output must remain inside local workspace')
-    if not output.resolve().is_relative_to(registry.ROOT.resolve()):
+    if not storage_io.resolve(output).is_relative_to(storage_io.resolve(registry.ROOT)):
         raise ValueError('private composition output escaped workspace')
-    if (output.resolve().is_relative_to(base.game_path.resolve())
-            or base.game_path.resolve().is_relative_to(output.resolve())
-            or output.resolve().is_relative_to(base.package_path.parent.resolve())):
+    if (storage_io.resolve(output).is_relative_to(storage_io.resolve(base.game_path))
+            or storage_io.resolve(base.game_path).is_relative_to(storage_io.resolve(output))
+            or storage_io.resolve(output).is_relative_to(storage_io.resolve(base.package_path.parent))):
         raise ValueError('private composition output overlaps protected parent')
     parent_inventory = pipeline.read_json_file(base.inventory_path)
     pipeline.assert_tree_matches_inventory(base.game_path, parent_inventory)
@@ -164,8 +165,8 @@ def materialise_private(base, proposal_path, retained_binding_path, request, out
             raise ValueError('materialised native file differs from compiled candidate')
     for carrier in proof['changed_identity_carriers']:
         photo = output / 'game/DBDAT/MINIFOTO' / f'J96{carrier:05d}.BMP'
-        if photo.exists():
-            photo.unlink()  # Only the new candidate's directory entry.
+        if storage_io.exists(photo):
+            storage_io.unlink(photo)  # Only the new candidate's directory entry.
     pipeline.write_canonical_json(output / 'season-package.json', package)
     for name, data in generated.items():
         atomic_bytes(output / name, data)
@@ -173,7 +174,7 @@ def materialise_private(base, proposal_path, retained_binding_path, request, out
         verify_recipe_artifact(source, digest)
         target = output / name
         target.parent.mkdir(parents=True, exist_ok=True)
-        os.link(source, target)
+        storage_io.link(source, target)
     for artifact in package['artifacts']:
         if artifact.get('relative_path'):
             verify_recipe_artifact(output / artifact['relative_path'], artifact['sha256'])
@@ -246,8 +247,8 @@ def verify_materialised(base, candidate):
         if set(actual) != {row[key] for row in before[collection]} or any(
                 actual[row[key]] != row for row in before[collection] if row[key] not in permitted):
             raise ValueError('private composition changed unrelated recipe ' + collection)
-    raw = (candidate / 'game/DBDAT/JUG98030.FDI').read_bytes()
-    eq = (candidate / 'game/DBDAT/EQ98030.FDI').read_bytes()
+    raw = storage_io.read_bytes(candidate / 'game/DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(candidate / 'game/DBDAT/EQ98030.FDI')
     entries = {e.record_id: e for e in transfer.IndexedFDIFile.from_bytes(raw).entries}
     players = {p['carrier_id']: p for p in package['players']}
     countries = whole.delta.compiler._extract_country_codes_from_textos(candidate / 'game/DBDAT/TEXTOS.PKF')
@@ -328,13 +329,13 @@ def verify_materialised(base, candidate):
     if (displays.get(manager['carrier_id']) != short
             or [c['carrier_id'] for c in holders.get(manager['carrier_id'], [])] != [new_club['carrier_id']]):
         raise ValueError('replacement native manager display/sole owner differs from source')
-    whole.preserve_other_records((base.game_path / 'DBDAT/JUG98030.FDI').read_bytes(), raw, selected | set(owned))
-    whole.preserve_other_records((base.game_path / 'DBDAT/EQ98030.FDI').read_bytes(), eq, {proposal['before_club']['carrier_id']})
-    whole.preserve_other_records((base.game_path / 'DBDAT/ENT98030.FDI').read_bytes(),
-        (candidate / 'game/DBDAT/ENT98030.FDI').read_bytes(), {proof['manager']['carrier_id']})
-    archive = (candidate / 'game/DBDAT/MINIFOTO.PKF').read_bytes()
+    whole.preserve_other_records(storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI'), raw, selected | set(owned))
+    whole.preserve_other_records(storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI'), eq, {proposal['before_club']['carrier_id']})
+    whole.preserve_other_records(storage_io.read_bytes(base.game_path / 'DBDAT/ENT98030.FDI'),
+        storage_io.read_bytes(candidate / 'game/DBDAT/ENT98030.FDI'), {proof['manager']['carrier_id']})
+    archive = storage_io.read_bytes(candidate / 'game/DBDAT/MINIFOTO.PKF')
     cleared, _ = whole.delta.no_photo_archive(archive, selected)
-    if cleared != archive or any((candidate / 'game/DBDAT/MINIFOTO' / f'J96{c:05d}.BMP').exists() for c in selected):
+    if cleared != archive or any(storage_io.exists(candidate / 'game/DBDAT/MINIFOTO' / f'J96{c:05d}.BMP') for c in selected):
         raise ValueError('private composition retains a stale identity portrait')
     return dict(schema_version=PRIVATE_SCHEMA + '-native-readback', season=base.season,
         candidate_receipt=binding(candidate / 'candidate-receipt.json'), observations=observations,
@@ -372,7 +373,7 @@ def replay_materialised(base, candidate):
             or pipeline.canonical_json_bytes(proof) != pipeline.canonical_json_bytes(transaction['compilation'])):
         raise ValueError('saved composition recipe/proof does not exactly replay')
     if set(files) != set(receipt['native_hashes']) or any(
-            payload != (candidate / 'game/DBDAT' / name).read_bytes() for name, payload in files.items()):
+            payload != storage_io.read_bytes(candidate / 'game/DBDAT' / name) for name, payload in files.items()):
         raise ValueError('saved composition actual native files do not exactly replay')
     return dict(schema_version=PRIVATE_SCHEMA + '-incremental-replay', season=base.season,
         candidate_receipt=binding(candidate / 'candidate-receipt.json'),
@@ -452,14 +453,14 @@ def verify_identity_difference(base, candidate):
     if set(by) != {p['carrier_id'] for p in before['players']} or any(
             by[p['carrier_id']] != p for p in before['players'] if p['carrier_id'] not in selected):
         raise ValueError('identity review found unrelated recipe player changes')
-    jug = (candidate / 'game/DBDAT/JUG98030.FDI').read_bytes()
-    eq = (candidate / 'game/DBDAT/EQ98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(candidate / 'game/DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(candidate / 'game/DBDAT/EQ98030.FDI')
     replayed, _ = keeper.replay(jug, eq, after, candidate / 'season-package.json')
     if replayed != jug:
         raise ValueError('retained candidate keeper-order recipe replay is not idempotent')
-    archive = (candidate / 'game/DBDAT/MINIFOTO.PKF').read_bytes()
+    archive = storage_io.read_bytes(candidate / 'game/DBDAT/MINIFOTO.PKF')
     cleared, _ = whole.delta.no_photo_archive(archive, selected)
-    if cleared != archive or any((candidate / 'game/DBDAT/MINIFOTO' / f'J96{c:05d}.BMP').exists() for c in selected):
+    if cleared != archive or any(storage_io.exists(candidate / 'game/DBDAT/MINIFOTO' / f'J96{c:05d}.BMP') for c in selected):
         raise ValueError('retained identity review found a stale portrait')
     return dict(schema_version=PRIVATE_SCHEMA + '-identity-difference', season=base.season,
         candidate_receipt_sha256=registry.sha256_file(candidate / 'candidate-receipt.json'),
@@ -501,7 +502,7 @@ def reconstruction(previous, release_id):
     retained_path = original(transaction['retained_sources']['path'], transaction['retained_sources']['sha256'])
     source_replay = original(compiler['original_source_replay']['path'], compiler['original_source_replay']['sha256'])
     root = registry.ROOT / '.local/retained-club-replays-v1' / previous.season / release_id
-    if root.exists() or registry.locator_path(previous.season, release_id).parent.exists():
+    if storage_io.exists(root) or storage_io.exists(registry.locator_path(previous.season, release_id).parent):
         raise ValueError('retained SOURCE reconstruction output already exists')
     pipeline.assert_tree_matches_inventory(previous.game_path, pipeline.read_json_file(previous.inventory_path))
     materialise_private(base, proposal_path, retained_path, transaction['request'], root / 'native')
@@ -559,8 +560,8 @@ def compile_preflight(base, proposal_path, retained_binding_path, request):
     if (proposal['season'], proposal['release_id'], proposal['package_sha256']) != (
             base.season, base.release_id, registry.sha256_file(base.package_path)):
         raise ValueError('whole-club source proposal has a different recipe baseline')
-    raw = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    raw = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     if (registry.sha256_file(base.game_path / 'DBDAT/JUG98030.FDI'),
             registry.sha256_file(base.game_path / 'DBDAT/EQ98030.FDI')) != (proposal['jug_sha256'], proposal['eq_sha256']):
         raise ValueError('whole-club native baseline changed')
@@ -616,7 +617,7 @@ def compile_preflight(base, proposal_path, retained_binding_path, request):
         evidence = row['source']
         path = original(evidence['path'], evidence['sha256'])
         receipt = pipeline.read_json_file(registry.ROOT / evidence['receipt_path'])
-        raw_article = path.read_bytes()
+        raw_article = storage_io.read_bytes(path)
         if receipt.get('url') != evidence['url'] or receipt.get('sha256') != evidence['sha256']:
             raise ValueError('August article URL/hash receipt differs')
         if not (base.season[:4] + '-07-01' <= evidence['published_date'] <= base.season[:4] + '-08-31'):
@@ -753,7 +754,7 @@ def compile_preflight(base, proposal_path, retained_binding_path, request):
             or query != dict(team_id=[expected_team], teamTabs=['managers'])):
         raise ValueError('manager source is not the exact original team manager history')
     from scripts.prepare_paired_whole_club_native_v1 import dated_manager_identity
-    name, manager_person = dated_manager_identity(manager_path.read_bytes(), proposal['original_opening']['fixture']['date'])
+    name, manager_person = dated_manager_identity(storage_io.read_bytes(manager_path), proposal['original_opening']['fixture']['date'])
     short, _ = whole.manager_display.short_name(name)
     if short is None:
         raise ValueError('manager needs a proven compact display')
@@ -762,7 +763,7 @@ def compile_preflight(base, proposal_path, retained_binding_path, request):
         ent_path=base.game_path / 'DBDAT/ENT98030.FDI')
     if [c['carrier_id'] for c in holdings.get(manager['carrier_id'], [])] != [new_club['carrier_id']]:
         raise ValueError('new club does not exclusively own its manager carrier')
-    ent = (base.game_path / 'DBDAT/ENT98030.FDI').read_bytes()
+    ent = storage_io.read_bytes(base.game_path / 'DBDAT/ENT98030.FDI')
     index = transfer.IndexedFDIFile.from_bytes(ent)
     entry = next(e for e in index.entries if e.record_id == manager['carrier_id'])
     names = dict(surname=short, display_name=short)
@@ -779,10 +780,10 @@ def compile_preflight(base, proposal_path, retained_binding_path, request):
         proof=dict(artifact_id=artifact['id'], grade='source-receipt'),
         review_reason='Source-bound identity composition; old slot photograph cleared.') for id in sorted(changed_ids))
     portraits.sort(key=lambda row: row['player_id'])
-    archive, photo_offsets = whole.delta.no_photo_archive((base.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes(), identity_carriers)
+    archive, photo_offsets = whole.delta.no_photo_archive(storage_io.read_bytes(base.game_path / 'DBDAT/MINIFOTO.PKF'), identity_carriers)
     whole.preserve_other_records(raw, jug, identity_carriers | set(owned))
-    whole.preserve_other_records((base.game_path / 'DBDAT/EQ98030.FDI').read_bytes(), eq, {new_club['carrier_id']})
-    whole.preserve_other_records((base.game_path / 'DBDAT/ENT98030.FDI').read_bytes(), ent, {manager['carrier_id']})
+    whole.preserve_other_records(storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI'), eq, {new_club['carrier_id']})
+    whole.preserve_other_records(storage_io.read_bytes(base.game_path / 'DBDAT/ENT98030.FDI'), ent, {manager['carrier_id']})
     whole.package_v2.validate_package(result)
     return result, {'JUG98030.FDI': jug, 'EQ98030.FDI': eq, 'ENT98030.FDI': ent, 'MINIFOTO.PKF': archive}, dict(moves=move_proof, new_people=len(allocation),
         compositions=[whole_composition, composition], owned_order=owned,

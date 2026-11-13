@@ -7,6 +7,7 @@ edit kinds must acquire their own source and native guards before admission.
 import copy
 from datetime import date
 from pathlib import Path
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_disk_budget_v1 as disk_budget
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import season_package_v2 as packages,season_package_compiler_v2 as compiler
@@ -54,7 +55,7 @@ def binding(path):return dict(path=registry.relative_workspace_path(path),sha256
 
 def original_path(relative):
     path=registry.ROOT/relative
-    if Path(relative).is_absolute() or not path.resolve().is_relative_to(registry.ROOT.resolve()) or not path.is_file():
+    if Path(relative).is_absolute() or not storage_io.resolve(path).is_relative_to(storage_io.resolve(registry.ROOT)) or not storage_io.is_file(path):
         raise ValueError('source input must be a retained workspace file')
     return path
 
@@ -105,7 +106,7 @@ def prepare(base,input_path):
         raise ValueError('explicit supported field-change source input and exact parent required')
     actors={p['carrier_id']:p for p in pipeline.read_json_file(base.package_path)['players']}
     clubs={c['id']:c for c in pipeline.read_json_file(base.package_path)['clubs']}
-    jug=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes();eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    jug=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI');eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     entries={e.record_id:e for e in IndexedFDIFile.from_bytes(jug).entries}
     owners=ownership.native_owners(eq)
     codes=compiler._extract_country_codes_from_textos(base.game_path/'DBDAT/TEXTOS.PKF')
@@ -126,7 +127,7 @@ def prepare(base,input_path):
         if (registry.sha256_file(body)!=original['sha256'] or receipt.get('url')!=original['url']
                 or receipt.get('sha256')!=original['sha256']):
             raise ValueError('original profile body/URL receipt differs')
-        identity=source.country(body.read_bytes(),person_id=original['provider_player_id'],
+        identity=source.country(storage_io.read_bytes(body),person_id=original['provider_player_id'],
             name=heading_name(actor.get('source_name') or actor['name']),birth_date=actor['facts']['birth_date'],url=original['url'])
         # Read the actual native date too: recipe agreement alone is insufficient.
         from scripts.season_within_club_reserve_repair_v1 import native_facts
@@ -157,8 +158,8 @@ def prepare_height(base, path, request):
     package = pipeline.read_json_file(base.package_path)
     actors = {p['carrier_id']: p for p in package['players']}
     clubs = {c['id']: c for c in package['clubs']}
-    jug = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(jug).entries}
     owners = ownership.native_owners(eq)
     updates, seen = [], set()
@@ -307,7 +308,7 @@ def apply(jug,eq,plan):
         return dated_parent_role.apply(jug, eq, plan)
     validate_mask(plan);base=registry.load_registered_release(plan['season'],plan['release_id']);verify(base,plan)
     if digest(eq)!=plan['eq_sha256']:raise ValueError('source-backed exact EQ required')
-    before=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    before=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
     masks = [m for row in plan['updates'] for m in (
         row['native_masks'] if plan['kind'] in MULTI_FIELD_KINDS else [row['native_mask']])]
     if plan['kind'] in (HEIGHT_KIND, KNOWN_WRONG_KIND, *MULTI_FIELD_KINDS):
@@ -345,7 +346,7 @@ def reconstruction(previous,release_id,*,minimum_free_bytes=disk_budget.DEFAULT_
     if plan.get('schema')!=SCHEMA:return None
     base=registry.load_registered_release(previous.season,plan['release_id']);verify(base,plan)
     receipt=pipeline.read_json_file(previous.compiler_receipt_path)
-    if (receipt.get('compilation_mode')!=MODE or path.resolve()!=(previous.package_path.parent/filename(plan)).resolve()
+    if (receipt.get('compilation_mode')!=MODE or storage_io.resolve(path)!=storage_io.resolve(previous.package_path.parent / filename(plan))
             or registry.sha256_file(path)!=receipt['original_profile_assignment_plan_sha256']):
         raise ValueError('source-backed SOURCE receipt/plan binding differs')
     package=pipeline.read_json_file(previous.package_path)
@@ -358,5 +359,5 @@ def reconstruction(previous,release_id,*,minimum_free_bytes=disk_budget.DEFAULT_
     publisher.publish(previous.season,descriptor,release_id=release_id,source_release_id=base.release_id,profile_assignment_plan_path=path,minimum_free_bytes=minimum_free_bytes)
     rebuilt=registry.load_registered_release(previous.season,release_id)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path,pipeline.read_json_file(previous.inventory_path))
-    if rebuilt.package_path.read_bytes()!=previous.package_path.read_bytes():raise ValueError('whole SOURCE recipe differs')
+    if storage_io.read_bytes(rebuilt.package_path)!=storage_io.read_bytes(previous.package_path):raise ValueError('whole SOURCE recipe differs')
     return dict(season=previous.season,complete_game_inventory_identical=True,complete_recipe_identical=True)

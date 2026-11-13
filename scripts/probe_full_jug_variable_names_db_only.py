@@ -9,6 +9,14 @@ separate reverse engineering.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import csv
 import json
@@ -22,12 +30,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR_ROOT = REPO_ROOT / "upstream" / "pm99-skezmod-db-editor"
 if str(EDITOR_ROOT) not in sys.path:
     sys.path.insert(0, str(EDITOR_ROOT))
-if str(Path(__file__).resolve().parent) not in sys.path:
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
+if str(storage_io.resolve(Path(__file__)).parent) not in sys.path:
+    sys.path.insert(0, str(storage_io.resolve(Path(__file__)).parent))
 
 from app.editor_actions import _IndexedRawStageRecord, _split_display_name_for_linked_payload, write_player_staged_records  # noqa: E402
 from app.editor_helpers import _player_display_name  # noqa: E402
@@ -39,7 +47,7 @@ from assert_pm99_isolated_input import sha256  # noqa: E402
 
 def _json_dump(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(path, json.dumps(payload, indent=2, sort_keys=True) + '\n', encoding='utf-8')
 
 
 def _ascii(value: str) -> str:
@@ -310,7 +318,7 @@ class ProbeRow:
 
 
 def _write_csv(path: Path, rows: list[ProbeRow]) -> None:
-    with path.open("w", newline="", encoding="utf-8") as handle:
+    with storage_io.open_file(path, 'w', newline='', encoding='utf-8') as handle:
         writer = csv.DictWriter(handle, fieldnames=list(ProbeRow.__dataclass_fields__.keys()))
         writer.writeheader()
         for row in rows:
@@ -327,7 +335,7 @@ def _patch_payload(decoded: bytes, current_name: str, target_name: str) -> tuple
 
 
 def _verify_written_copy(path: Path, expected_by_id: dict[int, dict[str, Any]]) -> list[dict[str, Any]]:
-    data = path.read_bytes()
+    data = storage_io.read_bytes(path)
     indexed = IndexedFDIFile.from_bytes(data)
     entries = {int(entry.record_id): entry for entry in indexed.entries}
     failures: list[dict[str, Any]] = []
@@ -364,10 +372,10 @@ def _verify_written_copy(path: Path, expected_by_id: dict[int, dict[str, Any]]) 
 
 
 def run(args: argparse.Namespace) -> dict[str, Any]:
-    player_file = Path(args.player_file).expanduser().resolve()
-    output_dir = Path(args.output_dir).expanduser().resolve()
+    player_file = storage_io.resolve(Path(args.player_file).expanduser())
+    output_dir = storage_io.resolve(Path(args.output_dir).expanduser())
     output_dir.mkdir(parents=True, exist_ok=True)
-    data = player_file.read_bytes()
+    data = storage_io.read_bytes(player_file)
     indexed = IndexedFDIFile.from_bytes(data)
 
     rows: list[ProbeRow] = []
@@ -471,7 +479,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     backup_path = None
     post_failures: list[dict[str, Any]] = []
     if args.write_copy:
-        shutil.copy2(player_file, output_player_file)
+        storage_io.copy_file(player_file, output_player_file, metadata=True)
         backup_path = write_player_staged_records(str(output_player_file), stages, create_backup_before_write=True)
         post_failures = _verify_written_copy(output_player_file, expected_by_id)
 
@@ -503,7 +511,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "ok": bool(status_counts["rewrite_probe_failed"] == 0 and len(post_failures) == 0),
         "hashes": {
             "input_JUG98030.FDI": sha256(player_file),
-            "output_JUG98030.FDI": sha256(output_player_file) if args.write_copy and output_player_file.is_file() else None,
+            "output_JUG98030.FDI": sha256(output_player_file) if args.write_copy and storage_io.is_file(output_player_file) else None,
         },
         "artifacts": {
             "json": str(json_path),

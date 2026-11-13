@@ -11,6 +11,7 @@ from pathlib import Path
 
 from bs4 import BeautifulSoup
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_historical_roster_audit_v1 as annual
 from scripts import season_mode1_sourced_keeper_slot_v1 as sky
 from scripts import season_pipeline_v2 as pipeline
@@ -84,35 +85,35 @@ def prepare(release=None):
     release = release or registry.load_preferred_release('2006-07')
     root = registry.ROOT / '.local/opening-xi-repairs-20261008'
     probe_path = root / 'atalanta-pruning-probe/probe-receipt.json'
-    probe = json.loads(probe_path.read_text())
+    probe = json.loads(storage_io.read_text(probe_path))
     if release.release_id != probe['release_id']:
         raise ValueError('review must extend the actual probed preferred baseline')
     for relative, expected in probe['source_native_hashes'].items():
         if registry.sha256_file(release.game_path / relative) != expected:
             raise ValueError('probed native baseline changed')
     old_path = registry.ROOT / '.local/critical-path-repairs-20261007/2006-07/keeper-plan-r49.json'
-    old = json.loads(old_path.read_text())
-    package = json.loads(release.package_path.read_text())
+    old = json.loads(storage_io.read_text(old_path))
+    package = json.loads(storage_io.read_text(release.package_path))
     club = next(c for c in package['clubs'] if c['carrier_id'] == 223)
     capture, proof = roster.annual_capture('2006-07', club)
     results = sky.original(old['bindings']['league_results'])
-    receipt = json.loads(sky.original(old['bindings']['league_results_receipt']).read_text())
+    receipt = json.loads(storage_io.read_text(sky.original(old['bindings']['league_results_receipt'])))
     for key in ('requested_url', 'response_url'):
         sky.dates.validate_url(receipt[key], release.season, 'I1')
     if receipt['sha256'] != registry.sha256_file(results):
         raise ValueError('original fixture results receipt changed')
-    first = sky.dates.first_fixture(results.read_bytes(), release.season, 'I1', 'Atalanta')
+    first = sky.dates.first_fixture(storage_io.read_bytes(results), release.season, 'I1', 'Atalanta')
     if first['fixture'] != old['first_fixture']['fixture']:
         raise ValueError('original first fixture changed')
     fixture = first['fixture']
-    sheet = sky.report(sky.original(old['bindings']['lineup_report']).read_bytes(),
+    sheet = sky.report(storage_io.read_bytes(sky.original(old['bindings']['lineup_report'])),
                        old['bindings']['report_url'], 'Atalanta', fixture['away'], fixture['date'])
     source_dir = root / 'italian-preflight/sources'
     alias_path = source_dir / 'adriano-pereira-wikipedia.html'
     adriano = next(p for p in capture['players'] if p['name'] == 'Adriano Pereira')
-    alias = adriano_bridge(alias_path.read_bytes(), adriano)
+    alias = adriano_bridge(storage_io.read_bytes(alias_path), adriano)
     players = {p['carrier_id']: p for p in package['players']}
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     approved = []
     for carrier in probe['candidate_XI']:
         player = players[carrier]
@@ -135,7 +136,7 @@ def prepare(release=None):
     for carrier, file, title in [(3150, 'salvatore-fresi-wikipedia.html', 'Salvatore Fresi'),
                                  (4372, 'giovanni-tedesco-wikipedia.html', 'Giovanni Tedesco')]:
         path = source_dir / file
-        person = biography(path.read_bytes(), title)
+        person = biography(storage_io.read_bytes(path), title)
         native = roster.native_facts(jug, carrier)
         if (native['birth_date'] != person['birth_date']
                 or annual.normalise(players[carrier].get('source_name') or players[carrier]['name']) != annual.normalise(title)

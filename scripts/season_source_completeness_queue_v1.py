@@ -21,6 +21,14 @@ claim that a draft or package is playable.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import datetime as dt
 import hashlib
@@ -32,7 +40,7 @@ from pathlib import Path
 from typing import Any
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = storage_io.resolve(Path(__file__)).parents[1]
 SCHEMA = "pm99-season-source-completeness-queue-v1"
 CURRENT_SCHEMA = "pm99-historical-squad-backfill-current-v1"
 MANAGER_OVERLAY_SCHEMA = "pm99-season-manager-overlay-v1"
@@ -60,7 +68,7 @@ def sha256_file(path: Path) -> str:
     """Hash a file in bounded memory."""
 
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
@@ -68,7 +76,7 @@ def sha256_file(path: Path) -> str:
 
 def _read_object(path: Path, *, label: str) -> dict[str, Any]:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(storage_io.read_text(path, encoding='utf-8'))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise QueueError(f"cannot read {label}: {path}") from exc
     if not isinstance(value, dict):
@@ -77,10 +85,10 @@ def _read_object(path: Path, *, label: str) -> dict[str, Any]:
 
 
 def _path_record(path: Path) -> dict[str, Any]:
-    record: dict[str, Any] = {"path": path.as_posix(), "exists": path.is_file()}
-    if path.is_file():
+    record: dict[str, Any] = {"path": path.as_posix(), "exists": storage_io.is_file(path)}
+    if storage_io.is_file(path):
         record["sha256"] = sha256_file(path)
-        record["bytes"] = path.stat().st_size
+        record["bytes"] = storage_io.size(path)
     return record
 
 
@@ -89,8 +97,8 @@ def _safe_child(parent: Path, relative: object, label: str) -> Path:
 
     if not isinstance(relative, str) or not relative or Path(relative).is_absolute() or ".." in Path(relative).parts:
         raise QueueError(f"{label} path is unsafe")
-    path = (parent / relative).resolve()
-    if path != parent.resolve() and parent.resolve() not in path.parents:
+    path = storage_io.resolve(parent / relative)
+    if path != storage_io.resolve(parent) and storage_io.resolve(parent) not in path.parents:
         raise QueueError(f"{label} path escapes its root")
     return path
 
@@ -214,7 +222,7 @@ def _bound_index_artifact(
         raise QueueError(f"manager overlay index has no {label} binding")
     path = _safe_child(index_root, record.get("path"), f"manager overlay index {label}")
     expected = _declared_sha256(record.get("sha256"), f"manager overlay index {label}")
-    actual = sha256_file(path) if path.is_file() else None
+    actual = sha256_file(path) if storage_io.is_file(path) else None
     if actual != expected:
         raise QueueError(f"manager overlay index {label} is stale or missing")
     return path, _read_object(path, label=f"manager overlay index {label}"), actual
@@ -226,7 +234,7 @@ def _manager_overlay_index(
     """Validate the index and every pointer it relies on once per report."""
 
     try:
-        relative_index_path = index_path.resolve().relative_to(index_root.resolve()).as_posix()
+        relative_index_path = storage_io.resolve(index_path).relative_to(storage_io.resolve(index_root)).as_posix()
     except ValueError as exc:
         raise QueueError("manager overlay index must sit below manager-overlay-index-root") from exc
     index = _read_object(index_path, label="manager overlay index")
@@ -467,7 +475,7 @@ def _binding_is_materialised(artifacts: Iterable[Mapping[str, Any]], *, binding_
         if not isinstance(relative, str) or not isinstance(declared, str) or not SHA256_RE.fullmatch(declared):
             return False
         path = binding_root / relative
-        if not path.is_file() or sha256_file(path) != declared:
+        if not storage_io.is_file(path) or sha256_file(path) != declared:
             return False
     return True
 
@@ -583,15 +591,15 @@ def _build_season(
         season=season, opening_dir=opening_dir, source_sha256=str(source_record["sha256"]),
         opening_xi_overlay_root=opening_xi_overlay_root, opening_xi_overlay_id=opening_xi_overlay_id,
     )
-    if not manager_path.is_file() or not reconciliation_path.is_file():
+    if not storage_io.is_file(manager_path) or not storage_io.is_file(reconciliation_path):
         raise QueueError(f"{season}: opening manager ledger or lineup reconciliation is missing")
     managers, manager_gaps = _manager_indexes(_read_object(manager_path, label="opening manager ledger"))
     openings = _opening_index(_read_object(reconciliation_path, label="opening lineup reconciliation"))
 
     kit_path = kit_root / season / "kit-catalogue-v1.json"
     binding_path = kit_bindings_root / season / "kit-render-bindings-v1.json"
-    kit_catalogue = _read_object(kit_path, label="kit catalogue") if kit_path.is_file() else None
-    kit_bindings = _read_object(binding_path, label="kit render bindings") if binding_path.is_file() else None
+    kit_catalogue = _read_object(kit_path, label="kit catalogue") if storage_io.is_file(kit_path) else None
+    kit_bindings = _read_object(binding_path, label="kit render bindings") if storage_io.is_file(binding_path) else None
     kit_rows = _kit_index(kit_catalogue) if kit_catalogue is not None else {}
     binding_rows = _kit_binding_index(kit_bindings) if kit_bindings is not None else {}
     kit_binding_matches_catalogue = (
@@ -844,7 +852,7 @@ def build_report(
             index_path=manager_overlay_index_path, index_root=manager_overlay_index_root,
         )
     wanted = set(seasons or ())
-    pointers = sorted(current_root.glob("*/current.json"))
+    pointers = sorted(storage_io.glob(current_root, '*/current.json'))
     if wanted:
         pointers = [path for path in pointers if path.parent.name in wanted]
         missing = wanted - {path.parent.name for path in pointers}
@@ -979,10 +987,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     except QueueError as exc:
         parser.error(str(exc))
     args.output_json.parent.mkdir(parents=True, exist_ok=True)
-    args.output_json.write_bytes(canonical_json_bytes(report))
+    storage_io.write_bytes(args.output_json, canonical_json_bytes(report))
     if args.output_markdown is not None:
         args.output_markdown.parent.mkdir(parents=True, exist_ok=True)
-        args.output_markdown.write_text(markdown_report(report), encoding="utf-8")
+        storage_io.write_text(args.output_markdown, markdown_report(report), encoding='utf-8')
     print(json.dumps(report["summary"], sort_keys=True))
     return 0
 

@@ -22,6 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import capture_2015_fifa16_secondary_player_facts_v1 as fifa_capture  # noqa: E402
 from scripts import capture_2015_declared_historical_player_facts_v1 as declared_capture  # noqa: E402
 from scripts import capture_2015_sofifa_secondary_player_facts_v1 as sofifa_capture  # noqa: E402
@@ -37,7 +38,7 @@ class FactOverrideError(ValueError):
 
 def _relative(path: Path) -> str:
     try:
-        return path.resolve().relative_to(ROOT).as_posix()
+        return storage_io.resolve(path).relative_to(ROOT).as_posix()
     except ValueError as exc:
         raise FactOverrideError("receipt must be inside the workspace") from exc
 
@@ -212,12 +213,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--identity-queue", required=True, type=Path)
     args = parser.parse_args(argv)
     try:
-        if args.output.exists() or args.identity_queue.exists():
+        if storage_io.exists(args.output) or storage_io.exists(args.identity_queue):
             raise FactOverrideError("refusing to overwrite output or identity queue")
         package = package_v2.read_canonical_package(args.package)
         package_v2.validate_package(package)
-        package_raw = args.package.read_bytes()
-        receipt_raw = args.receipt.read_bytes()
+        package_raw = storage_io.read_bytes(args.package)
+        receipt_raw = storage_io.read_bytes(args.receipt)
         receipt = json.loads(receipt_raw.decode("utf-8"))
         if not isinstance(receipt, dict) or receipt_raw != package_v2.canonical_json_bytes(receipt):
             raise FactOverrideError("Wikipedia player-fact receipt must be canonical JSON")
@@ -229,9 +230,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (OSError, UnicodeDecodeError, json.JSONDecodeError, package_v2.PackageValidationError, FactOverrideError, review.SeasonReviewError) as exc:
         parser.error(str(exc))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(package_v2.canonical_json_bytes(result))
+    storage_io.write_bytes(args.output, package_v2.canonical_json_bytes(result))
     args.identity_queue.parent.mkdir(parents=True, exist_ok=True)
-    args.identity_queue.write_bytes(package_v2.canonical_json_bytes(queue))
+    storage_io.write_bytes(args.identity_queue, package_v2.canonical_json_bytes(queue))
     print(json.dumps({"data_patch_count": len(result["data_patches"]), "withheld_identity_collision_patch_count": queue["withheld_patch_count"]}, sort_keys=True))
     return 0
 

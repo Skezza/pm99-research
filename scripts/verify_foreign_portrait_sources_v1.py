@@ -18,6 +18,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import audit_registered_visual_assets_v1 as audit
 from scripts.season_portrait_pipeline_v1 import _name_score, _normalise_name
 from scripts.materialise_2015_world_portraits import _url_bound_to_id
@@ -27,7 +28,7 @@ from scripts import season_pipeline_v2 as pipeline
 
 
 def sha(path):
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def run():
@@ -38,29 +39,29 @@ def run():
     output.mkdir(exist_ok=True)
     csv_path = ROOT / '.local/external-sources/sofifa-fifa16/male_players_legacy.csv'
     edition = {}
-    with csv_path.open() as stream:
+    with storage_io.open_file(csv_path) as stream:
         for row in csv.DictReader(stream):
             if row['fifa_version'] == '16':
                 edition.setdefault(int(row['player_id']), row)
     source_rows = defaultdict(list)
-    materialisations = sorted((ROOT / '.local/season-pipeline-v2').glob('*portrait-materialisation*.json'))
+    materialisations = sorted(storage_io.glob(ROOT / '.local/season-pipeline-v2', '*portrait-materialisation*.json'))
     for path in materialisations:
-        doc = json.loads(path.read_text())
+        doc = json.loads(storage_io.read_text(path))
         for row in doc.get('rows', []):
             if row.get('status') == 'approved-crop-conversion-candidate':
                 source_rows[(_normalise_name(row['name']),
                              row.get('converted_sha256'))].append((path, row))
     release = audit.registry.load_preferred_release('2015-16')
-    package = json.loads(release.package_path.read_text())
+    package = json.loads(storage_io.read_text(release.package_path))
     players = {int(p['carrier_id']): p for p in package['players']}
     detector_path = ROOT / '.local/season-historical-photo-pilots-v1/shared/face_detection_yunet_2023mar.onnx'
     detector = cv2.FaceDetectorYN_create(str(detector_path), '', (320, 320), score_threshold=.75)
-    native_jug = (directory / 'native-source/JUG98030.FDI').read_bytes()
+    native_jug = storage_io.read_bytes(directory / 'native-source/JUG98030.FDI')
     native_entries = {int(e.record_id): e for e in audit.IndexedFDIFile.from_bytes(native_jug).entries}
     rows, cache, inherited = [], {}, []
     all_counts = []
-    for path in sorted(directory.glob('????-??/player-photo-audit.json')):
-        doc = json.loads(path.read_text())
+    for path in sorted(storage_io.glob(directory, '????-??/player-photo-audit.json')):
+        doc = json.loads(storage_io.read_text(path))
         foreign = [r for r in doc['players'] if r['group'] == 'foreign-club']
         all_counts.append({'season': doc['season'], 'players': len(foreign),
                            'statuses': dict(Counter(r['physical_status'] for r in foreign))})
@@ -109,14 +110,14 @@ def run():
                     if target_dob != person['dob']:
                         issues.append('recipe-and-source-birth-date-disagree-or-missing')
                 source_path = Path(source['cache_path'])
-                if not source_path.is_file():
+                if not storage_io.is_file(source_path):
                     issues.append('source-image-cache-missing')
                 else:
                     key = source['source_sha256']
                     if key not in cache:
                         check = {'source_hash_matches': sha(source_path) == key}
                         try:
-                            photo = decode(source_path.read_bytes())
+                            photo = decode(storage_io.read_bytes(source_path))
                             detector.setInputSize((photo.shape[1], photo.shape[0]))
                             _, faces = detector.detect(photo)
                             check['face_count'] = 0 if faces is None else len(faces)
@@ -149,8 +150,8 @@ def run():
                'inherited_nonmanaged_portraits': inherited,
                'scope': 'Source identity facts, cache bytes and source framing; NOT independent visual identification of every face.',
                'players': rows}
-    (output / 'report.json').write_text(json.dumps(summary, ensure_ascii=False, indent=2) + '\n')
-    with (output / 'review-queue.csv').open('w') as stream:
+    storage_io.write_text(output / 'report.json', json.dumps(summary, ensure_ascii=False, indent=2) + '\n')
+    with storage_io.open_file(output / 'review-queue.csv', 'w') as stream:
         fields = ['carrier_id', 'name', 'fifa_id', 'dated_source_name', 'recipe_birth_date',
                   'source_birth_date', 'face_count', 'issues']
         writer = csv.DictWriter(stream, fields, extrasaction='ignore')
@@ -225,7 +226,7 @@ def review_english(output, allow_network=False):
     import cv2
     cv2.setNumThreads(1)
     release = audit.registry.load_preferred_release('2015-16')
-    package = json.loads(release.package_path.read_text())
+    package = json.loads(storage_io.read_text(release.package_path))
     players = {int(p['carrier_id']): p for p in package['players']}
     # The 2015 migration package deliberately contains only mode-1 clubs.
     # The English ingress is a separate, registered compiler stage. Validate
@@ -233,9 +234,9 @@ def review_english(output, allow_network=False):
     # to a foreign player with the same carrier number.
     from app.models import PlayerRecord
     from datetime import date
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     jug_entries = {int(e.record_id): e for e in audit.IndexedFDIFile.from_bytes(jug).entries}
-    owners, _, modes = audit._source_roster_owners((release.game_path / 'DBDAT/EQ98030.FDI').read_bytes())
+    owners, _, modes = audit._source_roster_owners(storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI'))
     for carrier, owner_ids in owners.items():
         if any(modes.get(c) == 0 for c in owner_ids):
             entry = jug_entries[carrier]
@@ -249,17 +250,17 @@ def review_english(output, allow_network=False):
                                 'facts': {'birth_date': dob}, 'english_roster_bound': True}
     original_root = ROOT / '.local/season-2015-16/english92-2015-16-build36-native-no-photo'
     receipt_path = original_root / 'face-stage-receipt.json'
-    receipt = json.loads(receipt_path.read_text())
+    receipt = json.loads(storage_io.read_text(receipt_path))
     manual_path = ROOT / 'docs/ENGLISH92_2015_16_MANUAL_FACE_SOURCES.json'
-    manual_doc = json.loads(manual_path.read_text())
+    manual_doc = json.loads(storage_io.read_text(manual_path))
     manual_rows = {( _normalise_name(r['club']), _normalise_name(r['player'])): r for r in manual_doc['rows']}
     official_path = ROOT / '.local/season-2015-16/fifa16-ea-player-meta.json'
-    official_players = {int(r['id']): r for r in json.loads(official_path.read_text())['players']}
+    official_players = {int(r['id']): r for r in json.loads(storage_io.read_text(official_path))['players']}
     editions, inputs = {}, {}
     for edition in (15, 16, 17, 18, 19):
         if edition == 16:
             path = ROOT / '.local/external-sources/sofifa-fifa16/male_players_legacy.csv'
-            with path.open() as stream:
+            with storage_io.open_file(path) as stream:
                 rows = [dict(r, sofifa_id=r['player_id']) for r in csv.DictReader(stream) if r['fifa_version'] == '16']
         else:
             path = ROOT / f'.local/season-2015-16/fifa{edition}-sofifa-backfill.csv'
@@ -274,7 +275,7 @@ def review_english(output, allow_network=False):
     references = {}
     def reference(original):
         source = Path(original.get('source_image_path') or '')
-        if source.is_file():
+        if storage_io.is_file(source):
             return source, original.get('source_url'), 'original-receipt-path'
         url = original.get('source_url', '')
         match = re.search(r'/fifa(\d+)/img/players/(\d+)\.png$|/players/(\d+)/(\d{3})/(\d+)_120\.png$', url)
@@ -286,8 +287,8 @@ def review_english(output, allow_network=False):
             mirror = f'https://cdn.sofifa.net/players/{identity // 1000}/{identity % 1000:03d}/{edition}_120.png'
             for candidate in (url, mirror):
                 meta_path, payload_path = portraits._cache_paths(portraits.DEFAULT_CACHE, candidate)
-                if meta_path.is_file() and payload_path.is_file():
-                    meta = json.loads(meta_path.read_text())
+                if storage_io.is_file(meta_path) and storage_io.is_file(payload_path):
+                    meta = json.loads(storage_io.read_text(meta_path))
                     if meta.get('url') == candidate and meta.get('source_sha256') == sha(payload_path):
                         return payload_path, candidate, 'retained-shared-source-cache'
             if allow_network:
@@ -310,7 +311,7 @@ def review_english(output, allow_network=False):
         if player is None or not player.get('english_roster_bound'):
             raise ValueError('original English portrait carrier is absent from current English rosters')
         loose = release.game_path / 'DBDAT/MINIFOTO' / f'J96{carrier:05d}.BMP'
-        payload = loose.read_bytes() if loose.is_file() else installed.get(carrier)
+        payload = storage_io.read_bytes(loose) if storage_io.is_file(loose) else installed.get(carrier)
         row = {'carrier_id': carrier, 'name': player['name'], 'club': original['club'],
                'source_url': original.get('source_url'), 'original_status': original['status'],
                'issues': [], 'warnings': [], 'physical_status': 'photo' if payload else 'no-photo'}
@@ -344,7 +345,7 @@ def review_english(output, allow_network=False):
             digest = hashlib.sha256(payload).hexdigest()
             row['installed_bitmap_sha256'] = digest
             original_loose = original_root / 'game/DBDAT/MINIFOTO' / f'J96{carrier:05d}.BMP'
-            original_digest = sha(original_loose) if original_loose.is_file() else expected.get(carrier)
+            original_digest = sha(original_loose) if storage_io.is_file(original_loose) else expected.get(carrier)
             if digest != original_digest:
                 row['issues'].append('installed-bitmap-differs-from-original-conversion')
             audit.validate_minifoto_bitmap(payload)
@@ -356,7 +357,7 @@ def review_english(output, allow_network=False):
             else:
                 row.update(source_cache_path=str(source), source_sha256_checked_now=sha(source),
                            source_hash_basis='first-checkpoint-for-legacy-english-receipt')
-                image = decode(source.read_bytes())
+                image = decode(storage_io.read_bytes(source))
                 detector.setInputSize((image.shape[1], image.shape[0]))
                 _, detected = detector.detect(image)
                 row['face_count'] = 0 if detected is None else len(detected)

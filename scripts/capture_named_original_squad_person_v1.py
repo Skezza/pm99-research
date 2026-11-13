@@ -16,6 +16,7 @@ import time
 from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[1]; sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import prepare_duplicate_club_disposition_v1 as whole
 from scripts import capture_ntf_historical_carrier_squads_v1 as acquisition
 from scripts import capture_named_archive_person_supplement_v1 as named
@@ -25,7 +26,7 @@ from scripts.season_art_transaction_v1 import atomic_bytes
 
 
 def run(plan_path, season, club, name, discovery_url, output):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('named original squad identity supplement is immutable')
     found = re.fullmatch(r'https://www\.transfermarkt\.(?:com|co\.uk)/[^/?#]+/profil/spieler/(\d+)', discovery_url)
     if not found:
@@ -43,18 +44,18 @@ def run(plan_path, season, club, name, discovery_url, output):
     people = [p for p in annual['players'] if whole.roster.normalise(p['name']) == whole.roster.normalise(name)]
     if len(people) != 1 or not isinstance(people[0].get('birth_date'), str):
         raise ValueError('named original squad lacks one exact confirmed name/DOB')
-    plan = json.loads(plan_path.read_text()); old_binding = plan['bindings']['published_person_supplement']
+    plan = json.loads(storage_io.read_text(plan_path)); old_binding = plan['bindings']['published_person_supplement']
     old_path = ROOT / old_binding['path']
     if registry.sha256_file(old_path) != old_binding['sha256']:
         raise ValueError('prior original person ledger changed')
-    prior = json.loads(old_path.read_text()); whole.persons.merge({}, prior)
+    prior = json.loads(storage_io.read_text(old_path)); whole.persons.merge({}, prior)
     if id in {i for b in prior['batches'] for i in b['requested_ids']}:
         raise ValueError('person already queried; reuse the retained publisher response')
     url = whole.persons.url([id]); path = output.parent / 'raw' / f'person-{id}.json'
     receipt = path.with_name(path.name + '.source.json')
-    if path.exists():
-        raw = path.read_bytes()
-        if json.loads(receipt.read_text()) != {'url': url, 'sha256': hashlib.sha256(raw).hexdigest()}:
+    if storage_io.exists(path):
+        raw = storage_io.read_bytes(path)
+        if json.loads(storage_io.read_text(receipt)) != {'url': url, 'sha256': hashlib.sha256(raw).hexdigest()}:
             raise ValueError('original named entity URL/SHA receipt changed')
     else:
         with urlopen(Request(url, headers={'Accept': 'application/json',

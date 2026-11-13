@@ -23,6 +23,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import probe_bio_trailer_stats as trailer_probe  # type: ignore
 from scripts import probe_lineup_screenshot as lineup_probe  # type: ignore
 from scripts import probe_screenshot_rol_boxes as rol_box_probe  # type: ignore
@@ -392,7 +393,7 @@ def main(argv: list[str]) -> int:
     player_file = Path(args.player_file)
     example_file = Path(args.example_data)
 
-    example_map = trailer_probe._parse_example_player_data(example_file) if example_file.exists() else {}
+    example_map = trailer_probe._parse_example_player_data(example_file) if storage_io.exists(example_file) else {}
     manual_rol_map = dict(rol_box_probe.DEFAULT_MANUAL_READINGS)
 
     dd6361_rows = _build_dd6361_rows(player_file)
@@ -451,7 +452,7 @@ def main(argv: list[str]) -> int:
     if args.json_output:
         out = Path(args.json_output)
         out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(text + "\n", encoding="utf-8")
+        storage_io.write_text(out, text + '\n', encoding='utf-8')
     print(text)
     return 0
 

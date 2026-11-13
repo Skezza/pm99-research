@@ -33,6 +33,7 @@ for candidate in (ROOT, EDITOR):
         sys.path.insert(0, str(candidate))
 
 from app.fdi_indexed import IndexedFDIFile  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts import reconcile_mode1_roster_base_v1 as single_v1  # noqa: E402
 from scripts import season_package_compiler_v2 as compiler_v2  # noqa: E402
 from scripts import season_package_v2 as package_v2  # noqa: E402
@@ -55,10 +56,10 @@ def _sha256_bytes(value: bytes) -> str:
 
 
 def _write_new(path: Path, payload: bytes) -> str:
-    if path.exists() or path.is_symlink():
+    if storage_io.exists(path) or path.is_symlink():
         raise BatchReconciliationError(f"refusing to replace existing output: {path}")
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(payload)
+    storage_io.write_bytes(path, payload)
     return _sha256_bytes(payload)
 
 
@@ -70,10 +71,10 @@ def _candidate_carriers(
 
     eq_path = base_tree / "DBDAT" / "EQ98030.FDI"
     jug_path = base_tree / "DBDAT" / "JUG98030.FDI"
-    if not eq_path.is_file() or not jug_path.is_file():
+    if not storage_io.is_file(eq_path) or not storage_io.is_file(jug_path):
         raise BatchReconciliationError("verified base is missing required DBDAT/EQ98030.FDI or JUG98030.FDI")
-    owners, rosters, modes = compiler_v2._source_roster_owners(eq_path.read_bytes())
-    jug_data = jug_path.read_bytes()
+    owners, rosters, modes = compiler_v2._source_roster_owners(storage_io.read_bytes(eq_path))
+    jug_data = storage_io.read_bytes(jug_path)
     entries = {int(entry.record_id): entry for entry in IndexedFDIFile.from_bytes(jug_data).entries}
     player_by_id = {str(row["id"]): row for row in package["players"]}
     player_by_carrier = {int(row["carrier_id"]): row for row in package["players"]}
@@ -236,8 +237,8 @@ def reconcile_batch(
 
     eq_path = base_tree / "DBDAT" / "EQ98030.FDI"
     jug_path = base_tree / "DBDAT" / "JUG98030.FDI"
-    base_owners, base_rosters, base_modes = compiler_v2._source_roster_owners(eq_path.read_bytes())
-    jug_data = jug_path.read_bytes()
+    base_owners, base_rosters, base_modes = compiler_v2._source_roster_owners(storage_io.read_bytes(eq_path))
+    jug_data = storage_io.read_bytes(jug_path)
     entries = {int(entry.record_id): entry for entry in IndexedFDIFile.from_bytes(jug_data).entries}
     result = copy.deepcopy(package)
     clubs_by_carrier = {int(row["carrier_id"]): row for row in result["clubs"]}
@@ -370,8 +371,8 @@ def reconcile_batch(
             "package_sha256": package_v2.sha256_file(package_path),
             "verified_base_sha256": package_v2.sha256_file(verified_base_path),
             "base_inventory_fingerprint": descriptor["inventory"]["files_fingerprint"],
-            "base_eq98030_sha256": hashlib.sha256((base_tree / "DBDAT" / "EQ98030.FDI").read_bytes()).hexdigest(),
-            "base_jug98030_sha256": hashlib.sha256((base_tree / "DBDAT" / "JUG98030.FDI").read_bytes()).hexdigest(),
+            "base_eq98030_sha256": hashlib.sha256(storage_io.read_bytes(base_tree / 'DBDAT' / 'EQ98030.FDI')).hexdigest(),
+            "base_jug98030_sha256": hashlib.sha256(storage_io.read_bytes(base_tree / 'DBDAT' / 'JUG98030.FDI')).hexdigest(),
         },
         "batch": {
             "selection_policy": "all-eligible-mode1-whole-row-preserve-only",
@@ -402,24 +403,24 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--output-package", required=True, type=Path)
     parser.add_argument("--output-audit", required=True, type=Path)
     args = parser.parse_args(argv)
-    if args.output_package.resolve() == args.output_audit.resolve():
+    if storage_io.resolve(args.output_package) == storage_io.resolve(args.output_audit):
         print("mode-1 roster batch reconciliation error: output package and audit must differ", file=sys.stderr)
         return 2
-    if args.output_package.exists() or args.output_audit.exists():
-        existing = args.output_package if args.output_package.exists() else args.output_audit
-        print(f"mode-1 roster batch reconciliation error: refusing to replace existing output: {existing.resolve()}", file=sys.stderr)
+    if storage_io.exists(args.output_package) or storage_io.exists(args.output_audit):
+        existing = args.output_package if storage_io.exists(args.output_package) else args.output_audit
+        print(f"mode-1 roster batch reconciliation error: refusing to replace existing output: {storage_io.resolve(existing)}", file=sys.stderr)
         return 2
     try:
         output, audit = reconcile_batch(
-            package_path=args.package.resolve(),
-            base_tree=args.base_tree.resolve(),
-            verified_base_path=args.verified_base.resolve(),
+            package_path=storage_io.resolve(args.package),
+            base_tree=storage_io.resolve(args.base_tree),
+            verified_base_path=storage_io.resolve(args.verified_base),
             preservation_artifact_id=args.preservation_artifact_id,
             preservation_source_id=args.preservation_source_id,
         )
-        package_sha256 = _write_new(args.output_package.resolve(), _canonical_bytes(output))
+        package_sha256 = _write_new(storage_io.resolve(args.output_package), _canonical_bytes(output))
         audit["output"] = {"package_path": str(args.output_package), "package_sha256": package_sha256}
-        _write_new(args.output_audit.resolve(), _canonical_bytes(audit))
+        _write_new(storage_io.resolve(args.output_audit), _canonical_bytes(audit))
     except (
         BatchReconciliationError,
         single_v1.ReconciliationError,

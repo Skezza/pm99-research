@@ -15,6 +15,7 @@ from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_duplicate_ownership_plan_v1 as planner
 from scripts import season_historical_roster_audit_v1 as roster
 from scripts import season_historical_transfer_review_v1 as transfer
@@ -36,7 +37,7 @@ def candidate_person(raw, people, used_ids, known_histories):
 
 
 def discover(plan_root, source_root, person_path, history_path, output):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('reserve history query ledger is immutable')
     people, events, _, pin = transfer.load_snapshot(
         ROOT / '.local/external-sources/transfermarkt-datasets/transfermarkt-datasets.duckdb',
@@ -44,11 +45,11 @@ def discover(plan_root, source_root, person_path, history_path, output):
     bindings = {'published_person_supplement': public.binding(person_path, people_source.POLICY),
                 'published_transfer_supplement': public.binding(history_path, history.POLICY)}
     people, events, _ = public.merge_bound(people, events, bindings)
-    known = {r['player_id'] for r in json.loads(history_path.read_text())['players']}
+    known = {r['player_id'] for r in json.loads(storage_io.read_text(history_path))['players']}
     claims, inputs = {}, []
     for season in registry.supported_seasons():
         plan_path = plan_root / season / 'ownership-plan.json'
-        plan = json.loads(plan_path.read_text())
+        plan = json.loads(storage_io.read_text(plan_path))
         release = registry.load_registered_release(season, plan['release_id'])
         if registry.sha256_file(release.package_path) != plan['package_sha256']:
             raise ValueError('bound discovery recipe changed')
@@ -63,13 +64,13 @@ def discover(plan_root, source_root, person_path, history_path, output):
                   if row['reason'] == 'owner-proven-but-no-unused-role-compatible-opening-substitute'}
         captures, capture_bindings = roster.load_sources(season)
         opening_path = source_root / 'opening' / season / 'opening-review.json'
-        opening = json.loads(opening_path.read_text())
+        opening = json.loads(storage_io.read_text(opening_path))
         transfer.verify_opening_sources(opening)
         inputs.append({'path': registry.relative_workspace_path(opening_path), 'sha256': registry.sha256_file(opening_path)})
         report_path = source_root / 'reviews' / season / 'report.json'
-        if not report_path.exists():
+        if not storage_io.exists(report_path):
             report_path = source_root / 'reviews' / season / 'roster-audit.json'
-        verifier = roster.SourceVerifier(season, json.loads(report_path.read_text()), capture_bindings)
+        verifier = roster.SourceVerifier(season, json.loads(storage_io.read_text(report_path)), capture_bindings)
         sources = {r['carrier_id']: r['evidence'] for r in opening['clubs']
                    if r['status'] == 'original-first-fixture-reparsed'}
         for club_id in sorted(needed):
@@ -104,10 +105,10 @@ def discover(plan_root, source_root, person_path, history_path, output):
 
 
 def capture(query_path, cache, output):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('reserve history evidence is immutable')
     digest = registry.sha256_file(query_path)
-    query = json.loads(query_path.read_text())
+    query = json.loads(storage_io.read_text(query_path))
     if query.get('schema_version') != 'pm99-unused-opening-reserve-history-requests-v1':
         raise ValueError('unsupported reserve history query schema')
     records = []
@@ -119,9 +120,9 @@ def capture(query_path, cache, output):
         path = cache / 'history' / f'{id}.json'
         receipt = path.with_suffix('.source.json')
         try:
-            if path.exists():
-                raw = path.read_bytes()
-                if json.loads(receipt.read_text()) != {'url': url, 'sha256': hashlib.sha256(raw).hexdigest()}:
+            if storage_io.exists(path):
+                raw = storage_io.read_bytes(path)
+                if json.loads(storage_io.read_text(receipt)) != {'url': url, 'sha256': hashlib.sha256(raw).hexdigest()}:
                     raise ValueError('cached reserve history URL/SHA changed')
             else:
                 with urlopen(Request(url, headers={'Accept': 'application/json', 'Accept-Language': 'en-GB',
@@ -138,7 +139,7 @@ def capture(query_path, cache, output):
                 'source_receipt_path': registry.relative_workspace_path(receipt), 'events': history.parse(json.loads(raw), id)})
         except Exception as exc:
             records.append({'player_id': id, 'status': 'source-history-gap', 'source_url': url, 'reason': str(exc)})
-            if not path.exists():
+            if not storage_io.exists(path):
                 time.sleep(1)
         print(json.dumps({'completed': len(records), 'total': len(query['claims']), 'status': records[-1]['status']}), flush=True)
     if registry.sha256_file(query_path) != digest:

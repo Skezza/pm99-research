@@ -15,6 +15,14 @@ non-picker clubs in each 24-club division.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import copy
 import hashlib
@@ -24,7 +32,7 @@ from pathlib import Path
 from typing import Any
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = storage_io.resolve(Path(__file__)).parents[1]
 SEASON = "2015/16"
 DIVISIONS = ("Premier League", "Championship", "League One", "League Two")
 TARGET_DIVISION_BY_PANEL = {
@@ -47,12 +55,12 @@ HIDDEN_CARRIERS_BY_DIVISION = {
 
 
 def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def _dump_json(path: Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(path, json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8')
 
 
 def _normalise(value: str) -> str:
@@ -165,17 +173,17 @@ def main() -> int:
     parser.add_argument("--registry-output", required=True, type=Path)
     parser.add_argument("--ledger-output", required=True, type=Path)
     args = parser.parse_args()
-    source_path = args.source_ledger.resolve()
-    selector_path = args.selector_map.resolve()
+    source_path = storage_io.resolve(args.source_ledger)
+    selector_path = storage_io.resolve(args.selector_map)
     registry, ledger = build_native92_manifest(
-        source_ledger=json.loads(source_path.read_text(encoding="utf-8")),
-        selector_map=json.loads(selector_path.read_text(encoding="utf-8")),
+        source_ledger=json.loads(storage_io.read_text(source_path, encoding='utf-8')),
+        selector_map=json.loads(storage_io.read_text(selector_path, encoding='utf-8')),
     )
     registry["source_ledger_sha256"] = _sha256(source_path)
     registry["selector_map_sha256"] = _sha256(selector_path)
     ledger["native92_carrier_registry"] = registry
-    _dump_json(args.registry_output.resolve(), registry)
-    _dump_json(args.ledger_output.resolve(), ledger)
+    _dump_json(storage_io.resolve(args.registry_output), registry)
+    _dump_json(storage_io.resolve(args.ledger_output), ledger)
     print(json.dumps({"status": "pass", "clubs": len(ledger["clubs"]), "registry": str(args.registry_output), "ledger": str(args.ledger_output)}))
     return 0
 

@@ -27,6 +27,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import probe_bio_trailer_stats as trailer_probe  # type: ignore
 
 
@@ -47,7 +48,7 @@ DEFAULT_MANUAL_READINGS = {
 
 
 def _iter_pngs(path: Path) -> list[Path]:
-    return sorted([p for p in path.glob("*.png") if p.is_file()])
+    return sorted([p for p in storage_io.glob(path, '*.png') if storage_io.is_file(p)])
 
 
 def _guess_name_from_filename(stem: str) -> str:
@@ -73,9 +74,9 @@ def _extract_crop(src_path: Path, out_dir: Path, scale: int = 16) -> dict[str, A
 def _load_manual_readings(path: Path | None) -> dict[str, int]:
     if path is None:
         return dict(DEFAULT_MANUAL_READINGS)
-    if not path.exists():
+    if not storage_io.exists(path):
         return {}
-    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload = json.loads(storage_io.read_text(path, encoding='utf-8'))
     out: dict[str, int] = {}
     if isinstance(payload, dict):
         for k, v in payload.items():
@@ -87,7 +88,7 @@ def _load_manual_readings(path: Path | None) -> dict[str, int]:
 
 
 def _load_example_role_labels(example_file: Path | None) -> dict[str, dict[str, Any]]:
-    if example_file is None or not example_file.exists():
+    if example_file is None or not storage_io.exists(example_file):
         return {}
     try:
         return trailer_probe._parse_example_player_data(example_file)
@@ -158,7 +159,7 @@ def main(argv: list[str]) -> int:
     example_map = _load_example_role_labels(Path(args.example_data) if getattr(args, "example_data", None) else None)
 
     crop_rows: list[dict[str, Any]] = []
-    if screenshots_dir.exists():
+    if storage_io.exists(screenshots_dir):
         for png in _iter_pngs(screenshots_dir):
             if png.name.lower() == "exampleplayerdata.txt":
                 continue
@@ -283,7 +284,7 @@ def main(argv: list[str]) -> int:
     if args.json_output:
         out_path = Path(args.json_output)
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(text + "\n", encoding="utf-8")
+        storage_io.write_text(out_path, text + '\n', encoding='utf-8')
     print(text)
     return 0
 

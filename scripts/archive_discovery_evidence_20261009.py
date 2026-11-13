@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import consolidated_season_discovery_v1 as discovery
 
@@ -42,10 +43,10 @@ def mount_guard():
 def inventory(root,paths):
     result=[]
     for path in sorted(paths):
-        if path.is_symlink() or not path.is_file():
+        if path.is_symlink() or not storage_io.is_file(path):
             raise ValueError('Archive input is missing or symlinked')
         relative=path.relative_to(root).as_posix()
-        result.append({'path':relative,'size':path.stat().st_size,
+        result.append({'path':relative,'size':storage_io.size(path),
                        'sha256':registry.sha256_file(path)})
     return result
 
@@ -75,7 +76,7 @@ def referenced_csvs(paths):
     for season in registry.supported_seasons():
         release=registry.load_preferred_release(season)
         texts=[json.dumps(release.locator)]
-        texts += [path.read_text() for path in (release.package_path,release.release_manifest_path,
+        texts += [storage_io.read_text(path) for path in (release.package_path,release.release_manifest_path,
                   release.compiler_receipt_path,release.build_chain_path)]
         for path in paths:
             relative=registry.relative_workspace_path(path)
@@ -86,11 +87,11 @@ def referenced_csvs(paths):
 def run(retire_csv=False):
     pinned=discovery.bindings()
     rows=[]
-    ram_paths=[p for p in RAM.rglob('*') if p.is_file()]
+    ram_paths=[p for p in storage_io.glob(RAM, '*', recursive=True) if storage_io.is_file(p)]
     if not ram_paths:
         raise ValueError('Expected RAM evidence missing')
     rows.append(transfer(RAM,ram_paths,'detailed-rosters'))
-    paths=[p for p in OLD.rglob('*.csv') if p.is_file()]
+    paths=[p for p in storage_io.glob(OLD, '*.csv', recursive=True) if storage_io.is_file(p)]
     if paths:
         referenced_csvs(paths)
         row=transfer(OLD,paths,'retired-presentation-csv')
@@ -104,7 +105,7 @@ def run(retire_csv=False):
                 # The exact independently verified CSV file, not a directory.
                 if path.suffix!='.csv' or not path.is_relative_to(OLD) or path.is_symlink():
                     raise ValueError('Non-CSV removal refused')
-                path.unlink()
+                storage_io.unlink(path)
             row['local_removed']=True
         rows.append(row)
     assert discovery.bindings()==pinned

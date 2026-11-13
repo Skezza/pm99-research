@@ -26,6 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline
 
 
@@ -61,14 +62,14 @@ def _sha256_file(path: Path) -> str:
 def _put_blob(bundle_root: Path, payload: bytes) -> dict[str, Any]:
     digest = _sha256_bytes(payload)
     target = bundle_root / "blobs" / digest[:2] / digest
-    if target.exists():
-        if target.is_symlink() or not target.is_file() or _sha256_file(target) != digest:
+    if storage_io.exists(target):
+        if target.is_symlink() or not storage_io.is_file(target) or _sha256_file(target) != digest:
             raise CachedReplayError(f"cached blob is corrupt: {target}")
     else:
         target.parent.mkdir(parents=True, exist_ok=True)
         temporary = target.with_name(target.name + ".tmp")
-        temporary.write_bytes(payload)
-        temporary.replace(target)
+        storage_io.write_bytes(temporary, payload)
+        storage_io.move(temporary, target, replace=True)
     return {"path": f"blobs/{digest[:2]}/{digest}", "sha256": digest, "size": len(payload)}
 
 
@@ -79,7 +80,7 @@ def _normalise_include_paths(
     for raw in include:
         relative = _safe_relative(raw, label="include")
         candidate = reference_tree / relative
-        if candidate.is_symlink() or not candidate.is_file():
+        if candidate.is_symlink() or not storage_io.is_file(candidate):
             raise CachedReplayError(f"included output is not a regular reference file: {relative}")
         paths.add(relative)
     for raw in include_directories:
@@ -87,10 +88,10 @@ def _normalise_include_paths(
         candidate = reference_tree / directory
         if candidate.is_symlink() or not candidate.is_dir():
             raise CachedReplayError(f"included output directory is not a regular directory: {directory}")
-        for child in candidate.rglob("*"):
+        for child in storage_io.glob(candidate, '*', recursive=True):
             if child.is_symlink():
                 raise CachedReplayError(f"reference output contains a symlink: {child}")
-            if child.is_file():
+            if storage_io.is_file(child):
                 paths.add(child.relative_to(reference_tree).as_posix())
     if not paths:
         raise CachedReplayError("cached replay needs at least one explicit output path")
@@ -111,9 +112,9 @@ def _bundle_index(
 
 
 def _load_index(path: Path) -> dict[str, Any]:
-    if path.is_symlink() or not path.is_file():
+    if path.is_symlink() or not storage_io.is_file(path):
         raise CachedReplayError(f"bundle index must be a regular file: {path}")
-    raw = path.read_bytes()
+    raw = storage_io.read_bytes(path)
     try:
         value = json.loads(raw.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
@@ -155,11 +156,11 @@ def create_bundle(
     *, base_tree: Path, reference_tree: Path, season_package: Path, bundle_root: Path,
     include: Iterable[str], include_directories: Iterable[str],
 ) -> dict[str, Any]:
-    base_tree = base_tree.expanduser().resolve()
-    reference_tree = reference_tree.expanduser().resolve()
-    season_package = season_package.expanduser().resolve()
-    bundle_root = bundle_root.expanduser().resolve()
-    if bundle_root.exists():
+    base_tree = storage_io.resolve(base_tree.expanduser())
+    reference_tree = storage_io.resolve(reference_tree.expanduser())
+    season_package = storage_io.resolve(season_package.expanduser())
+    bundle_root = storage_io.resolve(bundle_root.expanduser())
+    if storage_io.exists(bundle_root):
         raise CachedReplayError(f"bundle root must not already exist: {bundle_root}")
     # This also rejects symlinks and gives a stable base lock before reading any
     # output.  The reference may be a historical run with other local state;
@@ -171,11 +172,11 @@ def create_bundle(
     )
     outputs: list[dict[str, Any]] = []
     for relative in selected:
-        payload = (reference_tree / relative).read_bytes()
+        payload = storage_io.read_bytes(reference_tree / relative)
         outputs.append({"path": relative, "blob": _put_blob(bundle_root, payload)})
     index = _bundle_index(base_tree=base_tree, season_package=season_package, outputs=outputs)
     index_path = bundle_root / "index.json"
-    index_path.write_bytes(_canonical_bytes(index))
+    storage_io.write_bytes(index_path, _canonical_bytes(index))
     return {"index": index, "index_path": str(index_path)}
 
 
@@ -188,9 +189,9 @@ def prepare_clean_base(
     runtime directories such as ``SAVE`` but does not normalise or alter game
     files.  Any symlink or special file is rejected instead of copied.
     """
-    source_tree = source_tree.expanduser().resolve()
-    output_tree = output_tree.expanduser().resolve()
-    if output_tree.exists():
+    source_tree = storage_io.resolve(source_tree.expanduser())
+    output_tree = storage_io.resolve(output_tree.expanduser())
+    if storage_io.exists(output_tree):
         raise CachedReplayError(f"clean base output must not already exist: {output_tree}")
     exclusions = {_safe_relative(item, label="exclude-directory") for item in excluded_directories}
     if any("/" in item for item in exclusions):
@@ -199,8 +200,8 @@ def prepare_clean_base(
         raise CachedReplayError("at least one explicitly reviewed runtime directory must be excluded")
     if source_tree.is_symlink() or not source_tree.is_dir():
         raise CachedReplayError("source base tree must be an existing non-symlink directory")
-    for child in source_tree.rglob("*"):
-        if child.is_symlink() or (not child.is_file() and not child.is_dir()):
+    for child in storage_io.glob(source_tree, '*', recursive=True):
+        if child.is_symlink() or (not storage_io.is_file(child) and not child.is_dir()):
             raise CachedReplayError(f"source base has unsafe filesystem entry: {child}")
     shutil.copytree(
         source_tree,
@@ -232,10 +233,10 @@ def _expected_final_inventory(*, base_tree: Path, index: dict[str, Any]) -> dict
 
 
 def apply_bundle(*, base_tree: Path, materialisation_tree: Path, season_package: Path, bundle_index: Path) -> None:
-    base_tree = base_tree.expanduser().resolve()
-    materialisation_tree = materialisation_tree.expanduser().resolve()
-    season_package = season_package.expanduser().resolve()
-    bundle_index = bundle_index.expanduser().resolve()
+    base_tree = storage_io.resolve(base_tree.expanduser())
+    materialisation_tree = storage_io.resolve(materialisation_tree.expanduser())
+    season_package = storage_io.resolve(season_package.expanduser())
+    bundle_index = storage_io.resolve(bundle_index.expanduser())
     index = _load_index(bundle_index)
     base = pipeline.build_tree_inventory(base_tree)
     package = pipeline.canonical_json_document_descriptor(season_package, document_id="season-package")
@@ -250,18 +251,18 @@ def apply_bundle(*, base_tree: Path, materialisation_tree: Path, season_package:
         relative = row["path"]
         blob = row["blob"]
         source = bundle_root / blob["path"]
-        if source.is_symlink() or not source.is_file() or source.stat().st_size != blob["size"]:
+        if source.is_symlink() or not storage_io.is_file(source) or storage_io.size(source) != blob["size"]:
             raise CachedReplayError(f"cached output blob is missing or unsafe: {relative}")
         if _sha256_file(source) != blob["sha256"]:
             raise CachedReplayError(f"cached output blob hash mismatch: {relative}")
         target = materialisation_tree / relative
-        if not target.parent.is_dir() and not target.parent.exists():
+        if not target.parent.is_dir() and not storage_io.exists(target.parent):
             target.parent.mkdir(parents=True, exist_ok=False)
         if not target.parent.is_dir() or target.parent.is_symlink():
             raise CachedReplayError(f"cached output has unsafe parent: {relative}")
         temporary = target.with_name(target.name + ".tmp")
-        shutil.copyfile(source, temporary)
-        temporary.replace(target)
+        storage_io.copy_file(source, temporary)
+        storage_io.move(temporary, target, replace=True)
 
 
 def _write_plan(*, base_id: str, base_tree: Path, season_package: Path, bundle_index: Path, adapter: Path, output: Path) -> dict[str, Any]:
@@ -304,7 +305,7 @@ def _write_plan(*, base_id: str, base_tree: Path, season_package: Path, bundle_i
     )
     plan = {
         "schema": buildplan.BUILD_PLAN_SCHEMA,
-        "season": str(json.loads(season_package.read_text(encoding="utf-8"))["season"]["label"]).replace("/", "-"),
+        "season": str(json.loads(storage_io.read_text(season_package, encoding='utf-8'))["season"]["label"]).replace("/", "-"),
         "base": {"base_id": base["base_id"], "inventory_fingerprint": base["inventory"]["files_fingerprint"]},
         "season_package": {
             "canonical_sha256": package["canonical_sha256"], "canonical_size": package["canonical_size"],

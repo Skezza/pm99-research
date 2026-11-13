@@ -3,6 +3,7 @@ import copy
 from datetime import UTC, datetime
 
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_original_secondary_facts_v1 as original_source
 from scripts import publish_historical_role_delta_v1 as publisher, attest_registered_season_runtime_v1 as runtime
@@ -94,7 +95,7 @@ def independent_country_checks(row,season,*,index=None,file_sha=None):
 
 
 def run(root,season,release_id,replay_id,previous_path,output,tag,profiles,*,source=original_source,ancestors=()):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('completed country publication must not repeat')
     previous=pipeline.read_json_file(previous_path);old=previous['current_release_bindings']
     if bindings()!=old:
@@ -118,13 +119,13 @@ def run(root,season,release_id,replay_id,previous_path,output,tag,profiles,*,sou
             or len({r['carrier_id'] for r in plan['updates']})!=len(plan['updates'])
             or plan['targets']!={str(r['carrier_id']):['nationality'] for r in plan['updates']}):
         raise ValueError('exact unique nationality-only source scope required')
-    before=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    after=(actual.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    before=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    after=storage_io.read_bytes(actual.game_path / 'DBDAT/JUG98030.FDI')
     before_countries={p['carrier_id']:p['facts'].get('nationality')
         for p in pipeline.read_json_file(base.package_path)['players']}
     after_countries={p['carrier_id']:p['facts'].get('nationality')
         for p in pipeline.read_json_file(actual.package_path)['players']}
-    eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     if not ancestors and (source.apply(before,eq,plan)!=(after,eq) or source.apply(after,eq,plan)!=(after,eq)):
         raise ValueError('whole country native reconstruction or idempotence differs')
     codes=source.compiler._extract_country_codes_from_textos(actual.game_path/'DBDAT/TEXTOS.PKF')
@@ -180,7 +181,7 @@ def run(root,season,release_id,replay_id,previous_path,output,tag,profiles,*,sou
         raise ValueError('whole country SOURCE proof incomplete')
     for release in (actual,rebuilt):
         pipeline.assert_tree_matches_inventory(release.game_path,pipeline.read_json_file(actual.inventory_path))
-    if actual.package_path.read_bytes()!=rebuilt.package_path.read_bytes():
+    if storage_io.read_bytes(actual.package_path)!=storage_io.read_bytes(rebuilt.package_path):
         raise ValueError('country whole SOURCE recipe differs')
     if not profiles or not {r[0] for r in profiles}<={r['carrier_id'] for r in updates}:
         raise ValueError('at least one actually changed-country original profile required')

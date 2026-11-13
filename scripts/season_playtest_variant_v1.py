@@ -29,6 +29,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline  # noqa: E402
 from scripts.assert_pm99_isolated_input import resolve_game_root  # noqa: E402
 from tools import pm99_calendar_patcher as calendar  # noqa: E402
@@ -79,7 +80,7 @@ def _start_year(season: str) -> int:
 
 def _canonical_read(path: Path, *, label: str) -> dict[str, Any]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise PlaytestVariantError(f"cannot read {label}: {path}: {exc}") from exc
@@ -96,7 +97,7 @@ def _copy_game_tree(source_game_root: Path, target_game_root: Path) -> None:
     known-good source tree through shared inode links.
     """
 
-    if target_game_root.exists() or target_game_root.is_symlink():
+    if storage_io.exists(target_game_root) or target_game_root.is_symlink():
         raise PlaytestVariantError(f"refusing to replace target game tree: {target_game_root}")
     target_game_root.parent.mkdir(parents=True, exist_ok=True)
     target_game_root.mkdir()
@@ -206,9 +207,9 @@ def _run_database_validation(game_root: Path) -> dict[str, Any]:
 
 
 def _write_validation(path: Path, value: Mapping[str, Any]) -> None:
-    if path.exists() or path.is_symlink():
+    if storage_io.exists(path) or path.is_symlink():
         raise PlaytestVariantError(f"refusing to overwrite validation attestation: {path}")
-    path.write_text(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(path, json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8')
 
 
 def _write_receipt(receipts_dir: Path, key: str, value: Mapping[str, Any]) -> tuple[Path, str]:
@@ -264,7 +265,7 @@ def _manifest(
             "total_bytes": output_inventory["total_bytes"],
         },
         "builder": {
-            "variant_builder_sha256": pipeline.sha256_file(Path(__file__).resolve()),
+            "variant_builder_sha256": pipeline.sha256_file(storage_io.resolve(Path(__file__))),
             "calendar_patcher_sha256": pipeline.sha256_file(ROOT / "tools" / "pm99_calendar_patcher.py"),
         },
         "receipts": dict(sorted(receipts.items())),
@@ -363,11 +364,11 @@ def create_variant(
     source_game_root = resolve_game_root(source_game_root, require_writable=False)
     if source_game_root is None:  # Defensive; required=True is the default.
         raise PlaytestVariantError("source game root is required")
-    calendar_source_exe = calendar_source_exe.expanduser().resolve()
+    calendar_source_exe = storage_io.resolve(calendar_source_exe.expanduser())
     calendar_source_sha256 = pipeline.sha256_file(calendar_source_exe)
-    output_root = output_root.expanduser().resolve()
+    output_root = storage_io.resolve(output_root.expanduser())
     variant_root = output_root / variant_id
-    if variant_root.exists() or variant_root.is_symlink():
+    if storage_io.exists(variant_root) or variant_root.is_symlink():
         raise PlaytestVariantError(f"refusing to replace existing variant root: {variant_root}")
     if variant_root == source_game_root or source_game_root.is_relative_to(variant_root):
         raise PlaytestVariantError("variant root must not contain the source game root")
@@ -395,7 +396,7 @@ def create_variant(
     target_exe = game_root / "MANAGPRE.EXE"
     # The just-created copy is the only file removed.  The source tree was
     # independently inventoried before copying and is checked again below.
-    target_exe.unlink()
+    storage_io.unlink(target_exe)
     target_calendar = _calendar_contract(
         calendar.patch_calendar(calendar_source_exe, target_exe, _start_year(target_season)),
         expected_start_year=_start_year(target_season),
@@ -458,7 +459,7 @@ def create_variant(
 def verify_variant(*, variant_root: Path, run_database_validation: bool = False) -> dict[str, Any]:
     """Verify a created variant without modifying its game tree."""
 
-    variant_root = variant_root.expanduser().resolve()
+    variant_root = storage_io.resolve(variant_root.expanduser())
     manifest_path = variant_root / MANIFEST_NAME
     manifest = validate_manifest(_canonical_read(manifest_path, label="provisional manifest"))
     receipts_dir = variant_root / "receipts"
@@ -554,7 +555,7 @@ def create_matrix(
     baseline_id = _identifier(baseline_id, label="baseline_id")
     baseline_season = _normalise_season(baseline_season)
     matrix_id = _identifier(matrix_id, label="matrix_id")
-    output_root = output_root.expanduser().resolve()
+    output_root = storage_io.resolve(output_root.expanduser())
     if not output_root.is_dir() or output_root.is_symlink():
         raise PlaytestVariantError(f"output_root must be an existing ordinary directory: {output_root}")
     baseline_game_root = resolve_game_root(baseline_game_root, require_writable=False)
@@ -583,7 +584,7 @@ def create_matrix(
         if not directory.is_dir() or directory.is_symlink():
             continue
         manifest_path = directory / MANIFEST_NAME
-        if not manifest_path.is_file() or manifest_path.is_symlink():
+        if not storage_io.is_file(manifest_path) or manifest_path.is_symlink():
             continue
         raw_manifest = _canonical_read(manifest_path, label=f"variant manifest {directory.name}")
         manifest = validate_manifest(raw_manifest)

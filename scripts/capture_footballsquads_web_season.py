@@ -36,6 +36,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import capture_footballsquads_season as local_capture  # noqa: E402
 
 
@@ -66,7 +67,7 @@ def sha256_bytes(value: bytes) -> str:
 
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
@@ -290,7 +291,7 @@ def parse_club_page(*, payload: bytes, source_year: int, label: str) -> tuple[st
 def _write_new(path: Path, payload: bytes) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     try:
-        with path.open("xb") as handle:
+        with storage_io.open_file(path, 'xb') as handle:
             handle.write(payload)
     except FileExistsError as exc:
         raise WebCaptureError(f"refusing to overwrite existing output: {path}") from exc
@@ -324,7 +325,7 @@ def snapshot_season(
     if not isinstance(retrieved_on, str) or not ISO_DATE_RE.fullmatch(retrieved_on):
         raise WebCaptureError("retrieved_on must be an ISO date")
     start_year, end_year, season_label, _catalogues = season_catalogues(season)
-    if cache_root.exists():
+    if storage_io.exists(cache_root):
         raise WebCaptureError(f"cache root already exists; choose a new snapshot path: {cache_root}")
     if delay_seconds < 0:
         raise WebCaptureError("delay_seconds must be non-negative")
@@ -395,7 +396,7 @@ def snapshot_season(
 
 def _read_canonical(path: Path, *, label: str) -> tuple[dict[str, Any], str]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise WebCaptureError(f"cannot read {label}: {path}") from exc
@@ -430,13 +431,13 @@ def _snapshot_bytes(*, cache_root: Path, relative_path: Any, digest: Any, label:
     relative = _safe_relative_path(relative_path, f"{label}.cache_path")
     if not isinstance(digest, str) or not SHA256_RE.fullmatch(digest):
         raise WebCaptureError(f"{label}.sha256 is invalid")
-    path = (cache_root / relative).resolve()
+    path = storage_io.resolve(cache_root / relative)
     try:
-        path.relative_to(cache_root.resolve())
+        path.relative_to(storage_io.resolve(cache_root))
     except ValueError as exc:
         raise WebCaptureError(f"{label}.cache_path escapes the snapshot root") from exc
     try:
-        payload = path.read_bytes()
+        payload = storage_io.read_bytes(path)
     except OSError as exc:
         raise WebCaptureError(f"cannot read retained source {relative}") from exc
     if sha256_bytes(payload) != digest:
@@ -543,9 +544,9 @@ def capture_from_snapshot(*, snapshot: Mapping[str, Any], snapshot_sha256: str, 
 
 
 def _snapshot_command(args: argparse.Namespace) -> None:
-    cache_root = args.cache_root.resolve()
-    manifest_path = args.manifest.resolve()
-    if manifest_path.exists():
+    cache_root = storage_io.resolve(args.cache_root)
+    manifest_path = storage_io.resolve(args.manifest)
+    if storage_io.exists(manifest_path):
         raise WebCaptureError(f"refusing to overwrite existing output: {manifest_path}")
     snapshot = snapshot_season(
         archive_url=args.archive_url,
@@ -560,20 +561,20 @@ def _snapshot_command(args: argparse.Namespace) -> None:
 
 
 def _capture_command(args: argparse.Namespace, *, verify: bool) -> None:
-    snapshot, digest = _read_snapshot(args.snapshot.resolve())
+    snapshot, digest = _read_snapshot(storage_io.resolve(args.snapshot))
     capture = capture_from_snapshot(
         snapshot=snapshot,
         snapshot_sha256=digest,
-        cache_root=args.cache_root.resolve(),
+        cache_root=storage_io.resolve(args.cache_root),
         catalog=args.catalog,
     )
     if verify:
-        actual, _actual_digest = _read_canonical(args.capture.resolve(), label="web source capture")
+        actual, _actual_digest = _read_canonical(storage_io.resolve(args.capture), label="web source capture")
         if actual != capture:
             raise WebCaptureError("web source capture does not exactly match the retained snapshot")
         print(json.dumps({"capture": str(args.capture), "status": "validated", **capture["summary"]}, sort_keys=True))
         return
-    output = args.output.resolve()
+    output = storage_io.resolve(args.output)
     _write_new(output, canonical_json_bytes(capture))
     print(json.dumps({"output": str(output), **capture["summary"]}, sort_keys=True))
 

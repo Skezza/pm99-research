@@ -15,6 +15,7 @@ import unicodedata
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_official_career_context_v1 as official
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
@@ -37,10 +38,10 @@ def _workspace_file(binding: dict) -> tuple[Path, bytes]:
     if not isinstance(rel, str) or Path(rel).is_absolute():
         raise ValueError("source path must be workspace-relative")
     path = registry.ROOT / rel
-    if (path.is_symlink() or not path.resolve().is_relative_to(registry.ROOT.resolve())
-            or not path.is_file()):
+    if (path.is_symlink() or not storage_io.resolve(path).is_relative_to(storage_io.resolve(registry.ROOT))
+            or not storage_io.is_file(path)):
         raise ValueError("source must be a regular retained workspace file")
-    raw = path.read_bytes()
+    raw = storage_io.read_bytes(path)
     if hashlib.sha256(raw).hexdigest() != binding["sha256"]:
         raise ValueError("retained source SHA-256 differs")
     return path, raw
@@ -144,7 +145,7 @@ def admit_pdf_row(source: dict, *, full_name: str, birth_date: str,
     body_path, body = _workspace_file(source["body"])
     receipt_path, _ = _workspace_file(source["receipt"])
     import json
-    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    receipt = json.loads(storage_io.read_text(receipt_path, encoding='utf-8'))
     if (receipt.get("url") != source["url"] or receipt.get("final_url") != source["url"]
             or receipt.get("http_status") != 200
             or receipt.get("method") != "original-network-body-pdf"
@@ -351,8 +352,8 @@ def prepare_profile_role(base, request, input_path):
     fine = parsed['fine_role_code']
     if not compatible(claim['broad_position'], fine):
         raise ValueError('published detailed role conflicts with annual broad position')
-    jug = (base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     entry = next(e for e in IndexedFDIFile.from_bytes(jug).entries if e.record_id == carrier)
     payload = entry.decode_payload(jug); end, before_roles = read_indexed_native_roles(payload, carrier)
     native = native_player(payload, carrier); facts = native_facts(jug, carrier)

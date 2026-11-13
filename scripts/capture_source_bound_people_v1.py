@@ -8,13 +8,14 @@ import hashlib
 import json
 from urllib.request import Request, urlopen
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_published_person_identity_v1 as people
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts.season_art_transaction_v1 import atomic_bytes
 
 
 def capture_ids(ids, cache, output, inputs):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('person evidence is immutable')
     if not ids or any(type(id) is not int or id < 1 for id in ids):
         raise ValueError('acquisition requires explicit positive original publisher IDs')
@@ -28,8 +29,8 @@ def capture_ids(ids, cache, output, inputs):
     key = hashlib.sha256(url.encode()).hexdigest()
     path = cache / 'people' / (key + '.json')
     receipt = path.with_suffix('.source.json')
-    if path.exists():
-        raw = path.read_bytes()
+    if storage_io.exists(path):
+        raw = storage_io.read_bytes(path)
         if pipeline.read_json_file(receipt) != dict(url=url, sha256=hashlib.sha256(raw).hexdigest()):
             raise ValueError('retained original people URL/hash differs')
     else:

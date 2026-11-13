@@ -3,6 +3,7 @@ import argparse
 import shutil
 
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_original_country_policy_v2 as source
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import publish_historical_role_delta_v1 as publisher
@@ -17,7 +18,7 @@ PEOPLE=registry.ROOT/'.local/duplicate-ownership-v3/published-person-identities-
 
 def build(season,parent,carriers):
     folder=ROOT/season;folder.mkdir(parents=True,exist_ok=True)
-    if registry.locator_path(season,RELEASE).exists() or (folder/'country-plan.json').exists():
+    if storage_io.exists(registry.locator_path(season, RELEASE)) or storage_io.exists(folder / 'country-plan.json'):
         raise ValueError('existing country policy plan/game needs inspection; no blind regeneration')
     base=registry.load_registered_release(season,parent)
     plan=source.prepare(base,PEOPLE,{str(n):['nationality'] for n in carriers})
@@ -31,8 +32,8 @@ def build(season,parent,carriers):
         raise ValueError('source retained before unchanged8GiB reserve is threatened')
     publisher.publish(season,control,release_id=RELEASE,source_release_id=parent,profile_assignment_plan_path=path)
     actual=registry.load_registered_release(season,RELEASE)
-    before=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    after=(actual.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    before=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    after=storage_io.read_bytes(actual.game_path / 'DBDAT/JUG98030.FDI')
     entries={e.record_id:e for e in IndexedFDIFile.from_bytes(before).entries}
     allowed=set();observed=[]
     for row in plan['updates']:

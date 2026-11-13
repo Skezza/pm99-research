@@ -9,6 +9,7 @@ from pathlib import Path
 from app.fdi_indexed import IndexedFDIFile
 from app.player_initial_order import read_initial_order
 from app.indexed_jug_shirt_number import rewrite_indexed_native_shirt_numbers
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_package_v2 as packages
 from scripts import season_opening_order_repair_v1 as ownership
@@ -52,13 +53,13 @@ def prepare(base):
     prior = registry.load_registered_release(base.season, source_plan['release_id'])
     alias.verify_plan(prior, source_plan)
     from scripts import season_duplicate_layered_packages_v1 as layered
-    expected, english, _, _ = layered.prepare(prior, source_plan, (prior.game_path / 'DBDAT/JUG98030.FDI').read_bytes())
+    expected, english, _, _ = layered.prepare(prior, source_plan, storage_io.read_bytes(prior.game_path / 'DBDAT/JUG98030.FDI'))
     if english is not None or expected != package:
         raise ValueError('actual Commons parent does not reproduce the entire alias recipe')
     player = next(p for p in package['players'] if p['carrier_id'] == 27013)
     club = next(c for c in package['clubs'] if c['id'] == player['club_id'])
-    jug = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(jug).entries}
     raw = entries[27013].decode_payload(jug)
     number = original['annual']['person']['shirt_number']
@@ -103,8 +104,8 @@ def bind(package, plan):
 
 def apply(jug, eq, plan):
     base = registry.load_registered_release(plan['season'], plan['release_id'])
-    original = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    original_eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    original = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    original_eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     if (digest(original), digest(original_eq)) != (plan['jug_sha256'], plan['eq_sha256']) or eq != original_eq:
         raise ValueError('shirt native preimage changed')
     updates = {r['carrier_id']:{k:r[k] for k in ('native_name', 'before_number', 'number')} for r in plan['updates']}
@@ -124,7 +125,7 @@ def reconstruction(previous, release_id):
     plan = pipeline.read_json_file(path)
     base = registry.load_registered_release(plan['season'], plan['release_id'])
     verify(base, plan)
-    if path.resolve() != (previous.package_path.parent / FILENAME).resolve():
+    if storage_io.resolve(path) != storage_io.resolve(previous.package_path.parent / FILENAME):
         raise ValueError('shirt SOURCE input is not the exact release-local plan')
     if bind(pipeline.read_json_file(base.package_path), plan) != pipeline.read_json_file(previous.package_path):
         raise ValueError('edited Commons recipe cannot silently drop edits in SOURCE replay')

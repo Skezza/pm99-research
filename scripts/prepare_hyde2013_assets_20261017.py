@@ -1,4 +1,5 @@
 """Attach source-bound Hyde colours and Ewen Fields using unchanged asset APIs."""
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry, season_pipeline_v2 as pipeline
 from scripts import season_kit_render_bindings_v1 as render
 from scripts import prepare_paired_club_assets_v1 as assets
@@ -13,12 +14,12 @@ SPECS={3319:('Hyde','Ewen Fields','ground-original-3319.html',
     ('2013–14 Football Conference','Hyde','Stadia and locations'))}
 
 def run():
-    if COMPLETE.exists():raise ValueError('completed assets must not repeat')
+    if storage_io.exists(COMPLETE):raise ValueError('completed assets must not repeat')
     cache=ART/'source-cache';cache.mkdir(parents=True,exist_ok=True)
     original=ROOT/'source-cache/ground-2013-conference.html';ground=cache/'ground-original-3319.html'
-    if ground.exists():raise ValueError('inspect previous source preparation before repeating')
+    if storage_io.exists(ground):raise ValueError('inspect previous source preparation before repeating')
     import os
-    os.link(original,ground)
+    storage_io.link(original, ground)
     retained(ground.with_name(ground.name+'.source.json'),pipeline.read_json_file(original.with_name(original.name+'.source.json')))
     assets.ground_source(cache,3319,SPECS)
     evidence=[]

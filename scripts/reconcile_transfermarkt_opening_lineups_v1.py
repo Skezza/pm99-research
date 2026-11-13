@@ -24,6 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import reconcile_2015_english92_opening_lineups as legacy  # noqa: E402
 
 
@@ -48,7 +49,7 @@ def _require_iso_date(value: str) -> str:
 
 def _sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
@@ -56,7 +57,7 @@ def _sha256_file(path: Path) -> str:
 
 def _load_object(path: Path, *, label: str) -> tuple[dict[str, Any], str]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise ReconciliationError(f"cannot read {label}: {path}") from exc
@@ -356,7 +357,7 @@ def main(argv: list[str] | None = None) -> int:
     except (OSError, ReconciliationError) as exc:
         parser.error(str(exc))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(args.output, json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8')
     print(json.dumps(result["summary"], sort_keys=True))
     return 1 if args.strict and result["failures"] else 0
 

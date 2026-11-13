@@ -1,4 +1,5 @@
 """Deliver the admitted five-country correction privately, then prove SOURCE."""
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_source_verified_player_changes_v1 as changes
 from scripts import publish_historical_role_delta_v1 as publisher
 
@@ -17,14 +18,14 @@ def main():
     descriptor=FOLDER/'role-delta-input.json'
     inert=dict(season=base.season,release_id=base.release_id,
                package_sha256=plan['package_sha256'],jug_sha256=plan['jug_sha256'],updates=[],unresolved=[])
-    if descriptor.exists():assert changes.pipeline.read_json_file(descriptor)==inert
+    if storage_io.exists(descriptor):assert changes.pipeline.read_json_file(descriptor)==inert
     else:changes.pipeline.write_canonical_json(descriptor,inert)
-    if not changes.registry.locator_path(base.season,RELEASE).exists():
+    if not storage_io.exists(changes.registry.locator_path(base.season, RELEASE)):
         publisher.publish(base.season,descriptor,release_id=RELEASE,
             source_release_id=base.release_id,profile_assignment_plan_path=path)
     actual=changes.registry.load_registered_release(base.season,RELEASE)
     proof=FOLDER/'complete-SOURCE-replay.json'
-    if proof.exists():raise ValueError('SOURCE already completed; do not repeat')
+    if storage_io.exists(proof):raise ValueError('SOURCE already completed; do not repeat')
     result=changes.reconstruction(actual,REPLAY)
     changes.pipeline.write_canonical_json(proof,result)
     print(result,flush=True)

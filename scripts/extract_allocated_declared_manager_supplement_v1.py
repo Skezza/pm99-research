@@ -11,6 +11,14 @@ never supplies a fallback name or chooses between candidates.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -33,7 +41,7 @@ def _canonical_bytes(value: Any) -> bytes:
 
 def _read(path: Path, label: str) -> tuple[dict[str, Any], str]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         document = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise DeclaredManagerSupplementError(f"cannot read {label}: {path}") from exc
@@ -180,7 +188,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--strict", action="store_true")
     args = parser.parse_args(argv)
     try:
-        if args.output.exists():
+        if storage_io.exists(args.output):
             raise DeclaredManagerSupplementError(f"refusing to overwrite manager supplement: {args.output}")
         lineups, lineups_sha = _read(args.allocated_opening_lineups, "allocated opening lineups")
         scope, scope_sha = _read(args.gap_scope_supplement, "gap scope supplement")
@@ -188,7 +196,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (OSError, DeclaredManagerSupplementError) as exc:
         parser.error(str(exc))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(_canonical_bytes(result))
+    storage_io.write_bytes(args.output, _canonical_bytes(result))
     print(json.dumps(result["summary"], sort_keys=True))
     return 1 if args.strict and result["gaps"] else 0
 

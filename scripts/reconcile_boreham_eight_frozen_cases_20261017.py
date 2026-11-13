@@ -8,6 +8,7 @@ import copy
 from datetime import UTC, datetime
 
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_soccerbase_original_opening_v1 as original
 from scripts import replay_original_soccerbase_openings_v1 as replay
@@ -31,7 +32,7 @@ def main(*, report_path=REPORT, report_sha=REPORT_SHA, expected_count=8,
          output=ROOT / 'release-delivery-checklist-v109.json',
          proof_path=ROOT / 'luna-closeout-20261017/boreham-eight-current-dispositions.json',
          namesake_validator=None):
-    if output.exists() or proof_path.exists():
+    if storage_io.exists(output) or storage_io.exists(proof_path):
         raise ValueError('completed reconciliation must not repeat')
     if registry.sha256_file(report_path) != report_sha:
         raise ValueError('review report changed; inspect before integration')
@@ -58,8 +59,8 @@ def main(*, report_path=REPORT, report_sha=REPORT_SHA, expected_count=8,
     package = pipeline.read_json_file(base.package_path)
     actors = {p['carrier_id']: p for p in package['players']}
     clubs = {c['id']: c for c in package['clubs']}
-    jug = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    owners = ownership.native_owners((base.game_path / 'DBDAT/EQ98030.FDI').read_bytes())
+    jug = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    owners = ownership.native_owners(storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI'))
     frozen_path = registry.ROOT / previous['cross_club_case_file']
     frozen = next(g['candidates'] for g in pipeline.read_json_file(frozen_path)['seasons']
         if g['season'] == '2017-18')

@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline  # noqa: E402
 from scripts import season_release_registry_v1 as registry  # noqa: E402
 LEGACY_REVISIONS = {
@@ -32,7 +33,7 @@ EVIDENCE_SUFFIX = {"2004-05": "r2", "2014-15": "r2"}
 
 
 def _read(path: Path) -> dict[str, Any]:
-    value = json.loads(path.read_text(encoding="utf-8"))
+    value = json.loads(storage_io.read_text(path, encoding='utf-8'))
     if not isinstance(value, dict):
         raise ValueError(f"expected an object: {path}")
     return value
@@ -51,10 +52,10 @@ def _paths(season: str) -> tuple[Path, Path, Path | None, Path | None, str | Non
     if season == "2015-16":
         # Pipeline V2 correctly rejects symlink roots.  Bind the locator to the
         # immutable target rather than the convenience release symlink.
-        game = (ROOT / ".local/releases/pm99-2015-16-world").resolve()
+        game = storage_io.resolve(ROOT / '.local/releases/pm99-2015-16-world')
         package = ROOT / ".local/season-workspace-v1/2015-16-final-build/season-package.effective.json"
         compiler = ROOT / ".local/season-workspace-v1/2015-16-final-build/database-compiler-receipt.json"
-        return game, package, compiler if compiler.is_file() else None, None, None
+        return game, package, compiler if storage_io.is_file(compiler) else None, None, None
     revision = LEGACY_REVISIONS[season]
     game = ROOT / ".local/season-runtime-candidates-v1" / season / f"worldwide-source-backed-{revision}" / "game"
     ingress = ROOT / ".local/season-static-ingress-v1" / f"{season}-worldwide-source-backed-{revision}"
@@ -66,33 +67,33 @@ def _paths(season: str) -> tuple[Path, Path, Path | None, Path | None, str | Non
         ingress / "season-package.source-writable.json",
         ingress / "season-package.alias-bound.json",
     ]
-    package = next(path for path in candidates if path.is_file())
-    if compiler.is_file():
+    package = next(path for path in candidates if storage_io.is_file(path))
+    if storage_io.is_file(compiler):
         expected = _read(compiler).get("season_package_sha256")
         for candidate in candidates:
-            if candidate.is_file() and registry.canonical_document_sha256(candidate) == expected:
+            if storage_io.is_file(candidate) and registry.canonical_document_sha256(candidate) == expected:
                 package = candidate
                 break
-    return game, package, compiler if compiler.is_file() else None, static if static.is_file() else None, revision
+    return game, package, compiler if storage_io.is_file(compiler) else None, static if storage_io.is_file(static) else None, revision
 
 
 def _write_json(path: Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_bytes(pipeline.canonical_json_bytes(value) + b"\n")
-    temporary.replace(path)
+    storage_io.write_bytes(temporary, pipeline.canonical_json_bytes(value) + b'\n')
+    storage_io.move(temporary, path, replace=True)
 
 
 def import_release(season: str, release_id: str, *, refresh: bool = False) -> dict[str, Any]:
     existing_path = registry.locator_path(season, release_id)
-    if not refresh and existing_path.is_file():
+    if not refresh and storage_io.is_file(existing_path):
         existing = _read(existing_path)
         inventory_path = ROOT / str(existing.get("inventory_path") or "")
         if (
             existing.get("schema_version") == registry.LOCATOR_SCHEMA
             and existing.get("season") == season
             and existing.get("release_id") == release_id
-            and inventory_path.is_file()
+            and storage_io.is_file(inventory_path)
         ):
             issues = existing.get("import_issues") or []
             return {
@@ -112,10 +113,10 @@ def import_release(season: str, release_id: str, *, refresh: bool = False) -> di
     required_hashes = {
         relative: registry.sha256_file(game / relative)
         for relative in registry.REQUIRED_GAME_FILES
-        if (game / relative).is_file()
+        if storage_io.is_file(game / relative)
     }
     issues: list[dict[str, Any]] = []
-    missing = [relative for relative in registry.REQUIRED_GAME_FILES if not (game / relative).is_file()]
+    missing = [relative for relative in registry.REQUIRED_GAME_FILES if not storage_io.is_file(game / relative)]
     for relative in missing:
         issues.append({"code": "required-file-missing", "detail": relative})
     package_hash = registry.canonical_document_sha256(package)
@@ -132,7 +133,7 @@ def import_release(season: str, release_id: str, *, refresh: bool = False) -> di
             })
         for row in receipt.get("outputs") or []:
             path = game / str(row.get("path") or "")
-            actual = registry.sha256_file(path) if path.is_file() else None
+            actual = registry.sha256_file(path) if storage_io.is_file(path) else None
             if actual != row.get("sha256"):
                 issues.append({
                     "code": "compiler-output-mismatch",

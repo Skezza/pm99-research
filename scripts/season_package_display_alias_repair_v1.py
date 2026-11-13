@@ -36,6 +36,7 @@ for candidate in (ROOT, EDITOR):
         sys.path.insert(0, str(candidate))
 
 from app.fdi_indexed import IndexedFDIFile  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_compiler_v2 as compiler_v2  # noqa: E402
 from scripts import season_package_v2 as package_v2  # noqa: E402
 from scripts import season_pipeline_v2 as pipeline_v2  # noqa: E402
@@ -203,14 +204,14 @@ def derive_alias_bound_package(
     package = package_v2.read_canonical_package(package_path)
     package_v2.validate_package(package, strict=True)
     verified_base = pipeline_v2.validate_verified_base_descriptor(
-        json.loads(verified_base_path.read_text(encoding="utf-8"))
+        json.loads(storage_io.read_text(verified_base_path, encoding='utf-8'))
     )
     pipeline_v2.verify_base_tree(tree=base_tree, verified_base=verified_base)
 
     jug_path = base_tree / "DBDAT" / "JUG98030.FDI"
-    if not jug_path.is_file():
+    if not storage_io.is_file(jug_path):
         raise DisplayAliasRepairError(f"clean base has no JUG98030.FDI: {jug_path}")
-    jug_data = jug_path.read_bytes()
+    jug_data = storage_io.read_bytes(jug_path)
     entries = {int(entry.record_id): entry for entry in IndexedFDIFile.from_bytes(jug_data).entries}
 
     output = copy.deepcopy(package)
@@ -289,10 +290,10 @@ def derive_alias_bound_package(
 
 
 def _write_new(path: Path, payload: bytes) -> str:
-    if path.exists():
+    if storage_io.exists(path):
         raise DisplayAliasRepairError(f"refusing to replace existing output: {path}")
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(payload)
+    storage_io.write_bytes(path, payload)
     return hashlib.sha256(payload).hexdigest()
 
 
@@ -304,27 +305,27 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--output-package", required=True, type=Path)
     parser.add_argument("--output-audit", required=True, type=Path)
     args = parser.parse_args(argv)
-    if args.output_package.resolve() == args.output_audit.resolve():
+    if storage_io.resolve(args.output_package) == storage_io.resolve(args.output_audit):
         print("display-alias repair error: output package and audit must differ", file=sys.stderr)
         return 2
-    if args.output_package.exists() or args.output_audit.exists():
-        existing = args.output_package if args.output_package.exists() else args.output_audit
-        print(f"display-alias repair error: refusing to replace existing output: {existing.resolve()}", file=sys.stderr)
+    if storage_io.exists(args.output_package) or storage_io.exists(args.output_audit):
+        existing = args.output_package if storage_io.exists(args.output_package) else args.output_audit
+        print(f"display-alias repair error: refusing to replace existing output: {storage_io.resolve(existing)}", file=sys.stderr)
         return 2
     try:
         output, audit = derive_alias_bound_package(
-            package_path=args.package.resolve(),
-            base_tree=args.base_tree.resolve(),
-            verified_base_path=args.verified_base.resolve(),
+            package_path=storage_io.resolve(args.package),
+            base_tree=storage_io.resolve(args.base_tree),
+            verified_base_path=storage_io.resolve(args.verified_base),
         )
         package_payload = _canonical_bytes(output)
-        package_sha256 = _write_new(args.output_package.resolve(), package_payload)
+        package_sha256 = _write_new(storage_io.resolve(args.output_package), package_payload)
         audit["output"] = {
             "package_sha256": package_sha256,
             "package_path": str(args.output_package),
         }
         audit_payload = _canonical_bytes(audit)
-        _write_new(args.output_audit.resolve(), audit_payload)
+        _write_new(storage_io.resolve(args.output_audit), audit_payload)
     except (DisplayAliasRepairError, package_v2.PackageValidationError, pipeline_v2.PipelineError, OSError, ValueError) as exc:
         print(f"display-alias repair error: {exc}", file=sys.stderr)
         return 2

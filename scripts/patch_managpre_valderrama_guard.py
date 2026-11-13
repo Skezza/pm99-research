@@ -25,6 +25,14 @@ This script intentionally avoids variable-length/data-file edits.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -36,7 +44,7 @@ from pathlib import Path
 from typing import Any
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 DEFAULT_INPUT_EXE = REPO_ROOT / ".local" / "premier-manager-ninety-nine" / "MANAGPRE.EXE"
 DEFAULT_OUTPUT_EXE = Path("/tmp") / "MANAGPRE.valderrama_guard.EXE"
 IMAGE_BASE = 0x400000
@@ -1103,7 +1111,7 @@ def apply_patch(
     proof_open_record: bool = False,
     proof_force_signing_notice_stars: bool = False,
 ) -> dict[str, Any]:
-    input_bytes = input_exe.read_bytes()
+    input_bytes = storage_io.read_bytes(input_exe)
     patched = bytearray(input_bytes)
 
     bundle, string_addrs, legacy_bundle_prefixes = _build_bundle()
@@ -1633,8 +1641,8 @@ def apply_patch(
         if in_place and make_backup:
             stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             backup_path = target_out.with_name(f"{target_out.name}.bak_valderrama_upstream_{stamp}")
-            shutil.copy2(target_out, backup_path)
-        target_out.write_bytes(output_bytes)
+            storage_io.copy_file(target_out, backup_path, metadata=True)
+        storage_io.write_bytes(target_out, output_bytes)
 
     return {
         "input_exe": str(input_exe),
@@ -1757,7 +1765,7 @@ def main() -> int:
     if args.json_output:
         out = Path(args.json_output)
         out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(text + "\n", encoding="utf-8")
+        storage_io.write_text(out, text + '\n', encoding='utf-8')
     print(text)
     return 0
 

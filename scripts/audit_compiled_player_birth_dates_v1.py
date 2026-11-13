@@ -13,6 +13,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_historical_roster_audit_v1 as roster
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
@@ -53,9 +54,9 @@ def inspect(package, raw):
 
 def audit(season, release_id=None):
     release = registry.load_registered_release(season, release_id) if release_id else registry.load_preferred_release(season)
-    package = json.loads(release.package_path.read_text())
+    package = json.loads(storage_io.read_text(release.package_path))
     jug = release.game_path / 'DBDAT/JUG98030.FDI'
-    result = inspect(package, jug.read_bytes())
+    result = inspect(package, storage_io.read_bytes(jug))
     return {'season': season, 'release_id': release.release_id,
             'package_sha256': registry.sha256_file(release.package_path),
             'JUG_sha256': registry.sha256_file(jug), **result}
@@ -67,7 +68,7 @@ def main():
     parser.add_argument('--release-id')
     parser.add_argument('--output', required=True, type=Path)
     args = parser.parse_args()
-    if args.output.exists():
+    if storage_io.exists(args.output):
         raise ValueError('birth-date audit evidence is immutable')
     seasons = registry.supported_seasons() if args.season == 'all' else [pipeline.normalise_season_id(args.season)]
     rows = [audit(season, args.release_id) for season in seasons]

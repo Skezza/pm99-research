@@ -13,6 +13,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import prepare_duplicate_whole_club_native_v1 as native
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
@@ -37,10 +38,10 @@ def ground_source(cache, carrier, ground_specs=None):
     spec = (GROUNDS if ground_specs is None else ground_specs)[carrier]
     club, ground, name, url, anchors = spec[:5]
     path = cache / name
-    receipt = json.loads(path.with_name(name + '.source.json').read_text())
+    receipt = json.loads(storage_io.read_text(path.with_name(name + '.source.json')))
     if receipt.get('url') != url or receipt.get('sha256') != registry.sha256_file(path):
         raise ValueError('ground original URL/SHA mismatch')
-    document = BeautifulSoup(path.read_bytes(), 'html.parser')
+    document = BeautifulSoup(storage_io.read_bytes(path), 'html.parser')
     # Do not match a navigation link or a current stadium renaming.
     text = document.get_text(' ', strip=True)
     if ground not in text or any(anchor not in text for anchor in anchors):
@@ -96,27 +97,27 @@ def comparison_sheet_size(club_count):
 
 
 def prepare(candidate, assets, output, *, ground_specs=None):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('asset candidate is immutable')
-    if output.resolve().is_relative_to(candidate.resolve()) or candidate.resolve().is_relative_to(output.resolve()):
+    if storage_io.resolve(output).is_relative_to(storage_io.resolve(candidate)) or storage_io.resolve(candidate).is_relative_to(storage_io.resolve(output)):
         raise ValueError('asset output overlaps protected source candidate')
-    receipt = json.loads((candidate / 'candidate-receipt.json').read_text())
+    receipt = json.loads(storage_io.read_text(candidate / 'candidate-receipt.json'))
     if receipt['registered'] or receipt['publication_authorised']:
         raise ValueError('assets require the exact unpublished target-season pair')
     specs=GROUNDS if ground_specs is None else ground_specs
-    package = json.loads((candidate / 'season-package.json').read_text())
+    package = json.loads(storage_io.read_text(candidate / 'season-package.json'))
     clubs = {c['carrier_id']: c for c in package['clubs']}
     if candidate_club_scope(candidate, receipt) != set(specs):
         raise ValueError('ground/kit scope differs from the complete source transaction')
     for carrier, (name, *_rest) in specs.items():
         if clubs[carrier]['name'] != name:
             raise ValueError('replacement kit/ground carrier identity differs')
-    bindings = json.loads((assets / 'render-bindings.json').read_text())
-    catalogue = json.loads((assets / 'kit-catalogue.json').read_text())
+    bindings = json.loads(storage_io.read_text(assets / 'render-bindings.json'))
+    catalogue = json.loads(storage_io.read_text(assets / 'kit-catalogue.json'))
     if catalogue['season']['label'].replace('/','-') != receipt['season']:
         raise ValueError('kit catalogue describes another target season')
     catalogue_hash = render.sha256_bytes(render.canonical_json_bytes(catalogue))
-    rendered = json.loads((assets / 'render-receipt.json').read_text())
+    rendered = json.loads(storage_io.read_text(assets / 'render-receipt.json'))
     if (bindings['kit_catalogue_sha256'] != catalogue_hash or
             rendered['kit_catalogue_sha256'] != catalogue_hash or
             {r['carrier_id'] for r in bindings['clubs']} != set(specs)):
@@ -128,7 +129,7 @@ def prepare(candidate, assets, output, *, ground_specs=None):
         if a.get('relative_path'):
             verify_recipe_artifact(candidate / a['relative_path'], a['sha256'])
     grounds = {carrier: ground_source(assets / 'source-cache', carrier, specs) for carrier in specs}
-    files = {name: (candidate / 'game/DBDAT' / name).read_bytes() for name in render.ARCHIVES}
+    files = {name: storage_io.read_bytes(candidate / 'game/DBDAT' / name) for name in render.ARCHIVES}
     new_files = {name: bytearray(raw) for name, raw in files.items()}
     indices = {name: render._record_index(candidate / 'game/DBDAT' / name) for name in render.ARCHIVES}
     changes = []; copied = {}
@@ -145,7 +146,7 @@ def prepare(candidate, assets, output, *, ground_specs=None):
             artifact = copy.deepcopy(matches[0]); source = assets / 'renders' / artifact['relative_path']
             if registry.sha256_file(source) != artifact['sha256']:
                 raise ValueError('rendered kit original changed')
-            record = indices[archive][carrier]; payload = pixel_payload(record, source.read_bytes())
+            record = indices[archive][carrier]; payload = pixel_payload(record, storage_io.read_bytes(source))
             start = record.bitmap_offset
             new_files[archive][start:start + record.bitmap_length] = payload
             copied[Path(artifact['relative_path'])] = source
@@ -172,7 +173,7 @@ def prepare(candidate, assets, output, *, ground_specs=None):
                 not any(lo <= i < hi for lo, hi in intervals)
                 for i, (a, b) in enumerate(zip(files[archive], after)) if a != b):
             raise ValueError('kit stage touched another club or archive wrapper')
-    eq_before = (candidate / 'game/DBDAT/EQ98030.FDI').read_bytes()
+    eq_before = storage_io.read_bytes(candidate / 'game/DBDAT/EQ98030.FDI')
     index = native.IndexedFDIFile.from_bytes(eq_before); patches = {}; ground_changes = []
     for carrier, (path, proof) in grounds.items():
         entry = next(e for e in index.entries if e.record_id == carrier)
@@ -194,16 +195,16 @@ def prepare(candidate, assets, output, *, ground_specs=None):
         raise ValueError('asset stage would cross the unchanged 8-GiB reserve')
     output.mkdir(parents=True)
     shutil.copytree(candidate / 'game', output / 'game', copy_function=os.link)
-    for path in candidate.rglob('*'):
+    for path in storage_io.glob(candidate, '*', recursive=True):
         relative = path.relative_to(candidate)
-        if path.is_file() and relative.parts[0] != 'game' and relative not in (Path('candidate-receipt.json'), Path('season-package.json')):
-            target = output / relative; target.parent.mkdir(parents=True, exist_ok=True); os.link(path, target)
+        if storage_io.is_file(path) and relative.parts[0] != 'game' and relative not in (Path('candidate-receipt.json'), Path('season-package.json')):
+            target = output / relative; target.parent.mkdir(parents=True, exist_ok=True); storage_io.link(path, target)
     for name, raw in {'EQ98030.FDI': eq_after, **new_files}.items():
-        temporary = output / (name + '.partial'); temporary.write_bytes(raw); os.replace(temporary, output / 'game/DBDAT' / name)
+        temporary = output / (name + '.partial'); storage_io.write_bytes(temporary, raw); storage_io.replace_file(temporary, output / 'game/DBDAT' / name)
     for relative, source in copied.items():
         target = output / relative; target.parent.mkdir(parents=True, exist_ok=True)
         if isinstance(source, dict): pipeline.write_canonical_json(target, source)
-        else: os.link(source, target)
+        else: storage_io.link(source, target)
     pipeline.write_canonical_json(output / 'season-package.json', result)
     for artifact in result['artifacts']:
         if artifact.get('relative_path'): verify_recipe_artifact(output / artifact['relative_path'], artifact['sha256'])
@@ -237,7 +238,7 @@ if __name__ == '__main__':
     p.add_argument('--ground-specs',type=Path,help='Explicit per-carrier dated original ground bindings')
     a = p.parse_args();specs=None
     if a.ground_specs is not None:
-        specs={int(k):v for k,v in json.loads(a.ground_specs.read_text()).items()}
+        specs={int(k):v for k,v in json.loads(storage_io.read_text(a.ground_specs)).items()}
     r = prepare(a.candidate, a.assets, a.output,ground_specs=specs)
     print(json.dumps({'private_asset_candidate': str(a.output),
         'grounds':len(r['paired_asset_stage']['grounds']),

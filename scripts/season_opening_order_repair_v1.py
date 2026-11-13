@@ -23,6 +23,7 @@ from app.eq_initial_tactics import GRID_BYTES, read_initial_tactics
 from app.eq_jug_linked import parse_eq_external_team_roster_payload
 from app.fdi_indexed import IndexedFDIFile
 from app.player_initial_order import OrderReplacement, patch_initial_orders, read_initial_order
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_contextual_tactics_v1 as tactics
 from scripts import season_contextual_tactics_rollout_v1 as rollout
 from scripts import season_package_v2 as packages
@@ -167,7 +168,7 @@ def package_layers(package, path):
         rel = Path(artifact.get('relative_path', ''))
         if not rel.parts or rel.is_absolute() or '..' in rel.parts:
             raise ValueError('unsafe opening-order artifact path')
-        raw = (path.parent / rel).read_bytes()
+        raw = storage_io.read_bytes(path.parent / rel)
         if hashlib.sha256(raw).hexdigest() != artifact['sha256']:
             raise ValueError('opening-order artifact hash changed')
         layer = json.loads(raw)
@@ -227,11 +228,11 @@ def repair_club(club, players, jug_index, jug):
 
 def prepare(season, source, output, *, allow_compact=False):
     prior_audit = rollout.audit_candidate(source)
-    prior = json.loads((source / 'candidate-receipt.json').read_text())
-    english = json.loads((source / 'english-season-package.json').read_text())
-    package = json.loads((source / 'season-package.json').read_text())
-    layer = json.loads((source / 'contextual-tactics.json').read_text())
-    eq, jug = (source / 'DBDAT/EQ98030.FDI').read_bytes(), (source / 'DBDAT/JUG98030.FDI').read_bytes()
+    prior = json.loads(storage_io.read_text(source / 'candidate-receipt.json'))
+    english = json.loads(storage_io.read_text(source / 'english-season-package.json'))
+    package = json.loads(storage_io.read_text(source / 'season-package.json'))
+    layer = json.loads(storage_io.read_text(source / 'contextual-tactics.json'))
+    eq, jug = storage_io.read_bytes(source / 'DBDAT/EQ98030.FDI'), storage_io.read_bytes(source / 'DBDAT/JUG98030.FDI')
     records = tactics.payloads(eq)
     index = {e.record_id: e for e in IndexedFDIFile.from_bytes(jug).entries}
     players = {p['id']: p for p in english['players']}
@@ -244,7 +245,7 @@ def prepare(season, source, output, *, allow_compact=False):
     if apply_layer(eq, repaired_jug, plan, allow_compact=allow_compact) != repaired_jug:
         raise AssertionError('opening-order repair is not byte-idempotent')
     repaired_index = {e.record_id: e for e in IndexedFDIFile.from_bytes(repaired_jug).entries}
-    offsets = rollout.movement_offsets((ROOT / '.local/visual-qa-20261003/native-source/EQ98030.FDI').read_bytes())
+    offsets = rollout.movement_offsets(storage_io.read_bytes(ROOT / '.local/visual-qa-20261003/native-source/EQ98030.FDI'))
     for repaired in plan['clubs']:
         club = by_club[repaired['carrier_id']]
         context = rollout.build_context(club, players,
@@ -275,7 +276,7 @@ def prepare(season, source, output, *, allow_compact=False):
     output.mkdir(parents=True, exist_ok=False)
     pipeline.write_canonical_json(output / 'opening-order.json', plan)
     pipeline.write_canonical_json(output / 'contextual-tactics.json', layer)
-    (output / 'english-season-package.json').write_bytes(packages.canonical_json_bytes(english))
+    storage_io.write_bytes(output / 'english-season-package.json', packages.canonical_json_bytes(english))
     inputs = [(PREFIX + season, 'opening-order.json'), ('english-contextual-package-' + season, 'english-season-package.json')]
     if not any(c['carrier_id'] in {r['carrier_id'] for r in layer['clubs']} for c in package['clubs']):
         inputs.append((tactics.ARTIFACT_PREFIX + season, 'contextual-tactics.json'))
@@ -283,14 +284,14 @@ def prepare(season, source, output, *, allow_compact=False):
         package['artifacts'].append({'id': identity, 'kind': 'season-input',
             'media_type': 'application/json', 'relative_path': filename, 'sha256': registry.sha256_file(output / filename)})
     package['artifacts'].sort(key=lambda a: a['id'])
-    (output / 'season-package.json').write_bytes(packages.canonical_json_bytes(package))
+    storage_io.write_bytes(output / 'season-package.json', packages.canonical_json_bytes(package))
     shutil.copytree(source / 'DBDAT', output / 'DBDAT', copy_function=os.link)
     for filename, data in [('EQ98030.FDI', after), ('JUG98030.FDI', repaired_jug)]:
         temporary = output / (filename + '.partial')
-        temporary.write_bytes(data)
-        temporary.replace(output / 'DBDAT' / filename)
+        storage_io.write_bytes(temporary, data)
+        storage_io.move(temporary, output / 'DBDAT' / filename, replace=True)
     receipt = {**prior, 'schema_version': 'pm99-contextual-tactics-candidate-v3',
-        'prior_candidate_path': str(source.resolve()), 'prior_candidate_receipt_sha256': registry.sha256_file(source / 'candidate-receipt.json'),
+        'prior_candidate_path': str(storage_io.resolve(source)), 'prior_candidate_receipt_sha256': registry.sha256_file(source / 'candidate-receipt.json'),
         'prior_output_eq_sha256': prior['output_eq_sha256'], 'prior_audit': prior_audit,
         'output_eq_sha256': hashlib.sha256(after).hexdigest(), 'output_jug_sha256': hashlib.sha256(repaired_jug).hexdigest(),
         'contextual_clubs': len(layer['clubs']), 'editorial_queue': [],
@@ -304,15 +305,15 @@ def prepare(season, source, output, *, allow_compact=False):
 
 
 def audit_candidate(output):
-    receipt = json.loads((output / 'candidate-receipt.json').read_text())
+    receipt = json.loads(storage_io.read_text(output / 'candidate-receipt.json'))
     source = Path(receipt['prior_candidate_path'])
     if registry.sha256_file(source / 'candidate-receipt.json') != receipt['prior_candidate_receipt_sha256']:
         raise ValueError('prior candidate receipt changed')
     rollout.audit_candidate(source)
-    eq, jug = (source / 'DBDAT/EQ98030.FDI').read_bytes(), (source / 'DBDAT/JUG98030.FDI').read_bytes()
-    actual_eq, actual_jug = (output / 'DBDAT/EQ98030.FDI').read_bytes(), (output / 'DBDAT/JUG98030.FDI').read_bytes()
-    plan = json.loads((output / 'opening-order.json').read_text())
-    layer = json.loads((output / 'contextual-tactics.json').read_text())
+    eq, jug = storage_io.read_bytes(source / 'DBDAT/EQ98030.FDI'), storage_io.read_bytes(source / 'DBDAT/JUG98030.FDI')
+    actual_eq, actual_jug = storage_io.read_bytes(output / 'DBDAT/EQ98030.FDI'), storage_io.read_bytes(output / 'DBDAT/JUG98030.FDI')
+    plan = json.loads(storage_io.read_text(output / 'opening-order.json'))
+    layer = json.loads(storage_io.read_text(output / 'contextual-tactics.json'))
     if plan['season'] != receipt['season'] or layer['season'] != receipt['season']:
         raise ValueError('repair layer season mismatch')
     if (apply_layer(eq, jug, plan, allow_compact=True) != actual_jug or
@@ -338,8 +339,8 @@ def audit_candidate(output):
         index[r['native_player_id']].decode_payload(jug)).offset for c in plan['clubs'] for r in c['players']}
     if len(jug) != len(actual_jug) or any(a != b and i not in permitted_jug for i, (a, b) in enumerate(zip(jug, actual_jug))):
         raise ValueError('repair changed player bytes outside startup order')
-    english = json.loads((output / 'english-season-package.json').read_text())
-    prior_english = json.loads((source / 'english-season-package.json').read_text())
+    english = json.loads(storage_io.read_text(output / 'english-season-package.json'))
+    prior_english = json.loads(storage_io.read_text(source / 'english-season-package.json'))
     if english['players'] != prior_english['players'] or english['managers'] != prior_english['managers']:
         raise ValueError('repair changed player or manager recipe data')
     prior_by_club = {c['carrier_id']: c for c in prior_english['clubs']}
@@ -348,7 +349,7 @@ def audit_candidate(output):
     for cid, club in by_club.items():
         if {k: v for k, v in club.items() if k != 'opening'} != {k: v for k, v in prior_by_club[cid].items() if k != 'opening'}:
             raise ValueError('repair changed club fields outside opening tactics')
-    package = json.loads((output / 'season-package.json').read_text())
+    package = json.loads(storage_io.read_text(output / 'season-package.json'))
     packages.validate_package(english)
     packages.validate_package(package)
     if len(layer['clubs']) != 92 or receipt['editorial_queue']:
@@ -389,13 +390,13 @@ def main():
         parent = args.root / season
         output = parent / 'english-rollout-candidate-v3'
         if args.deployment_audit:
-            package = json.loads((output / 'english-season-package.json').read_text())
+            package = json.loads(storage_io.read_text(output / 'english-season-package.json'))
             row = {'season': season, 'package_sha256': registry.sha256_file(output / 'english-season-package.json'),
                    **deployment_review(package)}
             rows.append(row)
             print(json.dumps({'season': season, 'deployment_warning_count': row['warning_count']}), flush=True)
             continue
-        if args.audit or output.exists():
+        if args.audit or storage_io.exists(output):
             row = audit_candidate(output)
         else:
             row = prepare(season, parent / 'english-rollout-candidate-v1', output,
@@ -414,7 +415,7 @@ def main():
                   'contextual_clubs': sum(r['contextual_clubs'] for r in rows),
                   'repaired_clubs': sum(r['repaired_clubs'] for r in rows),
                   'registered': False, 'runtime_scope': 'offline only; runtime formation gate pending'}
-        if target.exists() and json.loads(target.read_text()) != report:
+        if storage_io.exists(target) and json.loads(storage_io.read_text(target)) != report:
             raise ValueError('existing aggregate repair audit differs')
         pipeline.write_canonical_json(target, report)
 

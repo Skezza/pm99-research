@@ -2,6 +2,7 @@
 import copy
 import json
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_tff_sourced_opening_xi_v1 as source
 from scripts import season_historical_roster_audit_v1 as audit
 from scripts import season_pipeline_v2 as pipeline
@@ -9,12 +10,12 @@ from scripts import season_release_registry_v1 as registry
 
 
 def verify(season,release_id,plan_path,output):
-    if output.exists():raise ValueError('role proof is immutable')
-    plan=json.loads(plan_path.read_text());base=registry.load_registered_release(season,plan['release_id'])
+    if storage_io.exists(output):raise ValueError('role proof is immutable')
+    plan=json.loads(storage_io.read_text(plan_path));base=registry.load_registered_release(season,plan['release_id'])
     release=registry.load_registered_release(season,release_id);source.verify_broad_roles(base,plan)
     saved=registry.ROOT/release.locator['historical_role_plan_path']
-    if json.loads(saved.read_text())!=plan:raise ValueError('saved source role plan differs')
-    before=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes();after=(release.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    if json.loads(storage_io.read_text(saved))!=plan:raise ValueError('saved source role plan differs')
+    before=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI');after=storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     if len(before)!=len(after):raise ValueError('role delta changed native container length')
     entries={e.record_id:e for e in IndexedFDIFile.from_bytes(before).entries};allowed=set()
     for row in plan['updates']:
@@ -25,7 +26,7 @@ def verify(season,release_id,plan_path,output):
         allowed.update(range(start,start+6))
     changed={i for i,(a,b) in enumerate(zip(before,after)) if a!=b}
     if not changed<=allowed:raise ValueError('role delta changed other native bytes')
-    original=json.loads(base.package_path.read_text());package=json.loads(release.package_path.read_text())
+    original=json.loads(storage_io.read_text(base.package_path));package=json.loads(storage_io.read_text(release.package_path))
     people=copy.deepcopy(original['players']);updates={r['player_id']:r for r in plan['updates']}
     for p in people:
         if p['id'] in updates:p['facts']['fine_roles']=updates[p['id']]['fine_roles']
@@ -36,10 +37,10 @@ def verify(season,release_id,plan_path,output):
     if diff['only_left'] or diff['only_right'] or [r['path'] for r in diff['changed']]!=['DBDAT/JUG98030.FDI']:
         raise ValueError('role delta changed another game/kit/photo/manager file')
     from scripts.season_package_compiler_v2 import _extract_country_codes_from_textos
-    eq=(release.game_path/'DBDAT/EQ98030.FDI').read_bytes();countries=_extract_country_codes_from_textos(release.game_path/'DBDAT/TEXTOS.PKF')
+    eq=storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI');countries=_extract_country_codes_from_textos(release.game_path/'DBDAT/TEXTOS.PKF')
     replayed,changes=source.replay(after,eq,package,release.package_path,countries)
     if replayed!=after or len(changes)!=1:raise ValueError('first-XI recipe replay loses corrected labels')
-    opening=json.loads((registry.ROOT/plan['opening_plan_path']).read_text())
+    opening=json.loads(storage_io.read_text(registry.ROOT / plan['opening_plan_path']))
     index={e.record_id:e for e in IndexedFDIFile.from_bytes(after).entries}
     for row in opening['starting_xi']:
         native=audit.native_player(index[row['carrier_id']].decode_payload(after),row['carrier_id'])

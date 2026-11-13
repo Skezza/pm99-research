@@ -4,6 +4,7 @@ from pathlib import Path
 import shutil
 
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_exact_primary_position_delta_v1 as source
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import publish_historical_role_delta_v1 as publisher
@@ -17,15 +18,15 @@ REPLAY='replayed-explicit-primary-positions-20261017-r132b'
 
 def main(season,parent,targets,input_plan,*,resume_source_only=False):
     folder=ROOT/season;folder.mkdir(parents=True,exist_ok=True)
-    existing=(folder/'position-plan.json').exists()
-    if registry.locator_path(season,RELEASE).exists():
+    existing=storage_io.exists(folder / 'position-plan.json')
+    if storage_io.exists(registry.locator_path(season, RELEASE)):
         raise ValueError('existing position transaction needs inspection, never blind regeneration')
     if existing and not resume_source_only:
         raise ValueError('existing source-only position transaction requires explicit inspected resume')
     if resume_source_only:
         stop=folder/'source-only-reserve-stop.json'
         workspace=registry.ROOT/'.local/historical-role-deltas-v1'/season/RELEASE
-        if (not existing or not stop.exists() or workspace.exists()
+        if (not existing or not storage_io.exists(stop) or storage_io.exists(workspace)
                 or set(p.name for p in folder.iterdir())!={'position-plan.json','inert.json','source-only-reserve-stop.json'}):
             raise ValueError('not an exact inspected source-only reserve stop; do not resume partial native output')
         saved=pipeline.read_json_file(stop)
@@ -45,8 +46,8 @@ def main(season,parent,targets,input_plan,*,resume_source_only=False):
     publisher.publish(season,descriptor,release_id=RELEASE,source_release_id=parent,
         profile_assignment_plan_path=path)
     actual=registry.load_registered_release(season,RELEASE)
-    before=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    after=(actual.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    before=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    after=storage_io.read_bytes(actual.game_path / 'DBDAT/JUG98030.FDI')
     entries={e.record_id:e for e in IndexedFDIFile.from_bytes(before).entries}
     allowed=set();observed=[]
     for row in plan['updates']:

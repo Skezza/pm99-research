@@ -4,13 +4,21 @@
 An absent audit candidate is NOT a verified repair. This initial adapter tracks
 queue movement and recurrence, not historical completion or live game validity.
 """
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
 from pathlib import Path
 import re
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = storage_io.resolve(Path(__file__)).parents[1]
 SEASONS = tuple(f'{y}-{str(y + 1)[-2:]}' for y in range(2000, 2026))
 AUDIT_SCHEMA = 'pm99-published-person-and-full-source-name-dob-audit-v1'
 BASELINE_SCHEMA = 'pm99-frozen-duplicate-review-baseline-v1'
@@ -23,7 +31,7 @@ def canonical(value):
 
 
 def digest(path):
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def pairs(rows):
@@ -36,14 +44,14 @@ def pairs(rows):
 
 
 def read(path, expected_sha=None):
-    raw = path.read_bytes()
+    raw = storage_io.read_bytes(path)
     if expected_sha is not None and hashlib.sha256(raw).hexdigest() != expected_sha:
         raise ValueError('bound evidence hash changed while reading')
     return json.loads(raw, object_pairs_hook=pairs)
 
 
 def binding(path):
-    path = path.resolve()
+    path = storage_io.resolve(path)
     try:
         name = path.relative_to(ROOT).as_posix()
     except ValueError:
@@ -156,7 +164,7 @@ def audit(path, expected_sha=None):
 
 def exclusive_write(path, document):
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open('xb') as stream:
+    with storage_io.open_file(path, 'xb') as stream:
         stream.write(canonical(document))
 
 

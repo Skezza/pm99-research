@@ -2,6 +2,7 @@
 import copy
 import re
 from datetime import UTC, datetime
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_exact_fifa_role_delta_v2 as source
 from scripts import publish_historical_role_delta_v1 as publisher, attest_registered_season_runtime_v1 as runtime
@@ -19,7 +20,7 @@ from app.indexed_jug_roles import read_indexed_native_roles
 def run():
     prior=ROOT.parent/'release-delivery-checklist-v44.json'
     output=ROOT.parent/'release-delivery-checklist-v45.json'
-    if output.exists():raise ValueError('completed role checkpoint must not repeat')
+    if storage_io.exists(output):raise ValueError('completed role checkpoint must not repeat')
     result=copy.deepcopy(pipeline.read_json_file(prior))
     baseline={r['season']:r for r in pipeline.read_json_file(ROOT/'baseline.json')}
     original={r['season']:r for r in result['current_release_bindings']}
@@ -44,7 +45,7 @@ def run():
             or not all(native[k] for k in ('all_six_roles_verified','all_non_role_native_bytes_identical','all_other_game_files_identical','recipe_only_fine_roles_and_source_artifact_changed'))
             or not replay['complete_game_inventory_identical'] or not replay['complete_recipe_identical']):
             raise ValueError('role byte/SOURCE proof not exact')
-        raw=(release.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+        raw=storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
         indexed={e.record_id:e for e in IndexedFDIFile.from_bytes(raw).entries}
         for update in plan['updates']:
             native_roles=read_indexed_native_roles(indexed[update['carrier_id']].decode_payload(raw),update['carrier_id'])[1]

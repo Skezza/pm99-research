@@ -23,6 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import run_allocated_manager_backfill_batch_v1 as common  # noqa: E402
 from scripts import season_opening_lineup_overlay_v1 as overlay_v1  # noqa: E402
 
@@ -39,7 +40,7 @@ def _bytes(value: Any) -> bytes:
 
 
 def _latest_raw_lineups(operations_root: Path, season: str) -> Path:
-    candidates = list((operations_root / season).glob("opening-lineups.allocated-historic-id*.json"))
+    candidates = list(storage_io.glob(operations_root / season, 'opening-lineups.allocated-historic-id*.json'))
     if not candidates:
         raise OpeningOverlayBatchError(f"{season}: allocated historic-ID opening-XI receipt is missing")
 
@@ -67,7 +68,7 @@ def _existing(output_root: Path, season: str) -> dict[str, Any]:
     outputs = audit.get("outputs")
     reconciliation_path = output_root / "opening-lineup-reconciliation.json"
     expected = outputs.get("opening_reconciliation_sha256") if isinstance(outputs, dict) else None
-    actual = hashlib.sha256(reconciliation_path.read_bytes()).hexdigest() if reconciliation_path.is_file() else None
+    actual = hashlib.sha256(storage_io.read_bytes(reconciliation_path)).hexdigest() if storage_io.is_file(reconciliation_path) else None
     if not isinstance(expected, str) or actual != expected:
         raise OpeningOverlayBatchError(f"{season}: existing opening-XI overlay reconciliation is stale or missing")
     return {"season": season, "state": "already-materialised", "audit": str(audit_path), "sha256": digest,
@@ -82,7 +83,7 @@ def run_batch(
     baseline, baseline_sha = overlay_v1._read(baseline_index, "baseline index")
     for season in sorted(set(seasons)):
         output_root = overlays_root / season / "opening-xi-v1"
-        if output_root.exists():
+        if storage_io.exists(output_root):
             rows.append(_existing(output_root, season))
             continue
         source_path = _current_source(current_root, season)
@@ -103,10 +104,10 @@ def run_batch(
         output_root.mkdir(parents=True, exist_ok=False)
         reconciliation_path = output_root / "opening-lineup-reconciliation.json"
         audit_path = output_root / "opening-lineup-overlay-audit.json"
-        reconciliation_path.write_bytes(_bytes(reconciliation))
-        audit_path.write_bytes(_bytes(audit))
+        storage_io.write_bytes(reconciliation_path, _bytes(reconciliation))
+        storage_io.write_bytes(audit_path, _bytes(audit))
         rows.append({"season": season, "state": "materialised", "audit": str(audit_path),
-                     "sha256": hashlib.sha256(audit_path.read_bytes()).hexdigest(), "coverage": audit["coverage"],
+                     "sha256": hashlib.sha256(storage_io.read_bytes(audit_path)).hexdigest(), "coverage": audit["coverage"],
                      "source_capture": str(source_path), "historic_id_lineups": str(raw_path)})
     return {
         "schema_version": SCHEMA,
@@ -133,7 +134,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--receipt", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
-        if args.receipt.exists():
+        if storage_io.exists(args.receipt):
             raise OpeningOverlayBatchError(f"refusing to overwrite batch receipt: {args.receipt}")
         result = run_batch(
             baseline_index=args.baseline_index, current_root=args.current_root, opening_root=args.opening_root,
@@ -142,7 +143,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (OSError, common.BatchError, OpeningOverlayBatchError) as exc:
         parser.error(str(exc))
     args.receipt.parent.mkdir(parents=True, exist_ok=True)
-    args.receipt.write_bytes(_bytes(result))
+    storage_io.write_bytes(args.receipt, _bytes(result))
     print(json.dumps(result["summary"], sort_keys=True))
     return 0
 

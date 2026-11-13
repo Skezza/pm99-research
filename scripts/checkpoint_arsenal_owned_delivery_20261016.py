@@ -6,6 +6,7 @@ Known shirt defects remain explicit follow-up work, not historical approval.
 import copy
 from datetime import UTC,datetime
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry,season_pipeline_v2 as pipeline
 from scripts import season_arsenal_2021_owned_opening_v1 as source
 from scripts import publish_historical_role_delta_v1 as publisher
@@ -45,7 +46,7 @@ def validate_case_count(previous,cases,manifest_sha):
 
 def run():
     prior=ROOT.parent/'release-delivery-checklist-v49.json';output=ROOT.parent/'release-delivery-checklist-v50.json'
-    if output.exists():raise ValueError('completed Arsenal publication must not repeat')
+    if storage_io.exists(output):raise ValueError('completed Arsenal publication must not repeat')
     previous=pipeline.read_json_file(prior);result=copy.deepcopy(previous)
     release=registry.load_registered_release(SEASON,RELEASE);base=registry.load_registered_release(SEASON,BASE)
     plan=pipeline.read_json_file(ROOT/'opening-ownership-plan.json')
@@ -106,7 +107,7 @@ def run():
     pipeline.assert_tree_matches_inventory(release.game_path,pipeline.read_json_file(release.inventory_path))
     publisher.register_completed_delta(SEASON,RELEASE)
     attestation=ROOT/'final-attestation.json'
-    if not attestation.exists():retained(attestation,runtime.attest(season=SEASON,
+    if not storage_io.exists(attestation):retained(attestation,runtime.attest(season=SEASON,
         evidence_dir=registry.ROOT/'.local/runlogs/pm99_runner'/(TAG+'_stoke')))
     validation=registry.validate_preferred_release(SEASON,level='playable')
     if not validation['valid']:raise ValueError('promoted Arsenal game failed final playable validation')

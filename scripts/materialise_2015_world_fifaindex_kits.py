@@ -35,6 +35,7 @@ for candidate in (ROOT, EDITOR):
         sys.path.insert(0, str(candidate))
 
 from app.minifoto_bitmap_archive import iter_obfuscated_bmp_records  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts.materialise_2015_world_kits import ARCHIVES, _nearest_palette, _write_content_addressed, canonical_json_bytes, sha256_bytes, sha256_file  # noqa: E402
 from scripts import pm99_compact_kit_template_v1 as compact_template  # noqa: E402
 from scripts.pm99_kit_recipe_v1 import recipe_from_source  # noqa: E402
@@ -120,7 +121,7 @@ def capture_catalog(cache_dir: Path, *, page_count: int = 13) -> tuple[list[dict
         path, digest = _write_content_addressed(payload, cache_dir / "catalog", ".md")
         parsed = parse_team_catalog(response.text)
         all_rows.extend(parsed)
-        sources.append({"page": page, "source_url": source_url, "reader_url": reader_url, "cache_path": str(path.resolve()), "sha256": digest, "team_count": len(parsed)})
+        sources.append({"page": page, "source_url": source_url, "reader_url": reader_url, "cache_path": str(storage_io.resolve(path)), "sha256": digest, "team_count": len(parsed)})
     by_id: dict[int, dict[str, Any]] = {}
     for row in all_rows:
         prior = by_id.get(row["fifa_team_id"])
@@ -131,7 +132,7 @@ def capture_catalog(cache_dir: Path, *, page_count: int = 13) -> tuple[list[dict
 
 
 def load_player_clubs(path: Path) -> tuple[dict[int, str], str]:
-    raw = path.read_bytes()
+    raw = storage_io.read_bytes(path)
     rows = csv.DictReader(io.StringIO(raw.decode("utf-8-sig")))
     result = {int(row["player_id"]): str(row.get("club") or "").strip() for row in rows if str(row.get("player_id") or "").isdigit()}
     return result, sha256_bytes(raw)
@@ -141,7 +142,7 @@ def load_sofifa_fifa16_teams(path: Path) -> tuple[list[dict[str, Any]], str]:
     """Load the CC0 legacy export's FIFA16 club ids/names."""
     digest = sha256_file(path)
     found: dict[int, dict[str, Any]] = {}
-    with path.open(encoding="utf-8-sig", newline="") as handle:
+    with storage_io.open_file(path, encoding='utf-8-sig', newline='') as handle:
         for row in csv.DictReader(handle):
             if str(row.get("fifa_version") or "") != "16":
                 continue
@@ -206,7 +207,7 @@ def fetch_home_kit(team: Mapping[str, Any], cache_dir: Path) -> dict[str, Any]:
     if image.width < 16 or image.height < 16 or image.width > 2048 or image.height > 2048:
         return {"status": "blocked-invalid-image-shape", "origin_url": origin, "proxy_url": proxy, "dimensions": [image.width, image.height]}
     path, digest = _write_content_addressed(response.content, cache_dir / "home-kits", ".png")
-    return {"status": "source-ready", "origin_url": origin, "proxy_url": proxy, "cache_path": str(path.resolve()), "sha256": digest, "dimensions": {"width": image.width, "height": image.height}}
+    return {"status": "source-ready", "origin_url": origin, "proxy_url": proxy, "cache_path": str(storage_io.resolve(path)), "sha256": digest, "dimensions": {"width": image.width, "height": image.height}}
 
 
 def render_fifaindex_candidate(
@@ -284,12 +285,12 @@ def materialise(*, manifest: Mapping[str, Any], player_csv: Path, sofifa_legacy_
                     recipe=recipe,
                 )
                 path, digest = _write_content_addressed(payload, output_dir / "candidate-bmps" / archive, ".bmp")
-                assets[archive] = {"path": str(path.resolve()), "sha256": digest, "file_name": str(record.file_name), "bitmap_length": len(payload), "shape": {"width": record.width, "height": record.height, "bits_per_pixel": record.bits_per_pixel}}
+                assets[archive] = {"path": str(storage_io.resolve(path)), "sha256": digest, "file_name": str(record.file_name), "bitmap_length": len(payload), "shape": {"width": record.width, "height": record.height, "bits_per_pixel": record.bits_per_pixel}}
         except Exception as exc:
             row.update({"status": "blocked-render-failed", "action": "no-write", "reason": f"{type(exc).__name__}: {exc}"}); rows.append(row); continue
         row.update({"status": "release-eligible-fifa16-identity-bound", "action": "write-candidate-only", "render_recipe": recipe, "render_template": {"id": compact_template.TEMPLATE_ID, "policy": "centred-front-shirt-and-shorts-silhouette-per-archive"}, "assets": assets}); rows.append(row)
     counts = collections.Counter(row["status"] for row in rows)
-    return {"schema_version": SCHEMA, "season": "2015-16", "result": "source-only-kit-candidates; no PM99 binary writes", "coverage": {"foreign_carrier_count": len(rows), "source_ready_carrier_count": sum(row.get("source_status") == "source-squad-ready" for row in rows), "release_eligible_count": counts["release-eligible-fifa16-identity-bound"], "status_counts": dict(sorted(counts.items()))}, "policy": {"identity": "unique FIFA16 team id/name bound by dominant identity-matched FIFA16 players or unique source-club name", "source": "FIFAIndex FIFA16 team catalogue and exact home-kit origin URL; CC0 SoFIFA legacy team-id crosswalk; DuckDuckGo external-content proxy transport", "rendering": "source-derived editable PM99 colour/pattern recipe on a fixed centred shirt-and-shorts silhouette; no scaled shirt-image pixels", "inheritance": "no inherited 1998 PM99 kit is eligible"}, "sources": {"asset_manifest_sha256": sha256_bytes(canonical_json_bytes(manifest)), "fifa16_player_csv": {"path": str(player_csv.resolve()), "sha256": player_csv_hash}, "sofifa_legacy_csv": {"path": str(sofifa_legacy_csv.resolve()), "sha256": sofifa_hash, "license": "CC0", "dataset_url": "https://www.kaggle.com/datasets/stefanoleone992/fifa-23-complete-player-dataset"}, "catalog_pages": catalog_sources, "kit_archives": archive_hashes, "palette": {**palette_source, "sha256": sha256_file(Path(str(palette_source["path"])))}, "render_template": {"id": compact_template.TEMPLATE_ID}}, "rows": rows}
+    return {"schema_version": SCHEMA, "season": "2015-16", "result": "source-only-kit-candidates; no PM99 binary writes", "coverage": {"foreign_carrier_count": len(rows), "source_ready_carrier_count": sum(row.get("source_status") == "source-squad-ready" for row in rows), "release_eligible_count": counts["release-eligible-fifa16-identity-bound"], "status_counts": dict(sorted(counts.items()))}, "policy": {"identity": "unique FIFA16 team id/name bound by dominant identity-matched FIFA16 players or unique source-club name", "source": "FIFAIndex FIFA16 team catalogue and exact home-kit origin URL; CC0 SoFIFA legacy team-id crosswalk; DuckDuckGo external-content proxy transport", "rendering": "source-derived editable PM99 colour/pattern recipe on a fixed centred shirt-and-shorts silhouette; no scaled shirt-image pixels", "inheritance": "no inherited 1998 PM99 kit is eligible"}, "sources": {"asset_manifest_sha256": sha256_bytes(canonical_json_bytes(manifest)), "fifa16_player_csv": {"path": str(storage_io.resolve(player_csv)), "sha256": player_csv_hash}, "sofifa_legacy_csv": {"path": str(storage_io.resolve(sofifa_legacy_csv)), "sha256": sofifa_hash, "license": "CC0", "dataset_url": "https://www.kaggle.com/datasets/stefanoleone992/fifa-23-complete-player-dataset"}, "catalog_pages": catalog_sources, "kit_archives": archive_hashes, "palette": {**palette_source, "sha256": sha256_file(Path(str(palette_source["path"])))}, "render_template": {"id": compact_template.TEMPLATE_ID}}, "rows": rows}
 
 
 def main() -> int:
@@ -302,14 +303,14 @@ def main() -> int:
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    raw = args.asset_manifest.read_bytes()
+    raw = storage_io.read_bytes(args.asset_manifest)
     try:
         result = materialise(manifest=json.loads(raw), player_csv=args.fifa16_player_csv, sofifa_legacy_csv=args.sofifa_legacy_csv, dbdat=args.dbdat, cache_dir=args.cache_dir, output_dir=args.output_dir)
     except (OSError, UnicodeDecodeError, json.JSONDecodeError, FifaIndexKitError) as exc:
         parser.error(str(exc))
     result["sources"]["asset_manifest_file_sha256"] = sha256_bytes(raw)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_json_bytes(result))
+    storage_io.write_bytes(args.output, canonical_json_bytes(result))
     print(json.dumps(result["coverage"], sort_keys=True))
     return 0
 

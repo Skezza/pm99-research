@@ -14,6 +14,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_duplicate_ownership_plan_v1 as planner
 from scripts import season_historical_roster_audit_v1 as roster
 from scripts import season_historical_transfer_review_v1 as transfer
@@ -68,7 +69,7 @@ def local_dob_conflicts(players, club_id, desired_ids, by_id, excluded_ids):
 
 
 def run(season, carrier, release_id, review_path, person_path, roster_review_path, output):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('club reconciliation plan is immutable')
     release = registry.load_registered_release(season, release_id)
     layers = planner.package_layers(release)
@@ -78,7 +79,7 @@ def run(season, carrier, release_id, review_path, person_path, roster_review_pat
     if len(selected) != 1:
         raise ValueError('club reconciliation requires one exact native carrier')
     club = selected[0]
-    doc = json.loads(review_path.read_text())
+    doc = json.loads(storage_io.read_text(review_path))
     transfer.verify_opening_sources(doc)
     row = next(r for r in doc['clubs'] if r['carrier_id'] == carrier)
     if row['club'] != club['name'] or row['status'] != 'original-first-fixture-reparsed':
@@ -87,13 +88,13 @@ def run(season, carrier, release_id, review_path, person_path, roster_review_pat
     if len(original) != 1:
         raise ValueError('club transaction requires its explicit original wrong-side correction')
     source_repair_path = ROOT / original[0]['repair_path']
-    correction = json.loads(source_repair_path.read_text())
+    correction = json.loads(storage_io.read_text(source_repair_path))
     if correction['carrier_id'] != carrier or correction['club'] != club['name']:
         raise ValueError('wrong source correction club')
     people, _, _, pin = transfer.load_snapshot(
         ROOT / '.local/external-sources/transfermarkt-datasets/transfermarkt-datasets.duckdb',
         ROOT / '.local/season-pipeline-v2/world-2015-transfermarkt-opening-fixtures-20260831.json')
-    people, refusal = person_source.merge(people, json.loads(person_path.read_text()))
+    people, refusal = person_source.merge(people, json.loads(storage_io.read_text(person_path)))
     by_id = unique_people_by_id(people)
     evidence = row['evidence']
     desired_ids = set(map(int, evidence['starting_xi'])) | set(map(int, evidence['substitutes']))
@@ -113,7 +114,7 @@ def run(season, carrier, release_id, review_path, person_path, roster_review_pat
         raise ValueError('native recipe is not exactly the rejected opponent XI; no broad replacement authorised')
     dob_conflicts = local_dob_conflicts(players, club['id'], desired_ids, by_id, set(old_xi))
     raw_sources, bindings = roster.load_sources(season)
-    verifier = roster.SourceVerifier(season, json.loads(roster_review_path.read_text()), bindings)
+    verifier = roster.SourceVerifier(season, json.loads(storage_io.read_text(roster_review_path)), bindings)
     facts = collections.defaultdict(list)
     for raw in raw_sources:
         candidates = [(p, transfer.unique_person({'name': p['name'], 'facts': p}, people)) for p in raw['players']]

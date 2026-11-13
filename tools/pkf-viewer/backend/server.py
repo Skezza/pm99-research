@@ -2,6 +2,14 @@
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 from collections import Counter
 from dataclasses import asdict, replace
 import json
@@ -17,10 +25,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from .pkf_parser import PkfFile, palette_colors, parse_pkf_file, record_payload_bytes
 
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-RUNLOG_ROOT = Path(
-    os.environ.get("PM99_RUNLOG_ROOT", REPO_ROOT / ".local" / "runlogs" / "pm99_runner")
-).expanduser().resolve()
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[3]
+RUNLOG_ROOT = storage_io.resolve(Path(os.environ.get('PM99_RUNLOG_ROOT', REPO_ROOT / '.local' / 'runlogs' / 'pm99_runner')).expanduser())
 MENU_ASSET_SOURCES: tuple[dict[str, str], ...] = (
     {
         "path": "RC_DBASE.PKF",
@@ -153,8 +159,8 @@ def annotate_duplicate_payloads(files: list[PkfFile]) -> list[PkfFile]:
 def default_simuldat_root() -> Path:
     env_root = os.environ.get("PM99_SIMULDAT_ROOT")
     if env_root:
-        return Path(env_root).expanduser().resolve()
-    return (REPO_ROOT / ".local" / "iso" / "Simuldat").resolve()
+        return storage_io.resolve(Path(env_root).expanduser())
+    return storage_io.resolve(REPO_ROOT / '.local' / 'iso' / 'Simuldat')
 
 
 class PkfRepository:
@@ -174,11 +180,11 @@ class PkfRepository:
             self._files = []
             self._paths = []
             self._last_error = None
-            if not self.root.exists():
+            if not storage_io.exists(self.root):
                 self._loaded = True
                 self._last_error = f"SIMULDAT root not found: {self.root}"
                 return
-            paths = sorted(path for path in self.root.rglob("*") if path.is_file() and path.suffix.lower() == ".pkf")
+            paths = sorted(path for path in storage_io.glob(self.root, '*', recursive=True) if storage_io.is_file(path) and path.suffix.lower() == ".pkf")
             for path in paths:
                 self._files.append(parse_pkf_file(path, root=self.root))
                 self._paths.append(path)
@@ -200,7 +206,7 @@ class PkfRepository:
                 p3d_family_counts[family] = p3d_family_counts.get(family, 0) + count
         return {
             "root": str(self.root),
-            "exists": self.root.exists(),
+            "exists": storage_io.exists(self.root),
             "error": self._last_error,
             "pkf_count": len(self._files),
             "total_bytes": sum(file.size for file in self._files),
@@ -373,9 +379,9 @@ def default_indexed_palette() -> tuple[str, list[tuple[int, int, int]]]:
         repository.root / "SIMULPCF6.PAL",
     ]
     for path in candidates:
-        if not path.is_file():
+        if not storage_io.is_file(path):
             continue
-        colors = palette_colors(path.read_bytes())
+        colors = palette_colors(storage_io.read_bytes(path))
         if len(colors) >= 256:
             palette = (
                 path.relative_to(repository.root).as_posix(),
@@ -899,17 +905,17 @@ def local_runtime_screenshot(summary_path: Path, screenshot: str | None) -> Path
         screenshot_path = summary_path.parent / screenshot_path.relative_to("/workspace/artifacts")
     elif not screenshot_path.is_absolute():
         screenshot_path = summary_path.parent / screenshot_path
-    if not screenshot_path.is_file():
+    if not storage_io.is_file(screenshot_path):
         return None
     try:
-        screenshot_path.resolve().relative_to(RUNLOG_ROOT)
+        storage_io.resolve(screenshot_path).relative_to(RUNLOG_ROOT)
     except ValueError:
         return None
     return screenshot_path
 
 
 def runtime_screen_url(path: Path) -> str:
-    relative = path.resolve().relative_to(RUNLOG_ROOT)
+    relative = storage_io.resolve(path).relative_to(RUNLOG_ROOT)
     return f"/api/menu-atlas/runtime-screen?path={quote(str(relative))}"
 
 
@@ -971,15 +977,15 @@ def is_runtime_menu_record(record: dict[str, object]) -> bool:
 
 
 def latest_runtime_screens(limit: int = 240) -> list[dict[str, object]]:
-    if not RUNLOG_ROOT.exists():
+    if not storage_io.exists(RUNLOG_ROOT):
         return []
 
     def discovery_sort_key(path: Path) -> tuple[int, float]:
         run_tag = runtime_run_tag(path)
-        return (1 if run_tag.startswith("menu_discovery") else 0, path.stat().st_mtime)
+        return (1 if run_tag.startswith("menu_discovery") else 0, storage_io.stat_result(path).st_mtime)
 
     discovery_paths = sorted(
-        [*RUNLOG_ROOT.glob("**/summary.json"), *RUNLOG_ROOT.glob("**/selector_discovery.json")],
+        [*storage_io.glob(RUNLOG_ROOT, '**/summary.json'), *storage_io.glob(RUNLOG_ROOT, '**/selector_discovery.json')],
         key=discovery_sort_key,
         reverse=True,
     )
@@ -987,7 +993,7 @@ def latest_runtime_screens(limit: int = 240) -> list[dict[str, object]]:
     seen_hashes: set[str] = set()
     for summary_path in discovery_paths:
         try:
-            summary = json.loads(summary_path.read_text(encoding="utf-8"))
+            summary = json.loads(storage_io.read_text(summary_path, encoding='utf-8'))
         except (OSError, json.JSONDecodeError):
             continue
         mode = str(summary.get("mode") or summary.get("schema") or summary_path.parent.name)
@@ -1125,10 +1131,10 @@ def get_menu_atlas(include_runtime: bool = False) -> dict[str, object]:
 @app.get("/api/menu-atlas/runtime-screen")
 def get_runtime_screen(path: str) -> Response:
     try:
-        screen_path = (RUNLOG_ROOT / path).resolve()
+        screen_path = storage_io.resolve(RUNLOG_ROOT / path)
         screen_path.relative_to(RUNLOG_ROOT)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail="Unknown runtime screen") from exc
-    if not screen_path.is_file() or screen_path.suffix.lower() != ".png":
+    if not storage_io.is_file(screen_path) or screen_path.suffix.lower() != ".png":
         raise HTTPException(status_code=404, detail="Unknown runtime screen")
-    return Response(content=screen_path.read_bytes(), media_type="image/png")
+    return Response(content=storage_io.read_bytes(screen_path), media_type="image/png")

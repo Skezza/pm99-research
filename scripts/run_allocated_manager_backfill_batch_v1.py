@@ -24,6 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import capture_allocated_manager_history_v1 as capture_v1  # noqa: E402
 from scripts import capture_transfermarkt_opening_lineups_v1 as opening  # noqa: E402
 
@@ -42,7 +43,7 @@ def _bytes(value: Any) -> bytes:
 
 def _load(path: Path, label: str) -> tuple[dict[str, Any], str]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise BatchError(f"cannot read {label}: {path}") from exc
@@ -59,8 +60,8 @@ def _bound_artifact(pointer_path: Path, pointer: Mapping[str, Any], name: str) -
     expected = artifact.get("sha256")
     if not isinstance(relative, str) or not relative or not isinstance(expected, str) or len(expected) != 64:
         raise BatchError(f"{pointer_path}: malformed {name} artifact")
-    path = (pointer_path.parent / relative).resolve()
-    if pointer_path.parent.resolve() not in path.parents:
+    path = storage_io.resolve(pointer_path.parent / relative)
+    if storage_io.resolve(pointer_path.parent) not in path.parents:
         raise BatchError(f"{pointer_path}: unsafe {name} artifact path")
     document, actual = _load(path, name)
     if actual != expected:
@@ -75,7 +76,7 @@ def _output_path(operations_root: Path, season: str) -> Path:
 def _existing_output(operations_root: Path, season: str) -> Path | None:
     """Select the latest explicit version so an earlier failed receipt is not rerun."""
     directory = operations_root / season
-    candidates = list(directory.glob("opening-manager-supplement.allocated-transfermarkt*.json"))
+    candidates = list(storage_io.glob(directory, 'opening-manager-supplement.allocated-transfermarkt*.json'))
     if not candidates:
         return None
     def version(path: Path) -> int:
@@ -89,7 +90,7 @@ def run_batch(
     seasons: Sequence[str] | None, offline: bool, delay: float,
 ) -> dict[str, Any]:
     requested = set(seasons or ())
-    pointers = sorted(current_root.glob("*/current.json"))
+    pointers = sorted(storage_io.glob(current_root, '*/current.json'))
     if requested:
         pointers = [path for path in pointers if path.parent.name in requested]
         missing = requested - {path.parent.name for path in pointers}
@@ -130,10 +131,10 @@ def run_batch(
         except (capture_v1.AllocatedManagerHistoryError, opening.CaptureError) as exc:
             raise BatchError(f"{season}: {exc}") from exc
         output.parent.mkdir(parents=True, exist_ok=True)
-        if output.exists():
+        if storage_io.exists(output):
             raise BatchError(f"{season}: refusing to overwrite manager supplement: {output}")
         payload = _bytes(result)
-        output.write_bytes(payload)
+        storage_io.write_bytes(output, payload)
         results.append({
             "season": season, "state": "captured", "output": str(output),
             "sha256": hashlib.sha256(payload).hexdigest(), "summary": result["summary"],
@@ -167,7 +168,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--delay", type=float, default=0.25)
     args = parser.parse_args(argv)
     try:
-        if args.receipt.exists():
+        if storage_io.exists(args.receipt):
             raise BatchError(f"refusing to overwrite batch receipt: {args.receipt}")
         result = run_batch(
             current_root=args.current_root, opening_root=args.opening_root,
@@ -177,7 +178,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (OSError, BatchError) as exc:
         parser.error(str(exc))
     args.receipt.parent.mkdir(parents=True, exist_ok=True)
-    args.receipt.write_bytes(_bytes(result))
+    storage_io.write_bytes(args.receipt, _bytes(result))
     print(json.dumps(result["summary"], sort_keys=True))
     return 0
 

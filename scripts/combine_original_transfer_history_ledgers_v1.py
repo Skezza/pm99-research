@@ -12,6 +12,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
 from scripts import season_published_transfer_history_v1 as history
@@ -23,14 +24,14 @@ def original_key(row):
 
 
 def combine(paths, output):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('combined original history ledger is immutable')
-    if not paths or len({path.resolve() for path in paths}) != len(paths):
+    if not paths or len({storage_io.resolve(path) for path in paths}) != len(paths):
         raise ValueError('distinct original history input ledgers are required')
     inputs, records = [], {}
     for path in paths:
         digest = registry.sha256_file(path)
-        document = json.loads(path.read_text())
+        document = json.loads(storage_io.read_text(path))
         history.merge({}, document)
         inputs.append({'path': registry.relative_workspace_path(path), 'sha256': digest})
         seen = set()

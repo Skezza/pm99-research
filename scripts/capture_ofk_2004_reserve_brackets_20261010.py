@@ -8,6 +8,7 @@ import re
 
 from bs4 import BeautifulSoup
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_published_transfer_history_v1 as histories
 from scripts.capture_stock_replacement_sources_20261010 import ROOT
@@ -19,7 +20,7 @@ def original_ids(year):
     if (receipt['status'] != 'original-captured' or registry.sha256_file(path) != receipt['sha256']
             or receipt['url'] != f'https://www.transfermarkt.co.uk/ofk-belgrad/kader/verein/53/saison_id/{year}/plus/1'):
         raise ValueError('original OFK annual roster changed')
-    page = BeautifulSoup(path.read_bytes(), 'html.parser')
+    page = BeautifulSoup(storage_io.read_bytes(path), 'html.parser')
     rows = {}
     for tr in page.select('table.items > tbody > tr'):
         links = tr.select('a[href*="/profil/spieler/"]')

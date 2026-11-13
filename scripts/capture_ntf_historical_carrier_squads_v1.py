@@ -24,6 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts.capture_2015_missing_family_squads import (  # noqa: E402
     ALIASES, BASE_URL, CALENDAR_YEAR_COUNTRIES, COUNTRIES, _get, _normalise,
     parse_league_links, parse_squad_page,
@@ -88,14 +89,14 @@ class Cache:
         path = self.root / key
         receipt_path = path.with_suffix(path.suffix + ".source.json")
         receipt: dict[str, Any] | None = None
-        if receipt_path.is_file():
+        if storage_io.is_file(receipt_path):
             try:
-                receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+                receipt = json.loads(storage_io.read_text(receipt_path, encoding='utf-8'))
             except (OSError, UnicodeDecodeError, json.JSONDecodeError):
                 receipt = None
-        reusable = path.is_file() and receipt is not None and receipt.get("url") == url
+        reusable = storage_io.is_file(path) and receipt is not None and receipt.get("url") == url
         if reusable:
-            payload = path.read_bytes()
+            payload = storage_io.read_bytes(path)
             if hashlib.sha256(payload).hexdigest() != receipt.get("sha256"):
                 raise ValueError(f"cached snapshot hash mismatch: {path}")
         elif self.offline:
@@ -118,10 +119,8 @@ class Cache:
             if len(payload) < 1000:
                 raise ValueError("source response is implausibly small")
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_bytes(payload)
-            receipt_path.write_bytes(canonical_bytes({
-                "sha256": hashlib.sha256(payload).hexdigest(), "url": url,
-            }))
+            storage_io.write_bytes(path, payload)
+            storage_io.write_bytes(receipt_path, canonical_bytes({'sha256': hashlib.sha256(payload).hexdigest(), 'url': url}))
         self.used.append({"cache_path": key, "sha256": hashlib.sha256(payload).hexdigest(), "url": url})
         return payload
 
@@ -222,12 +221,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--offline", action="store_true"); parser.add_argument("--delay", type=float, default=1.0)
     parser.add_argument("--country", action="append", default=[])
     args = parser.parse_args(argv)
-    registry, allocation = json.loads(args.registry.read_text()), json.loads(args.allocation.read_text())
+    registry, allocation = json.loads(storage_io.read_text(args.registry)), json.loads(storage_io.read_text(args.allocation))
     result, gaps = capture(registry=registry, allocation=allocation, season_start_year=args.season_start_year,
                            cache=Cache(args.cache_dir, offline=args.offline, delay=args.delay),
                            countries=set(args.country) if args.country else None)
     args.output.parent.mkdir(parents=True, exist_ok=True); args.gaps_output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_bytes(result)); args.gaps_output.write_bytes(canonical_bytes(gaps))
+    storage_io.write_bytes(args.output, canonical_bytes(result)); storage_io.write_bytes(args.gaps_output, canonical_bytes(gaps))
     print(json.dumps({**result["summary"], **gaps["summary"]}, sort_keys=True)); return 0
 
 

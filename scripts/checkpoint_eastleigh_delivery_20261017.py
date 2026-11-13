@@ -3,6 +3,7 @@ import copy
 from datetime import UTC,datetime
 from pathlib import Path
 import tempfile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry,season_pipeline_v2 as pipeline
 from scripts import season_paired_whole_club_reconstruction_v1 as source
 from scripts import publish_historical_role_delta_v1 as publisher
@@ -53,7 +54,7 @@ def validate_native_readback(actual,saved):
 
 def run():
     output=ROOT/'release-delivery-checklist-v57.json'
-    if output.exists():raise ValueError('completed publication must not repeat')
+    if storage_io.exists(output):raise ValueError('completed publication must not repeat')
     previous=pipeline.read_json_file(ROOT/'release-delivery-checklist-v56.json')
     release=registry.load_registered_release(SEASON,RELEASE)
     reconstructed=registry.load_registered_release(SEASON,REPLAY)
@@ -63,7 +64,7 @@ def run():
         raise ValueError('whole source proof incomplete')
     pipeline.assert_tree_matches_inventory(release.game_path,pipeline.read_json_file(release.inventory_path))
     pipeline.assert_tree_matches_inventory(reconstructed.game_path,pipeline.read_json_file(release.inventory_path))
-    if release.package_path.read_bytes()!=reconstructed.package_path.read_bytes():raise ValueError('SOURCE whole recipe differs')
+    if storage_io.read_bytes(release.package_path)!=storage_io.read_bytes(reconstructed.package_path):raise ValueError('SOURCE whole recipe differs')
     # Re-read actual native facts rather than merely trusting earlier booleans.
     with tempfile.TemporaryDirectory(prefix='pm99-eastleigh-readback-') as folder:
         actual=readback.verify(ROOT/'Eastleigh2014-complete-v1',Path(folder)/'proof.json')

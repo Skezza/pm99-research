@@ -10,6 +10,14 @@ edits the base, an existing stage, a package, or a game tree.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -23,7 +31,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR = ROOT / "upstream" / "pm99-skezmod-db-editor"
 for candidate in (ROOT, EDITOR):
     if str(candidate) not in sys.path:
@@ -61,7 +69,7 @@ def sha256_bytes(value: bytes) -> str:
 
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
@@ -69,7 +77,7 @@ def sha256_file(path: Path) -> str:
 
 def _is_regular_file(path: Path) -> bool:
     try:
-        return not path.is_symlink() and stat.S_ISREG(path.stat().st_mode)
+        return not path.is_symlink() and stat.S_ISREG(storage_io.stat_result(path).st_mode)
     except OSError:
         return False
 
@@ -77,13 +85,13 @@ def _is_regular_file(path: Path) -> bool:
 def _require_regular_file(path: Path, label: str) -> Path:
     if not _is_regular_file(path):
         raise KitArchiveMaterialisationError(f"{label} must be an existing regular non-symlink file: {path}")
-    return path.resolve()
+    return storage_io.resolve(path)
 
 
 def _read_object(path: Path, label: str) -> dict[str, Any]:
     path = _require_regular_file(path, label)
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(storage_io.read_text(path, encoding='utf-8'))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise KitArchiveMaterialisationError(f"{label} is not a valid JSON object: {exc}") from exc
     if not isinstance(value, dict):
@@ -113,7 +121,7 @@ def _safe_artifact_path(*, bindings_root: Path, relative_path: Any, label: str) 
     unresolved = bindings_root / candidate
     if not _is_regular_file(unresolved):
         raise KitArchiveMaterialisationError(f"{label} artifact must be an existing regular non-symlink file")
-    resolved = unresolved.resolve()
+    resolved = storage_io.resolve(unresolved)
     try:
         resolved.relative_to(bindings_root)
     except ValueError as exc:
@@ -277,7 +285,7 @@ def _candidate_payload(
         relative_path=relative_path,
         label=f"binding carrier {carrier} {archive}",
     )
-    payload = candidate_path.read_bytes()
+    payload = storage_io.read_bytes(candidate_path)
     if sha256_bytes(payload) != expected_hash:
         raise KitArchiveMaterialisationError(f"binding carrier {carrier} {archive} artifact hash is stale")
     try:
@@ -334,7 +342,7 @@ def _verify_base_archives(*, base_dbdat: Path, receipt: Mapping[str, Any]) -> tu
             raise KitArchiveMaterialisationError(
                 f"clean base archive {archive} does not match the archive used to render the bindings"
             )
-        base_bytes[archive] = path.read_bytes()
+        base_bytes[archive] = storage_io.read_bytes(path)
         records[archive] = _records_by_carrier(path)
         hashes[archive] = actual
     return base_bytes, records, hashes
@@ -423,7 +431,7 @@ def materialise(*, render_bindings: Path, render_receipt: Path, clean_dbdat: Pat
     clean_dbdat = clean_dbdat.expanduser()
     if clean_dbdat.is_symlink():
         raise KitArchiveMaterialisationError("clean DBDAT must not be a symlink")
-    base_dbdat = clean_dbdat.resolve()
+    base_dbdat = storage_io.resolve(clean_dbdat)
     if not base_dbdat.is_dir():
         raise KitArchiveMaterialisationError("clean DBDAT must be an existing non-symlink directory")
     binding = _read_object(binding_path, "kit render bindings")
@@ -432,7 +440,7 @@ def materialise(*, render_bindings: Path, render_receipt: Path, clean_dbdat: Pat
     base_bytes, records, base_hashes = _verify_base_archives(base_dbdat=base_dbdat, receipt=receipt)
     output_archives, events = _build_archives(
         binding_rows=binding_rows,
-        bindings_root=binding_path.parent.resolve(),
+        bindings_root=storage_io.resolve(binding_path.parent),
         base_bytes=base_bytes,
         records=records,
     )
@@ -481,10 +489,8 @@ def materialise(*, render_bindings: Path, render_receipt: Path, clean_dbdat: Pat
         archive_dir = temporary_root / "archives"
         archive_dir.mkdir()
         for archive in ARCHIVES:
-            (archive_dir / archive).write_bytes(output_archives[archive])
-        (temporary_root / "kit-archive-materialisation-receipt-v1.json").write_bytes(
-            canonical_json_bytes(result)
-        )
+            storage_io.write_bytes(archive_dir / archive, output_archives[archive])
+        storage_io.write_bytes(temporary_root / 'kit-archive-materialisation-receipt-v1.json', canonical_json_bytes(result))
         # Reserve the final directory with mkdir, whose create operation is
         # exclusive.  We then move the fully written children into that new
         # directory.  This avoids rename's platform-dependent replacement
@@ -496,8 +502,8 @@ def materialise(*, render_bindings: Path, render_receipt: Path, clean_dbdat: Pat
                 f"refusing to replace existing output directory: {output_dir}"
             ) from exc
         created_output = True
-        os.rename(archive_dir, output_dir / "archives")
-        os.rename(
+        storage_io.rename_file(archive_dir, output_dir / "archives")
+        storage_io.rename_file(
             temporary_root / "kit-archive-materialisation-receipt-v1.json",
             output_dir / "kit-archive-materialisation-receipt-v1.json",
         )

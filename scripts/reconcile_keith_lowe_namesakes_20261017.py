@@ -1,5 +1,6 @@
 """Close one previously delivered repair without conflating two Rob Atkinsons."""
 from pathlib import Path
+from scripts import json_storage_io_v1 as storage_io
 from scripts.reconcile_boreham_eight_frozen_cases_20261017 import ROOT, main, binding
 from scripts import season_release_registry_v1 as registry, season_pipeline_v2 as pipeline
 from scripts import season_soccerbase_original_opening_v1 as original
@@ -19,7 +20,7 @@ def validate_namesakes(matches,expected,jug):
         source=witness[key];path=registry.ROOT/source['source_path']
         if registry.sha256_file(path)!=source['source_sha256'] or source['soccerbase_player_id']!=person:
             raise ValueError('original numeric namesake biography changed')
-        biography=original.profile(path.read_bytes(),dict(provider_player_id=person,
+        biography=original.profile(storage_io.read_bytes(path),dict(provider_player_id=person,
             source_player_id='soccerbase:'+str(person)),source['source_url'])
         # The older biography publishes Robert; its already delivered source
         # allocation publishes Rob. This exact pair is not a general alias rule.

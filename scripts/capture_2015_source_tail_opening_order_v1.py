@@ -28,6 +28,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import capture_2015_source_tail_squads_v1 as tail_squads  # noqa: E402
 from scripts import capture_transfermarkt_lineup_person_evidence_v1 as person_profiles  # noqa: E402
 from scripts import capture_transfermarkt_opening_lineups_v1 as opening  # noqa: E402
@@ -154,7 +155,7 @@ def canonical_bytes(value: Any) -> bytes:
 
 def _load(path: Path) -> tuple[dict[str, Any], str]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise OpeningOrderError(f"cannot read source-tail package: {path}") from exc
@@ -274,7 +275,7 @@ def _source_player_ids(
     selector_suffix = "" if source_saison_id == 2015 else f"-selector-{source_saison_id}"
     path = source_squad_cache_root / f"squad/2015/{carrier_id}-{club_id}{selector_suffix}.html"
     try:
-        payload = path.read_bytes()
+        payload = storage_io.read_bytes(path)
     except OSError as exc:
         raise OpeningOrderError(f"missing exact cached dated squad: {path}") from exc
     actual_sha256 = hashlib.sha256(payload).hexdigest()
@@ -615,7 +616,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--delay", type=float, default=0.2)
     parser.add_argument("--strict", action="store_true")
     args = parser.parse_args(argv)
-    if args.output.exists():
+    if storage_io.exists(args.output):
         parser.error(f"refusing to overwrite source receipt: {args.output}")
     try:
         package, package_sha = _load(args.source_tail_package)
@@ -628,7 +629,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (OSError, OpeningOrderError, opening.CaptureError) as exc:
         parser.error(str(exc))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_bytes(result))
+    storage_io.write_bytes(args.output, canonical_bytes(result))
     print(json.dumps(result["coverage"], sort_keys=True))
     return 1 if args.strict and result["gaps"] else 0
 

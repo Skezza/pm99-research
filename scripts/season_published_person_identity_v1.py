@@ -20,6 +20,7 @@ from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_historical_transfer_review_v1 as transfer
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
@@ -86,10 +87,10 @@ def merge(index, supplement):
             raise ValueError('original person response changed')
         if row['source_url'] != url(row['requested_ids']):
             raise ValueError('original person endpoint or requested IDs differ')
-        metadata = json.loads((ROOT / row['source_receipt_path']).read_text())
+        metadata = json.loads(storage_io.read_text(ROOT / row['source_receipt_path']))
         if metadata != {'url': row['source_url'], 'sha256': row['raw_sha256']}:
             raise ValueError('original person URL/SHA receipt differs')
-        parsed, gaps = parse(json.loads(path.read_text()), row['requested_ids'])
+        parsed, gaps = parse(json.loads(storage_io.read_text(path)), row['requested_ids'])
         if parsed != row['people'] or gaps != row['gaps']:
             raise ValueError('saved identities do not reproduce from original entities')
         for person in parsed:
@@ -107,11 +108,11 @@ def merge(index, supplement):
 
 
 def capture(opening_paths, cache, output, prior_path=None):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('person evidence is immutable')
     ids, inputs = set(), []
     for path in opening_paths:
-        document = json.loads(path.read_text())
+        document = json.loads(storage_io.read_text(path))
         transfer.verify_opening_sources(document)
         inputs.append({'path': registry.relative_workspace_path(path), 'sha256': registry.sha256_file(path)})
         for row in document['clubs']:
@@ -121,7 +122,7 @@ def capture(opening_paths, cache, output, prior_path=None):
     batches, prior_binding = [], None
     if prior_path is not None:
         prior_digest = registry.sha256_file(prior_path)
-        prior = json.loads(prior_path.read_text())
+        prior = json.loads(storage_io.read_text(prior_path))
         # Reparse every retained original URL/SHA response. A saved parsed
         # identity alone is not sufficient evidence for incremental reuse.
         merge({}, prior)
@@ -139,9 +140,9 @@ def capture(opening_paths, cache, output, prior_path=None):
         path = cache / 'people' / (key + '.json')
         receipt = path.with_suffix('.source.json')
         try:
-            if path.exists():
-                raw = path.read_bytes()
-                if json.loads(receipt.read_text()) != {'url': source_url, 'sha256': hashlib.sha256(raw).hexdigest()}:
+            if storage_io.exists(path):
+                raw = storage_io.read_bytes(path)
+                if json.loads(storage_io.read_text(receipt)) != {'url': source_url, 'sha256': hashlib.sha256(raw).hexdigest()}:
                     raise ValueError('cached original people URL/SHA changed')
             else:
                 with urlopen(Request(source_url, headers={'Accept': 'application/json',

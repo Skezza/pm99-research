@@ -3,6 +3,7 @@ import argparse
 from pathlib import Path
 import time
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import build_country_policy_v2_cohort_20261017 as build
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts.capture_shinnie_country_20261017 import main as capture
@@ -17,16 +18,16 @@ def main(builder_pid):
     rows=pipeline.read_json_file(build.ROOT/'batch-input.json')['rows']
     for row in rows:
         season=row['season'];folder=build.ROOT/season
-        while not (folder/'complete-SOURCE-replay.json').exists():
+        while not storage_io.exists(folder / 'complete-SOURCE-replay.json'):
             result_path=folder/'cohort-result.json'
-            if result_path.exists() and pipeline.read_json_file(result_path)['status']=='no-new-game-already-correct-or-unresolved':
+            if storage_io.exists(result_path) and pipeline.read_json_file(result_path)['status']=='no-new-game-already-correct-or-unresolved':
                 print(dict(season=season,no_capture='no new game; source-complete parent retained'),flush=True)
                 break
-            if (folder/'build-failure.json').exists():
+            if storage_io.exists(folder / 'build-failure.json'):
                 print(dict(season=season,no_capture='retained build failure needs inspection'),flush=True)
                 break
             try:
-                command=Path(f'/proc/{builder_pid}/cmdline').read_bytes()
+                command=storage_io.read_bytes(Path(f'/proc/{builder_pid}/cmdline'))
             except FileNotFoundError as exc:
                 raise ValueError('policy cohort builder stopped without proof/result; inspect existing state') from exc
             if b'scripts.build_country_policy_v2_cohort_20261017' not in command:

@@ -35,8 +35,10 @@ from typing import Any
 
 try:
     from . import json_storage_v1 as json_storage
+    from . import json_storage_io_v1 as storage_io
 except ImportError:  # direct execution from scripts/
     import json_storage_v1 as json_storage
+    import json_storage_io_v1 as storage_io
 
 
 FILE_INVENTORY_SCHEMA = "pm99-file-inventory-v2"
@@ -608,7 +610,7 @@ def validate_release_manifest(manifest: Any) -> dict[str, Any]:
     return manifest
 
 
-def write_canonical_json(path: Path, payload: Any, *, compressed: bool = False) -> str:
+def write_canonical_json(path: Path, payload: Any, *, compressed: bool | str | None = None) -> str:
     """Write a new canonical JSON file; never silently overwrite evidence."""
 
     path = path.expanduser()
@@ -618,9 +620,11 @@ def write_canonical_json(path: Path, payload: Any, *, compressed: bool = False) 
     if not path.parent.is_dir():
         raise PipelineError(f"output parent must already exist: {path.parent}")
     encoded = canonical_json_bytes(payload) + b"\n"
+    if compressed is None and storage_io.automatic(path):
+        compressed = 'auto'
     try:
         if compressed:
-            json_storage.write_bytes(path, encoded, compressed=True)
+            json_storage.write_bytes(path, encoded, compressed=compressed)
         else:
             with path.open("xb") as handle:
                 handle.write(encoded)

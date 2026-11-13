@@ -9,6 +9,7 @@ from app.fdi_indexed import IndexedFDIFile
 from app.indexed_jug_birth_date import rewrite_indexed_native_birth_dates
 from app.indexed_jug_roles import rewrite_indexed_native_roles
 from app.player_initial_order import OrderReplacement,patch_owned_mode1_complete_orders,read_initial_order
+from scripts import json_storage_io_v1 as storage_io
 from scripts import prepare_morecambe_owned_opening_20261017 as admission
 from scripts import season_duplicate_ownership_delta_v1 as delta
 from scripts import prepare_duplicate_whole_club_native_v1 as native
@@ -98,8 +99,8 @@ def bind(package,plan):
 
 def apply(jug,eq,plan):
     base=registry.load_registered_release(plan['season'],plan['release_id'])
-    original=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    original_eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    original=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    original_eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     if (digest(original),digest(original_eq))!=(plan['jug_sha256'],plan['eq_sha256']):
         raise ValueError('Morecambe immutable native preimage changed')
     before=pipeline.read_json_file(base.package_path);package=bind(before,plan)
@@ -154,7 +155,7 @@ def reconstruction(previous,release_id):
     base=registry.load_registered_release(previous.season,plan['release_id']);verify(base,plan)
     package=pipeline.read_json_file(previous.package_path)
     artifact=next(a for a in package['artifacts'] if a['id']==PREFIX+previous.season)
-    if (path.resolve()!=(previous.package_path.parent/FILENAME).resolve()
+    if (storage_io.resolve(path)!=storage_io.resolve(previous.package_path.parent / FILENAME)
             or registry.sha256_file(path)!=artifact['sha256'] or bind(pipeline.read_json_file(base.package_path),plan)!=package):
         raise ValueError('Morecambe edited recipe cannot be silently reconstructed')
     descriptor=previous.package_path.parent/'role-delta-input.json'

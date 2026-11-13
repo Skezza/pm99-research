@@ -14,6 +14,14 @@ refresh is explicit.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import csv
 import hashlib
@@ -61,8 +69,8 @@ def _normalise(value: object) -> str:
 
 
 def _read_cached_or_download(*, path: Path, url: str, allow_network: bool) -> bytes:
-    if path.is_file():
-        data = path.read_bytes()
+    if storage_io.is_file(path):
+        data = storage_io.read_bytes(path)
         if data:
             return data
     if not allow_network:
@@ -76,7 +84,7 @@ def _read_cached_or_download(*, path: Path, url: str, allow_network: bool) -> by
     if not data:
         raise PreseasonStandingsError(f"download returned no data: {url}")
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(data)
+    storage_io.write_bytes(path, data)
     return data
 
 
@@ -240,7 +248,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (OSError, PreseasonStandingsError) as exc:
         parser.error(str(exc))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_json_bytes(value))
+    storage_io.write_bytes(args.output, canonical_json_bytes(value))
     print(json.dumps({"season": args.season, "competition_count": len(value["competitions"])}, sort_keys=True))
     return 0
 

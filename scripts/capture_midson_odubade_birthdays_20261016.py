@@ -2,6 +2,7 @@
 import argparse
 import os
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_kit_render_bindings_v1
 from scripts import season_release_registry_v1 as registry, season_pipeline_v2 as pipeline
 from scripts import capture_registered_season_runtime_v1 as capture
@@ -17,7 +18,7 @@ def tag(season):
 
 def run(season):
     root = ROOT / season
-    if not all((root / n).exists() for n in ('native-byte-proof.json', 'complete-SOURCE-replay.json')):
+    if not all(storage_io.exists(root / n) for n in ('native-byte-proof.json', 'complete-SOURCE-replay.json')):
         raise ValueError('actual source/native and full SOURCE proofs required before runner')
     release = registry.load_registered_release(season, RELEASE)
     native = pipeline.read_json_file(root / 'native-byte-proof.json')

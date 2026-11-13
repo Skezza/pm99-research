@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_soccerbase_original_opening_v1 as original
 from scripts import season_verified_opening_roster_sources_v1 as verified
@@ -27,7 +28,7 @@ WITNESS_POLICY = "original-soccerbase-scheduled-August-fixture-numeric-club-and-
 
 
 def _sha(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def _bound(value: Any, label: str, *, require_url: bool = True) -> Path:
@@ -36,8 +37,8 @@ def _bound(value: Any, label: str, *, require_url: bool = True) -> Path:
             or not isinstance(value.get("sha256"), str)
             or len(value["sha256"]) != 64):
         raise ValueError(f"{label} needs exact path, URL and SHA-256")
-    path = (registry.ROOT / value["path"]).resolve(strict=True)
-    if not path.is_relative_to(registry.ROOT.resolve()) or _sha(path) != value["sha256"]:
+    path = storage_io.resolve(registry.ROOT / value['path'], strict=True)
+    if not path.is_relative_to(storage_io.resolve(registry.ROOT)) or _sha(path) != value["sha256"]:
         raise ValueError(f"{label} body differs from its hash binding")
     return path
 
@@ -45,7 +46,7 @@ def _bound(value: Any, label: str, *, require_url: bool = True) -> Path:
 def _bound_json(value: Any, label: str) -> dict[str, Any]:
     path = _bound(value, label, require_url=False)
     try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload = json.loads(storage_io.read_text(path, encoding='utf-8'))
     except Exception as exc:
         raise ValueError(f"{label} is not JSON") from exc
     if not isinstance(payload, dict):

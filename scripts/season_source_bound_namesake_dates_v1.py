@@ -9,6 +9,7 @@ from datetime import date
 import hashlib
 
 from app.indexed_jug_birth_date import rewrite_indexed_native_birth_dates
+from scripts import json_storage_io_v1 as storage_io
 from scripts import review_original_match_namesakes_v1 as original
 from scripts import season_package_v2 as packages
 from scripts import season_pipeline_v2 as pipeline
@@ -68,7 +69,7 @@ def apply(jug, eq, plan):
     if plan.get('schema') != SCHEMA or digest(eq) != plan['eq_sha256']:
         raise ValueError('namesake birthday schema/whole club preimage differs')
     baseline = registry.load_registered_release(plan['season'], plan['release_id'])
-    before = (baseline.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    before = storage_io.read_bytes(baseline.game_path / 'DBDAT/JUG98030.FDI')
     if digest(before) != plan['jug_sha256']:
         raise ValueError('immutable namesake birthday baseline changed')
     updates = {row['carrier_id']: row for row in plan['updates']}
@@ -116,7 +117,7 @@ def reconstruction(previous, release_id):
     from scripts import publish_historical_role_delta_v1 as publisher
     path = registry.ROOT / previous.locator['sourced_profile_assignment_plan_path']
     plan = pipeline.read_json_file(path)
-    if plan.get('schema') != SCHEMA or path.resolve() != (previous.package_path.parent / FILENAME).resolve():
+    if plan.get('schema') != SCHEMA or storage_io.resolve(path) != storage_io.resolve(previous.package_path.parent / FILENAME):
         raise ValueError('namesake birthday source locator differs')
     baseline = registry.load_registered_release(previous.season, plan['release_id'])
     verify(baseline, plan)

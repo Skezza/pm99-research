@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import time
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import build_shinnie_country_20261017 as build
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import capture_registered_season_runtime_v1 as capture
@@ -14,9 +15,9 @@ TAG = 'shinnie_original_country_2021_22_r125a_20261017'
 
 def wait_owned(pid, module):
     process = Path('/proc') / str(pid) / 'cmdline'
-    while process.exists():
+    while storage_io.exists(process):
         try:
-            command = process.read_bytes()
+            command = storage_io.read_bytes(process)
         except FileNotFoundError:
             return
         if not command:
@@ -33,10 +34,10 @@ def main(builder_pid, previous_runner_pid, *, folder=None, release_id=None, run_
     release_id = release_id if release_id is not None else build.RELEASE
     season = season if season is not None else build.SEASON
     profile = profile if profile is not None else dict(label='shinnie',search='Graeme Shinnie',token='Shinnie')
-    while not (folder / 'complete-SOURCE-replay.json').exists():
+    while not storage_io.exists(folder / 'complete-SOURCE-replay.json'):
         process = Path('/proc') / str(builder_pid) / 'cmdline'
         try:
-            command = process.read_bytes()
+            command = storage_io.read_bytes(process)
         except FileNotFoundError as exc:
             raise ValueError('country builder stopped without SOURCE proof; inspect partial state') from exc
         if b'scripts.build_shinnie_country_20261017' not in command:
@@ -44,7 +45,7 @@ def main(builder_pid, previous_runner_pid, *, folder=None, release_id=None, run_
         time.sleep(10)
     wait_owned(previous_runner_pid, previous_runner_module)
     release = registry.load_registered_release(season, release_id)
-    if not (folder / 'native-byte-proof.json').exists():
+    if not storage_io.exists(folder / 'native-byte-proof.json'):
         raise ValueError('country native preservation proof required before runtime')
     env = dict(os.environ, PM99_RUNNER_ARCHIVE_COLD_RUNS='0', PM99_RUNNER_RUN_ROOT_BUDGET_ENFORCE='0')
     command, evidence = capture.capture_command(season=season, worker='default',

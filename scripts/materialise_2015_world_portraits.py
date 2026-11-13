@@ -11,6 +11,14 @@ rows; no player is substituted with a different carrier's face.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import concurrent.futures
 import hashlib
@@ -24,7 +32,7 @@ from typing import Any, Mapping
 import requests
 from PIL import Image
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR = ROOT / "upstream" / "pm99-skezmod-db-editor"
 for candidate in (ROOT, EDITOR, ROOT / "scripts"):
     if str(candidate) not in sys.path:
@@ -60,12 +68,12 @@ def sha256_bytes(value: bytes) -> str:
 
 
 def sha256_file(path: Path) -> str:
-    return sha256_bytes(path.read_bytes())
+    return sha256_bytes(storage_io.read_bytes(path))
 
 
 def _read_json(path: Path) -> tuple[Any, str]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         return json.loads(raw.decode("utf-8")), sha256_bytes(raw)
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise PortraitMaterialisationError(f"cannot read JSON: {path}") from exc
@@ -164,31 +172,31 @@ def _materialise_download(result: Mapping[str, Any], *, cache_dir: Path, output_
     digest = sha256_bytes(payload)
     cache_path = cache_dir / digest[:2] / f"{digest}.png"
     cache_path.parent.mkdir(parents=True, exist_ok=True)
-    if cache_path.exists() and sha256_file(cache_path) != digest:
+    if storage_io.exists(cache_path) and sha256_file(cache_path) != digest:
         raise PortraitMaterialisationError(f"content-addressed cache collision: {cache_path}")
-    if not cache_path.exists():
-        cache_path.write_bytes(payload)
+    if not storage_io.exists(cache_path):
+        storage_io.write_bytes(cache_path, payload)
     try:
         with Image.open(io.BytesIO(payload)) as source_image:
             bitmap, crop, preview = _build_replacement_bitmap(raw_bitmap_template=template.raw_bitmap, pixel_offset=template.pixel_offset, width=template.width, height=template.height, source_image=source_image, palette_image=palette_image, palette_rgb=palette_rgb, allowed_indices=list(range(len(palette_rgb))))
     except Exception as exc:
-        return {key: value for key, value in result.items() if key != "payload"} | {"status": "native-no-photo", "action": "preserve-native-no-photo", "reason": f"pm99-conversion-failed: {type(exc).__name__}: {exc}", "cache_path": str(cache_path.resolve())}
+        return {key: value for key, value in result.items() if key != "payload"} | {"status": "native-no-photo", "action": "preserve-native-no-photo", "reason": f"pm99-conversion-failed: {type(exc).__name__}: {exc}", "cache_path": str(storage_io.resolve(cache_path))}
     carrier_id = int(result["carrier_id"])
     slot = int(result["slot_index"])
     converted_path = output_dir / "converted" / f"carrier-{carrier_id:04d}" / f"slot-{slot:02d}-player-{int(result['player_carrier_id']):05d}.bmp"
     preview_path = output_dir / "previews" / f"carrier-{carrier_id:04d}" / f"slot-{slot:02d}-player-{int(result['player_carrier_id']):05d}.png"
     converted_path.parent.mkdir(parents=True, exist_ok=True)
     preview_path.parent.mkdir(parents=True, exist_ok=True)
-    converted_path.write_bytes(bitmap)
+    storage_io.write_bytes(converted_path, bitmap)
     preview.save(preview_path, format="PNG", optimize=False, compress_level=9)
     row = {key: value for key, value in result.items() if key != "payload"}
-    row.update({"status": "approved-crop-conversion-candidate", "action": "write-candidate-only", "source_sha256": digest, "cache_path": str(cache_path.resolve()), "converted_path": str(converted_path.resolve()), "converted_sha256": sha256_file(converted_path), "preview_path": str(preview_path.resolve()), "preview_sha256": sha256_file(preview_path), "pm99_dimensions": {"width": int(template.width), "height": int(template.height)}, "crop_dimensions": {"width": int(crop.width), "height": int(crop.height)}})
+    row.update({"status": "approved-crop-conversion-candidate", "action": "write-candidate-only", "source_sha256": digest, "cache_path": str(storage_io.resolve(cache_path)), "converted_path": str(storage_io.resolve(converted_path)), "converted_sha256": sha256_file(converted_path), "preview_path": str(storage_io.resolve(preview_path)), "preview_sha256": sha256_file(preview_path), "pm99_dimensions": {"width": int(template.width), "height": int(template.height)}, "crop_dimensions": {"width": int(crop.width), "height": int(crop.height)}})
     return row
 
 
 def materialise_portraits(manifest: Mapping[str, Any], *, minifoto_path: Path, cache_dir: Path, output_dir: Path, workers: int = 16) -> dict[str, Any]:
     players = _players(manifest)
-    if not minifoto_path.is_file():
+    if not storage_io.is_file(minifoto_path):
         raise PortraitMaterialisationError(f"MINIFOTO archive has no parseable records: {minifoto_path}")
     records = list(iter_minifoto_records(minifoto_path))
     if not records:
@@ -212,7 +220,7 @@ def materialise_portraits(manifest: Mapping[str, Any], *, minifoto_path: Path, c
     failures = [row for row in rows if row["status"] == "native-no-photo"]
     pending = [row for row in rows if row["status"] not in {"approved-crop-conversion-candidate", "native-no-photo"}]
     clean_rows = [{key: value for key, value in row.items() if key != "payload"} for row in rows]
-    return {"schema_version": SCHEMA, "season": "2015-16", "result": "source-only-portrait-candidates; no PM99 binary writes", "policy": {"source": "FIFA16 player-ID-bound URL or deterministic identity-bound mirror only", "failure": "every HTTP/decode/conversion failure is native-no-photo; no random substitution", "scope": "MINIFOTO.PKF is read-only; outputs are cache/crop/preview candidates"}, "coverage": {"candidate_url_player_count": len(players), "status_counts": dict(sorted(counts.items())), "success_count": len(successes), "native_no_photo_failure_count": len(failures), "pending_count": len(pending)}, "source": {"candidate_manifest_sha256": sha256_bytes(canonical_json_bytes(manifest)), "minifoto_path": str(minifoto_path.resolve()), "minifoto_sha256": sha256_file(minifoto_path), "palette_path": str(palette_path), "palette_source": str(palette_source)}, "successes": successes, "failures": failures, "pending": pending, "rows": clean_rows}
+    return {"schema_version": SCHEMA, "season": "2015-16", "result": "source-only-portrait-candidates; no PM99 binary writes", "policy": {"source": "FIFA16 player-ID-bound URL or deterministic identity-bound mirror only", "failure": "every HTTP/decode/conversion failure is native-no-photo; no random substitution", "scope": "MINIFOTO.PKF is read-only; outputs are cache/crop/preview candidates"}, "coverage": {"candidate_url_player_count": len(players), "status_counts": dict(sorted(counts.items())), "success_count": len(successes), "native_no_photo_failure_count": len(failures), "pending_count": len(pending)}, "source": {"candidate_manifest_sha256": sha256_bytes(canonical_json_bytes(manifest)), "minifoto_path": str(storage_io.resolve(minifoto_path)), "minifoto_sha256": sha256_file(minifoto_path), "palette_path": str(palette_path), "palette_source": str(palette_source)}, "successes": successes, "failures": failures, "pending": pending, "rows": clean_rows}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -226,12 +234,12 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         manifest, manifest_file_hash = _read_json(args.candidate_manifest)
-        result = materialise_portraits(manifest, minifoto_path=args.minifoto.resolve(), cache_dir=args.cache_dir.resolve(), output_dir=args.output_dir.resolve(), workers=args.workers)
+        result = materialise_portraits(manifest, minifoto_path=storage_io.resolve(args.minifoto), cache_dir=storage_io.resolve(args.cache_dir), output_dir=storage_io.resolve(args.output_dir), workers=args.workers)
     except PortraitMaterialisationError as exc:
         parser.error(str(exc))
     result["source"]["candidate_manifest_file_sha256"] = manifest_file_hash
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_json_bytes(result))
+    storage_io.write_bytes(args.output, canonical_json_bytes(result))
     print(json.dumps({"output": str(args.output), **result["coverage"]}, sort_keys=True))
     return 0
 

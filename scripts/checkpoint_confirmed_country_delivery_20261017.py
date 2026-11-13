@@ -1,6 +1,7 @@
 """Promote only after actual source/native/SOURCE and original runtime proof."""
 import copy
 from datetime import UTC,datetime
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_source_verified_player_changes_v1 as changes
 from scripts.publish_confirmed_country_changes_20261017 import ROOT,FOLDER,RELEASE,REPLAY
 from scripts.checkpoint_original_secondary_fact_delivery_20261010 import check_visual
@@ -14,7 +15,7 @@ TAG='profile_countries_2013_14_r145a_20261017'
 
 def main():
     output=ROOT/'release-delivery-checklist-v114.json'
-    if output.exists():raise ValueError('completed checkpoint must not repeat')
+    if storage_io.exists(output):raise ValueError('completed checkpoint must not repeat')
     prior=ROOT/'release-delivery-checklist-v113.json'
     result=copy.deepcopy(changes.pipeline.read_json_file(prior))
     assert result['remaining_cross_club_cases']==2762 and len(result['cross_club_dispositions'])==47
@@ -26,7 +27,7 @@ def main():
     assert native['native_changed_bytes']==5 and native['parent_inventory_unchanged']
     assert native['all_other_game_files_identical'] and native['all_other_recipe_data_identical']
     assert source['complete_game_inventory_identical'] and source['complete_recipe_identical']
-    assert actual.package_path.read_bytes()==replay.package_path.read_bytes()
+    assert storage_io.read_bytes(actual.package_path)==storage_io.read_bytes(replay.package_path)
     startup=changes.pipeline.read_json_file(FOLDER/'startup-visual-review.json')
     check_visual(startup)
     assert startup['observed_team']=='Stoke City' and startup['observed_date']=='2013-08-01'
@@ -37,13 +38,13 @@ def main():
     transport=changes.pipeline.read_json_file(FOLDER/'moses-profile-transport.json')
     assert transport['exit_code']==0 and transport['release_manifest_sha256']==actual.manifest_sha256
     evidence=changes.registry.ROOT/transport['evidence']
-    summaries=list(evidence.rglob('summary.json'));assert len(summaries)==1
+    summaries=list(storage_io.glob(evidence, 'summary.json', recursive=True));assert len(summaries)==1
     profile_root=summaries[0].parent
     summary=changes.pipeline.read_json_file(summaries[0])
     assert summary['success'] and not summary.get('wine_debugger_detected')
     assert summary['player_profile']['expected_name_token_satisfied']
     assert changes.registry.sha256_file(profile_root/'input-provenance.json')==changes.registry.sha256_file(actual.compiler_receipt_path)
-    hashes={line.split()[1]:line.split()[0] for line in (profile_root/'dbdat_override.sha256').read_text().splitlines() if line and not line.startswith('#')}
+    hashes={line.split()[1]:line.split()[0] for line in storage_io.read_text(profile_root / 'dbdat_override.sha256').splitlines() if line and not line.startswith('#')}
     for name in ('JUG98030.FDI','EQ98030.FDI','ENT98030.FDI'):
         assert hashes['DBDAT/'+name]==changes.registry.sha256_file(actual.game_path/'DBDAT'/name)
     assert changes.registry.sha256_file(profile_root/'screens'/summary['player_profile']['screenshot'].split('/')[-1])==visual['screenshot_sha256']

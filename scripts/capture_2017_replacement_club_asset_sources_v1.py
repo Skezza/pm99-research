@@ -5,6 +5,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts.capture_ntf_historical_carrier_squads_v1 import Cache
 from scripts import season_pipeline_v2 as pipeline
 
@@ -31,7 +32,7 @@ def capture():
     with ThreadPoolExecutor(max_workers=3) as pool:
         rows = list(pool.map(one, SOURCES.items()))
     output = root / 'replacement-2017-source-captures-v1.json'
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('capture receipt is immutable')
     pipeline.write_canonical_json(output, {'sources': rows, 'native_writes': 0})
     for row in rows:

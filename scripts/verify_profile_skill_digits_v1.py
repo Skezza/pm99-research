@@ -1,5 +1,6 @@
 """Bind actual bitmap-digit readbacks to the reviewed native player values."""
 from pathlib import Path
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import season_duplicate_ownership_plan_v1 as layers
 from scripts import read_profile_skill_digits_v1 as digits
@@ -23,7 +24,7 @@ def expected_profile_age(release, player, *, allow_preserved_native_birthdate=Fa
             or birthday != {'policy': 'preserve-existing-mode1'}):
         raise ValueError('profile needs a recipe DOB or explicit native-preserve age validation')
     from scripts.season_within_club_reserve_repair_v1 import native_facts
-    raw = (release.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    raw = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     observed = native_facts(raw, player['carrier_id'])['birth_date']
     return dict(expected_age=int(release.season[:4])-date.fromisoformat(observed).year,
                 basis='declared-preserved-native-birthday-not-independent-historical-proof',
@@ -37,7 +38,7 @@ def verify_profiles(root,season,release_id,profiles,*,allow_preserved_native_bir
         transport=pipeline.read_json_file(root/(label+'-profile-transport.json'))
         if transport['exit_code']!=0 or transport['release_manifest_sha256']!=release.manifest_sha256:
             raise ValueError('digit readback launched another native game')
-        summaries=list((registry.ROOT/transport['evidence']).rglob('summary.json'))
+        summaries=list(storage_io.glob(registry.ROOT / transport['evidence'], 'summary.json', recursive=True))
         if len(summaries)!=1:raise ValueError('one exact completed original profile needed for digits')
         summary=pipeline.read_json_file(summaries[0])
         if not summary.get('success'):raise ValueError('original profile did not succeed')

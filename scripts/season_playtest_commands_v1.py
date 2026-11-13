@@ -35,6 +35,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline  # noqa: E402
 from scripts import season_playtest_variant_v1 as variants  # noqa: E402
 
@@ -69,7 +70,7 @@ def variant_id_for(season: str) -> str:
 
 
 def _ordinary_directory(path: Path, *, label: str, create: bool = False) -> Path:
-    path = path.expanduser().resolve()
+    path = storage_io.resolve(path.expanduser())
     if create:
         path.mkdir(parents=True, exist_ok=True)
     if path.is_symlink() or not path.is_dir():
@@ -79,7 +80,7 @@ def _ordinary_directory(path: Path, *, label: str, create: bool = False) -> Path
 
 def _canonical_read(path: Path, *, label: str) -> dict[str, Any]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise PlayCommandError(f"cannot read {label}: {path}: {exc}") from exc
@@ -124,7 +125,7 @@ def _prepare_one(
 ) -> dict[str, Any]:
     variant_id = variant_id_for(season)
     variant_root = output_root / variant_id
-    if variant_root.exists() or variant_root.is_symlink():
+    if storage_io.exists(variant_root) or variant_root.is_symlink():
         verified = variants.verify_variant(
             variant_root=variant_root,
             run_database_validation=run_database_validation,
@@ -163,8 +164,8 @@ def prepare_matrix(
 
     output_root = _ordinary_directory(output_root, label="output_root", create=True)
     source_game_root = _ordinary_directory(source_game_root, label="source_game_root")
-    calendar_source_exe = calendar_source_exe.expanduser().resolve()
-    if calendar_source_exe.is_symlink() or not calendar_source_exe.is_file():
+    calendar_source_exe = storage_io.resolve(calendar_source_exe.expanduser())
+    if calendar_source_exe.is_symlink() or not storage_io.is_file(calendar_source_exe):
         raise PlayCommandError(f"calendar_source_exe must be an ordinary file: {calendar_source_exe}")
 
     rows = [
@@ -248,7 +249,7 @@ def prepare_session(*, output_root: Path, season: str, session_id: str) -> dict[
         variant_manifest_sha256=variant_manifest_sha256,
     )
 
-    if session_root.exists() or session_root.is_symlink():
+    if storage_io.exists(session_root) or session_root.is_symlink():
         if session_root.is_symlink() or not session_root.is_dir():
             raise PlayCommandError(f"session root is not an ordinary directory: {session_root}")
         actual_manifest = _canonical_read(session_manifest, label="session manifest")
@@ -260,7 +261,7 @@ def prepare_session(*, output_root: Path, season: str, session_id: str) -> dict[
             variant_manifest_sha256=variant_manifest_sha256,
         )
         game_root = session_root / "game"
-        if game_root.is_symlink() or not (game_root / "MANAGPRE.EXE").is_file():
+        if game_root.is_symlink() or not storage_io.is_file(game_root / 'MANAGPRE.EXE'):
             raise PlayCommandError(f"session game root is incomplete: {game_root}")
         action = "resumed"
     else:
@@ -314,7 +315,7 @@ def launch_session(*, output_root: Path, season: str, session_id: str,
     environment = os.environ.copy()
     environment.setdefault("WINEDEBUG", "-all")
     if wine_prefix is not None:
-        environment["WINEPREFIX"] = str(wine_prefix.expanduser().resolve())
+        environment["WINEPREFIX"] = str(storage_io.resolve(wine_prefix.expanduser()))
     completed = subprocess.run(command, cwd=str(game_root), env=environment, check=False)
     return {**session, "command": command, "cwd": str(game_root), "launched": True, "returncode": completed.returncode}
 

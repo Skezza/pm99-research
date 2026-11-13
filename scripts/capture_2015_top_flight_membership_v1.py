@@ -14,6 +14,14 @@ from the PM99 binary writer.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import html
@@ -257,10 +265,10 @@ def capture(
         legacy_relative = _legacy_cache_path(league)
         legacy_destination = cache_root / legacy_relative
         try:
-            if destination.is_file():
-                payload, used_relative = destination.read_bytes(), relative
-            elif league.competition_scope == "top-flight" and legacy_destination.is_file():
-                payload, used_relative = legacy_destination.read_bytes(), legacy_relative
+            if storage_io.is_file(destination):
+                payload, used_relative = storage_io.read_bytes(destination), relative
+            elif league.competition_scope == "top-flight" and storage_io.is_file(legacy_destination):
+                payload, used_relative = storage_io.read_bytes(legacy_destination), legacy_relative
             else:
                 payload, used_relative = fetch(url), relative
             title, page_id, teams = parse_membership(payload, section_id=league.section_id)
@@ -273,9 +281,9 @@ def capture(
         except (OSError, MembershipParseError, urllib.error.URLError, TimeoutError) as exc:
             unresolved.append({"family": league.family, "page_title": league.page_title, "reason": str(exc)})
             continue
-        if not destination.is_file() and used_relative == relative:
+        if not storage_io.is_file(destination) and used_relative == relative:
             destination.parent.mkdir(parents=True, exist_ok=True)
-            destination.write_bytes(payload)
+            storage_io.write_bytes(destination, payload)
             if delay_seconds:
                 time.sleep(delay_seconds)
         records.append({
@@ -332,7 +340,7 @@ def main(argv: list[str] | None = None) -> int:
         delay_seconds=args.delay,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_bytes(result))
+    storage_io.write_bytes(args.output, canonical_bytes(result))
     print(json.dumps(result["summary"], sort_keys=True))
     return 0 if not result["unresolved"] else 2
 

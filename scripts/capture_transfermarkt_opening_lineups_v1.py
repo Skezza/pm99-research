@@ -38,6 +38,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import transfermarkt_calendar_year_policy_v1 as calendar_year_policy  # noqa: E402
 
 
@@ -129,8 +130,8 @@ class SnapshotCache:
 
     def get(self, url: str, key: str) -> bytes:
         path = self.directory / key
-        if path.is_file():
-            payload = path.read_bytes()
+        if storage_io.is_file(path):
+            payload = storage_io.read_bytes(path)
         elif self.offline:
             raise CaptureError(f"offline snapshot is missing: {path}")
         else:
@@ -139,7 +140,7 @@ class SnapshotCache:
                 payload = response.read()
             self.validator(payload, url)
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_bytes(payload)
+            storage_io.write_bytes(path, payload)
             if self.delay:
                 time.sleep(self.delay)
         self.validator(payload, url)
@@ -149,7 +150,7 @@ class SnapshotCache:
 
 def load_competition_map(path: Path) -> tuple[dict[tuple[str, str], str], str]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         document = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise CaptureError(f"cannot read competition map: {path}") from exc
@@ -176,7 +177,7 @@ def load_competition_map(path: Path) -> tuple[dict[tuple[str, str], str], str]:
 
 def load_source_capture(path: Path) -> tuple[list[dict[str, Any]], str]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         document = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise CaptureError(f"cannot read squad source capture: {path}") from exc
@@ -211,7 +212,7 @@ def load_club_identity_aliases(path: Path | None) -> tuple[dict[tuple[str, str, 
     if path is None:
         return {}, None
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         document = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise CaptureError(f"cannot read club identity aliases: {path}") from exc
@@ -628,7 +629,7 @@ def main(argv: list[str] | None = None) -> int:
     except (OSError, CaptureError) as exc:
         parser.error(str(exc))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(_canonical_json_bytes(receipt))
+    storage_io.write_bytes(args.output, _canonical_json_bytes(receipt))
     print(json.dumps(receipt["summary"], sort_keys=True))
     return 1 if args.strict and receipt["failures"] else 0
 

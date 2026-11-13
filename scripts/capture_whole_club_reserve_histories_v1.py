@@ -13,6 +13,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import prepare_duplicate_club_disposition_v1 as whole
 from scripts import season_duplicate_source_context_v1 as context
 from scripts import season_pipeline_v2 as pipeline
@@ -49,9 +50,9 @@ def discover(plan, season, targets, people, events):
 
 
 def run(plan_path, season, targets, output):
-    if (output / 'source-plan.json').exists():
+    if storage_io.exists(output / 'source-plan.json'):
         raise ValueError('completed original history extension is immutable')
-    plan = json.loads(plan_path.read_text()); bindings = plan['bindings']; pin = bindings['snapshot']
+    plan = json.loads(storage_io.read_text(plan_path)); bindings = plan['bindings']; pin = bindings['snapshot']
     people, events, actual = context.load_snapshot(ROOT / pin['path'], ROOT / pin['pinned_receipt_path'])
     if actual != pin:
         raise ValueError('original person/history pin changed')
@@ -59,23 +60,23 @@ def run(plan_path, season, targets, output):
     discovery = discover(plan, season, targets, people, events)
     output.mkdir(parents=True, exist_ok=True)
     query = output / 'query-discovery.json'
-    if query.exists() and json.loads(query.read_text()) != discovery:
+    if storage_io.exists(query) and json.loads(storage_io.read_text(query)) != discovery:
         raise ValueError('saved exact annual history query no longer independently replays')
-    if not query.exists():
+    if not storage_io.exists(query):
         pipeline.write_canonical_json(query, discovery)
     old_binding = bindings['published_transfer_supplement']
     old_path = ROOT / old_binding['path']
-    old = json.loads(old_path.read_text())
+    old = json.loads(storage_io.read_text(old_path))
     existing = {r['player_id'] for r in old['players'] if r['status'] == 'raw-history-parsed'}
     requested = set(discovery['query_player_ids']) - existing
     additional = output / 'additional-histories.json'
-    if requested and not additional.exists():
+    if requested and not storage_io.exists(additional):
         whole.histories.capture_ids(requested, output / 'raw', additional,
             [{'path': registry.relative_workspace_path(query), 'sha256': registry.sha256_file(query)}],
             'exact original annual squad full-name/DOB joins; NOT opening ownership approval')
     merged = copy.deepcopy(old)
     if requested:
-        fresh = json.loads(additional.read_text())
+        fresh = json.loads(storage_io.read_text(additional))
         whole.histories.merge({}, fresh)
         if {r['player_id'] for r in fresh['players']} != requested:
             raise ValueError('additional histories differ from exact independently replayed scope')

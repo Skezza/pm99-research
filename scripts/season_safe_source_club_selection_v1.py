@@ -38,6 +38,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2 as package_v2  # noqa: E402
 from scripts import season_source_club_selection_proposals_v1 as proposals  # noqa: E402
 from scripts import season_source_club_selection_v1 as source_selection  # noqa: E402
@@ -96,14 +97,14 @@ def _sha256_value(value: Any) -> str:
 
 def _relative(path: Path) -> str:
     try:
-        return path.resolve().relative_to(ROOT).as_posix()
+        return storage_io.resolve(path).relative_to(ROOT).as_posix()
     except ValueError:
-        return path.resolve().as_posix()
+        return storage_io.resolve(path).as_posix()
 
 
 def _read_canonical(path: Path, label: str) -> tuple[dict[str, Any], str]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise SafeSelectionError(f"cannot read {label}: {path}: {exc}") from exc
@@ -710,18 +711,18 @@ def build_safe_manifests(
 
 
 def _write_new(path: Path, value: Mapping[str, Any]) -> str:
-    if path.exists() or path.is_symlink():
+    if storage_io.exists(path) or path.is_symlink():
         raise SafeSelectionError(f"refusing to replace existing output: {path}")
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = canonical_json_bytes(value)
-    path.write_bytes(payload)
+    storage_io.write_bytes(path, payload)
     return _sha256_bytes(payload)
 
 
 def write_safe_manifests(*, output_root: Path, manifests: Mapping[str, Mapping[str, Any]], receipt: Mapping[str, Any]) -> str:
     """Write a completely new manifest root, preserving all prior revisions."""
 
-    if output_root.exists() or output_root.is_symlink():
+    if storage_io.exists(output_root) or output_root.is_symlink():
         raise SafeSelectionError(f"refusing to overwrite safe-selection output root: {output_root}")
     output_root.mkdir(parents=True, exist_ok=False)
     for season_id in sorted(manifests):
@@ -758,9 +759,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if args.expected_season_count < 1:
             raise SafeSelectionError("expected season count must be positive")
-        proposal_report_path = args.proposal_report.resolve()
-        collision_matrix_path = args.collision_matrix.resolve()
-        exclusion_manifest_path = args.exclusion_manifest.resolve()
+        proposal_report_path = storage_io.resolve(args.proposal_report)
+        collision_matrix_path = storage_io.resolve(args.collision_matrix)
+        exclusion_manifest_path = storage_io.resolve(args.exclusion_manifest)
         proposal_report, proposal_report_sha256 = _read_canonical(proposal_report_path, "proposal report")
         collision_matrix, collision_matrix_sha256 = _read_canonical(collision_matrix_path, "collision matrix")
         exclusion_manifest, exclusion_manifest_sha256 = _read_canonical(
@@ -776,8 +777,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             exclusion_manifest=exclusion_manifest,
             exclusion_manifest_path=exclusion_manifest_path,
             exclusion_manifest_sha256=exclusion_manifest_sha256,
-            intake_root=args.intake_root.resolve(),
-            allocation_root=args.allocation_root.resolve(),
+            intake_root=storage_io.resolve(args.intake_root),
+            allocation_root=storage_io.resolve(args.allocation_root),
             expected_season_count=args.expected_season_count,
         )
         summary: dict[str, Any] = {
@@ -786,7 +787,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "summary": receipt["summary"],
         }
         if args.output_root is not None:
-            output_root = args.output_root.resolve()
+            output_root = storage_io.resolve(args.output_root)
             summary["output_receipt_sha256"] = write_safe_manifests(
                 output_root=output_root,
                 manifests=manifests,

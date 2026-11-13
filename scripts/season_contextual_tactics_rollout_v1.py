@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT), str(ROOT / 'upstream/pm99-skezmod-db-editor')]
 from app.eq_initial_tactics import GRID_BYTES, read_initial_tactics
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_contextual_tactics_v1 as tactics
 from scripts import season_package_v2 as package_v2
 from scripts import season_pipeline_v2 as pipeline
@@ -156,20 +157,20 @@ def load_english(release, package):
         path = release.package_path.parent / artifact['relative_path']
         if registry.sha256_file(path) != artifact['sha256']:
             raise ValueError('English recipe input hash changed')
-        return json.loads(path.read_text())
+        return json.loads(storage_io.read_text(path))
     return copy.deepcopy(package)
 
 
 def prepare(season, output):
     release = registry.load_preferred_release(season)
-    source_package = json.loads(release.package_path.read_text())
+    source_package = json.loads(storage_io.read_text(release.package_path))
     english = load_english(release, source_package)
     players = {p['id']: p for p in english['players']}
     eq_path = release.game_path / 'DBDAT/EQ98030.FDI'
-    eq, jug = eq_path.read_bytes(), (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    eq, jug = storage_io.read_bytes(eq_path), storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     records = tactics.payloads(eq)
     jug_index = {e.record_id: e for e in IndexedFDIFile.from_bytes(jug).entries}
-    offsets = movement_offsets((ROOT / '.local/visual-qa-20261003/native-source/EQ98030.FDI').read_bytes())
+    offsets = movement_offsets(storage_io.read_bytes(ROOT / '.local/visual-qa-20261003/native-source/EQ98030.FDI'))
     existing = {c['carrier_id']: c for l in tactics.package_layers(source_package, release.package_path) for c in l['clubs']}
     clubs, queue, reordered, preserved = [], [], [], []
     for club in sorted(english['clubs'], key=lambda c: c['carrier_id']):
@@ -233,7 +234,7 @@ def prepare(season, output):
     output.mkdir(parents=True, exist_ok=False)
     pipeline.write_canonical_json(output / 'contextual-tactics.json', layer)
     english_path = output / 'english-season-package.json'
-    english_path.write_bytes(package_v2.canonical_json_bytes(english))
+    storage_io.write_bytes(english_path, package_v2.canonical_json_bytes(english))
     # English clubs in the main recipe use the one inline context, never both
     # inline and layered writes. The layer remains the durable world-2015 input.
     if any(c['carrier_id'] in {r['carrier_id'] for r in clubs} for c in package['clubs']):
@@ -250,12 +251,12 @@ def prepare(season, output):
         'relative_path': 'english-season-package.json'})
     package['artifacts'].sort(key=lambda a: a['id'])
     package_v2.validate_package(package)
-    (output / 'season-package.json').write_bytes(package_v2.canonical_json_bytes(package))
+    storage_io.write_bytes(output / 'season-package.json', package_v2.canonical_json_bytes(package))
     # Immutable upload inputs only; runner writes an independent installation.
     shutil.copytree(release.game_path / 'DBDAT', output / 'DBDAT', copy_function=os.link)
     temporary = output / 'EQ.partial'
-    temporary.write_bytes(after)
-    temporary.replace(output / 'DBDAT/EQ98030.FDI')
+    storage_io.write_bytes(temporary, after)
+    storage_io.move(temporary, output / 'DBDAT/EQ98030.FDI', replace=True)
     receipt = {'schema_version': 'pm99-contextual-tactics-candidate-v1', 'season': season,
         'source_release_id': release.release_id, 'source_game_path': str(release.game_path),
         'source_package_path': str(release.package_path),
@@ -269,26 +270,26 @@ def prepare(season, output):
         'byte_idempotent': True, 'all_controls_preserved': True,
         'foreign_records_preserved': True, 'registered': False, 'runtime_proven': False}
     pipeline.write_canonical_json(output / 'candidate-receipt.json', receipt)
-    if eq_path.read_bytes() != eq:
+    if storage_io.read_bytes(eq_path) != eq:
         raise AssertionError('source release changed during candidate authoring')
     return receipt
 
 
 def audit_candidate(output):
     """Independent readback of a frozen candidate; never rebuild on failure."""
-    receipt = json.loads((output / 'candidate-receipt.json').read_text())
+    receipt = json.loads(storage_io.read_text(output / 'candidate-receipt.json'))
     release = registry.load_registered_release(receipt['season'], receipt['source_release_id'])
-    source = (release.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    actual = (output / 'DBDAT/EQ98030.FDI').read_bytes()
+    source = storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
+    actual = storage_io.read_bytes(output / 'DBDAT/EQ98030.FDI')
     if (release.release_id != receipt['source_release_id'] or
             registry.canonical_document_sha256(release.package_path) != receipt['source_package_sha256'] or
             hashlib.sha256(source).hexdigest() != receipt['source_eq_sha256'] or
             hashlib.sha256(jug).hexdigest() != receipt['source_jug_sha256'] or
             hashlib.sha256(actual).hexdigest() != receipt['output_eq_sha256'] or
-            (output / 'DBDAT/JUG98030.FDI').read_bytes() != jug):
+            storage_io.read_bytes(output / 'DBDAT/JUG98030.FDI') != jug):
         raise ValueError('frozen tactics candidate/source database binding changed')
-    layer = json.loads((output / 'contextual-tactics.json').read_text())
+    layer = json.loads(storage_io.read_text(output / 'contextual-tactics.json'))
     if layer['season'] != receipt['season']:
         raise ValueError('candidate layer season changed')
     if tactics.apply_layer(source, jug, layer) != actual or tactics.apply_layer(actual, jug, layer) != actual:
@@ -309,8 +310,8 @@ def audit_candidate(output):
     differences = {i for i, (a, b) in enumerate(zip(source, actual)) if a != b}
     if len(source) != len(actual) or not differences <= permitted:
         raise ValueError('rollout changed bytes outside selected tactics grids')
-    english = json.loads((output / 'english-season-package.json').read_text())
-    package = json.loads((output / 'season-package.json').read_text())
+    english = json.loads(storage_io.read_text(output / 'english-season-package.json'))
+    package = json.loads(storage_io.read_text(output / 'season-package.json'))
     package_v2.validate_package(english)
     package_v2.validate_package(package)
     artifact = next(a for a in package['artifacts'] if a['id'] == 'english-contextual-package-' + receipt['season'])
@@ -344,15 +345,14 @@ def main():
     rows = []
     seasons = registry.supported_seasons() if args.season == 'all' else [args.season]
     for season in seasons:
-        destination = (args.output / season / 'english-rollout-candidate-v1'
-                       if args.season == 'all' else args.output).resolve()
+        destination = storage_io.resolve(args.output / season / 'english-rollout-candidate-v1' if args.season == 'all' else args.output)
         if args.audit:
             row = audit_candidate(destination)
             rows.append(row)
             print(json.dumps(row), flush=True)
             continue
-        if destination.exists():
-            report = json.loads((destination / 'candidate-receipt.json').read_text())
+        if storage_io.exists(destination):
+            report = json.loads(storage_io.read_text(destination / 'candidate-receipt.json'))
             release = registry.load_preferred_release(season)
             expected = (report['source_release_id'], report['source_package_sha256'],
                         report['source_eq_sha256'], report['source_jug_sha256'], report['output_eq_sha256'])
@@ -375,7 +375,7 @@ def main():
             matrix_path = args.output / ('rollout-matrix-through-' + season + '-v1.json')
             # Progress snapshots are immutable. Resume keeps old evidence and
             # verifies each existing candidate instead of rebuilding it.
-            if matrix_path.exists():
+            if storage_io.exists(matrix_path):
                 continue
             pipeline.write_canonical_json(matrix_path, {
                 'schema_version': 'pm99-contextual-tactics-rollout-matrix-v1',

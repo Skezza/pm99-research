@@ -15,6 +15,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_historical_player_facts_audit_v1 as facts
@@ -45,29 +46,29 @@ def retain(season, prior_root, current_root, output):
     release = registry.load_preferred_release(season)
     prior_path = prior_root / season / 'player-facts-audit.json'
     current_path = current_root / season / 'player-facts-audit.json'
-    previous = json.loads(prior_path.read_text()); current = json.loads(current_path.read_text())
+    previous = json.loads(storage_io.read_text(prior_path)); current = json.loads(storage_io.read_text(current_path))
     if (current['season'], current['bindings']['package_sha256']) != (season, registry.sha256_file(release.package_path)):
         raise ValueError('new fact joins do not describe the current recipe')
-    plan = json.loads((release.package_path.parent / 'club-plan.json').read_text())
+    plan = json.loads(storage_io.read_text(release.package_path.parent / 'club-plan.json'))
     if previous['bindings']['package_sha256'] != plan['package_sha256']:
         raise ValueError('previous facts are not from the exact club-delta predecessor')
     if previous['bindings']['exact_editions_FIFA_sha256'] != current['bindings']['exact_editions_FIFA_sha256']:
         raise ValueError('previous FIFA source changed')
-    roster = json.loads((current_root / season / 'report.json').read_text())
+    roster = json.loads(storage_io.read_text(current_root / season / 'report.json'))
     accepted = {(s['source_path'], s['source_sha256']) for s in roster['raw_sources'] if s['status'] == 'raw-source-reparsed'}
     detailed = current['bindings'].get('detailed_capture')
     detailed_root = None
     if detailed:
         detail_path = ROOT / detailed['path']
         if registry.sha256_file(detail_path) != detailed['sha256']: raise ValueError('dated detailed source capture changed')
-        detailed_root = ROOT / json.loads(detail_path.read_text())['cache_root']
+        detailed_root = ROOT / json.loads(storage_io.read_text(detail_path))['cache_root']
     checked = {}
     for player in previous['players']:
         for source in player['evidence']:
             if source['provider'] == 'exact-edition-FIFA': continue
             if (source.get('source_path'), source.get('source_sha256')) in accepted: continue
             path = ROOT / source['source_path']
-            if not path.is_file() and source['provider'] == 'original-dated-detailed-squad-reparse' and detailed_root:
+            if not storage_io.is_file(path) and source['provider'] == 'original-dated-detailed-squad-reparse' and detailed_root:
                 relative = Path(source['source_path'])
                 if relative.is_absolute() or '..' in relative.parts: raise ValueError('unsafe previous detailed source path')
                 path = detailed_root / relative
@@ -90,10 +91,10 @@ def retain(season, prior_root, current_root, output):
         'sha256': registry.sha256_file(prior_path), 'scope': 'Unchanged exact-identity secondary facts; no renamed-club shirt-number reuse'}
     destination = output / season; destination.mkdir(parents=True, exist_ok=True)
     fact_path = destination / 'player-facts-audit.json'
-    if fact_path.exists(): raise ValueError('retained fact evidence output already exists')
+    if storage_io.exists(fact_path): raise ValueError('retained fact evidence output already exists')
     pipeline.write_canonical_json(fact_path, result)
     for name in ('report.json', 'application.json'):
-        os.link(current_root / season / name, destination / name)
+        storage_io.link(current_root / season / name, destination / name)
     inventory.export(season, destination / 'report.json', fact_path, destination / 'review')
     return {'season': season, 'same_club_verified': result['summary']['same-club-season-squad-identity-match'],
         'nationality_matches_retained': result['summary'].get('nationality:match', 0) - current['summary'].get('nationality:match', 0)}

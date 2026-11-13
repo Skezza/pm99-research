@@ -29,6 +29,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2 as package_v2  # noqa: E402
 
 
@@ -47,7 +48,7 @@ def _sha256_bytes(payload: bytes) -> str:
 
 def _read_json(path: Path) -> dict[str, Any]:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(storage_io.read_text(path, encoding='utf-8'))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise CollisionMatrixError(f"cannot read JSON {path}: {exc}") from exc
     if not isinstance(value, dict):
@@ -59,9 +60,9 @@ def _relative(path: Path) -> str:
     """Use workspace-relative paths in receipts, falling back to normalized text."""
 
     try:
-        return path.resolve().relative_to(ROOT).as_posix()
+        return storage_io.resolve(path).relative_to(ROOT).as_posix()
     except ValueError:
-        return path.resolve().as_posix()
+        return storage_io.resolve(path).as_posix()
 
 
 def _is_current_source(player: Mapping[str, Any]) -> bool:
@@ -118,7 +119,7 @@ def _load_matching_intake(
         return None, []
     matches: list[tuple[Path, dict[str, Any]]] = []
     for path in _intake_candidates(season_id, intake_root, seasons_root):
-        if not path.is_file():
+        if not storage_io.is_file(path):
             continue
         value = _read_json(path)
         if _canonical_sha256(value) == expected_sha256:
@@ -392,14 +393,14 @@ def _season_matrix(
     return {
         "build_audit": {
             "path": _relative(audit_path),
-            "sha256": _sha256_bytes(audit_path.read_bytes()),
+            "sha256": _sha256_bytes(storage_io.read_bytes(audit_path)),
             "source_intake_sha256": build_audit.get("source_intake_sha256"),
         },
         "collisions": collisions,
         "counts": dict(sorted(counts.items())),
         "input_package": {
             "path": _relative(package_path),
-            "sha256": _sha256_bytes(package_path.read_bytes()),
+            "sha256": _sha256_bytes(storage_io.read_bytes(package_path)),
         },
         "season": dict(season),
         "source_intake_trace": {
@@ -420,7 +421,7 @@ def build_matrix(*, authoring_root: Path, intake_root: Path, seasons_root: Path)
     for season_dir in season_dirs:
         package_path = season_dir / "draft-season-package.json"
         audit_path = season_dir / "source-package-build-audit.json"
-        if not package_path.is_file() or not audit_path.is_file():
+        if not storage_io.is_file(package_path) or not storage_io.is_file(audit_path):
             raise CollisionMatrixError(
                 f"season {season_dir.name} requires draft-season-package.json and source-package-build-audit.json"
             )
@@ -452,11 +453,11 @@ def build_matrix(*, authoring_root: Path, intake_root: Path, seasons_root: Path)
 
 
 def _write_new(path: Path, value: Mapping[str, Any]) -> str:
-    if path.exists() or path.is_symlink():
+    if storage_io.exists(path) or path.is_symlink():
         raise CollisionMatrixError(f"refusing to replace existing output: {path}")
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = package_v2.canonical_json_bytes(dict(value))
-    path.write_bytes(payload)
+    storage_io.write_bytes(path, payload)
     return _sha256_bytes(payload)
 
 
@@ -480,9 +481,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         matrix = build_matrix(
-            authoring_root=args.authoring_root.resolve(),
-            intake_root=args.intake_root.resolve(),
-            seasons_root=args.seasons_root.resolve(),
+            authoring_root=storage_io.resolve(args.authoring_root),
+            intake_root=storage_io.resolve(args.intake_root),
+            seasons_root=storage_io.resolve(args.seasons_root),
         )
         payload = package_v2.canonical_json_bytes(matrix)
         summary = {
@@ -491,8 +492,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             "season_count": len(matrix["seasons"]),
         }
         if args.output is not None:
-            summary["output_sha256"] = _write_new(args.output.resolve(), matrix)
-            summary["output_path"] = _relative(args.output.resolve())
+            summary["output_sha256"] = _write_new(storage_io.resolve(args.output), matrix)
+            summary["output_path"] = _relative(storage_io.resolve(args.output))
         print(json.dumps(summary, ensure_ascii=False, sort_keys=True))
     except (CollisionMatrixError, OSError, package_v2.PackageValidationError, ValueError) as exc:
         print(f"source collision matrix error: {exc}", file=sys.stderr)

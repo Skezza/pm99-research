@@ -15,6 +15,14 @@ a rendering description.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import json
 import sys
@@ -22,7 +30,7 @@ from pathlib import Path
 from typing import Any
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = storage_io.resolve(Path(__file__)).parents[1]
 if str(ROOT / "scripts") not in sys.path:
     sys.path.insert(0, str(ROOT / "scripts"))
 
@@ -178,7 +186,7 @@ STYLES: dict[str, dict[str, Any]] = {
 
 
 def load_assignments(manifest_path: Path) -> tuple[list[dict[str, Any]], str]:
-    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    payload = json.loads(storage_io.read_text(manifest_path, encoding='utf-8'))
     teams = list(payload.get("teams") or [])
     team_count = len(teams)
     if team_count not in {80, 92}:
@@ -248,7 +256,7 @@ def write_receipt(
         "patched": patched,
     }
     path = output_dir / f"2015-16-{release_profile}-kit-receipt.json"
-    path.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
+    storage_io.write_text(path, json.dumps(receipt, indent=2) + '\n', encoding='utf-8')
     return path
 
 
@@ -264,9 +272,9 @@ def main() -> int:
     )
     values = parser.parse_args()
 
-    game_root = values.game_root.expanduser().resolve()
-    manifest_path = values.season_manifest.expanduser().resolve()
-    output_dir = values.output_dir.expanduser().resolve()
+    game_root = storage_io.resolve(values.game_root.expanduser())
+    manifest_path = storage_io.resolve(values.season_manifest.expanduser())
+    output_dir = storage_io.resolve(values.output_dir.expanduser())
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "per_team_miniesc").mkdir(parents=True, exist_ok=True)
 
@@ -277,7 +285,7 @@ def main() -> int:
     patched: list[dict[str, Any]] = []
     for archive_name in renderer.ARCHIVES:
         archive_path = game_root / "DBDAT" / archive_name
-        if not archive_path.is_file():
+        if not storage_io.is_file(archive_path):
             raise FileNotFoundError(f"missing kit archive: {archive_path}")
         if values.verify_existing:
             records = renderer.iter_obfuscated_bmp_records(archive_path, file_name_pattern=r"^EQ96\d{4}\.BMP$")

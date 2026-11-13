@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_batch_authoring_v1 as batch
 
 
@@ -52,9 +53,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--replace-duplicates", action="store_true", help="let a later matrix replace the same season row")
     args = parser.parse_args(argv)
     try:
-        result = merge([json.loads(path.read_text(encoding="utf-8")) for path in args.matrices], replace_duplicates=args.replace_duplicates)
+        result = merge([json.loads(storage_io.read_text(path, encoding='utf-8')) for path in args.matrices], replace_duplicates=args.replace_duplicates)
         args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_bytes(batch.canonical_json_bytes(result))
+        storage_io.write_bytes(args.output, batch.canonical_json_bytes(result))
     except (OSError, json.JSONDecodeError, ValueError) as exc:
         parser.error(str(exc))
     print(json.dumps(result["summary"], sort_keys=True))

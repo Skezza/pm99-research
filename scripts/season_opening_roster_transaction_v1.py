@@ -14,6 +14,7 @@ from bs4 import BeautifulSoup
 from app.fdi_indexed import IndexedFDIFile
 from app.player_initial_order import read_initial_order, patch_initial_orders, OrderReplacement
 from app.indexed_jug_shirt_number import rewrite_indexed_native_shirt_numbers
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_roster_membership_payload_core_v1 as core
 from scripts import season_release_registry_v1 as registry
 from scripts import season_package_v2 as packages
@@ -57,12 +58,12 @@ def source_bindings(doc):
         rows.append(dict(path=f['report_path'], sha256=f['report_sha256']))
     for f in doc['target_club_shirt_numbers']:
         p = _source_path(f['source_path'])
-        if registry.sha256_file(p) != f['source_sha256'] or f['exact_source_row'] not in p.read_text():
+        if registry.sha256_file(p) != f['source_sha256'] or f['exact_source_row'] not in storage_io.read_text(p):
             raise ValueError('target-club shirt source changed')
         rows.append(dict(path=f['source_path'], sha256=f['source_sha256']))
     published = set()
     for row in doc['target_club_shirt_numbers']:
-        for fields in csv.reader((registry.ROOT/row['source_path']).read_text().splitlines(), skipinitialspace=True):
+        for fields in csv.reader(storage_io.read_text(registry.ROOT / row['source_path']).splitlines(), skipinitialspace=True):
             if len(fields) < 7:
                 continue
             try:
@@ -83,7 +84,7 @@ def source_bindings(doc):
 def reports(doc, players):
     receipts = []
     for f in doc['opening_source_bindings']['fixtures']:
-        page = BeautifulSoup((registry.ROOT/f['report_path']).read_bytes(), 'html.parser')
+        page = BeautifulSoup(storage_io.read_bytes(registry.ROOT / f['report_path']), 'html.parser')
         def side(box):
             ids = {int(m[1]) for a in box.select('a[href]') if (m := re.search(r'/startseite/verein/(\d+)(?:/|$)', a['href']))}
             return ids == {f['provider_club_id']}
@@ -113,12 +114,12 @@ def compose(parent, main, english, eq, jug, doc):
     for name, expected in pin['native_sha256'].items():
         if registry.sha256_file(parent.game_path/'DBDAT'/name) != expected:
             raise ValueError('source transaction native parent differs')
-    if eq != (parent.game_path/'DBDAT/EQ98030.FDI').read_bytes() or jug != (parent.game_path/'DBDAT/JUG98030.FDI').read_bytes():
+    if eq != storage_io.read_bytes(parent.game_path / 'DBDAT/EQ98030.FDI') or jug != storage_io.read_bytes(parent.game_path / 'DBDAT/JUG98030.FDI'):
         raise ValueError('memory inputs differ from pinned parent')
-    if packages.canonical_json_bytes(main) != parent.package_path.read_bytes():
+    if packages.canonical_json_bytes(main) != storage_io.read_bytes(parent.package_path):
         raise ValueError('supplied main recipe differs from immutable parent')
     from scripts.season_source_bound_fixture_membership_v1 import _layer_path
-    if packages.canonical_json_bytes(english) != _layer_path(main, parent.package_path, 'english-season-package.json').read_bytes():
+    if packages.canonical_json_bytes(english) != storage_io.read_bytes(_layer_path(main, parent.package_path, 'english-season-package.json')):
         raise ValueError('supplied English recipe differs from immutable parent')
     players_by_carrier = {x['carrier_id']: x for x in main['players']}
     from scripts import season_package_compiler_v2 as compiler, season_historical_roster_audit_v1 as audit
@@ -133,7 +134,7 @@ def compose(parent, main, english, eq, jug, doc):
     raw_receipts = reports(doc, players_by_carrier)
     # Semantically reread the qualified contemporary secondary report.
     bbc = doc['pearson_january_chronology']['contemporaneous_independent_report']
-    text = BeautifulSoup((registry.ROOT/bbc['raw_body_path']).read_bytes(), 'html.parser').get_text(' ', strip=True).casefold()
+    text = BeautifulSoup(storage_io.read_bytes(registry.ROOT / bbc['raw_body_path']), 'html.parser').get_text(' ', strip=True).casefold()
     if not all(word in text for word in ('pearson', 'stoke', 'bournemouth', 'loan')):
         raise ValueError('retained secondary report lacks the named loan context')
     claims = doc['approved_membership_changes']

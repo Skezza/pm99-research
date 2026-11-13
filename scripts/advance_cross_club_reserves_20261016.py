@@ -2,6 +2,7 @@
 import os
 import shutil
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_cross_club_reserve_repair_v1 as source
 from scripts import publish_historical_role_delta_v1 as publisher
@@ -32,8 +33,8 @@ def materialise_cache(root=ROOT):
         if metadata['url'] != url:
             raise ValueError('cross-club biography URL differs from its explicit source')
         target = cache / 'wiki' / (slug + '.html')
-        if target.exists():
-            if target.read_bytes() != raw:
+        if storage_io.exists(target):
+            if storage_io.read_bytes(target) != raw:
                 raise ValueError('retained cross-club biography bytes changed')
         else:
             atomic_bytes(target, raw)
@@ -46,9 +47,9 @@ def materialise_cache(root=ROOT):
     if pipeline.read_json_file(receipt)['url'] != url:
         raise ValueError('secondary biography URL differs')
     target = cache / 'player/14892.html'
-    if target.exists() and target.read_bytes() != raw:
+    if storage_io.exists(target) and storage_io.read_bytes(target) != raw:
         raise ValueError('retained secondary biography bytes changed')
-    if not target.exists():
+    if not storage_io.exists(target):
         atomic_bytes(target, raw)
     retained(target.with_name(target.name + '.source.json'), dict(url=url, sha256=binding['sha256']))
     inputs.append(dict(binding, receipt_path=registry.relative_workspace_path(receipt),
@@ -61,7 +62,7 @@ def main(*, root=ROOT, release_id=RELEASE, replay_id=REPLAY, output_review=None)
     ROOT, RELEASE, REPLAY = root, release_id, replay_id
     ROOT.mkdir(parents=True, exist_ok=True)
     pin = ROOT / 'baseline.json'
-    if not pin.exists():
+    if not storage_io.exists(pin):
         base = registry.load_preferred_release(SEASON)
         retained(pin, dict(season=SEASON, release_id=base.release_id,
             manifest_sha256=base.manifest_sha256,
@@ -86,16 +87,16 @@ def main(*, root=ROOT, release_id=RELEASE, replay_id=REPLAY, output_review=None)
     descriptor = folder / 'inert.json'
     retained(descriptor, dict(season=SEASON, release_id=base.release_id,
         package_sha256=plan['package_sha256'], jug_sha256=plan['jug_sha256'], updates=[], unresolved=[]))
-    if not registry.locator_path(SEASON, RELEASE).exists():
+    if not storage_io.exists(registry.locator_path(SEASON, RELEASE)):
         publisher.publish(SEASON, descriptor, release_id=RELEASE, source_release_id=base.release_id,
             ownership_plan_path=path)
     proof = ROOT / 'native-byte-proof.json'
-    if not proof.exists():
+    if not storage_io.exists(proof):
         verify_native_batch(ROOT, RELEASE, proof, seasons=[SEASON])
     actual = registry.load_registered_release(SEASON, RELEASE)
     replay_proof = ROOT / 'complete-SOURCE-replay.json'
-    if not replay_proof.exists():
-        if registry.locator_path(SEASON, REPLAY).exists():
+    if not storage_io.exists(replay_proof):
+        if storage_io.exists(registry.locator_path(SEASON, REPLAY)):
             raise ValueError('unreceipted SOURCE replay exists; inspect rather than rerun')
         source.reconstruction(actual, REPLAY)
         rebuilt = registry.load_registered_release(SEASON, REPLAY)
@@ -109,12 +110,12 @@ def main(*, root=ROOT, release_id=RELEASE, replay_id=REPLAY, output_review=None)
                 (actual.game_path / 'DBDAT/JUG98030.FDI', rebuilt.game_path / 'DBDAT/JUG98030.FDI')):
             if registry.sha256_file(original) != registry.sha256_file(target):
                 raise ValueError('newly owned replay bytes differ before content sharing')
-            if original.stat().st_ino != target.stat().st_ino:
+            if (storage_io.stat_result(original).st_ino != storage_io.stat_result(target).st_ino) and not storage_io.is_compressed(original) and not storage_io.is_compressed(target):
                 temporary = target.with_name(target.name + '.verified-link')
-                if temporary.exists():
+                if storage_io.exists(temporary):
                     raise ValueError('unreceipted sharing temporary exists')
-                os.link(original, temporary)
-                os.replace(temporary, target)
+                storage_io.link(original, temporary)
+                storage_io.replace_file(temporary, target)
     print(dict(season=SEASON, release_id=RELEASE, built=True, SOURCE_exact=True,
         preferred_unchanged=True, runner_review_pending=True), flush=True)
 

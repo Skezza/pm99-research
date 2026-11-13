@@ -6,6 +6,14 @@ the only removable targets are the eight historical experiments named below.
 """
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -13,7 +21,7 @@ import shutil
 import stat
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = storage_io.resolve(Path(__file__)).parents[1]
 WORKSPACE = ROOT / '.local/season-workspace-v1'
 BASE = WORKSPACE / '2015-16-kit-factory-template-v4-native-hem-contour-game'
 OUTPUT = ROOT / '.local/cleanup-20261003/kit-experiment-deltas'
@@ -31,7 +39,7 @@ TARGETS = (
 
 def digest(path):
     h = hashlib.sha256()
-    with path.open('rb') as stream:
+    with storage_io.open_file(path, 'rb') as stream:
         for block in iter(lambda: stream.read(1024 * 1024), b''):
             h.update(block)
     return h.hexdigest()
@@ -39,14 +47,14 @@ def digest(path):
 
 def inventory(path):
     files, directories = {}, []
-    for child in sorted(path.rglob('*')):
+    for child in sorted(storage_io.glob(path, '*', recursive=True)):
         if child.is_symlink():
             raise ValueError(f'Refusing symlink: {child}')
         key = child.relative_to(path).as_posix()
         if child.is_dir():
             directories.append(key)
-        elif child.is_file():
-            s = child.stat()
+        elif storage_io.is_file(child):
+            s = storage_io.stat_result(child)
             files[key] = {'sha256': digest(child), 'size': s.st_size,
                           'mtime_ns': s.st_mtime_ns, 'mode': stat.S_IMODE(s.st_mode)}
         else:
@@ -56,7 +64,7 @@ def inventory(path):
 
 def save(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(value, sort_keys=True, indent=2) + '\n')
+    storage_io.write_text(path, json.dumps(value, sort_keys=True, indent=2) + '\n')
 
 
 def run(delete=False):
@@ -69,12 +77,12 @@ def run(delete=False):
     for name in TARGETS:
         source = WORKSPACE / name
         receipt = OUTPUT / name / 'receipt.json'
-        if not source.exists():
-            if receipt.is_file():
-                results.append(json.loads(receipt.read_text()))
+        if not storage_io.exists(source):
+            if storage_io.is_file(receipt):
+                results.append(json.loads(storage_io.read_text(receipt)))
                 continue
             raise ValueError(f'Expected experiment missing without receipt: {source}')
-        if source.is_symlink() or source.resolve().parent != WORKSPACE.resolve():
+        if source.is_symlink() or storage_io.resolve(source).parent != storage_io.resolve(WORKSPACE):
             raise ValueError(f'Unsafe target: {source}')
         original, directories = inventory(source)
         changed = [key for key, value in original.items()
@@ -83,7 +91,7 @@ def run(delete=False):
         for key in changed:
             destination = delta / key
             destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(source / key, destination)
+            storage_io.copy_file(source / key, destination, metadata=True)
             if digest(destination) != original[key]['sha256']:
                 raise ValueError(f'Delta copy verification failed: {key}')
         # Every original file is represented by a verified delta or the base.
@@ -91,10 +99,10 @@ def run(delete=False):
             retained = delta / key if key in changed else BASE / key
             if key not in changed and base_files[key]['sha256'] != value['sha256']:
                 raise ValueError(f'Reconstruction mismatch: {key}')
-            current = (source / key).stat()
+            current = storage_io.stat_result(source / key)
             if (current.st_size, current.st_mtime_ns) != (value['size'], value['mtime_ns']):
                 raise ValueError(f'Source changed during verification: {key}')
-            if not retained.is_file():
+            if not storage_io.is_file(retained):
                 raise ValueError(f'Retained reconstruction input missing: {key}')
         row = {'source': str(source), 'base': str(BASE), 'files': original,
                'directories': directories, 'delta_files': changed,
@@ -124,7 +132,7 @@ def verify_retained():
     checked = 0
     for name in TARGETS:
         directory = OUTPUT / name
-        row = json.loads((directory / 'receipt.json').read_text())
+        row = json.loads(storage_io.read_text(directory / 'receipt.json'))
         for key, expected in row['files'].items():
             actual = (digest(directory / 'files' / key) if key in row['delta_files']
                       else base.get(key, {}).get('sha256'))

@@ -7,6 +7,7 @@ separate instead of being passed through a relaxed publication guard.
 from collections import Counter
 from datetime import date
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_kit_render_bindings_v1
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import audit_deferred_manager_tenures_20261016 as sources
@@ -29,7 +30,7 @@ def main():
         source = claims[0]; raw_path = registry.ROOT / source['path']
         if registry.sha256_file(raw_path) != source['sha256']:
             raise ValueError('retained manager raw source changed')
-        parsed = sources.tenure(raw_path.read_bytes(), case['source_club_id'], date.fromisoformat(source['date']))
+        parsed = sources.tenure(storage_io.read_bytes(raw_path), case['source_club_id'], date.fromisoformat(source['date']))
         if any(parsed[k] != source[k] for k in ('manager', 'source_manager_id', 'source_url', 'date')):
             raise ValueError('retained manager tenure no longer independently parses')
         for receipt in source['download_receipts']:

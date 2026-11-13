@@ -13,6 +13,14 @@ It does not write to DBDAT/ and it does not require GUI access.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import contextlib
 import io
@@ -26,7 +34,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
@@ -853,7 +861,7 @@ def _name_match_kind(query: str, candidate_name: str) -> str:
 
 
 def strict_player_probe(player_file: Path, query: str, max_results: int = 8) -> dict[str, Any]:
-    data = player_file.read_bytes()
+    data = storage_io.read_bytes(player_file)
     results: list[StrictPlayerProbeRow] = []
     seen_offsets: set[int] = set()
 
@@ -999,7 +1007,7 @@ def decoded_text_probe(
     club_window: int = 1000,
 ) -> dict[str, Any]:
     """Search decoded FDI entries for a raw text query (no parser record required)."""
-    file_bytes = player_file.read_bytes()
+    file_bytes = storage_io.read_bytes(player_file)
     query_clean = _normalize_spaces(query)
     query_lower = query_clean.lower()
     if not query_clean:
@@ -1086,7 +1094,7 @@ def bio_marker_probe(
     club_window: int = 1000,
 ) -> dict[str, Any]:
     """Probe dd6361-marked biography subrecords and extract full names."""
-    file_bytes = player_file.read_bytes()
+    file_bytes = storage_io.read_bytes(player_file)
     query_norm = _norm_text(query)
     query_last = _last_token_norm(query)
     query_has_space = len(query_norm.split()) > 1
@@ -1299,7 +1307,7 @@ def build_document_summary(
     manager_listing_rows_by_doc: dict[str, list[dict[str, Any]]] = {}
     docs: list[dict[str, Any]] = []
 
-    for pdf_path in sorted(pdf_dir.glob("*.pdf")):
+    for pdf_path in sorted(storage_io.glob(pdf_dir, '*.pdf')):
         default_text = _run_pdftotext(pdf_path)
         doc: dict[str, Any] = {
             "pdf": pdf_path.name,
@@ -1418,7 +1426,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 def main(argv: list[str]) -> int:
     args = parse_args(argv)
     pdf_dir = Path(args.pdf_dir)
-    if not pdf_dir.exists() or not pdf_dir.is_dir():
+    if not storage_io.exists(pdf_dir) or not pdf_dir.is_dir():
         print(json.dumps({"error": f"PDF directory not found: {pdf_dir}"}, indent=2))
         return 2
 
@@ -1427,11 +1435,11 @@ def main(argv: list[str]) -> int:
     team_uncertain_count = 0
 
     coach_file = Path(args.coach_file)
-    if coach_file.exists():
+    if storage_io.exists(coach_file):
         coaches = build_coach_index(coach_file)
 
     team_file = Path(args.team_file)
-    if team_file.exists():
+    if storage_io.exists(team_file):
         teams, team_uncertain_count = build_team_index(team_file)
 
     summary = build_document_summary(pdf_dir, coaches, teams, team_uncertain_count)
@@ -1439,7 +1447,7 @@ def main(argv: list[str]) -> int:
     if args.probe_player:
         player_file = Path(args.player_file)
         probes: list[dict[str, Any]] = []
-        if player_file.exists():
+        if storage_io.exists(player_file):
             for query in args.probe_player:
                 probes.append(strict_player_probe(player_file, query, max_results=args.max_probe_results))
         else:
@@ -1449,7 +1457,7 @@ def main(argv: list[str]) -> int:
     if args.probe_text_query:
         player_file = Path(args.player_file)
         probes: list[dict[str, Any]] = []
-        if player_file.exists():
+        if storage_io.exists(player_file):
             for query in args.probe_text_query:
                 probes.append(
                     decoded_text_probe(
@@ -1465,7 +1473,7 @@ def main(argv: list[str]) -> int:
     if args.probe_bio_marker:
         player_file = Path(args.player_file)
         probes: list[dict[str, Any]] = []
-        if player_file.exists():
+        if storage_io.exists(player_file):
             for query in args.probe_bio_marker:
                 probes.append(
                     bio_marker_probe(
@@ -1480,7 +1488,7 @@ def main(argv: list[str]) -> int:
 
     if args.probe_seed_player_bios:
         player_file = Path(args.player_file)
-        if player_file.exists():
+        if storage_io.exists(player_file):
             summary["seed_player_bio_linkage"] = probe_seed_player_bios(summary, player_file)
         else:
             summary["seed_player_bio_linkage"] = [{"error": f"Player file not found: {player_file}"}]
@@ -1489,7 +1497,7 @@ def main(argv: list[str]) -> int:
     if args.json_output:
         out_path = Path(args.json_output)
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(payload + "\n", encoding="utf-8")
+        storage_io.write_text(out_path, payload + '\n', encoding='utf-8')
     print(payload)
     return 0
 

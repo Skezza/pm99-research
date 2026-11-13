@@ -2,6 +2,7 @@
 import argparse
 import copy
 from datetime import UTC,datetime
+from scripts import json_storage_io_v1 as storage_io
 from scripts import build_takano_period_country_20261017 as build
 from scripts.capture_takano_period_country_20261017 import TAG,PROFILE
 from scripts import season_release_registry_v1 as registry,season_pipeline_v2 as pipeline
@@ -32,7 +33,7 @@ def check_alias_scope(scope,current):
 def main(previous_version):
     old_path=build.ROOT.parent/f'release-delivery-checklist-v{previous_version}.json'
     output=build.ROOT.parent/f'release-delivery-checklist-v{previous_version+1}.json'
-    if output.exists():raise ValueError('completed Takano country publication must not repeat')
+    if storage_io.exists(output):raise ValueError('completed Takano country publication must not repeat')
     previous=pipeline.read_json_file(old_path);initial=bindings()
     if initial!=previous['current_release_bindings']:raise ValueError('Takano previous checkpoint differs from actual preferred games')
     scope_path=build.ROOT/'all26-Takano-alias-scope-v91.json'
@@ -48,7 +49,7 @@ def main(previous_version):
     if not proof['complete_game_inventory_identical'] or not proof['complete_recipe_identical']:
         raise ValueError('Takano full SOURCE proof incomplete')
     for release in (actual,rebuilt):pipeline.assert_tree_matches_inventory(release.game_path,pipeline.read_json_file(actual.inventory_path))
-    if actual.package_path.read_bytes()!=rebuilt.package_path.read_bytes():raise ValueError('Takano full SOURCE recipe differs')
+    if storage_io.read_bytes(actual.package_path)!=storage_io.read_bytes(rebuilt.package_path):raise ValueError('Takano full SOURCE recipe differs')
     evidence=registry.ROOT/'.local/runlogs/pm99_runner'/TAG
     transport=pipeline.read_json_file(build.ROOT/'startup-transport.json')
     summary=pipeline.read_json_file(evidence/'summary.json')

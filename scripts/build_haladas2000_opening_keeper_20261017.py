@@ -1,6 +1,7 @@
 """Build the source-positive keeper correction, not a wholesale Haladas rewrite."""
 import shutil
 import argparse
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_haladas2000_opening_keeper_v1 as source
 from scripts import publish_historical_role_delta_v1 as publisher
 from scripts.build_public_fixture_batches_20261017 import share_verified
@@ -14,12 +15,12 @@ BASE='sourced-preetz-period-profile-20261017-r138a'
 
 def verify_native(base,actual,plan):
     source.verify(base,plan)
-    before=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes();after=(actual.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    before=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI');after=storage_io.read_bytes(actual.game_path / 'DBDAT/JUG98030.FDI')
+    eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     if source.apply(before,eq,plan)!=(after,eq) or source.apply(after,eq,plan)!=(after,eq):
         raise ValueError('actual Haladas opening keeper/idempotence differs')
-    archive=(base.game_path/'DBDAT/MINIFOTO.PKF').read_bytes();expected,offsets=source.delta.no_photo_archive(archive,{8507})
-    if (actual.game_path/'DBDAT/MINIFOTO.PKF').read_bytes()!=expected:raise ValueError('selected keeper old portrait not cleared exactly')
+    archive=storage_io.read_bytes(base.game_path / 'DBDAT/MINIFOTO.PKF');expected,offsets=source.delta.no_photo_archive(archive,{8507})
+    if storage_io.read_bytes(actual.game_path / 'DBDAT/MINIFOTO.PKF')!=expected:raise ValueError('selected keeper old portrait not cleared exactly')
     left={r['path']:r['sha256'] for r in source.pipeline.read_json_file(base.inventory_path)['files']}
     right={r['path']:r['sha256'] for r in source.pipeline.read_json_file(actual.inventory_path)['files']}
     allowed={'DBDAT/JUG98030.FDI','DBDAT/MINIFOTO.PKF'}
@@ -39,21 +40,21 @@ def verify_native(base,actual,plan):
 
 def main(resume_before_native=False):
     path=ROOT/'keeper-plan.json'
-    if source.registry.locator_path('2000-01',RELEASE).exists():
+    if storage_io.exists(source.registry.locator_path('2000-01', RELEASE)):
         raise ValueError('existing Haladas game build must be inspected, not regenerated')
     base=source.registry.load_preferred_release('2000-01')
     if base.release_id!=BASE:raise ValueError('Haladas parent advanced; preserve intervening fixes')
     descriptor=ROOT/'inert.json'
     if resume_before_native:
         workspace=source.registry.ROOT/'.local/historical-role-deltas-v1'/base.season/RELEASE
-        if workspace.exists() or not path.is_file() or not descriptor.is_file():
+        if storage_io.exists(workspace) or not storage_io.is_file(path) or not storage_io.is_file(descriptor):
             raise ValueError('only the exact pre-native disk stop may resume; existing workspace requires inspection')
         plan=source.pipeline.read_json_file(path);source.verify(base,plan)
         expected=dict(season=base.season,release_id=base.release_id,package_sha256=plan['package_sha256'],
             jug_sha256=plan['jug_sha256'],updates=[],unresolved=[])
         if source.pipeline.read_json_file(descriptor)!=expected:raise ValueError('pre-native descriptor differs')
     else:
-        if path.exists():raise ValueError('saved pre-native plan needs explicit --resume-before-native')
+        if storage_io.exists(path):raise ValueError('saved pre-native plan needs explicit --resume-before-native')
         plan=source.prepare(base);retained(path,plan)
         retained(descriptor,dict(season=base.season,release_id=base.release_id,package_sha256=plan['package_sha256'],
             jug_sha256=plan['jug_sha256'],updates=[],unresolved=[]))

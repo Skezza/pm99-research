@@ -29,6 +29,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts.patch_english80_reference_kits_v2 import COLORS  # noqa: E402
 from scripts.season_english_kit_layer_v1 import canonical_json_bytes, english_clubs  # noqa: E402
 from scripts.season_stoke_kit_evidence_v1 import HFK_ATTRIBUTION, StokeKitEvidenceError, capture_url  # noqa: E402
@@ -291,7 +292,7 @@ def build_layer(
 ) -> dict[str, Any]:
     season, clubs = english_clubs(source_intake)
     index_receipt = capture_url(INDEX_URL, cache_dir, allow_network=allow_network)
-    index_payload = (cache_dir / index_receipt["relative_path"]).read_bytes()
+    index_payload = storage_io.read_bytes(cache_dir / index_receipt['relative_path'])
     index = parse_index(index_payload)
     rows = []
     for club in clubs:
@@ -300,7 +301,7 @@ def build_layer(
             rows.append({"club": club, "policy": "blocked-no-target-season-source", "status": "hfk-index-identity-missing", "source_url": INDEX_URL})
             continue
         page_receipt = capture_url(index_row["page_url"], cache_dir, allow_network=allow_network)
-        page_payload = (cache_dir / page_receipt["relative_path"]).read_bytes()
+        page_payload = storage_io.read_bytes(cache_dir / page_receipt['relative_path'])
         try:
             entries = parse_club_page(page_payload, index_row["page_url"], club)
         except HFKEnglishKitError as exc:
@@ -329,7 +330,7 @@ def build_layer(
             continue
         match = matches[0]
         image_receipt = capture_url(match["image_url"], cache_dir, allow_network=allow_network)
-        image_payload = (cache_dir / image_receipt["relative_path"]).read_bytes()
+        image_payload = storage_io.read_bytes(cache_dir / image_receipt['relative_path'])
         try:
             contract = infer_render_contract(image_payload, club)
         except (HFKEnglishKitError, OSError) as exc:
@@ -456,15 +457,15 @@ def main() -> int:
     parser.add_argument("--provisional-fallback-layer", type=Path, action="append", default=[])
     parser.add_argument("--allow-network", action="store_true")
     args = parser.parse_args()
-    intake = json.loads(args.source_intake.read_text(encoding="utf-8"))
-    overrides = json.loads(args.overrides.read_text(encoding="utf-8")) if args.overrides else None
-    fallback_layers = [json.loads(path.read_text(encoding="utf-8")) for path in args.provisional_fallback_layer]
+    intake = json.loads(storage_io.read_text(args.source_intake, encoding='utf-8'))
+    overrides = json.loads(storage_io.read_text(args.overrides, encoding='utf-8')) if args.overrides else None
+    fallback_layers = [json.loads(storage_io.read_text(path, encoding='utf-8')) for path in args.provisional_fallback_layer]
     layer = build_layer(
         intake, args.cache_dir, allow_network=args.allow_network, overrides=overrides,
         provisional_fallback_layers=fallback_layers,
     )
     args.output_layer.parent.mkdir(parents=True, exist_ok=True)
-    args.output_layer.write_bytes(canonical_json_bytes(layer))
+    storage_io.write_bytes(args.output_layer, canonical_json_bytes(layer))
     print(json.dumps(layer["coverage"], indent=2, sort_keys=True))
     return 0
 

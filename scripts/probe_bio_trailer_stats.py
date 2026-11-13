@@ -11,6 +11,14 @@ This script automates extraction and optional comparison against screenshot/OCR 
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 from collections import Counter, defaultdict
 import json
@@ -20,7 +28,7 @@ from pathlib import Path
 from typing import Any
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
@@ -60,7 +68,7 @@ def _norm_name(value: str) -> str:
 
 
 def _iter_decoded_entries(player_file: Path) -> list[tuple[int, bytes]]:
-    data = player_file.read_bytes()
+    data = storage_io.read_bytes(player_file)
     entries: list[tuple[int, bytes]] = []
     offset = 0x400
     data_len = len(data)
@@ -165,7 +173,7 @@ def _parse_example_player_data(example_file: Path) -> dict[str, dict[str, Any]]:
     <name line>
     Position: ...
     """
-    text = example_file.read_text(encoding="utf-8", errors="ignore")
+    text = storage_io.read_text(example_file, encoding='utf-8', errors='ignore')
     lines = [ln.rstrip("\n") for ln in text.splitlines()]
 
     starts: list[int] = []
@@ -434,7 +442,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 def main(argv: list[str]) -> int:
     args = parse_args(argv)
     player_file = Path(args.player_file)
-    if not player_file.exists():
+    if not storage_io.exists(player_file):
         print(json.dumps({"error": f"Player file not found: {player_file}"}, indent=2))
         return 2
 
@@ -444,7 +452,7 @@ def main(argv: list[str]) -> int:
     example_map: dict[str, dict[str, Any]] = {}
     if not args.no_example_compare:
         example_file = Path(args.example_data)
-        if example_file.exists():
+        if storage_io.exists(example_file):
             example_map = _parse_example_player_data(example_file)
 
     queries = [_normalize_spaces(q) for q in args.name if _normalize_spaces(q)]
@@ -504,7 +512,7 @@ def main(argv: list[str]) -> int:
     if args.json_output:
         out_path = Path(args.json_output)
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(text + "\n", encoding="utf-8")
+        storage_io.write_text(out_path, text + '\n', encoding='utf-8')
     print(text)
     return 0
 

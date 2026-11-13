@@ -8,6 +8,7 @@ import sys
 
 from app.fdi_indexed import IndexedFDIFile
 from app.indexed_jug_birth_year import rewrite_indexed_native_birth_years
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_historical_roster_audit_v1 as audit
 from scripts import season_opening_order_repair_v1 as order
 from scripts import season_release_registry_v1 as registry
@@ -27,18 +28,18 @@ def original_person(capture, name, birthday):
 def prepare(release, report_path):
     sys.path.insert(0, str(registry.ROOT / 'upstream/pm99-skezmod-patcher'))
     from player_birth_year_guard import patch_native_birth_year_guard
-    exe = (release.game_path / 'MANAGPRE.EXE').read_bytes()
+    exe = storage_io.read_bytes(release.game_path / 'MANAGPRE.EXE')
     if patch_native_birth_year_guard(exe)[0] != exe:
         raise ValueError('modern birth years require the already verified executable guard')
-    report = json.loads(report_path.read_text())
+    report = json.loads(storage_io.read_text(report_path))
     report_hash = registry.sha256_file(report_path)
     captures, bindings = audit.load_sources(release.season)
     if report['bindings']['sources'] != bindings:
         raise ValueError('cached original birthday sources changed')
     checker = audit.SourceVerifier(release.season, previous=report, source_bindings=bindings)
-    package = json.loads(release.package_path.read_text())
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (release.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    package = json.loads(storage_io.read_text(release.package_path))
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
     package_hash = registry.sha256_file(release.package_path)
     entries = {entry.record_id: entry for entry in IndexedFDIFile.from_bytes(jug).entries}
     owners = order.native_owners(eq)

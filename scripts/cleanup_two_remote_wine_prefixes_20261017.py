@@ -2,6 +2,7 @@
 import json
 import subprocess
 from pathlib import Path
+from scripts import json_storage_io_v1 as storage_io
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
 
 REMOTE = r'''
@@ -35,7 +36,7 @@ print(json.dumps(dict(removed=[str(p) for p in targets],before_free_bytes=before
 
 if __name__=='__main__':
     output=Path('.local/cleanup-20261017/two-remote-wine-prefixes.json')
-    if output.exists():raise ValueError('completed cleanup must not repeat')
+    if storage_io.exists(output):raise ValueError('completed cleanup must not repeat')
     result=subprocess.run(['ssh','-o','BatchMode=yes','-o','ConnectTimeout=10',
         'joe@192.168.1.175','python3','-'],input=REMOTE,text=True,capture_output=True,check=True)
     receipt=json.loads(result.stdout);retained(output,receipt);print(receipt,flush=True)

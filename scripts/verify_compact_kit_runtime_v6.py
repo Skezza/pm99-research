@@ -17,6 +17,7 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'upstream/pm99-skezmod-db-editor'))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_kit_render_bindings_v1 as renderer
 from scripts import season_release_registry_v1 as registry
 from scripts import season_visual_patch_v1 as visual
@@ -67,9 +68,9 @@ def compare(record, palette, screenshot):
 def verify(season, evidence, dbdat=None):
     release = registry.load_preferred_release(season)
     selector = _selector(season)
-    clubs = json.loads(release.package_path.read_text())['clubs']
+    clubs = json.loads(storage_io.read_text(release.package_path))['clubs']
     if season == '2015-16':
-        clubs += json.loads((ROOT / 'seasons/2015-16/english-layer/season-package.legacy.json').read_text())['clubs']
+        clubs += json.loads(storage_io.read_text(ROOT / 'seasons/2015-16/english-layer/season-package.legacy.json'))['clubs']
     matches = [c for c in clubs if c['name'] == selector['team_name']]
     if len(matches) != 1:
         raise ValueError('recipe needs exactly one club matching the runner selector')
@@ -79,10 +80,10 @@ def verify(season, evidence, dbdat=None):
     # original game-root resource, which is the release's verified palette.
     palette, palette_source = renderer._palette(release.game_path / 'DBDAT')
     record = renderer._record_index(dbdat / 'NANOESC.PKF')[int(carrier)]
-    screenshots = list((evidence / 'screens').glob('*line_up_inspect*.png'))
+    screenshots = list(storage_io.glob(evidence / 'screens', '*line_up_inspect*.png'))
     if len(screenshots) != 1:
         raise ValueError('expected one real Line-Up inspect screenshot')
-    summary = json.loads((evidence / 'summary.json').read_text())
+    summary = json.loads(storage_io.read_text(evidence / 'summary.json'))
     if not summary.get('success') or summary.get('phase_reached') != 'return_from_line_up':
         raise ValueError('runner route did not complete')
     result = compare(record, palette, screenshots[0])

@@ -22,6 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts.materialise_english_rating_layer_v1 import materialise  # noqa: E402
 from scripts.pm99_season_play_v1 import REVISIONS  # noqa: E402
 
@@ -43,7 +44,7 @@ def _sha256(raw: bytes) -> str:
 
 def _read(path: Path) -> tuple[dict[str, Any], bytes]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise CascadeError(f"cannot read {path}") from exc
@@ -55,19 +56,19 @@ def _read(path: Path) -> tuple[dict[str, Any], bytes]:
 def _write_or_reuse(path: Path, value: Mapping[str, Any]) -> tuple[str, str]:
     raw = _canonical_bytes(value)
     digest = _sha256(raw)
-    if path.exists():
-        if path.read_bytes() != raw:
+    if storage_io.exists(path):
+        if storage_io.read_bytes(path) != raw:
             raise CascadeError(f"refusing to replace a different existing output: {path}")
         return "reused", digest
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(raw)
+    storage_io.write_bytes(path, raw)
     return "built", digest
 
 
 def _latest_preallocation(*, season: str) -> Path:
     """Prefer the newest composed opening package, then the shared capture."""
     chain_root = ROOT / ".local/season-english-source-chain-v1" / season
-    candidates = list(chain_root.glob("r*/opening-squad-preallocation.json"))
+    candidates = list(storage_io.glob(chain_root, 'r*/opening-squad-preallocation.json'))
 
     def key(path: Path) -> tuple[int, str]:
         name = path.parent.name
@@ -82,7 +83,7 @@ def _latest_preallocation(*, season: str) -> Path:
 
 
 def cascade(*, output_root: Path, seasons: Sequence[str]) -> dict[str, Any]:
-    output_root = output_root.resolve()
+    output_root = storage_io.resolve(output_root)
     selected = sorted(set(seasons))
     invalid = sorted(set(selected) - set(REVISIONS))
     if invalid:

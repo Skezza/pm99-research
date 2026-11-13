@@ -8,6 +8,14 @@ finance integers may change.  The source EQ file is never modified in place.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -15,7 +23,7 @@ import sys
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR = ROOT / "upstream" / "pm99-skezmod-db-editor"
 for candidate in (ROOT, EDITOR):
     if str(candidate) not in sys.path:
@@ -47,20 +55,20 @@ def _parse_args() -> argparse.Namespace:
 
 def _write_json(path: Path, payload: dict[str, object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(path, json.dumps(payload, indent=2, sort_keys=True) + '\n', encoding='utf-8')
 
 
 def main() -> int:
     args = _parse_args()
-    source_path = args.source_eq.resolve()
-    output_path = args.output_eq.resolve()
-    receipt_path = args.receipt.resolve()
+    source_path = storage_io.resolve(args.source_eq)
+    output_path = storage_io.resolve(args.output_eq)
+    receipt_path = storage_io.resolve(args.receipt)
     if source_path == output_path:
         raise SystemExit("--output-eq must differ from --source-eq; probes never write in place")
-    if not source_path.is_file():
+    if not storage_io.is_file(source_path):
         raise SystemExit(f"source EQ file is missing: {source_path}")
 
-    original = source_path.read_bytes()
+    original = storage_io.read_bytes(source_path)
     indexed = IndexedFDIFile.from_bytes(original)
     entries = {entry.record_id: entry for entry in indexed.entries}
     entry = entries.get(int(args.carrier_id))
@@ -99,7 +107,7 @@ def main() -> int:
         raise SystemExit("patched finance did not reparse to the requested display amount")
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_bytes(bytes(patched))
+    storage_io.write_bytes(output_path, bytes(patched))
     _write_json(
         receipt_path,
         {

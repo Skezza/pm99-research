@@ -9,6 +9,14 @@ fixture-rollover fault.  Its receipt makes the incomplete calendar explicit.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -16,7 +24,7 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = storage_io.resolve(Path(__file__)).parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
@@ -33,9 +41,9 @@ def materialise(
 ) -> dict[str, object]:
     if prefix_count is None and (not source_years or not source_years <= {calendar.BASE_YEAR, calendar.ROLLOVER_YEAR}):
         raise calendar.PatchError("--source-year must select 1998 and/or 1999")
-    if input_path.resolve() == output_path.resolve() or output_path.exists():
+    if storage_io.resolve(input_path) == storage_io.resolve(output_path) or storage_io.exists(output_path):
         raise calendar.PatchError("probe output must be a new path")
-    source = input_path.read_bytes()
+    source = storage_io.read_bytes(input_path)
     if _sha256(source) != calendar.KNOWN_INPUT_SHA256:
         raise calendar.PatchError("probe requires the known clean calendar executable")
     image = calendar.PEImage(bytearray(source))
@@ -79,12 +87,12 @@ def materialise(
             raise calendar.PatchError(f"operand {index} is not the expected May date literal")
         image.write(operand.instruction_va + 7, bytes([replacement_day]))
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_bytes(bytes(image.blob))
+    storage_io.write_bytes(output_path, bytes(image.blob))
     result = {
         "schema_version": "pm99-calendar-patch-group-probe-v1",
         "state": "diagnostic-incomplete-calendar-not-for-release",
         "input_sha256": _sha256(source),
-        "output_sha256": _sha256(output_path.read_bytes()),
+        "output_sha256": _sha256(storage_io.read_bytes(output_path)),
         "target_year": target_year,
         "included_source_years": sorted(source_years),
         "prefix_count": prefix_count,
@@ -126,7 +134,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (OSError, calendar.PatchError) as exc:
         parser.exit(2, f"calendar-patch-group-probe: {exc}\n")
     args.receipt.parent.mkdir(parents=True, exist_ok=True)
-    args.receipt.write_text(json.dumps(result, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(args.receipt, json.dumps(result, ensure_ascii=False, sort_keys=True) + '\n', encoding='utf-8')
     print(json.dumps({key: result[key] for key in ("state", "target_year", "included_source_years", "prefix_count", "changed_operand_count")}, sort_keys=True))
     return 0
 

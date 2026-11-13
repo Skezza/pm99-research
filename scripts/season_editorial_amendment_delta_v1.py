@@ -20,6 +20,7 @@ from app.indexed_jug_roles import read_indexed_native_roles, rewrite_indexed_nat
 from app.indexed_jug_shirt_number import rewrite_indexed_native_shirt_numbers
 from app.indexed_jug_profile_fields import rewrite_indexed_native_profile_fields
 from app.xor import xor_decode, xor_encode
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_package_v2 as packages, season_package_compiler_v2 as compiler
 from scripts import season_historical_roster_audit_v1 as roster
@@ -159,9 +160,9 @@ def _derive(base, request):
     if request['season'] != base.season or not request['changes']:
         raise ValueError('amendment request must name this season and at least one change')
     package = pipeline.read_json_file(base.package_path)
-    jug = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
-    ent = (base.game_path / 'DBDAT/ENT98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
+    ent = storage_io.read_bytes(base.game_path / 'DBDAT/ENT98030.FDI')
     countries = compiler._extract_country_codes_from_textos(base.game_path / 'DBDAT/TEXTOS.PKF')
     entries = _entries(jug)
     by_player, by_manager = {}, {}
@@ -440,8 +441,8 @@ def _checked_against(base, plan):
 
 
 def _checked(base, plan, jug=None, ent=None):
-    original_jug = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    original_ent = (base.game_path / 'DBDAT/ENT98030.FDI').read_bytes()
+    original_jug = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    original_ent = storage_io.read_bytes(base.game_path / 'DBDAT/ENT98030.FDI')
     if digest(original_jug) != plan['jug_sha256'] or digest(original_ent) != plan['ent_sha256']:
         raise ValueError('editorial native preimage differs')
     rebuilt, candidate_jug, candidate_ent = _derive(base, plan['request'])
@@ -453,7 +454,7 @@ def _checked(base, plan, jug=None, ent=None):
 def apply(jug, eq, plan):
     base = registry.load_registered_release(plan['season'], plan['release_id'])
     original, candidate, _, _ = _checked(base, plan)
-    if digest((base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()) != plan['eq_sha256'] or digest(eq) != plan['eq_sha256']:
+    if digest(storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')) != plan['eq_sha256'] or digest(eq) != plan['eq_sha256']:
         raise ValueError('editorial EQ preimage differs')
     if jug not in (original, candidate):
         raise ValueError('editorial amendment requires exact whole native pre/postimage')
@@ -490,7 +491,7 @@ def reconstruction(previous, release_id, *, minimum_free_bytes=disk_budget.DEFAU
     verify(base, plan)
     package = pipeline.read_json_file(previous.package_path)
     artifact = next(a for a in package['artifacts'] if a['id'] == artifact_id(plan))
-    if path.resolve() != (previous.package_path.parent / filename(plan)).resolve() or registry.sha256_file(path) != artifact['sha256']:
+    if storage_io.resolve(path) != storage_io.resolve(previous.package_path.parent / filename(plan)) or registry.sha256_file(path) != artifact['sha256']:
         raise ValueError('editorial amendment SOURCE artifact differs')
     if bind(pipeline.read_json_file(base.package_path), plan) != package:
         raise ValueError('editorial SOURCE would discard recipe edits')

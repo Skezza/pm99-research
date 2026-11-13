@@ -15,6 +15,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_historical_roster_audit_v1 as roster
@@ -70,7 +71,7 @@ def only_candidate(club, index):
 
 
 def query_snapshot(database, pinned_receipt, season):
-    pin = json.loads(pinned_receipt.read_text())['source']
+    pin = json.loads(storage_io.read_text(pinned_receipt))['source']
     digest = registry.sha256_file(database)
     if digest != pin['database_sha256']: raise ValueError('qualified snapshot source bytes changed')
     import duckdb
@@ -98,10 +99,10 @@ def query_snapshot(database, pinned_receipt, season):
 
 
 def audit(season, database, pinned_receipt, destination):
-    if destination.exists(): raise ValueError('completed source review exists; choose a new destination')
+    if storage_io.exists(destination): raise ValueError('completed source review exists; choose a new destination')
     release = registry.load_preferred_release(season)
     package_hash = registry.sha256_file(release.package_path)
-    package = json.loads(release.package_path.read_text())
+    package = json.loads(storage_io.read_text(release.package_path))
     clubs, players, legacy = roster.add_legacy_english(package, season)
     index, lineups, sources = query_snapshot(database, pinned_receipt, season)
     holders, names = _manager_graph(eq_path=release.game_path / 'DBDAT/EQ98030.FDI', ent_path=release.game_path / 'DBDAT/ENT98030.FDI')

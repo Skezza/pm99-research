@@ -9,6 +9,14 @@ and writes row-level verification artifacts.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import csv
 import json
@@ -17,9 +25,9 @@ from pathlib import Path
 import sys
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-if str(Path(__file__).resolve().parent) not in sys.path:
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
+if str(storage_io.resolve(Path(__file__)).parent) not in sys.path:
+    sys.path.insert(0, str(storage_io.resolve(Path(__file__)).parent))
 
 from assert_pm99_isolated_input import resolve_game_root, sha256  # noqa: E402
 from stoke_2015_apply_metadata import _run_cli, _verify_rows  # noqa: E402
@@ -113,7 +121,7 @@ def _write_subset_csv(csv_path: Path, rows: list[dict[str, Any]], *, selected_fi
         "weight",
     ]
     csv_path.parent.mkdir(parents=True, exist_ok=True)
-    with csv_path.open("w", newline="", encoding="utf-8") as handle:
+    with storage_io.open_file(csv_path, 'w', newline='', encoding='utf-8') as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()
         for row in rows:
@@ -181,13 +189,13 @@ def main() -> int:
     if game_root is None:
         raise SystemExit("A writable isolated PM99 game root is required")
 
-    output_dir = Path(args.output_dir).resolve()
+    output_dir = storage_io.resolve(Path(args.output_dir))
     output_dir.mkdir(parents=True, exist_ok=True)
-    manifest_path = Path(args.manifest).expanduser().resolve()
-    if not manifest_path.is_file():
+    manifest_path = storage_io.resolve(Path(args.manifest).expanduser())
+    if not storage_io.is_file(manifest_path):
         raise SystemExit(f"Manifest not found: {manifest_path}")
 
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest = json.loads(storage_io.read_text(manifest_path, encoding='utf-8'))
     manifest_rows = list(manifest.get("batch_rows") or [])
     if not manifest_rows:
         raise SystemExit(f"Manifest has no batch_rows: {manifest_path}")
@@ -226,7 +234,7 @@ def main() -> int:
         },
     }
     subset_manifest_path = output_dir / "stoke_2015_metadata_subset_manifest.json"
-    subset_manifest_path.write_text(json.dumps(subset_manifest, indent=2), encoding="utf-8")
+    storage_io.write_text(subset_manifest_path, json.dumps(subset_manifest, indent=2), encoding='utf-8')
 
     result: dict[str, Any] = {
         "manifest_path": str(subset_manifest_path),
@@ -254,7 +262,7 @@ def main() -> int:
         result["player_batch_edit"] = batch_result
         if batch_result["returncode"] != 0:
             result_path = output_dir / "stoke_2015_metadata_subset_apply_result.json"
-            result_path.write_text(json.dumps(result, indent=2), encoding="utf-8")
+            storage_io.write_text(result_path, json.dumps(result, indent=2), encoding='utf-8')
             raise SystemExit(
                 f"player-batch-edit failed for subset apply (exit {batch_result['returncode']}), see {result_path}"
             )
@@ -278,7 +286,7 @@ def main() -> int:
 
         verification_rows = _verify_selected_fields(player_file, selected_rows, selected_fields=selected_fields)
         verification_path = output_dir / "stoke_2015_metadata_subset_verification.json"
-        verification_path.write_text(json.dumps(verification_rows, indent=2), encoding="utf-8")
+        storage_io.write_text(verification_path, json.dumps(verification_rows, indent=2), encoding='utf-8')
         result["verification_path"] = str(verification_path)
         result["verification_ok"] = all(bool(row.get("matches")) for row in verification_rows)
 
@@ -288,7 +296,7 @@ def main() -> int:
         "ENT98030.FDI": sha256(coach_file),
     }
     result_path = output_dir / "stoke_2015_metadata_subset_apply_result.json"
-    result_path.write_text(json.dumps(result, indent=2), encoding="utf-8")
+    storage_io.write_text(result_path, json.dumps(result, indent=2), encoding='utf-8')
     print(
         json.dumps(
             {

@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
 """Verify real runner pixels and the complete independently read live XI grid."""
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -22,38 +30,38 @@ def marker_centres(path, phase):
 
 
 def verify(candidate, run, carrier_id=307, *, header_review=None):
-    layer = json.loads((candidate / 'contextual-tactics.json').read_text())
+    layer = json.loads(storage_io.read_text(candidate / 'contextual-tactics.json'))
     clubs = [c for c in layer['clubs'] if c['carrier_id'] == carrier_id]
     if len(clubs) != 1:
         raise ValueError('runtime proof needs one explicitly selected candidate club')
     club = clubs[0]
     context = club['context']
     identity_path = run / 'tactics-team-identity.json'
-    identity = json.loads(identity_path.read_text()) if identity_path.is_file() else None
+    identity = json.loads(storage_io.read_text(identity_path)) if storage_io.is_file(identity_path) else None
     reviewed_identity = None
     if len(layer['clubs']) > 1 or identity is not None:
         if not identity or identity.get('expected') != club.get('name'):
             raise ValueError('actual tactics header does not independently identify the selected club')
         frame = run / 'screens' / Path(identity['screenshot']).name
-        if frame.name != next((run / 'screens').glob('*_tactics_matrix_defend_all_players.png')).name:
+        if frame.name != next(storage_io.glob(run / 'screens', '*_tactics_matrix_defend_all_players.png')).name:
             raise ValueError('team identity does not bind the checked tactics frame')
-        if hashlib.sha256(frame.read_bytes()).hexdigest() != identity['screenshot_sha256']:
+        if hashlib.sha256(storage_io.read_bytes(frame)).hexdigest() != identity['screenshot_sha256']:
             raise ValueError('team identity screenshot hash changed')
         if not identity.get('matched'):
             if header_review is None:
                 raise ValueError('actual tactics header does not independently identify the selected club')
-            review = json.loads(Path(header_review).read_text())
+            review = json.loads(storage_io.read_text(Path(header_review)))
             if (review.get('schema_version') != 'pm99-runtime-header-visual-review-v1' or
                     review.get('run_tag') != run.name or review.get('carrier_id') != carrier_id or
                     review.get('observed_club') != club.get('name') or
                     review.get('screenshot_sha256') != identity['screenshot_sha256'] or
                     review.get('method') != 'assistant visual inspection of original screenshot'):
                 raise ValueError('visual header review does not bind this exact team and screenshot')
-            reviewed_identity = {'path': str(header_review), 'sha256': hashlib.sha256(Path(header_review).read_bytes()).hexdigest(),
+            reviewed_identity = {'path': str(header_review), 'sha256': hashlib.sha256(storage_io.read_bytes(Path(header_review))).hexdigest(),
                                  'review': review, 'scope': 'explicit visual review of an OCR failure, not an automatic OCR pass'}
     proof_path = run / 'tactics-runtime-proof.json'
-    proof = json.loads(proof_path.read_text())
-    if proof.get('expected_eq_sha256') and proof['expected_eq_sha256'] != hashlib.sha256((candidate / 'DBDAT/EQ98030.FDI').read_bytes()).hexdigest():
+    proof = json.loads(storage_io.read_text(proof_path))
+    if proof.get('expected_eq_sha256') and proof['expected_eq_sha256'] != hashlib.sha256(storage_io.read_bytes(candidate / 'DBDAT/EQ98030.FDI')).hexdigest():
         raise ValueError('live proof was compared against another expected database')
     if (not proof['success'] or proof['carrier_id'] != carrier_id or proof['coordinate_values_checked'] != 880 or
             proof['averages_checked'] != 44 or proof['phases'] != ['attack', 'defend']):
@@ -68,7 +76,7 @@ def verify(candidate, run, carrier_id=307, *, header_review=None):
         raise ValueError('live game state bytes differ from the published recipe')
     reports = []
     for phase, lane_index, depth_index in [('attack', 2, 3), ('defend', 0, 1)]:
-        screenshot = next((run / 'screens').glob(f'*_tactics_matrix_{phase}_all_players.png'))
+        screenshot = next(storage_io.glob(run / 'screens', f'*_tactics_matrix_{phase}_all_players.png'))
         observed = marker_centres(screenshot, phase)
         used = set()
         for slot in context['slots']:
@@ -85,11 +93,11 @@ def verify(candidate, run, carrier_id=307, *, header_review=None):
             used.add(component_id)
             reports.append({'player': slot['native_name'], 'player_id': slot['native_player_id'], 'role': slot['role'],
                 'phase': phase, 'expected_centre': expected, 'observed_centre': centre, 'error_pixels': float(error),
-                'screenshot': str(screenshot), 'screenshot_sha256': hashlib.sha256(screenshot.read_bytes()).hexdigest()})
+                'screenshot': str(screenshot), 'screenshot_sha256': hashlib.sha256(storage_io.read_bytes(screenshot)).hexdigest()})
     return {'schema_version': 'pm99-contextual-tactics-visual-proof-v2', 'success': True,
         'carrier_id': carrier_id, 'club': club.get('name'), 'formation': club.get('formation'),
-        'named_player_phases_checked': 22, 'runtime_proof_sha256': hashlib.sha256(proof_path.read_bytes()).hexdigest(),
-        'tactics_layer_sha256': hashlib.sha256((candidate / 'contextual-tactics.json').read_bytes()).hexdigest(),
+        'named_player_phases_checked': 22, 'runtime_proof_sha256': hashlib.sha256(storage_io.read_bytes(proof_path)).hexdigest(),
+        'tactics_layer_sha256': hashlib.sha256(storage_io.read_bytes(candidate / 'contextual-tactics.json')).hexdigest(),
         'team_identity': identity,
         'header_visual_review': reviewed_identity,
         'scope': f"{layer['season']} carrier {carrier_id} XI only; live states and on-screen phase averages, not a claim of match behaviour",
@@ -104,9 +112,9 @@ def main():
     parser.add_argument('--carrier-id', type=int, default=307)
     parser.add_argument('--header-review', type=Path)
     args = parser.parse_args()
-    report = verify(args.candidate.resolve(), args.run.resolve(), args.carrier_id, header_review=args.header_review)
+    report = verify(storage_io.resolve(args.candidate), storage_io.resolve(args.run), args.carrier_id, header_review=args.header_review)
     # No silent replacement of evidence from another run.
-    with args.output.open('x') as handle:
+    with storage_io.open_file(args.output, 'x') as handle:
         json.dump(report, handle, indent=2, sort_keys=True)
         handle.write('\n')
     print(json.dumps({'success': report['success'], 'named_player_phases_checked': report['named_player_phases_checked']}))

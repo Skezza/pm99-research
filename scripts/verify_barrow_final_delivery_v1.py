@@ -3,6 +3,7 @@ from pathlib import Path
 
 from app.fdi_indexed import IndexedFDIFile
 from app.editor_actions import _read_native_dd6360_fields
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_barrow_opening_repair_v1 as source
 from scripts import season_release_registry_v1 as registry, season_pipeline_v2 as pipeline
 from scripts import season_italian_opening_layer_v1 as roster
@@ -15,7 +16,7 @@ from scripts.audit_2015_world_release_semantics_v1 import _manager_graph
 
 
 def verify(release, output):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('Barrow delivery readback is immutable')
     package = pipeline.read_json_file(release.package_path); packages.validate_package(package)
     plan_path = release.package_path.parent / source.FILENAME
@@ -24,8 +25,8 @@ def verify(release, output):
     if registry.sha256_file(plan_path) != artifact['sha256']:
         raise ValueError('retained opening source artifact changed')
     baseline = registry.load_registered_release(release.season, plan['release_id'])
-    jug = (release.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (release.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
     entries = {e.record_id:e for e in IndexedFDIFile.from_bytes(jug).entries}
     players = {p['carrier_id']:p for p in package['players']}
     clubs = {c['carrier_id']:c for c in package['clubs']}
@@ -40,7 +41,7 @@ def verify(release, output):
         raise ValueError('actual native retained club label differs')
     ordered = []; readback = []
     countries = delta.compiler._extract_country_codes_from_textos(release.game_path/'DBDAT/TEXTOS.PKF')
-    base_jug = (baseline.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    base_jug = storage_io.read_bytes(baseline.game_path / 'DBDAT/JUG98030.FDI')
     base_entries = {e.record_id:e for e in IndexedFDIFile.from_bytes(base_jug).entries}
     for id in sorted(source.REPLACE.keys() | source.KEEP.values()):
         p = players[id]; data = entries[id].decode_payload(jug)
@@ -87,19 +88,19 @@ def verify(release, output):
             or sum(r[2]=='G' for r in ordered[:11]) != 1
             or [r[1] for r in ordered[11:16]] != plan['original_published_bench']):
         raise ValueError('original full XI/bench does not read back')
-    preserve_other_records((baseline.game_path/'DBDAT/JUG98030.FDI').read_bytes(),jug,
+    preserve_other_records(storage_io.read_bytes(baseline.game_path / 'DBDAT/JUG98030.FDI'),jug,
         set(source.REPLACE) | set(source.KEEP.values()))
     before_label = registry.load_registered_release(release.season,'sourced-barrow-retained-opening-20261010-r65d')
-    preserve_other_records((before_label.game_path/'DBDAT/EQ98030.FDI').read_bytes(),eq,{3325})
-    preserve_other_records((before_label.game_path/'DBDAT/ENT98030.FDI').read_bytes(),
-        (release.game_path/'DBDAT/ENT98030.FDI').read_bytes(),{822})
+    preserve_other_records(storage_io.read_bytes(before_label.game_path / 'DBDAT/EQ98030.FDI'),eq,{3325})
+    preserve_other_records(storage_io.read_bytes(before_label.game_path / 'DBDAT/ENT98030.FDI'),
+        storage_io.read_bytes(release.game_path / 'DBDAT/ENT98030.FDI'),{822})
     holders,names = _manager_graph(eq_path=release.game_path/'DBDAT/EQ98030.FDI',ent_path=release.game_path/'DBDAT/ENT98030.FDI')
     if names[822] != 'Bayliss' or [c['carrier_id'] for c in holders[822]] != [3325]:
         raise ValueError('actual dated manager/club ownership differs')
     corrected = set(source.REPLACE)
-    archive = (release.game_path/'DBDAT/MINIFOTO.PKF').read_bytes()
+    archive = storage_io.read_bytes(release.game_path / 'DBDAT/MINIFOTO.PKF')
     cleared,_ = delta.no_photo_archive(archive,corrected)
-    if cleared != archive or any((release.game_path/'DBDAT/MINIFOTO'/f'J96{id:05d}.BMP').exists() for id in corrected):
+    if cleared != archive or any(storage_io.exists(release.game_path / 'DBDAT/MINIFOTO' / f'J96{id:05d}.BMP') for id in corrected):
         raise ValueError('old portrait is still attached to a new substitute')
     people,_ = identity.identities.load_identity_snapshot()
     input_path = registry.ROOT/plan['published_person_binding']['path']

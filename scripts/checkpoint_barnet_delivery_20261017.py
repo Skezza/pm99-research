@@ -3,6 +3,7 @@ import copy
 from datetime import UTC, datetime
 from pathlib import Path
 import tempfile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry, season_pipeline_v2 as pipeline
 from scripts import season_paired_whole_club_reconstruction_v1 as source
 from scripts import publish_historical_role_delta_v1 as publisher
@@ -26,7 +27,7 @@ def run(*, root=ROOT, folder=FOLDER, season=SEASON, release_id=RELEASE, replay_i
     ROOT,FOLDER,SEASON,RELEASE,REPLAY,TAG,PROFILES=root,folder,season,release_id,replay_id,tag,profiles
     previous_path=ROOT/f'release-delivery-checklist-v{previous_version}.json'
     output=ROOT/f'release-delivery-checklist-v{next_version}.json'
-    if output.exists():raise ValueError('completed publication must not repeat')
+    if storage_io.exists(output):raise ValueError('completed publication must not repeat')
     previous=pipeline.read_json_file(previous_path)
     release=registry.load_registered_release(SEASON,RELEASE)
     rebuilt=registry.load_registered_release(SEASON,REPLAY)
@@ -35,7 +36,7 @@ def run(*, root=ROOT, folder=FOLDER, season=SEASON, release_id=RELEASE, replay_i
     if not replay['complete_game_inventory_identical'] or not replay['complete_recipe_identical']:
         raise ValueError('whole SOURCE equality required')
     for item in (release,rebuilt):pipeline.assert_tree_matches_inventory(item.game_path,pipeline.read_json_file(release.inventory_path))
-    if release.package_path.read_bytes()!=rebuilt.package_path.read_bytes():raise ValueError('whole recipe differs')
+    if storage_io.read_bytes(release.package_path)!=storage_io.read_bytes(rebuilt.package_path):raise ValueError('whole recipe differs')
     with tempfile.TemporaryDirectory(prefix='pm99-barnet-readback-') as folder:
         fresh=readback.verify(ROOT/(proof_prefix+'-complete-v1'),Path(folder)/'proof.json')
     saved=pipeline.read_json_file(ROOT/(proof_prefix+'-native-readback.json'))
@@ -93,7 +94,7 @@ def run(*, root=ROOT, folder=FOLDER, season=SEASON, release_id=RELEASE, replay_i
         for row in country_gap['cases']:
             path=registry.ROOT/row['evidence']['path'];bio=row['original_profile']['identity']
             if registry.sha256_file(path)!=row['evidence']['sha256']:raise ValueError('open country original changed')
-            if country_source.country(path.read_bytes(),person_id=bio['provider_player_id'],name=bio['name'],
+            if country_source.country(storage_io.read_bytes(path),person_id=bio['provider_player_id'],name=bio['name'],
                     birth_date=bio['birth_date'],url=bio['source_profile_url'])!=row['original_profile']:
                 raise ValueError('open nationality original does not reproduce')
             if players[row['carrier_id']]['facts']['nationality']!='XXX' or row['delivered']:

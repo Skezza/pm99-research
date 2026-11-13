@@ -3,6 +3,7 @@ import argparse
 from pathlib import Path
 import time
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import archive_superseded_2004_probes_20261017 as archive
 from scripts import season_release_registry_v1 as registry
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
@@ -11,7 +12,7 @@ from scripts.build_savio_bobb_alias_reserve_20261011 import retained
 def main(wait_pid):
     while wait_pid:
         try:
-            command = Path(f'/proc/{wait_pid}/cmdline').read_bytes()
+            command = storage_io.read_bytes(Path(f'/proc/{wait_pid}/cmdline'))
         except FileNotFoundError:
             break
         if not command:
@@ -20,7 +21,7 @@ def main(wait_pid):
             raise ValueError('expected publisher PID changed identity')
         time.sleep(10)
     source = registry.ROOT / '.local/season-draft-replay-v2'
-    files = [p for p in source.rglob('*') if p.is_file()]
+    files = [p for p in storage_io.glob(source, '*', recursive=True) if storage_io.is_file(p)]
     if len(files) != 51 or any(p.suffix != '.json' or p.is_symlink() for p in files):
         raise ValueError('superseded draft scope differs from inspected 51 JSON files')
     archive.ROOT = registry.ROOT / '.local/cleanup-20261017/superseded-draft-recipes-to-pi'

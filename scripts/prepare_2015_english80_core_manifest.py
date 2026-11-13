@@ -9,6 +9,14 @@ carrier.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import copy
 import hashlib
@@ -18,7 +26,7 @@ from pathlib import Path
 from typing import Any
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = storage_io.resolve(Path(__file__)).parents[1]
 SEASON = "2015/16"
 SELECTION_SEED = "pm99-2015-16-core80-v1"
 TARGET_DIVISION_BY_PANEL = {
@@ -34,7 +42,7 @@ PREFERRED_OMISSIONS = {"Championship": (), "League One": ("Bury",), "League Two"
 
 
 def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def _seed_rank(division: str, club: str) -> str:
@@ -43,7 +51,7 @@ def _seed_rank(division: str, club: str) -> str:
 
 def _json_dump(path: Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(path, json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8')
 
 
 def _normalise_name(value: str) -> str:
@@ -183,17 +191,17 @@ def main() -> int:
     parser.add_argument("--core-ledger-output", required=True, type=Path)
     args = parser.parse_args()
 
-    source_path = args.source_ledger.resolve()
-    map_path = args.selector_map.resolve()
+    source_path = storage_io.resolve(args.source_ledger)
+    map_path = storage_io.resolve(args.selector_map)
     selection, core_ledger = build_selection(
-        source_ledger=json.loads(source_path.read_text(encoding="utf-8")),
-        selector_map=json.loads(map_path.read_text(encoding="utf-8")),
+        source_ledger=json.loads(storage_io.read_text(source_path, encoding='utf-8')),
+        selector_map=json.loads(storage_io.read_text(map_path, encoding='utf-8')),
     )
     selection["source_ledger_sha256"] = _sha256(source_path)
     selection["selector_map_sha256"] = _sha256(map_path)
     core_ledger["core80_selection"] = selection
-    _json_dump(args.selection_output.resolve(), selection)
-    _json_dump(args.core_ledger_output.resolve(), core_ledger)
+    _json_dump(storage_io.resolve(args.selection_output), selection)
+    _json_dump(storage_io.resolve(args.core_ledger_output), core_ledger)
     print(
         json.dumps(
             {

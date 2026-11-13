@@ -15,6 +15,7 @@ from pathlib import Path
 from bs4 import BeautifulSoup
 from app.fdi_indexed import IndexedFDIFile
 from app.indexed_jug_roles import read_indexed_native_roles
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_exact_primary_position_delta_v2 as native_writer
 from scripts import season_historical_roster_audit_v1 as roster
 from scripts import season_opening_order_repair_v1 as ownership
@@ -40,17 +41,17 @@ def _sha_bytes(value):
 
 def _sha_file(path):
     h = hashlib.sha256()
-    with Path(path).open("rb") as stream:
+    with storage_io.open_file(Path(path), 'rb') as stream:
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
             h.update(chunk)
     return h.hexdigest()
 
 
 def _read_bound(path, expected_sha):
-    path = (ROOT / path).resolve(strict=True) if not Path(path).is_absolute() else Path(path).resolve(strict=True)
-    if not path.is_relative_to(ROOT.resolve()):
+    path = storage_io.resolve(ROOT / path, strict=True) if not Path(path).is_absolute() else storage_io.resolve(Path(path), strict=True)
+    if not path.is_relative_to(storage_io.resolve(ROOT)):
         raise ValueError("Barrow retained source path escapes workspace")
-    body = path.read_bytes()
+    body = storage_io.read_bytes(path)
     if _sha_bytes(body) != expected_sha:
         raise ValueError("Barrow source body/hash binding changed")
     return path, body
@@ -69,8 +70,8 @@ def _find_fifa_rows(stream, edition, player_id):
 
 def _fifa_row(req):
     source = req["fifa_source"]
-    path = (ROOT / source["path"]).resolve(strict=True)
-    if not path.is_relative_to(ROOT.resolve()):
+    path = storage_io.resolve(ROOT / source['path'], strict=True)
+    if not path.is_relative_to(storage_io.resolve(ROOT)):
         raise ValueError("Barrow FIFA source path escapes workspace")
     first_sha = _sha_file(path)
     if first_sha != source["sha256"]:
@@ -78,7 +79,7 @@ def _fifa_row(req):
     key = (first_sha, "17", "207645")
     rows = _FIFA_MATCHES_BY_BODY.get(key)
     if rows is None:
-        with path.open(encoding="utf-8-sig", newline="") as stream:
+        with storage_io.open_file(path, encoding='utf-8-sig', newline='') as stream:
             rows = _find_fifa_rows(stream, "17", "207645")
         # Rehash after the streaming parse to reject a concurrent source change.
         if _sha_file(path) != first_sha:
@@ -161,10 +162,10 @@ def prepare(base, input_path=INPUT):
     request_path = Path(input_path)
     if not request_path.is_absolute():
         request_path = ROOT / request_path
-    request_path = request_path.resolve(strict=True)
-    if not request_path.is_relative_to(ROOT.resolve()):
+    request_path = storage_io.resolve(request_path, strict=True)
+    if not request_path.is_relative_to(storage_io.resolve(ROOT)):
         raise ValueError("Barrow source request escapes workspace")
-    request_bytes = request_path.read_bytes()
+    request_bytes = storage_io.read_bytes(request_path)
     request = json.loads(request_bytes.decode("utf-8"))
     expected_request_keys = {"schema", "season", "release_id", "carrier_id", "name", "birth_date", "before", "after",
         "annual_source", "fifa_source", "club_source", "conflict_disposition"}
@@ -190,7 +191,7 @@ def prepare(base, input_path=INPUT):
             or roster.normalise((player.get("source_name") or player["name"]).removeprefix("#77 ")) != roster.normalise(request["name"])):
         raise ValueError("Barrow exact package name/DOB/broad/fine preimage differs")
     jug_path, eq_path = base.game_path / "DBDAT/JUG98030.FDI", base.game_path / "DBDAT/EQ98030.FDI"
-    jug, eq = jug_path.read_bytes(), eq_path.read_bytes()
+    jug, eq = storage_io.read_bytes(jug_path), storage_io.read_bytes(eq_path)
     jug_sha, eq_sha = _sha_bytes(jug), _sha_bytes(eq)
     if jug_sha != registry.sha256_file(jug_path) or eq_sha != registry.sha256_file(eq_path):
         raise ValueError("Barrow release native source changed during read")
@@ -220,8 +221,8 @@ def prepare(base, input_path=INPUT):
         {"path": club_source["path"], "sha256": club_source["sha256"]},
         {"path": club_source["receipt_path"], "sha256": club_source["receipt_sha256"]}]
     canonical_adapter_path = ROOT / "scripts/season_barrow_winger_fine_role_v1.py"
-    adapter_sha = _sha_file(Path(__file__).resolve())
-    if canonical_adapter_path.exists() and _sha_file(canonical_adapter_path) != adapter_sha:
+    adapter_sha = _sha_file(storage_io.resolve(Path(__file__)))
+    if storage_io.exists(canonical_adapter_path) and _sha_file(canonical_adapter_path) != adapter_sha:
         raise ValueError("Barrow canonical adapter source differs from tested private copy")
     code_paths = (ROOT / "scripts/season_exact_primary_position_delta_v2.py",
         ROOT / "scripts/season_historical_roster_audit_v1.py", ROOT / "scripts/season_opening_order_repair_v1.py",
@@ -285,8 +286,8 @@ def _writer_bridge(plan):
 def apply(jug, eq, plan):
     base = registry.load_registered_release(plan["season"], plan["release_id"])
     verify(base, plan)
-    before_jug = (base.game_path / "DBDAT/JUG98030.FDI").read_bytes()
-    before_eq = (base.game_path / "DBDAT/EQ98030.FDI").read_bytes()
+    before_jug = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    before_eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     if (_sha_bytes(before_jug) != plan["jug_sha256"] or _sha_bytes(before_eq) != plan["eq_sha256"]
             or _sha_bytes(eq) != plan["eq_sha256"]):
         raise ValueError("Barrow source plan exact JUG/EQ preimage changed")
@@ -316,8 +317,8 @@ def reconstruction(previous, release_id):
     relative = locator.get("sourced_profile_assignment_plan_path")
     if not relative or Path(relative).is_absolute():
         raise ValueError("Barrow SOURCE plan locator missing or absolute")
-    path = (ROOT / relative).resolve(strict=True)
-    if not path.is_relative_to(ROOT.resolve()):
+    path = storage_io.resolve(ROOT / relative, strict=True)
+    if not path.is_relative_to(storage_io.resolve(ROOT)):
         raise ValueError("Barrow SOURCE plan locator escapes workspace")
     plan = pipeline.read_json_file(path)
     if plan.get("schema") != SCHEMA:
@@ -331,7 +332,7 @@ def reconstruction(previous, release_id):
     if bind(pipeline.read_json_file(base.package_path), plan) != package:
         raise ValueError("Barrow SOURCE would discard recipe changes")
     art = next((a for a in package["artifacts"] if a.get("id") == artifact_id(plan)), None)
-    if (art is None or path != (previous.package_path.parent / filename(plan)).resolve()
+    if (art is None or path != storage_io.resolve(previous.package_path.parent / filename(plan))
             or art.get("sha256") != hashlib.sha256(packages.canonical_json_bytes(plan)).hexdigest()):
         raise ValueError("Barrow source artifact path/hash differs")
     for release in (base, previous):

@@ -1,4 +1,5 @@
 """Deliver and byte-verify the bounded six-person 2024 opening correction."""
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_city_2024_opening_exchange_v1 as source
 from scripts import publish_historical_role_delta_v1 as publisher
@@ -20,8 +21,8 @@ def moved_skill_proof():
     base=registry.load_registered_release(SEASON,BASE)
     release=registry.load_registered_release(SEASON,RELEASE)
     plan=pipeline.read_json_file(ROOT/'opening-exchange-plan.json')
-    left=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    right=(release.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    left=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    right=storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     old={e.record_id:e for e in IndexedFDIFile.from_bytes(left).entries}
     new={e.record_id:e for e in IndexedFDIFile.from_bytes(right).entries}
     rows=[]
@@ -50,26 +51,26 @@ def main():
     retained(descriptor,dict(season=SEASON,release_id=BASE,
         package_sha256=registry.sha256_file(base.package_path),
         jug_sha256=registry.sha256_file(base.game_path/'DBDAT/JUG98030.FDI'),updates=[],unresolved=[]))
-    if not registry.locator_path(SEASON,RELEASE).exists():
+    if not storage_io.exists(registry.locator_path(SEASON, RELEASE)):
         publisher.publish(SEASON,descriptor,release_id=RELEASE,source_release_id=BASE,profile_assignment_plan_path=path)
     release=registry.load_registered_release(SEASON,RELEASE)
     proof_path=ROOT/'native-byte-proof.json'
-    if not proof_path.exists():
-        original=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-        eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
-        actual=(release.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    if not storage_io.exists(proof_path):
+        original=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+        eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
+        actual=storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
         expected,expected_eq=source.apply(original,eq,plan)
-        if (actual,(release.game_path/'DBDAT/EQ98030.FDI').read_bytes())!=(expected,expected_eq):
+        if (actual,storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI'))!=(expected,expected_eq):
             raise ValueError('actual six-slot game does not reproduce')
         if source.apply(actual,eq,plan)!=(actual,eq):raise ValueError('six-slot native patch is not idempotent')
         selected={r[k] for r in plan['exchanges'] for k in ('city_carrier','destination_carrier')}
         preserve_other_records(original,actual,selected)
         package=pipeline.read_json_file(release.package_path)
         if package!=source.bind(pipeline.read_json_file(base.package_path),plan):raise ValueError('actual recipe differs')
-        archive,offsets=delta.no_photo_archive((base.game_path/'DBDAT/MINIFOTO.PKF').read_bytes(),selected)
-        if archive!=(release.game_path/'DBDAT/MINIFOTO.PKF').read_bytes():raise ValueError('actual photo archive differs')
+        archive,offsets=delta.no_photo_archive(storage_io.read_bytes(base.game_path / 'DBDAT/MINIFOTO.PKF'),selected)
+        if archive!=storage_io.read_bytes(release.game_path / 'DBDAT/MINIFOTO.PKF'):raise ValueError('actual photo archive differs')
         for k in selected:
-            if (release.game_path/f'DBDAT/MINIFOTO/J96{k:05d}.BMP').exists():raise ValueError('old slot photo still present')
+            if storage_io.exists(release.game_path / f'DBDAT/MINIFOTO/J96{k:05d}.BMP'):raise ValueError('old slot photo still present')
         before={r['path']:r['sha256'] for r in pipeline.read_json_file(base.inventory_path)['files']}
         after={r['path']:r['sha256'] for r in pipeline.read_json_file(release.inventory_path)['files']}
         allowed={'DBDAT/JUG98030.FDI','DBDAT/MINIFOTO.PKF'}|{f'DBDAT/MINIFOTO/J96{k:05d}.BMP' for k in selected}
@@ -84,8 +85,8 @@ def main():
             ten_visible_skills_verified=True,exact_portrait_directory_reproduction=True,
             preserved_first_XI_and_native_orders=True,all_unrelated_game_files='byte-identical'))
     replay_path=ROOT/'complete-SOURCE-replay.json'
-    if not replay_path.exists():
-        if registry.locator_path(SEASON,REPLAY).exists():raise ValueError('unreceipted City SOURCE replay exists')
+    if not storage_io.exists(replay_path):
+        if storage_io.exists(registry.locator_path(SEASON, REPLAY)):raise ValueError('unreceipted City SOURCE replay exists')
         replay=source.reconstruction(release,REPLAY)
         retained(replay_path,replay)
     print(dict(built=True,exact_SOURCE_verified=True,runtime_pending=True,preferred_not_yet_promoted=True),flush=True)

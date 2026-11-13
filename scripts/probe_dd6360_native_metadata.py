@@ -8,6 +8,14 @@ the FDI are unchanged. It refuses the two known legacy birth-year encodings.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -73,10 +81,10 @@ def patch(
     position: int | None = None,
     handling: int | None = None,
 ) -> dict[str, object]:
-    if source.resolve() == destination.resolve():
+    if storage_io.resolve(source) == storage_io.resolve(destination):
         raise ValueError("source and destination must differ; use a disposable output path")
 
-    source_bytes = source.read_bytes()
+    source_bytes = storage_io.read_bytes(source)
     indexed = IndexedFDIFile.from_bytes(source_bytes)
     entry = next((item for item in indexed.entries if int(item.record_id) == record_id), None)
     if entry is None:
@@ -168,7 +176,7 @@ def patch(
         raise AssertionError("bytes outside approved native metadata spans changed")
 
     destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.write_bytes(bytes(output))
+    storage_io.write_bytes(destination, bytes(output))
     return {
         "schema_version": 1,
         "purpose": "Disposable same-length dd6360 native-metadata runtime probe",
@@ -258,7 +266,7 @@ def main() -> int:
         position=position,
     )
     args.receipt.parent.mkdir(parents=True, exist_ok=True)
-    args.receipt.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(args.receipt, json.dumps(result, indent=2, sort_keys=True) + '\n', encoding='utf-8')
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0
 

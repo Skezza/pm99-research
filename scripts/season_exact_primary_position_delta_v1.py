@@ -11,6 +11,7 @@ import hashlib
 from app.fdi_indexed import IndexedFDIFile
 from app.indexed_jug_roles import rewrite_indexed_native_roles
 from app.xor import xor_encode
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_exact_fifa_role_delta_v1 as fifa
 from scripts import season_exact_fifa_role_delta_v2 as conservative
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
@@ -45,8 +46,8 @@ def prepare(base, targets):
     package = pipeline.read_json_file(base.package_path)
     players = {p['carrier_id']: p for p in package['players']}
     clubs = {c['id']: c for c in package['clubs']}
-    data = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    data = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(data).entries}
     ownership = owners.native_owners(eq)
     fifa_path = fifa.identity.old.FIFA
@@ -141,7 +142,7 @@ def apply(jug, eq, plan):
     if plan.get('schema') != SCHEMA or not plan.get('updates'):
         raise ValueError('nonempty exact primary-position schema required')
     base = registry.load_registered_release(plan['season'], plan['release_id'])
-    before = (base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    before = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
     if registry.sha256_file(base.game_path/'DBDAT/JUG98030.FDI') != plan['jug_sha256'] or hashlib.sha256(eq).hexdigest() != plan['eq_sha256']:
         raise ValueError('primary-position whole native preimage changed')
     patched, _ = rewrite_indexed_native_roles(before, {r['carrier_id']: r['fine_roles'] for r in plan['updates']})
@@ -181,7 +182,7 @@ def reconstruction(previous, release_id):
         raise ValueError('primary-position SOURCE would discard recipe edits')
     package = pipeline.read_json_file(previous.package_path)
     artifact = next(a for a in package['artifacts'] if a['id'] == PREFIX+plan['transaction_id'])
-    if artifact['sha256'] != registry.sha256_file(path) or path.resolve() != (previous.package_path.parent/filename(plan)).resolve():
+    if artifact['sha256'] != registry.sha256_file(path) or storage_io.resolve(path) != storage_io.resolve(previous.package_path.parent / filename(plan)):
         raise ValueError('primary-position SOURCE original local plan artifact differs')
     descriptor = previous.package_path.parent/'role-delta-input.json'
     if pipeline.read_json_file(descriptor) != dict(season=base.season, release_id=base.release_id,
@@ -192,6 +193,6 @@ def reconstruction(previous, release_id):
         release_id=release_id, source_release_id=base.release_id, profile_assignment_plan_path=path)
     rebuilt = registry.load_registered_release(previous.season, release_id)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path, pipeline.read_json_file(previous.inventory_path))
-    if rebuilt.package_path.read_bytes() != previous.package_path.read_bytes():
+    if storage_io.read_bytes(rebuilt.package_path) != storage_io.read_bytes(previous.package_path):
         raise ValueError('primary-position SOURCE whole recipe differs')
     return dict(season=previous.season, complete_game_inventory_identical=True, complete_recipe_identical=True)

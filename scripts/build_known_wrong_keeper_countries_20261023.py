@@ -2,6 +2,7 @@
 import argparse
 import shutil
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
 from scripts import season_source_verified_player_changes_v1 as source
@@ -17,11 +18,11 @@ SEASONS = ('2000-01', '2001-02', '2002-03', '2003-04',
 
 def native_proof(base, actual, plan):
     source.verify(base, plan)
-    jug = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     expected, expected_eq = source.apply(jug, eq, plan)
-    if ((actual.game_path / 'DBDAT/JUG98030.FDI').read_bytes() != expected
-            or (actual.game_path / 'DBDAT/EQ98030.FDI').read_bytes() != expected_eq
+    if (storage_io.read_bytes(actual.game_path / 'DBDAT/JUG98030.FDI') != expected
+            or storage_io.read_bytes(actual.game_path / 'DBDAT/EQ98030.FDI') != expected_eq
             or source.apply(expected, expected_eq, plan) != (expected, expected_eq)):
         raise ValueError('actual country native readback or idempotence differs')
     left = {r['path']: r['sha256'] for r in pipeline.read_json_file(base.inventory_path)['files']}
@@ -48,7 +49,7 @@ def build_one(season):
     release_id = f'sourced-keeper-profile-countries-20261023-r{number}a'
     replay_id = f'replayed-keeper-profile-countries-20261023-r{number}b'
     folder = OUTPUT / season
-    if folder.exists() or registry.locator_path(season, release_id).exists():
+    if storage_io.exists(folder) or storage_io.exists(registry.locator_path(season, release_id)):
         raise ValueError('existing stage must be inspected, never silently regenerated')
     input_path = ROOT / 'horne' / f'known-wrong-input-{season}-v2.json'
     request = pipeline.read_json_file(input_path)

@@ -13,6 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_historical_roster_audit_v1 as roster
@@ -35,12 +36,12 @@ def source_collisions(rows):
 
 def collect(season, args):
     release = registry.load_preferred_release(season)
-    package = json.loads(release.package_path.read_text()); package_hash = registry.sha256_file(release.package_path)
+    package = json.loads(storage_io.read_text(release.package_path)); package_hash = registry.sha256_file(release.package_path)
     base = args.review_root / season
     native_path = base / 'roster-audit.json'
-    if not native_path.exists(): native_path = base / 'report.json'
+    if not storage_io.exists(native_path): native_path = base / 'report.json'
     facts_path = base / 'player-facts-audit.json'
-    native = json.loads(native_path.read_text()); facts = json.loads(facts_path.read_text())
+    native = json.loads(storage_io.read_text(native_path)); facts = json.loads(storage_io.read_text(facts_path))
     for document in (native, facts): current_audit(document, season, package_hash)
     if native['bindings']['jug_sha256'] != registry.sha256_file(release.game_path / 'DBDAT/JUG98030.FDI'):
         raise ValueError('completed native player audit no longer matches current game')
@@ -50,7 +51,7 @@ def collect(season, args):
     duplicate_people = opening.duplicate_queue(players, {c['id']: c for c in clubs}, {})
     duplicated = collections.Counter(r['club_id'] for person in duplicate_people for r in person['candidates'])
     source_path = args.opening_root / season / 'opening-review.json'
-    source = json.loads(source_path.read_text())
+    source = json.loads(storage_io.read_text(source_path))
     current_clubs = {c['id']: c for c in clubs}
     for row in source['clubs']:
         club = current_clubs.get(row['club_id'])
@@ -80,11 +81,11 @@ def collect(season, args):
             'historical_verification_complete': False,
             'player_review_csv': registry.relative_workspace_path(base / 'review/players.csv')})
     qa_path = args.qa_root / season / 'qa-report.json'
-    qa = json.loads(qa_path.read_text()) if qa_path.exists() else None
+    qa = json.loads(storage_io.read_text(qa_path)) if storage_io.exists(qa_path) else None
     qa_bound = bool(qa and qa.get('historical_revision_binding') == {
         'release_id': release.release_id, 'release_manifest_sha256': release.manifest_sha256, 'package_sha256': package_hash})
     runtime_issues = registry._validate_runtime_attestation(release)
-    application = json.loads((base / 'application.json').read_text())
+    application = json.loads(storage_io.read_text(base / 'application.json'))
     result = {'season': season, 'release_id': release.release_id, 'package_sha256': package_hash,
         'clubs': len(club_rows), 'players': len(facts['players']), 'roster': native['summary'], 'player_facts': facts['summary'],
         'manager_name_corrections': application['changed_manager_names'],
@@ -106,7 +107,7 @@ def main():
     parser.add_argument('--review-root', type=Path, required=True); parser.add_argument('--opening-root', type=Path, required=True)
     parser.add_argument('--qa-root', type=Path, required=True); parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
-    if args.output.exists(): raise ValueError('completed review collection exists; choose a new output root')
+    if storage_io.exists(args.output): raise ValueError('completed review collection exists; choose a new output root')
     results = []; clubs = []
     for season in registry.supported_seasons():
         result, rows = collect(season, args); results.append(result); clubs.extend(rows)
@@ -127,7 +128,7 @@ def main():
             '2015 legacy manager links require reconciliation with its earlier native graph repair.',
             'Portrait likeness, kit design and subjective abilities are not independently approved by these roster checks.']}
     args.output.mkdir(parents=True)
-    with (args.output / 'clubs.csv').open('w', newline='') as handle:
+    with storage_io.open_file(args.output / 'clubs.csv', 'w', newline='') as handle:
         writer = csv.DictWriter(handle, fieldnames=list(clubs[0])); writer.writeheader(); writer.writerows(clubs)
     pipeline.write_canonical_json(args.output / 'summary.json', summary)
     print(json.dumps(summary['totals']))

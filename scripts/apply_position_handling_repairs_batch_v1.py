@@ -25,6 +25,7 @@ BASE_TREE = LOCAL / "season-pipeline-v2" / "pm99-base-clean"
 
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts.pm99_season_play_v1 import REVISIONS  # noqa: E402
 
 
@@ -37,7 +38,7 @@ class BatchRepairError(ValueError):
 
 def _read(path: Path) -> dict[str, Any]:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(storage_io.read_text(path, encoding='utf-8'))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise BatchRepairError(f"cannot read JSON: {path}") from exc
     if not isinstance(value, dict):
@@ -65,7 +66,7 @@ def _command(paths: dict[str, Path]) -> list[str]:
     # 2001/02 predates the mirrored strict-package directory, but its three
     # active ingress snapshots are still the complete writable recipe chain.
     for key in ("strict", "source", "alias", "reconciled"):
-        if paths[key].is_file():
+        if storage_io.is_file(paths[key]):
             command.extend(("--package", str(paths[key])))
     return command + [
         "--compile-package", str(paths["reconciled"]),
@@ -80,11 +81,11 @@ def _run_one(season: str, *, rerun: bool) -> dict[str, Any]:
     paths = _paths(season)
     missing = [
         name for name, path in paths.items()
-        if name not in {"receipt", "strict"} and not path.exists()
+        if name not in {"receipt", "strict"} and not storage_io.exists(path)
     ]
     if missing:
         raise BatchRepairError(f"{season} lacks required current inputs: {', '.join(missing)}")
-    if paths["receipt"].is_file() and not rerun:
+    if storage_io.is_file(paths['receipt']) and not rerun:
         receipt = _read(paths["receipt"])
         return {
             "season": season,
@@ -93,7 +94,7 @@ def _run_one(season: str, *, rerun: bool) -> dict[str, Any]:
             "receipt": str(paths["receipt"].relative_to(ROOT)),
         }
     completed = subprocess.run(_command(paths), cwd=ROOT, text=True, capture_output=True)
-    if completed.returncode or not paths["receipt"].is_file():
+    if completed.returncode or not storage_io.is_file(paths['receipt']):
         raise BatchRepairError(json.dumps({
             "season": season,
             "returncode": completed.returncode,
@@ -164,7 +165,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"direct-position-handling-repair-batch: {exc}", file=sys.stderr)
         return 2
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(result, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(args.output, json.dumps(result, ensure_ascii=False, sort_keys=True) + '\n', encoding='utf-8')
     print(json.dumps({"state": result["state"], "applied_count": result["applied_count"],
                       "reused_count": result["reused_count"]}, sort_keys=True))
     return 0

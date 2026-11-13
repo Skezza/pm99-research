@@ -4,6 +4,7 @@ This does not replace ordinary Stoke startup attestation or certify all foreign
 manager menus. Preserve selection/setup frames, not only the final lineup.
 """
 import os
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_kit_render_bindings_v1
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import capture_registered_season_runtime_v1 as capture
@@ -19,7 +20,7 @@ def main():
     root = batch.ROOT / SEASON
     proof = pipeline.read_json_file(root / 'native-byte-proof.json')
     actual = registry.load_registered_release(SEASON, batch.RELEASE)
-    if proof['manifest_sha256'] != actual.manifest_sha256 or not (root / 'complete-SOURCE-replay.json').exists():
+    if proof['manifest_sha256'] != actual.manifest_sha256 or not storage_io.exists(root / 'complete-SOURCE-replay.json'):
         raise ValueError('complete actual manager-game proof required')
     plan = pipeline.read_json_file(root / 'manager-plan.json')
     rows = [r for r in plan['updates'] if r['club'] == 'Tranmere Rovers']

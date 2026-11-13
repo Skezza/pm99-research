@@ -15,6 +15,7 @@ import time
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import closeout_duplicate_ownership_batch_v1 as batch
 from scripts import deliver_compiled_duplicate_batch_v1 as delivery
 from scripts import season_release_registry_v1 as registry
@@ -51,7 +52,7 @@ def combine(plans, components, release_id):
 
 
 def run(plan_root, release_id, output, jobs):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('native batch proof already exists; never overwrite')
     pending, active, components, paths = set(registry.supported_seasons()), {}, {}, {}
     component_root = output.parent / (output.stem + '-components')
@@ -61,10 +62,10 @@ def run(plan_root, release_id, output, jobs):
                 if len(active) >= jobs:
                     break
                 plan_path = plan_root / season / 'ownership-plan.json'
-                if not plan_path.is_file():
+                if not storage_io.is_file(plan_path):
                     continue
                 try:
-                    plan = json.loads(plan_path.read_text())
+                    plan = json.loads(storage_io.read_text(plan_path))
                 except json.JSONDecodeError:
                     # An orchestration writer may have only just created the
                     # path; incomplete JSON is not a completed immutable plan.
@@ -72,11 +73,11 @@ def run(plan_root, release_id, output, jobs):
                 if not plan['updates']:
                     pending.remove(season)
                     continue
-                if not registry.locator_path(season, release_id).is_file():
+                if not storage_io.is_file(registry.locator_path(season, release_id)):
                     continue
                 target = component_root / season / 'native.json'
-                if target.exists():
-                    proof = json.loads(target.read_text())
+                if storage_io.exists(target):
+                    proof = json.loads(storage_io.read_text(target))
                     paths[season], components[season] = target, proof
                     pending.remove(season)
                     continue
@@ -91,7 +92,7 @@ def run(plan_root, release_id, output, jobs):
                 print(json.dumps({'native_verified': season, 'players': proof['players']}), flush=True)
             if not active:
                 time.sleep(5)
-    plans = {s: json.loads((plan_root / s / 'ownership-plan.json').read_text())
+    plans = {s: json.loads(storage_io.read_text(plan_root / s / 'ownership-plan.json'))
              for s in registry.supported_seasons()}
     result = combine(plans, components, release_id)
     for row in result['seasons']:

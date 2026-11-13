@@ -10,6 +10,7 @@ from PIL import Image, ImageDraw, ImageOps
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_portrait_pipeline_v1 as portraits
 from scripts import season_release_registry_v1 as registry
 from scripts import season_visual_patch_v1 as art
@@ -35,8 +36,8 @@ def main():
     args.output_root.mkdir(parents=True)
     selected = {}
     for root in args.patch_root:
-        for path in sorted(root.glob('*/patch/receipt.json')):
-            receipt = json.loads(path.read_text())
+        for path in sorted(storage_io.glob(root, '*/patch/receipt.json')):
+            receipt = json.loads(storage_io.read_text(path))
             for row in receipt['replacements']:
                 selected[(receipt['season'], int(row['carrier_id']))] = row
     rows = []
@@ -57,7 +58,7 @@ def main():
                         'artist', 'licence', 'licence_url', 'source_page')}, 'bitmap_sha256': row['bitmap_sha256']})
         if (season, row['source_name']) not in wanted: continue
         palette, palette_source = runtime_kit_palette(release.game_path / 'DBDAT')
-        preview = installed_preview(bitmap.read_bytes(), palette)
+        preview = installed_preview(storage_io.read_bytes(bitmap), palette)
         # Verify that the receipt's candidate preview actually matches the
         # currently installed native pixels and runtime palette.
         candidate = Image.open(row['preview_path']).convert('RGB')
@@ -66,7 +67,7 @@ def main():
                 extra_roots=[release.game_path / 'DBDAT', release.game_path])
             old_palette = portraits.load_riff_palette(old_palette_path)
             if ([i for i in range(256) if old_palette[i] != palette[i]] != [111]
-                    or installed_preview(bitmap.read_bytes(), old_palette).tobytes() != candidate.tobytes()):
+                    or installed_preview(storage_io.read_bytes(bitmap), old_palette).tobytes() != candidate.tobytes()):
                 raise ValueError('native decode and candidate preview differ beyond the known palette slot 111')
         tile = Image.new('RGB', (300, 240), '#202833')
         tile.paste(ImageOps.contain(Image.open(row['crop_path']).convert('RGB'), (140, 140)), (5, 5))
@@ -81,7 +82,7 @@ def main():
     for index, (_, tile) in enumerate(samples):
         canvas.paste(tile, ((index % 4)*300, (index // 4)*240))
     canvas.save(args.output_root / 'installed-photo-samples.png')
-    with (args.output_root / 'photo-credits.csv').open('w', newline='') as handle:
+    with storage_io.open_file(args.output_root / 'photo-credits.csv', 'w', newline='') as handle:
         writer = csv.DictWriter(handle, fieldnames=list(rows[0]))
         writer.writeheader(); writer.writerows(rows)
     art.save(args.output_root / 'installed-photo-patch-summary.json', {'patched_photos': len(rows),

@@ -20,6 +20,7 @@ BASE = LOCAL / "season-pipeline-v2/pm99-base-clean"
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts.pm99_season_play_v1 import REVISIONS  # noqa: E402
 
 
@@ -32,7 +33,7 @@ class BatchError(ValueError):
 
 def _read(path: Path) -> dict[str, Any]:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(storage_io.read_text(path, encoding='utf-8'))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise BatchError(f"cannot read JSON: {path}") from exc
     if not isinstance(value, dict):
@@ -42,7 +43,7 @@ def _read(path: Path) -> dict[str, Any]:
 
 def _ledger(season: str) -> Path:
     candidates = []
-    for path in (LOCAL / "season-overlays-v1" / season).glob("manager-v*/opening-manager-ledger.json"):
+    for path in storage_io.glob(LOCAL / 'season-overlays-v1' / season, 'manager-v*/opening-manager-ledger.json'):
         match = re.fullmatch(r"manager-v([1-9][0-9]*)", path.parent.name)
         if match:
             candidates.append((int(match.group(1)), path))
@@ -66,18 +67,18 @@ def _paths(season: str) -> dict[str, Path]:
 
 def _run_one(season: str) -> dict[str, Any]:
     paths = _paths(season)
-    if paths["receipt"].is_file():
+    if storage_io.is_file(paths['receipt']):
         receipt = _read(paths["receipt"])
         if receipt.get("schema_version") != "pm99-season-direct-target-manager-repair-v1" or receipt.get("state") != "applied-directly-to-alpha-game":
             raise BatchError(f"{season}: existing receipt is not a completed manager repair")
         return {"season": season, "status": "reused", "coverage": receipt.get("coverage"),
                 "receipt": paths["receipt"].relative_to(ROOT).as_posix()}
     required = [paths[key] for key in ("source", "alias", "reconciled", "runtime")]
-    if not all(path.exists() for path in required):
+    if not all(storage_io.exists(path) for path in required):
         raise BatchError(f"{season}: current recipe or runtime input is missing")
     command = [sys.executable, str(DIRECT)]
     for key in ("strict", "source", "alias", "reconciled"):
-        if paths[key].is_file():
+        if storage_io.is_file(paths[key]):
             command.extend(("--package", str(paths[key])))
     command.extend((
         "--compile-package", str(paths["reconciled"]),
@@ -88,7 +89,7 @@ def _run_one(season: str) -> dict[str, Any]:
         "--apply",
     ))
     completed = subprocess.run(command, cwd=ROOT, text=True, capture_output=True)
-    if completed.returncode or not paths["receipt"].is_file():
+    if completed.returncode or not storage_io.is_file(paths['receipt']):
         raise BatchError(json.dumps({
             "season": season, "returncode": completed.returncode,
             "stdout": completed.stdout.strip(), "stderr": completed.stderr.strip(),
@@ -137,7 +138,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error("--jobs must be at least 1")
     result = batch(seasons=sorted(args.season or REVISIONS), jobs=args.jobs)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(result, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(args.output, json.dumps(result, ensure_ascii=False, sort_keys=True) + '\n', encoding='utf-8')
     print(json.dumps(result["summary"], sort_keys=True))
     return 0 if not result["failures"] else 2
 

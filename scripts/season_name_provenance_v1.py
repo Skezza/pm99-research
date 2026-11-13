@@ -26,6 +26,14 @@ Example:
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -59,7 +67,7 @@ def _json_sha256(value: Any) -> str:
 
 def _file_sha256(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
@@ -67,7 +75,7 @@ def _file_sha256(path: Path) -> str:
 
 def _read_json(path: Path, *, label: str) -> dict[str, Any]:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(storage_io.read_text(path, encoding='utf-8'))
     except (OSError, json.JSONDecodeError) as exc:
         raise NameProvenanceError(f"cannot read {label}: {path}") from exc
     if not isinstance(value, dict):
@@ -619,10 +627,10 @@ def build_provenance(*, package: Mapping[str, Any], sources: Mapping[str, Mappin
 
 
 def _write_output(path: Path, value: Mapping[str, Any], *, replace: bool) -> None:
-    if path.exists() and not replace:
+    if storage_io.exists(path) and not replace:
         raise NameProvenanceError(f"output already exists (use --replace to replace derived sidecar): {path}")
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    storage_io.write_text(path, json.dumps(value, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 
 
 def _parser() -> argparse.ArgumentParser:

@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor,as_completed
 from datetime import UTC,datetime
 import os
 import shutil
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry,season_pipeline_v2 as pipeline
 from scripts import season_frozen_fixture_reserve_v2 as source
 from scripts import publish_historical_role_delta_v1 as publisher
@@ -25,20 +26,20 @@ def share_verified(actual,rebuilt,folder):
             *((actual.game_path/'DBDAT'/name,rebuilt.game_path/'DBDAT'/name) for name in ('JUG98030.FDI','MINIFOTO.PKF'))):
         digest=registry.sha256_file(a)
         if registry.sha256_file(b)!=digest:raise ValueError('SOURCE sharing refuses any changed bytes')
-        was_shared=a.stat().st_ino==b.stat().st_ino
+        was_shared=storage_io.stat_result(a).st_ino==storage_io.stat_result(b).st_ino
         if not was_shared:
             temporary=b.with_name(b.name+'.verified-source-link')
-            if temporary.exists():raise ValueError('unreceipted sharing temporary must be inspected')
-            os.link(a,temporary);os.replace(temporary,b)
+            if storage_io.exists(temporary):raise ValueError('unreceipted sharing temporary must be inspected')
+            storage_io.link(a, temporary);storage_io.replace_file(temporary,b)
         rows.append(dict(source=registry.relative_workspace_path(a),retained_replay_path=registry.relative_workspace_path(b),
-            sha256=digest,bytes=a.stat().st_size,already_shared=was_shared,all_bytes_and_paths_preserved=True))
+            sha256=digest,bytes=storage_io.size(a),already_shared=was_shared,all_bytes_and_paths_preserved=True))
     retained(folder/'verified-SOURCE-content-sharing.json',dict(rows=rows,
         policy='Exact whole SOURCE inventory/recipe verified first. All original/replay paths retained. Future file updates must use atomic replacement, never in-place writes to immutable hardlinks.'))
 
 
 def build_one(row):
     season=row['season'];folder=ROOT/season
-    if (folder/'complete-SOURCE-replay.json').exists():
+    if storage_io.exists(folder / 'complete-SOURCE-replay.json'):
         return dict(season=season,status='complete-SOURCE-replay-already-exists-inspect-before-resume')
     base=registry.load_registered_release(season,row['release_id'])
     if (base.release_id,base.manifest_sha256,registry.sha256_file(base.package_path))!=(
@@ -46,7 +47,7 @@ def build_one(row):
         raise ValueError('discovered baseline advanced; do not overwrite intervening corrections')
     folder.mkdir(parents=True,exist_ok=True)
     input_path=folder/'opening-fixture-input.json';plan_path=folder/'ownership-plan.json'
-    if registry.locator_path(season,RELEASE).exists():raise ValueError('partial existing game needs inspection, not regeneration')
+    if storage_io.exists(registry.locator_path(season, RELEASE)):raise ValueError('partial existing game needs inspection, not regeneration')
     decisions=[{k:r[k] for k in ('source_person_id','displaced_carrier','retained_carrier','replacement_name','replacement_source_person_id')}
         for r in row['candidates']]
     retained(input_path,dict(schema=source.INPUT_SCHEMA,season=season,cases=decisions))
@@ -69,7 +70,7 @@ def build_one(row):
     result=source.reconstruction(actual,REPLAY)
     rebuilt=registry.load_registered_release(season,REPLAY)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path,pipeline.read_json_file(actual.inventory_path))
-    if actual.package_path.read_bytes()!=rebuilt.package_path.read_bytes():raise ValueError('whole SOURCE recipe differs')
+    if storage_io.read_bytes(actual.package_path)!=storage_io.read_bytes(rebuilt.package_path):raise ValueError('whole SOURCE recipe differs')
     share_verified(actual,rebuilt,folder)
     retained(folder/'complete-SOURCE-replay.json',dict(result,actual_release_id=RELEASE,replay_release_id=REPLAY,
         source_release_id=base.release_id,manifest_sha256=actual.manifest_sha256,
@@ -80,7 +81,7 @@ def build_one(row):
 
 
 def main():
-    if ROOT.exists():raise ValueError('batch workspace exists; inspect running/completed jobs before resuming')
+    if storage_io.exists(ROOT):raise ValueError('batch workspace exists; inspect running/completed jobs before resuming')
     ROOT.mkdir(parents=True)
     discovery=pipeline.read_json_file(DISCOVERY);rows=[r for r in discovery['seasons'] if r['candidates']]
     retained(ROOT/'batch-input.json',dict(discovery=source.binding(DISCOVERY),seasons=rows,preferred_writes=0))

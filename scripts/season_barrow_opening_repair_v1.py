@@ -8,6 +8,7 @@ Flynn/Harvey reserves are retained, with opening ownership explicitly unapproved
 import copy
 
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry, season_pipeline_v2 as pipeline
 from scripts import season_boreham_opening_repair_v1 as native
 from scripts import season_stevenage_opening_repair_v1 as core
@@ -105,7 +106,7 @@ def prepare(release):
         if bio['birth_date'] is None and name != 'Aaron Cole':
             raise ValueError('unreviewed missing provider birthday')
         raw = next(r for r in actual['raw_sources'] if r['url'] == bio['source_profile_url'])
-        facts = provider.player_profile((registry.ROOT / raw['path']).read_bytes(),
+        facts = provider.player_profile(storage_io.read_bytes(registry.ROOT / raw['path']),
             fallback_name='', fallback_position='?')
         facts.update(name=name, birth_date=person['birth_date'], position=row['dated_match_position'])
         if facts['position'] not in ('G','D','M','F'):
@@ -117,8 +118,8 @@ def prepare(release):
                 source_provider_person_id=bio['source_player_id'], source_person_id=person['source_player_id'],
                 birth_date=person['birth_date'], names=[dict(field='dated-match-label', name=row['published_match_name'])]),
             source_identity_basis='two-original-same-first-fixture-substitute-IDs-and-public-confirmed-DOB; Aaron original unknown DOB retained in evidence'))
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (release.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
     from scripts import season_italian_opening_layer_v1 as linked, season_opening_order_repair_v1 as ownership
     if set(linked.roster_rows(eq, CLUB)[2]) != {(p['carrier_id'],0) for p in players}:
         raise ValueError('native retained roster preimage changed')
@@ -224,7 +225,7 @@ def reconstruction(previous, release_id):
     from scripts import publish_historical_role_delta_v1 as publisher
     path = registry.ROOT / previous.locator['sourced_profile_assignment_plan_path']
     plan = pipeline.read_json_file(path)
-    if path.resolve() != (previous.package_path.parent / filename(plan)).resolve():
+    if storage_io.resolve(path) != storage_io.resolve(previous.package_path.parent / filename(plan)):
         raise ValueError('Barrow source locator differs')
     package = pipeline.read_json_file(previous.package_path)
     artifacts = [a for a in package['artifacts'] if a['id'] == PREFIX + previous.season]

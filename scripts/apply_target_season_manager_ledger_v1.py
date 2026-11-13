@@ -26,6 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2 as package_v2  # noqa: E402
 
 
@@ -51,12 +52,12 @@ def _normalise(value: object) -> str:
 
 
 def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def _relative(path: Path) -> str:
     try:
-        return path.resolve().relative_to(ROOT).as_posix()
+        return storage_io.resolve(path).relative_to(ROOT).as_posix()
     except ValueError as exc:
         raise ManagerLedgerApplicationError(
             f"manager ledger lies outside the workspace: {path}"
@@ -213,11 +214,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--output-audit", required=True, type=Path)
     args = parser.parse_args(argv)
     try:
-        if args.output_package.exists() or args.output_audit.exists():
+        if storage_io.exists(args.output_package) or storage_io.exists(args.output_audit):
             raise ManagerLedgerApplicationError("refusing to overwrite an existing output")
         package = package_v2.read_canonical_package(args.package)
         package_v2.validate_package(package, strict=True)
-        ledger = json.loads(args.ledger.read_text(encoding="utf-8"))
+        ledger = json.loads(storage_io.read_text(args.ledger, encoding='utf-8'))
         if not isinstance(ledger, dict):
             raise ManagerLedgerApplicationError("manager ledger must be an object")
         derived, audit = apply_ledger(
@@ -227,14 +228,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (OSError, json.JSONDecodeError, package_v2.PackageValidationError, ManagerLedgerApplicationError) as exc:
         parser.error(str(exc))
     args.output_package.parent.mkdir(parents=True, exist_ok=True)
-    args.output_package.write_bytes(package_v2.canonical_json_bytes(derived))
+    storage_io.write_bytes(args.output_package, package_v2.canonical_json_bytes(derived))
     audit["input"]["package_path"] = _relative(args.package)
     audit["input"]["package_sha256"] = _sha256(args.package)
     audit["output"] = {
         "package_path": _relative(args.output_package),
         "package_sha256": _sha256(args.output_package),
     }
-    args.output_audit.write_bytes(package_v2.canonical_json_bytes(audit))
+    storage_io.write_bytes(args.output_audit, package_v2.canonical_json_bytes(audit))
     print(json.dumps(audit["coverage"], sort_keys=True))
     return 0
 

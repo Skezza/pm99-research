@@ -3,6 +3,14 @@
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 from collections import Counter, defaultdict
 from pathlib import Path
 import argparse
@@ -10,7 +18,7 @@ import json
 import sys
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 PKF_VIEWER_ROOT = REPO_ROOT / "tools" / "pkf-viewer"
 sys.path.insert(0, str(PKF_VIEWER_ROOT))
 
@@ -29,7 +37,7 @@ def summarize(root: Path) -> dict[str, object]:
     total_bytes = 0
     pkf_count = 0
 
-    for path in sorted(root.rglob("*.pkf")):
+    for path in sorted(storage_io.glob(root, '*.pkf', recursive=True)):
         parsed = parse_pkf_file(path, root=root)
         p3d_records = [
             (table, record)
@@ -102,8 +110,8 @@ def main() -> int:
         help="SIMULDAT root to scan",
     )
     args = parser.parse_args()
-    root = Path(args.root).expanduser().resolve()
-    if not root.exists():
+    root = storage_io.resolve(Path(args.root).expanduser())
+    if not storage_io.exists(root):
         parser.error(f"SIMULDAT root does not exist: {root}")
     print(json.dumps(summarize(root), indent=2))
     return 0

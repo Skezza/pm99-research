@@ -7,6 +7,14 @@ cannot silently mutate a different player payload.
 """
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -48,13 +56,13 @@ def _payloads_by_id(data: bytes) -> dict[int, bytes]:
 
 def main() -> int:
     args = _args()
-    player_path = args.dbdat.resolve() / "JUG98030.FDI"
-    if not player_path.is_file():
+    player_path = storage_io.resolve(args.dbdat) / "JUG98030.FDI"
+    if not storage_io.is_file(player_path):
         raise SystemExit(f"missing JUG98030.FDI: {player_path}")
     if not args.new_name.strip():
         raise SystemExit("new name must not be empty")
 
-    before = player_path.read_bytes()
+    before = storage_io.read_bytes(player_path)
     before_index = IndexedFDIFile.from_bytes(before)
     entry = next((item for item in before_index.entries if int(item.record_id) == int(args.player_record_id)), None)
     if entry is None:
@@ -75,7 +83,7 @@ def main() -> int:
         )
 
     staged_path = player_path.with_name("JUG98030.variable-name-probe.FDI")
-    if staged_path.exists():
+    if storage_io.exists(staged_path):
         raise SystemExit(f"refusing to replace existing probe output: {staged_path}")
     target = PlayerVariableNameTarget(
         row_number=1,
@@ -92,7 +100,7 @@ def main() -> int:
     )
     if not bool(result.ok) or not bool(result.applied_to_disk):
         raise SystemExit(f"variable-name writer rejected the probe: {asdict(result)}")
-    after = staged_path.read_bytes()
+    after = storage_io.read_bytes(staged_path)
     after_index = IndexedFDIFile.from_bytes(after)
     after_entry = next((item for item in after_index.entries if int(item.record_id) == int(args.player_record_id)), None)
     if after_entry is None:
@@ -128,7 +136,7 @@ def main() -> int:
 
     # `replace` is atomic within this disposable DBDAT directory.  It avoids
     # testing a sibling output file which PM99 will never load.
-    staged_path.replace(player_path)
+    storage_io.move(staged_path, player_path, replace=True)
     receipt = {
         "schema": "pm99-mode1-player-variable-name-probe/v1",
         "player_path": str(player_path),
@@ -151,7 +159,7 @@ def main() -> int:
         "after_sha256": hashlib.sha256(after).hexdigest(),
     }
     args.receipt.parent.mkdir(parents=True, exist_ok=True)
-    args.receipt.write_text(json.dumps(receipt, indent=2, default=str) + "\n", encoding="utf-8")
+    storage_io.write_text(args.receipt, json.dumps(receipt, indent=2, default=str) + '\n', encoding='utf-8')
     print(json.dumps(receipt, indent=2, default=str))
     return 0
 

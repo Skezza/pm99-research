@@ -17,6 +17,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts.capture_ntf_historical_carrier_squads_v1 import Cache
 from scripts.season_historical_roster_audit_v1 import historical_html_title, normalise, source_group, club_names
 from scripts.season_historical_role_plan_v1 import HTML_ROLES
@@ -89,12 +90,12 @@ def opening_path(season):
     # The legacy 2015 lane has no opening-capture package. Stable club IDs
     # may be reused from another dated competition capture, but its fixtures
     # must never be presented as 2015 opening-lineup evidence.
-    return path if path.exists() else ROOT / '.local/transfermarkt-opening-plans-current-v1/2025-26/opening-lineups.json'
+    return path if storage_io.exists(path) else ROOT / '.local/transfermarkt-opening-plans-current-v1/2025-26/opening-lineups.json'
 
 
 def capture(season, *, cache_root, countries=(), offline=False, delay=1):
     path = opening_path(season)
-    opening = json.loads(path.read_text())
+    opening = json.loads(storage_io.read_text(path))
     exact_opening = int(opening['season_start_year']) == int(season[:4])
     cache = Cache(cache_root, offline=offline, delay=delay, stop_on_http_block=True)
     clubs, gaps = [], []
@@ -145,10 +146,10 @@ def main():
     args = parser.parse_args()
     for season in registry.supported_seasons() if args.season == 'all' else [args.season]:
         destination = args.output / season / 'detailed-role-capture.json'
-        if destination.exists():
+        if storage_io.exists(destination):
             if not args.resume:
                 raise ValueError('capture already exists; use --resume or a fresh output root')
-            document = json.loads(destination.read_text())
+            document = json.loads(storage_io.read_text(destination))
             opening = opening_path(season)
             if document['season'] != season or document['opening_capture_sha256'] != registry.sha256_file(opening):
                 raise ValueError('completed capture input binding changed')
@@ -159,7 +160,7 @@ def main():
                     raise ValueError('completed capture source binding changed')
             requested = set(args.country)
             captured = {c['country_catalog'] for c in document['clubs']}
-            available = {r['source_selector']['country_catalog'] for r in json.loads(opening.read_text())['clubs']}
+            available = {r['source_selector']['country_catalog'] for r in json.loads(storage_io.read_text(opening))['clubs']}
             if requested and captured - requested or (not requested and available - captured):
                 raise ValueError('completed capture used a narrower/different country scope; use a fresh output root')
             print(json.dumps({'season': season, 'status': 'verified-existing-capture', 'captured_clubs': len(document['clubs'])}), flush=True)

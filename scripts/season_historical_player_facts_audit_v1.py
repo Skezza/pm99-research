@@ -17,6 +17,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_historical_roster_audit_v1 as roster
 from scripts import season_historical_role_plan_v1 as roles
 from scripts import season_release_registry_v1 as registry
@@ -72,7 +73,7 @@ def field_check(field, recipe, candidates):
 
 def fifa_facts_index():
     index = collections.defaultdict(list)
-    with roles.FIFA.open() as handle:
+    with storage_io.open_file(roles.FIFA) as handle:
         earliest = {}
         for row in csv.DictReader(handle):
             key = (int(row['fifa_version']), row['player_id'])
@@ -121,9 +122,9 @@ def baseline_sources(season, report):
 
 
 def detailed_sources(season, path):
-    if path is None or not path.exists():
+    if path is None or not storage_io.exists(path):
         return [], None
-    document = json.loads(path.read_text())
+    document = json.loads(storage_io.read_text(path))
     if document['season'] != season or document['schema_version'] != 'pm99-historical-detailed-roles-capture-v1':
         raise ValueError('wrong detailed capture season/schema')
     root = registry._workspace_path(document['cache_root'], label='detailed source cache')
@@ -135,7 +136,7 @@ def detailed_sources(season, path):
         source = root / relative
         if registry.sha256_file(source) != club['source_sha256']:
             raise ValueError('detailed source changed')
-        raw = source.read_bytes()
+        raw = storage_io.read_bytes(source)
         title, _ = roster.historical_html_title(raw, 'transfermarkt', season, roster.source_group(club['country_catalog']))
         complete = parse_complete_squad(raw)
         if roster.normalise(title) != roster.normalise(club['source_club_name']) or [p for p in complete if p['fine_roles']] != club['players']:
@@ -151,9 +152,9 @@ def detailed_sources(season, path):
 
 def audit_season(season, baseline_path, detailed_path, fifa, output):
     release = registry.load_preferred_release(season)
-    package = json.loads(release.package_path.read_text())
+    package = json.loads(storage_io.read_text(release.package_path))
     clubs, players, legacy = roster.add_legacy_english(package, season)
-    baseline = json.loads(baseline_path.read_text())
+    baseline = json.loads(storage_io.read_text(baseline_path))
     if baseline['season'] != season or baseline['schema_version'] != roster.SCHEMA:
         raise ValueError('wrong baseline roster audit')
     old = {p['player_id']: p for p in baseline['players']}
@@ -218,7 +219,7 @@ def audit_season(season, baseline_path, detailed_path, fifa, output):
               'clubs': club_rows, 'players': audited}
     output.mkdir(parents=True, exist_ok=True)
     destination = output / 'player-facts-audit.json'
-    if destination.exists():
+    if storage_io.exists(destination):
         raise ValueError('fact audit already exists; use a fresh output root')
     pipeline.write_canonical_json(destination, result)
     return {'season': season, **result['summary']}
@@ -235,7 +236,7 @@ def main():
     summaries = []
     for season in registry.supported_seasons() if args.season == 'all' else [args.season]:
         detail = args.detailed_root / season / 'detailed-role-capture.json' if args.detailed_root else None
-        if (detail is None or not detail.exists()) and args.fallback_detailed_root:
+        if (detail is None or not storage_io.exists(detail)) and args.fallback_detailed_root:
             detail = args.fallback_detailed_root / season / 'detailed-role-capture.json'
         summary = audit_season(season, args.roster_audit_root / season / 'report.json', detail, fifa, args.output / season)
         summaries.append(summary)

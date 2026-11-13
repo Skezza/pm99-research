@@ -2,6 +2,7 @@
 import argparse
 import os
 import shutil
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import season_original_alias_countries_v1 as source
 from scripts import publish_historical_role_delta_v1 as publisher
@@ -14,17 +15,17 @@ REPLAY='replayed-original-alias-countries-20261016-r120b'
 
 def build(season):
     root=ROOT/season
-    if (root/'complete-SOURCE-replay.json').exists():raise ValueError('completed country game must not repeat')
+    if storage_io.exists(root / 'complete-SOURCE-replay.json'):raise ValueError('completed country game must not repeat')
     if shutil.disk_usage(registry.ROOT).free<8.3*1024**3:raise ValueError('country-only build refuses to threaten8GiB reserve')
     base=registry.load_registered_release(season,source.SPECS[season]['base']);plan=source.prepare(base)
     root.mkdir(parents=True,exist_ok=True);path=root/source.FILENAME;retained(path,plan)
     descriptor=root/'inert.json';retained(descriptor,dict(season=season,release_id=base.release_id,
         package_sha256=plan['package_sha256'],jug_sha256=plan['jug_sha256'],updates=[],unresolved=[]))
-    if not registry.locator_path(season,RELEASE).exists():
+    if not storage_io.exists(registry.locator_path(season, RELEASE)):
         publisher.publish(season,descriptor,release_id=RELEASE,source_release_id=base.release_id,profile_assignment_plan_path=path)
     actual=registry.load_registered_release(season,RELEASE)
-    old=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes();new=(actual.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    old=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI');new=storage_io.read_bytes(actual.game_path / 'DBDAT/JUG98030.FDI')
+    eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     if source.apply(old,eq,plan)!=(new,eq) or source.apply(new,eq,plan)!=(new,eq):raise ValueError('actual country delta reproduction/idempotence failed')
     diffs=[i for i,(a,b) in enumerate(zip(old,new)) if a!=b]
     if len(old)!=len(new) or len(diffs)!=1:raise ValueError('country correction is not exactly one byte')
@@ -38,16 +39,16 @@ def build(season):
         source_plan_sha256=registry.sha256_file(path),native_byte_changes=1,allowed_offsets=diffs,idempotent=True,
         all_other_game_files_identical=True,all_other_facts_skills_roles_shirts_tactics_managers_and_artwork_identical=True,
         published_nationality=plan['updates'][0]['after'],country_inferred_from_birthplace=False,historical_caps_claimed=False))
-    if registry.locator_path(season,REPLAY).exists():raise ValueError('unreceipted country SOURCE exists; inspect rather than rerun')
+    if storage_io.exists(registry.locator_path(season, REPLAY)):raise ValueError('unreceipted country SOURCE exists; inspect rather than rerun')
     replay=source.reconstruction(actual,REPLAY)
     retained(root/'complete-SOURCE-replay.json',dict(replay,manifest_sha256=actual.manifest_sha256,preferred_unchanged=True))
     rebuilt=registry.load_registered_release(season,REPLAY)
     for a,b in ((actual.package_path,rebuilt.package_path),(actual.game_path/'DBDAT/JUG98030.FDI',rebuilt.game_path/'DBDAT/JUG98030.FDI')):
         if registry.sha256_file(a)!=registry.sha256_file(b):raise ValueError('new country SOURCE bytes differ before content sharing')
-        if a.stat().st_ino!=b.stat().st_ino:
+        if (storage_io.stat_result(a).st_ino != storage_io.stat_result(b).st_ino) and not storage_io.is_compressed(a) and not storage_io.is_compressed(b):
             temporary=b.with_name(b.name+'.verified-link')
-            if temporary.exists():raise ValueError('unreceipted sharing temporary')
-            os.link(a,temporary);os.replace(temporary,b)
+            if storage_io.exists(temporary):raise ValueError('unreceipted sharing temporary')
+            storage_io.link(a, temporary);storage_io.replace_file(temporary,b)
     print(dict(season=season,actual_country_byte_fixed=True,country=plan['updates'][0]['after'],full_SOURCE_exact=True,preferred_unchanged=True),flush=True)
 
 

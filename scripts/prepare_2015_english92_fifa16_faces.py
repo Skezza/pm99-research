@@ -19,6 +19,14 @@ block a database release or leave an unrelated carrier face visible.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import concurrent.futures
 import hashlib
@@ -36,7 +44,7 @@ import requests
 from PIL import Image
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR = ROOT / "upstream" / "pm99-skezmod-db-editor"
 if str(EDITOR) not in sys.path:
     sys.path.insert(0, str(EDITOR))
@@ -61,11 +69,11 @@ USER_AGENT = "pm99-research/2015-16-face-stage (+local historical game mod)"
 
 
 def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def _json(path: Path, value: Any) -> None:
-    path.write_text(json.dumps(value, indent=2, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(path, json.dumps(value, indent=2, ensure_ascii=False, sort_keys=True) + '\n', encoding='utf-8')
 
 
 def _source_candidates(item: dict[str, Any]) -> list[tuple[str, str]]:
@@ -171,8 +179,8 @@ def _set_native_no_photo(
     no-photo representation and does not repack offsets or image payloads.
     """
     loose_path = loose_root / f"J96{record_id:05d}.BMP"
-    loose_was_present = loose_path.is_file()
-    loose_path.unlink(missing_ok=True)
+    loose_was_present = storage_io.is_file(loose_path)
+    storage_io.unlink(loose_path, missing_ok=True)
     existing_record = records.get(record_id)
     if existing_record is not None:
         _disable_archive_minifoto_record(archive, record_offset=int(existing_record.record_offset))
@@ -288,20 +296,20 @@ def _args() -> argparse.Namespace:
 
 def main() -> int:
     args = _args()
-    build = args.build_dir.expanduser().resolve()
+    build = storage_io.resolve(args.build_dir.expanduser())
     game = build / "game"
     ledger_path = build / "player-ledger.json"
     minifoto_path = game / "DBDAT" / "MINIFOTO.PKF"
-    if not ledger_path.is_file() or not minifoto_path.is_file():
+    if not storage_io.is_file(ledger_path) or not storage_io.is_file(minifoto_path):
         raise SystemExit("build directory must contain player-ledger.json and game/DBDAT/MINIFOTO.PKF")
-    players = list(json.loads(ledger_path.read_text(encoding="utf-8")) or [])
+    players = list(json.loads(storage_io.read_text(ledger_path, encoding='utf-8')) or [])
     if not players:
         raise SystemExit("empty player ledger")
     manual_by_id: dict[int, dict[str, Any]] = {}
     no_portrait_by_id: dict[int, dict[str, Any]] = {}
     compiled_by_id = {int(row["record_id"]): row for row in players}
     for manual_path in args.manual_source_ledger:
-        raw_manual = json.loads(manual_path.expanduser().resolve().read_text(encoding="utf-8"))
+        raw_manual = json.loads(storage_io.read_text(storage_io.resolve(manual_path.expanduser()), encoding='utf-8'))
         manual_rows = raw_manual.get("rows", raw_manual) if isinstance(raw_manual, dict) else raw_manual
         if not isinstance(manual_rows, list):
             raise SystemExit("manual source ledger must be a JSON array or an object with a rows array")
@@ -332,7 +340,7 @@ def main() -> int:
             player["manual_source_crop"] = supplied.get("source_crop")
 
     for no_portrait_path in args.no_portrait_ledger:
-        raw_no_portrait = json.loads(no_portrait_path.expanduser().resolve().read_text(encoding="utf-8"))
+        raw_no_portrait = json.loads(storage_io.read_text(storage_io.resolve(no_portrait_path.expanduser()), encoding='utf-8'))
         no_portrait_rows = raw_no_portrait.get("rows", raw_no_portrait) if isinstance(raw_no_portrait, dict) else raw_no_portrait
         if not isinstance(no_portrait_rows, list):
             raise SystemExit("no-portrait ledger must be a JSON array or an object with a rows array")
@@ -365,7 +373,7 @@ def main() -> int:
     # copying the actual PKF/loose bitmap payload beforehand.
     reused_rows: dict[int, dict[str, Any]] = {}
     if args.reuse_receipt is not None:
-        previous = json.loads(args.reuse_receipt.expanduser().resolve().read_text(encoding="utf-8"))
+        previous = json.loads(storage_io.read_text(storage_io.resolve(args.reuse_receipt.expanduser()), encoding='utf-8'))
         previous_rows = list(previous.get("rows") or [])
         current_by_id = {int(row["record_id"]): row for row in players}
         for supplied in previous_rows:
@@ -400,7 +408,7 @@ def main() -> int:
             else:
                 errors[record_id] = str(error)
 
-    original = minifoto_path.read_bytes()
+    original = storage_io.read_bytes(minifoto_path)
     archive = bytearray(original)
     records = {record.player_record_id: record for record in iter_minifoto_records(minifoto_path)}
     if not records:
@@ -524,12 +532,12 @@ def main() -> int:
         if payload is not None:
             image_path = provenance_root / source_directory / f"{record_id:05d}.png"
             image_path.parent.mkdir(parents=True, exist_ok=True)
-            image_path.write_bytes(payload)
+            storage_io.write_bytes(image_path, payload)
         record = records.get(record_id, template)
         bitmap, preview_payload = converted_row
         preview_path = preview_root / source_directory / f"{record_id:05d}.png"
         preview_path.parent.mkdir(parents=True, exist_ok=True)
-        preview_path.write_bytes(preview_payload)
+        storage_io.write_bytes(preview_path, preview_payload)
         if record_id in records:
             # ``records`` was parsed and the freshly built bitmap was shape
             # validated before this ordered write. Re-parsing a multi-megabyte
@@ -548,7 +556,7 @@ def main() -> int:
             }
         else:
             loose_path = loose_root / f"J96{record_id:05d}.BMP"
-            loose_path.write_bytes(bitmap)
+            storage_io.write_bytes(loose_path, bitmap)
             entry["storage"] = "loose-DBDAT/MINIFOTO"
             entry["loose_path"] = str(loose_path)
         entry["status"] = "applied"
@@ -590,9 +598,9 @@ def main() -> int:
         record_id = int(row["record_id"])
         if record_id in reread:
             raise RuntimeError(f"{record_id}: disabled MINIFOTO record still resolves")
-        if (loose_root / f"J96{record_id:05d}.BMP").exists():
+        if storage_io.exists(loose_root / f'J96{record_id:05d}.BMP'):
             raise RuntimeError(f"{record_id}: loose MINIFOTO override remains")
-    minifoto_path.write_bytes(verified_archive)
+    storage_io.write_bytes(minifoto_path, verified_archive)
     approved_portraits = sum(1 for row in receipt if row["status"] == "applied")
     intentionally_no_photo = sum(1 for row in receipt if row["status"] == "intentionally-no-photo")
     unresolved = [row for row in receipt if row["status"] not in {"applied", "intentionally-no-photo"}]

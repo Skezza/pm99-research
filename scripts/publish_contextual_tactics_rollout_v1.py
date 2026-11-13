@@ -20,6 +20,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT), str(ROOT / 'upstream/pm99-skezmod-db-editor')]
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_contextual_tactics_v1 as tactics
 from scripts import season_opening_order_repair_v1 as repair
 from scripts import season_tactics_formation_runtime_v1 as runtime
@@ -45,10 +46,10 @@ def completion_gates(root):
         candidate = root / season / 'english-rollout-candidate-v3'
         run = ROOT / '.local/runlogs/pm99_runner' / tag
         proof = verify(candidate, run, carrier)
-        launch = json.loads((run / 'control_launch.json').read_text())['child_command']
+        launch = json.loads(storage_io.read_text(run / 'control_launch.json'))['child_command']
         dbdat = Path(launch[launch.index('--dbdat-dir') + 1])
         exe = Path(launch[launch.index('--exe-file') + 1])
-        expected_exe = Path(json.loads((candidate / 'candidate-receipt.json').read_text())['exe_path'])
+        expected_exe = Path(json.loads(storage_io.read_text(candidate / 'candidate-receipt.json'))['exe_path'])
         if (any(registry.sha256_file(dbdat / file) != registry.sha256_file(candidate / 'DBDAT' / file)
                 for file in ('EQ98030.FDI', 'JUG98030.FDI')) or
                 registry.sha256_file(exe) != registry.sha256_file(expected_exe)):
@@ -57,9 +58,9 @@ def completion_gates(root):
                        'proof': proof, 'scope': 'one genuinely loaded team for this repair class'})
     original = registry.load_registered_release('2015-16', 'historical-contextual-tactics-20261005-r20a')
     completion_path = original.package_path.parent / 'tactics-completion-proof.json'
-    completion = json.loads(completion_path.read_text())
+    completion = json.loads(storage_io.read_text(completion_path))
     match_path = ROOT / completion['match_run'] / 'summary.json'
-    match = json.loads(match_path.read_text())
+    match = json.loads(storage_io.read_text(match_path))
     if (not completion['save_reload_proven'] or not completion['match_smoke_proven'] or
             registry.sha256_file(ROOT / completion['saved_file']) != completion['saved_file_sha256'] or
             registry.sha256_file(match_path) != completion['match_summary_sha256'] or
@@ -67,14 +68,14 @@ def completion_gates(root):
             not match.get('skip_initial_tactics_strategy') or match.get('crash_detected')):
         raise ValueError('inherited pilot native save/reload/match proof changed or failed')
     from app.eq_initial_tactics import read_initial_tactics
-    final_eq = tactics.payloads((root / '2015-16/english-rollout-candidate-v3/DBDAT/EQ98030.FDI').read_bytes())[307]
-    baseline_eq = tactics.payloads((original.game_path / 'DBDAT/EQ98030.FDI').read_bytes())[307]
+    final_eq = tactics.payloads(storage_io.read_bytes(root / '2015-16/english-rollout-candidate-v3/DBDAT/EQ98030.FDI'))[307]
+    baseline_eq = tactics.payloads(storage_io.read_bytes(original.game_path / 'DBDAT/EQ98030.FDI'))[307]
     if read_initial_tactics(final_eq) != read_initial_tactics(baseline_eq):
         raise ValueError('rollout changed the completed native save/reload pilot grid')
     fresh_run = ROOT / '.local/runlogs/pm99_runner/tactics_rollout_match_2015_16_20261005_t'
     fresh_path = fresh_run / 'summary.json'
-    fresh = json.loads(fresh_path.read_text())
-    launch = json.loads((fresh_run / 'control_launch.json').read_text())['child_command']
+    fresh = json.loads(storage_io.read_text(fresh_path))
+    launch = json.loads(storage_io.read_text(fresh_run / 'control_launch.json'))['child_command']
     inputs = Path(launch[launch.index('--dbdat-dir') + 1])
     played_exe = Path(launch[launch.index('--exe-file') + 1])
     candidate = root / '2015-16/english-rollout-candidate-v3'
@@ -103,13 +104,13 @@ def publish(season, root, gates, *, release_id, register=False):
         return {'season': season, 'release_id': release_id, 'already_registered': True, 'registered': True}
     candidate = root / season / 'english-rollout-candidate-v3'
     audit = repair.audit_candidate(candidate)
-    formations = json.loads((candidate / 'contextual-tactics.json').read_text())['clubs']
+    formations = json.loads(storage_io.read_text(candidate / 'contextual-tactics.json'))['clubs']
     if (gates.get('schema_version') != 'pm99-contextual-tactics-rollout-runtime-gates-v1' or
             gates.get('formation_coverage', {}).get('success') is not True or
             {c['formation'] for c in formations} - set(gates['formation_coverage']['samples']) or
             len(gates.get('opening_order_samples', [])) != 2):
         raise ValueError('rollout requires formation and both opening-order runtime gates')
-    prior = json.loads((candidate / 'candidate-receipt.json').read_text())
+    prior = json.loads(storage_io.read_text(candidate / 'candidate-receipt.json'))
     if (current.release_id, registry.canonical_document_sha256(current.package_path),
             registry.sha256_file(current.game_path / 'DBDAT/EQ98030.FDI'),
             registry.sha256_file(current.game_path / 'DBDAT/JUG98030.FDI')) != (
@@ -120,9 +121,9 @@ def publish(season, root, gates, *, release_id, register=False):
         raise ValueError('retain at least 8 GiB free after the independent game copy')
     workspace = root / season / release_id
     destination = registry.locator_path(season, release_id).parent
-    if workspace.exists() or destination.exists():
+    if storage_io.exists(workspace) or storage_io.exists(destination):
         raise ValueError('release output exists; inspect/resume it, never overwrite')
-    package = json.loads((candidate / 'season-package.json').read_text())
+    package = json.loads(storage_io.read_text(candidate / 'season-package.json'))
     packages.validate_package(package)
     copies, bindings = {}, []
     for artifact in package['artifacts']:
@@ -133,7 +134,7 @@ def publish(season, root, gates, *, release_id, register=False):
                 str(rel) in ('season-package.json', 'runtime-formation-gates.json', 'tactics-rollout-compiler.json')):
             raise ValueError('unsafe rollout recipe-local input')
         options = (candidate / rel, current.package_path.parent / rel, ROOT / rel)
-        source = next((p for p in options if p.is_file()), options[0])
+        source = next((p for p in options if storage_io.is_file(p)), options[0])
         binding = verify_recipe_artifact(source, artifact['sha256'])
         if rel in copies and copies[rel] != source:
             raise ValueError('conflicting rollout recipe-local input')
@@ -141,7 +142,7 @@ def publish(season, root, gates, *, release_id, register=False):
         bindings.append({'id': artifact['id'], **binding})
     for file in ('contextual-tactics.json', 'opening-order.json', 'english-season-package.json'):
         copies[Path(file)] = candidate / file
-    expected_input_bytes = sum(path.stat().st_size for path in set(copies.values()))
+    expected_input_bytes = sum(storage_io.size(path) for path in set(copies.values()))
     if shutil.disk_usage(root).free < before['total_bytes'] + expected_input_bytes + 8 * 1024**3:
         raise ValueError('insufficient space for the independent game and retained recipe inputs')
     workspace.mkdir()
@@ -149,17 +150,17 @@ def publish(season, root, gates, *, release_id, register=False):
     _copy_game_tree(current.game_path, game)
     for file in ('EQ98030.FDI', 'JUG98030.FDI'):
         temporary = workspace / (file + '.partial')
-        shutil.copy2(candidate / 'DBDAT' / file, temporary)
-        os.replace(temporary, game / 'DBDAT' / file)
+        storage_io.copy_file(candidate / 'DBDAT' / file, temporary, metadata=True)
+        storage_io.replace_file(temporary, game / 'DBDAT' / file)
     for rel, source in copies.items():
         target = workspace / rel
         target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(source, target)
+        storage_io.copy_file(source, target, metadata=True)
     if any(registry.sha256_file(game / 'DBDAT' / file) != registry.sha256_file(candidate / 'DBDAT' / file)
            for file in ('EQ98030.FDI', 'JUG98030.FDI')):
         raise ValueError('published database differs from frozen candidate bytes')
     package_path = workspace / 'season-package.json'
-    package_path.write_bytes(packages.canonical_json_bytes(package))
+    storage_io.write_bytes(package_path, packages.canonical_json_bytes(package))
     gate_path = workspace / 'runtime-formation-gates.json'
     pipeline.write_canonical_json(gate_path, gates)
     after = pipeline.build_tree_inventory(game)
@@ -167,7 +168,7 @@ def publish(season, root, gates, *, release_id, register=False):
     changed = [r['path'] for r in difference['changed']]
     if difference['only_left'] or difference['only_right'] or set(changed) - {'DBDAT/EQ98030.FDI', 'DBDAT/JUG98030.FDI'}:
         raise ValueError('rollout changed unrelated game files')
-    outputs = [{'path': p, 'sha256': registry.sha256_file(game / p), 'size': (game / p).stat().st_size}
+    outputs = [{'path': p, 'sha256': registry.sha256_file(game / p), 'size': storage_io.size(game / p)}
                for p in ('DBDAT/JUG98030.FDI', 'DBDAT/EQ98030.FDI', 'DBDAT/ENT98030.FDI')]
     receipt = {'schema': 'pm99-contextual-tactics-rollout-delta-v1', 'season': season,
         'season_package_sha256': registry.canonical_document_sha256(package_path),
@@ -248,7 +249,7 @@ def main():
     parser.add_argument('--release-id', default=DEFAULT_RELEASE)
     parser.add_argument('--register', action='store_true')
     args = parser.parse_args()
-    root = args.root.resolve()
+    root = storage_io.resolve(args.root)
     gates = completion_gates(root)
     for season in registry.supported_seasons() if args.season == 'all' else [args.season]:
         result = publish(season, root, gates, release_id=args.release_id, register=args.register)

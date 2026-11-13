@@ -4,6 +4,14 @@ No yearly-catalogue membership inference: the RSSSF match proves the XI and
 used substitutes, while the dated original match page witnesses two unused
 substitutes. Its conflicting coach and reserve are explicitly not imported.
 """
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import re
 
 from bs4 import BeautifulSoup
@@ -102,7 +110,7 @@ def prepare(output):
     from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
     from scripts import season_published_transfer_history_v1 as history
     from scripts import season_historical_transfer_review_v1 as transfer
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('original source review is immutable')
     originals = [source_rows(key) for key in (
         'venezuela-2002-2003-original-RSSSF-Sudamericana-lineups',

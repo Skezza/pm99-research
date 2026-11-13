@@ -13,6 +13,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_historical_opening_review_v1 as opening
 from scripts import season_historical_transfer_review_v1 as transfer
 from scripts import season_opening_used_substitutes_v1 as substitutes
@@ -60,17 +61,17 @@ def run(input_root, output_root):
         if path not in cache:
             if registry.sha256_file(path) != source['sha256']:
                 raise ValueError('original match report changed')
-            cache[path] = path.read_bytes()
+            cache[path] = storage_io.read_bytes(path)
         return cache[path]
     summaries = []
     for season in registry.supported_seasons():
         source = input_root / 'opening' / season / 'opening-review.json'
         target = output_root / 'opening' / season / 'opening-review.json'
-        document = json.loads(source.read_text())
+        document = json.loads(storage_io.read_text(source))
         input_sha = registry.sha256_file(source)
         transfer.verify_opening_sources(document)
-        if target.exists():
-            completed = json.loads(target.read_text())
+        if storage_io.exists(target):
+            completed = json.loads(storage_io.read_text(target))
             if completed.get('used_substitute_refresh', {}).get('input_sha256') != input_sha:
                 raise ValueError('completed source refresh is bound to another original review')
             transfer.verify_opening_sources(completed)
@@ -87,16 +88,16 @@ def run(input_root, output_root):
         review_target.mkdir(parents=True, exist_ok=True)
         for name in ('report.json', 'roster-audit.json'):
             path = review_source / name
-            if not path.is_file():
+            if not storage_io.is_file(path):
                 continue
             dest = review_target / name
-            if dest.exists():
+            if storage_io.exists(dest):
                 if registry.sha256_file(dest) != registry.sha256_file(path):
                     raise ValueError('inherited raw squad review changed')
             else:
                 # Original reports remain immutable, so a hardlink is safe.
                 import os
-                os.link(path, dest)
+                storage_io.link(path, dest)
         summaries.append(dict(summary, season=season))
         print(json.dumps(summaries[-1]), flush=True)
         cache.clear()

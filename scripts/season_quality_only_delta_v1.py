@@ -6,6 +6,7 @@ The exact old/new native record pair is checked, including every unknown byte.
 import copy
 import hashlib
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import season_package_v2 as packages,season_package_compiler_v2 as compiler
 from scripts import season_historical_roster_audit_v1 as roster
@@ -132,7 +133,7 @@ def record_patch(raw,carrier,row,countries):
 
 def apply(jug,eq,plan):
     base=registry.load_registered_release(plan['season'],plan['release_id'])
-    original=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes();original_eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    original=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI');original_eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     if digest(original)!=plan['jug_sha256'] or eq!=original_eq:raise ValueError('quality native preimage/EQ differs')
     index=IndexedFDIFile.from_bytes(original);entries={e.record_id:e for e in index.entries}
     countries=compiler._extract_country_codes_from_textos(base.game_path/'DBDAT/TEXTOS.PKF')
@@ -160,7 +161,7 @@ def reconstruction(previous,release_id,*,minimum_free_bytes=disk_budget.DEFAULT_
     base=registry.load_registered_release(previous.season,plan['release_id']);verify(base,plan)
     package=pipeline.read_json_file(previous.package_path)
     artifact=next(a for a in package['artifacts'] if a['id']==artifact_id(plan))
-    if path.resolve()!=(previous.package_path.parent/filename(plan)).resolve() or registry.sha256_file(path)!=artifact['sha256']:
+    if storage_io.resolve(path)!=storage_io.resolve(previous.package_path.parent / filename(plan)) or registry.sha256_file(path)!=artifact['sha256']:
         raise ValueError('quality SOURCE artifact differs')
     if bind(pipeline.read_json_file(base.package_path),plan)!=package:raise ValueError('quality SOURCE would discard recipe edits')
     if plan['kind']=='season-rating-calibration-2015-english-v3':

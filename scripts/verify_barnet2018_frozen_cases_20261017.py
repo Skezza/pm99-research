@@ -1,5 +1,6 @@
 """Prove four exact frozen Hartlepool duplicates, leaving Josh Hill open."""
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry, season_pipeline_v2 as pipeline
 from scripts import season_historical_opening_review_v1 as opening
 from scripts import season_opening_order_repair_v1 as owners
@@ -17,7 +18,7 @@ def verify(*, root=ROOT, folder=FOLDER, season=SEASON, release_id=RELEASE, pairs
            require_hill=True):
     ROOT,FOLDER,SEASON,RELEASE=root,folder,season,release_id
     output = FOLDER / 'independent-frozen-case-proof.json'
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('completed independent proof must not repeat')
     actual = registry.load_registered_release(SEASON, RELEASE)
     pair = pipeline.read_json_file(FOLDER / 'complete-singleton-source.json')
@@ -37,10 +38,10 @@ def verify(*, root=ROOT, folder=FOLDER, season=SEASON, release_id=RELEASE, pairs
     positive = opening.verify_opening(selected[0], captures, capture_path.parent / 'cache')
     if positive['date'] != expected_date or positive['source_club_id'] != source_club:
         raise ValueError('original retained opening date or numerical club differs')
-    before_jug, after_jug = ((r.game_path / 'DBDAT/JUG98030.FDI').read_bytes() for r in (base, actual))
+    before_jug, after_jug = (storage_io.read_bytes(r.game_path / 'DBDAT/JUG98030.FDI') for r in (base, actual))
     before_entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(before_jug).entries}
     after_entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(after_jug).entries}
-    ownership = owners.native_owners((actual.game_path / 'DBDAT/EQ98030.FDI').read_bytes())
+    ownership = owners.native_owners(storage_io.read_bytes(actual.game_path / 'DBDAT/EQ98030.FDI'))
     dispositions = []
     for person, keep, replace in pairs:
         cases = [c for c in frozen if c['identity'] == ['published-person', person]]

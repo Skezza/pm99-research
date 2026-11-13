@@ -6,6 +6,7 @@ from pathlib import Path
 
 from bs4 import BeautifulSoup
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_atalanta_opening_review_v1 as reviewed
 from scripts import season_italian_opening_dates_v2 as dates
 from scripts import season_pipeline_v2 as pipeline
@@ -45,23 +46,23 @@ def prepare(release=None):
     root = registry.ROOT / '.local/opening-xi-repairs-20261008'
     source_dir = root / 'milan-source-review'
     preflight_path = root / 'italian-preflight/current-native-preflight.json'
-    preflight = json.loads(preflight_path.read_text())
+    preflight = json.loads(storage_io.read_text(preflight_path))
     old = next(c for c in preflight['clubs'] if c['season'] == '2000-01')
     if release.season != '2000-01' or release.release_id != old['release_id']:
         raise ValueError('review requires explicit original registered baseline')
     for name, sha in old['game_files_before'].items():
         if registry.sha256_file(release.game_path / name) != sha:
             raise ValueError('reviewed native preimage changed')
-    package = json.loads(release.package_path.read_text())
+    package = json.loads(storage_io.read_text(release.package_path))
     if registry.sha256_file(release.package_path) != old['package_sha256']:
         raise ValueError('reviewed package changed')
     pdf = source_dir / 'la-stampa-original.pdf'
     if registry.sha256_file(pdf) != PDF_SHA:
         raise ValueError('visually reviewed contemporary scan changed')
     archive = root / 'italian-preflight/sources/milan-2000-01-match-archive.html'
-    names = archive_sheet(archive.read_bytes())
+    names = archive_sheet(storage_io.read_bytes(archive))
     results = root / 'italian-preflight/sources/2000-01-I1.csv'
-    fixture = dates.first_fixture(results.read_bytes(), '2000-01', 'Milan',
+    fixture = dates.first_fixture(storage_io.read_bytes(results), '2000-01', 'Milan',
                                   url='https://www.football-data.co.uk/mmz4281/0001/I1.csv')
     if fixture['fixture'] != {'home': 'Milan', 'away': 'Vicenza',
                               'date': '2000-10-01', 'competition_code': 'I1'}:
@@ -69,7 +70,7 @@ def prepare(release=None):
     club = next(c for c in package['clubs'] if c['carrier_id'] == 201)
     capture, annual_proof = roster.annual_capture('2000-01', club)
     players = {p['carrier_id']: p for p in package['players']}
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     identities = []
     for carrier, sheet_name in zip(XI, names):
         p = players[carrier]
@@ -88,7 +89,7 @@ def prepare(release=None):
                                  (8408, 'lehmann', 'Jens Lehmann'),
                                  (14652, 'iannuzzi', 'Alessandro Iannuzzi')]:
         path = source_dir / (file + '-wikipedia.html')
-        biography = reviewed.biography(path.read_bytes(), title)
+        biography = reviewed.biography(storage_io.read_bytes(path), title)
         native = roster.native_facts(jug, carrier)
         if biography['birth_date'] != native['birth_date']:
             raise ValueError('stale link identity birthday differs')
@@ -114,7 +115,7 @@ def prepare(release=None):
     removals.append({'carrier_id': 4493, 'retained_carrier_id': 14958,
                      'basis': 'same full native name/DOB, one annual Federico Giunti; preserve shared record at other club'})
     leonardo_path = source_dir / 'leonardo-wikipedia.html'
-    biography = reviewed.biography(leonardo_path.read_bytes(), 'Leonardo Araújo')
+    biography = reviewed.biography(storage_io.read_bytes(leonardo_path), 'Leonardo Araújo')
     a, b = roster.native_facts(jug, 7278), roster.native_facts(jug, 4051)
     if (biography['birth_date'] != a['birth_date'] or a['birth_date'] != b['birth_date']
             or plain(a['name']) != 'leonardo nascimento de araujo'

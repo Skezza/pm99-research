@@ -17,6 +17,7 @@ from bs4 import BeautifulSoup
 from app.fdi_indexed import IndexedFDIFile
 from app.indexed_jug_nationality import rewrite_indexed_native_nationalities
 from app.indexed_jug_roles import read_indexed_native_roles, rewrite_indexed_native_roles
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_opening_identity_exchange_v1 as opening_exchange
 from scripts import season_opening_order_repair_v1 as ownership
 from scripts import season_package_compiler_v2 as compiler
@@ -47,9 +48,9 @@ def binding(path: Path) -> dict:
 def source_path(value: dict) -> Path:
     if not isinstance(value, dict) or set(('path','sha256')) - set(value):
         raise ValueError('explicit workspace-relative Riera source binding required')
-    path = (registry.ROOT / value['path']).resolve()
+    path = storage_io.resolve(registry.ROOT / value['path'])
     registry.relative_workspace_path(path)
-    if not path.is_file() or registry.sha256_file(path) != value['sha256']:
+    if not storage_io.is_file(path) or registry.sha256_file(path) != value['sha256']:
         raise ValueError('retained Riera source file hash differs')
     return path
 
@@ -70,7 +71,7 @@ def _source_witness(request: dict) -> dict:
             or parsed['published_profile_position'] != 'Left Midfield'
             or set(parsed['published_nationality_label'].split(' / ')) != {'Spain','Russia'}):
         raise ValueError('exact target-year Riera squad row identity/country/role differs')
-    url = urlsplit(uefa['url']); page = BeautifulSoup(uefa_path.read_bytes(), 'lxml')
+    url = urlsplit(uefa['url']); page = BeautifulSoup(storage_io.read_bytes(uefa_path), 'lxml')
     canonical = page.select_one('link[rel="canonical"]')
     dates = [meta.get('content') for meta in page.select('meta[property="article:published_time"]')]
     text = ' '.join(page.get_text(' ', strip=True).split())
@@ -132,7 +133,7 @@ def _ownership_parent(base, request):
         source_profile_assignment_plan_sha256=receipt['original_profile_assignment_plan_sha256'])
 
 def prepare(base, input_path):
-    path = Path(input_path).resolve(); registry.relative_workspace_path(path)
+    path = storage_io.resolve(Path(input_path)); registry.relative_workspace_path(path)
     request = pipeline.read_json_file(path)
     if (request.get('schema') != INPUT_SCHEMA or request.get('kind') != KIND or request.get('season') != base.season
             or request.get('carrier_id') != 8928
@@ -151,7 +152,7 @@ def prepare(base, input_path):
             or clubs[actor['club_id']].get('carrier_id') != 8):
         raise ValueError('r203 package Riera actor is not the exact expected preimage')
     jug_path=base.game_path/'DBDAT/JUG98030.FDI'; eq_path=base.game_path/'DBDAT/EQ98030.FDI'
-    jug=jug_path.read_bytes(); eq=eq_path.read_bytes(); textos=base.game_path/'DBDAT/TEXTOS.PKF'
+    jug=storage_io.read_bytes(jug_path); eq=storage_io.read_bytes(eq_path); textos=base.game_path/'DBDAT/TEXTOS.PKF'
     if ownership.native_owners(eq).get(8928) != {8}:
         raise ValueError('r203 native Riera ownership is not exclusively Espanyol 8')
     native=native_facts(jug,8928); entries={e.record_id:e for e in IndexedFDIFile.from_bytes(jug).entries}
@@ -247,7 +248,7 @@ def bind(package, plan):
 
 def apply(jug,eq,plan):
     validate_mask(plan); base=registry.load_registered_release(plan['season'],plan['release_id']); verify(base,plan)
-    before=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes(); expected_eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    before=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI'); expected_eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     if digest(before)!=plan['parent']['jug_sha256'] or digest(expected_eq)!=plan['parent']['eq_sha256'] or digest(eq)!=plan['parent']['eq_sha256']:
         raise ValueError('Riera native parent/JUG/EQ hashes differ')
     roles,_=rewrite_indexed_native_roles(before,{8928:[10]})
@@ -282,7 +283,7 @@ def reconstruction(previous,release_id):
     plan_path=registry.ROOT/relative; plan=pipeline.read_json_file(plan_path)
     if plan.get('schema')!=SCHEMA: raise ValueError('Riera SOURCE receipt points to another plan kind')
     base=registry.load_registered_release(previous.season,plan['release_id']); verify(base,plan)
-    if (plan_path.resolve()!=(previous.package_path.parent/filename(plan)).resolve()
+    if (storage_io.resolve(plan_path)!=storage_io.resolve(previous.package_path.parent / filename(plan))
             or registry.sha256_file(plan_path)!=receipt.get('original_profile_assignment_plan_sha256')):
         raise ValueError('Riera SOURCE receipt/plan path or SHA differs')
     package=pipeline.read_json_file(previous.package_path)
@@ -297,7 +298,7 @@ def reconstruction(previous,release_id):
         profile_assignment_plan_path=plan_path)
     rebuilt=registry.load_registered_release(previous.season,release_id)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path,pipeline.read_json_file(previous.inventory_path))
-    if rebuilt.package_path.read_bytes()!=previous.package_path.read_bytes():
+    if storage_io.read_bytes(rebuilt.package_path)!=storage_io.read_bytes(previous.package_path):
         raise ValueError('Riera whole SOURCE recipe differs')
     return dict(season=previous.season,release_id=release_id,complete_game_inventory_identical=True,
         complete_recipe_identical=True,compilation_mode=MODE)

@@ -3,6 +3,7 @@
 Does not update preferred games. Fresh runner review must follow.
 """
 from datetime import UTC,datetime
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry,season_pipeline_v2 as pipeline
 from scripts import publish_paired_whole_club_delta_v1 as publisher
 from scripts import season_paired_whole_club_reconstruction_v1 as source
@@ -27,7 +28,7 @@ def main():
         raise ValueError('whole SOURCE reconstruction failed')
     rebuilt=registry.load_registered_release(SEASON,REPLAY)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path,pipeline.read_json_file(original.inventory_path))
-    if rebuilt.package_path.read_bytes()!=original.package_path.read_bytes():raise ValueError('whole SOURCE recipe bytes differ')
+    if storage_io.read_bytes(rebuilt.package_path)!=storage_io.read_bytes(original.package_path):raise ValueError('whole SOURCE recipe bytes differ')
     retained(ROOT/'Eastleigh2014-native-delivery-v1/complete-SOURCE-replay.json',dict(utc=datetime.now(UTC).isoformat(),**result))
     print(dict(SOURCE_complete=True,preferred_changed=False,runner_pending=True),flush=True)
 

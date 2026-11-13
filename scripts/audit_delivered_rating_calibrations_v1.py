@@ -1,6 +1,7 @@
 """Independent actual-native semantic readback for each ten-skill update."""
 import gzip
 import hashlib
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import season_package_compiler_v2 as compiler,season_historical_roster_audit_v1 as roster
 from scripts import season_quality_only_delta_v1 as layer
@@ -12,7 +13,7 @@ def audit(season,root=None,release_name=None):
     root=ROOT/season if root is None else root
     release=registry.load_registered_release(season,release_name or release_id(season))
     plan=pipeline.read_json_file(root/'quality-plan.json');base=registry.load_registered_release(season,plan['release_id'])
-    raw=(release.game_path/'DBDAT/JUG98030.FDI').read_bytes();old=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    raw=storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI');old=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
     index=IndexedFDIFile.from_bytes(raw);entries={e.record_id:e for e in index.entries}
     old_index=IndexedFDIFile.from_bytes(old);old_entries={e.record_id:e for e in old_index.entries}
     if set(entries)!=set(old_entries):raise ValueError('actual native directory changed')
@@ -48,9 +49,9 @@ def audit(season,root=None,release_name=None):
     for player in package['players']:
         if player['carrier_id'] not in expected and player!=before_players[player['carrier_id']]:raise ValueError('unselected recipe player changed')
     encoded=pipeline.canonical_json_bytes(readback);detail=root/'native-skill-readback-rows.json.gz'
-    if detail.exists():
-        if gzip.decompress(detail.read_bytes())!=encoded:raise ValueError('retained native readback detail differs')
-    else:detail.write_bytes(gzip.compress(encoded,mtime=0))
+    if storage_io.exists(detail):
+        if gzip.decompress(storage_io.read_bytes(detail))!=encoded:raise ValueError('retained native readback detail differs')
+    else:storage_io.write_bytes(detail, gzip.compress(encoded, mtime=0))
     retained(root/'all-updated-players-native-readback.json',dict(season=season,release_id=release.release_id,
         manifest_sha256=release.manifest_sha256,actual_JUG_sha256=registry.sha256_file(release.game_path/'DBDAT/JUG98030.FDI'),
         all_selected_ten_skills_match_recipe=True,all_unselected_native_records_identical=True,

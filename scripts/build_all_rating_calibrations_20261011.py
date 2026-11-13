@@ -1,6 +1,7 @@
 """Pinned, resumable 26-season ability-only delivery; no preferred promotion."""
 from collections import Counter
 import shutil
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry,season_pipeline_v2 as pipeline
 from scripts import season_quality_only_delta_v1 as source
 from scripts.build_quality_only_delivery_v1 import build
@@ -12,7 +13,7 @@ def replay_id(season):return 'replayed-rating-calibration-20261011-'+season+'-r1
 
 def main():
     ROOT.mkdir(parents=True,exist_ok=True);path=ROOT/'pinned-baselines.json'
-    if path.exists():baselines=pipeline.read_json_file(path)
+    if storage_io.exists(path):baselines=pipeline.read_json_file(path)
     else:
         baselines=[dict(season=s,release_id=(registry.load_registered_release(s,'sourced-woking-nationalities-20261011-r99a')
             if s=='2003-04' else registry.load_preferred_release(s)).release_id) for s in registry.supported_seasons()]
@@ -25,14 +26,14 @@ def main():
         base=registry.load_registered_release(b['season'],b['release_id'])
         root=ROOT/b['season'];root.mkdir(parents=True,exist_ok=True)
         path=root/'quality-plan.json'
-        if not path.exists():retained(path,source.prepare(base,'season-rating-calibration-v3'))
-        if not registry.locator_path(b['season'],release_id(b['season'])).exists():
-            need+=base.package_path.stat().st_size+(base.game_path/'DBDAT/JUG98030.FDI').stat().st_size+256_000
+        if not storage_io.exists(path):retained(path,source.prepare(base,'season-rating-calibration-v3'))
+        if not storage_io.exists(registry.locator_path(b['season'], release_id(b['season']))):
+            need+=storage_io.size(base.package_path)+storage_io.size(base.game_path / 'DBDAT/JUG98030.FDI')+256_000
     from scripts.rating_calibration_benchmarks_v3 import check
     check()
     if shutil.disk_usage(ROOT).free-need-100*1024**2<8*1024**3:
         raise ValueError('26-season retained actual/replay batch would breach 8GiB floor; no games built')
-    if not (ROOT/'preflight.json').exists():
+    if not storage_io.exists(ROOT / 'preflight.json'):
         retained(ROOT/'preflight.json',dict(baselines=baselines,space_required_bytes=need,free_at_preflight=shutil.disk_usage(ROOT).free,
             preserved_existing_games=True,no_Pi_or_cleanup_required=True))
     elif pipeline.read_json_file(ROOT/'preflight.json')['baselines']!=baselines:

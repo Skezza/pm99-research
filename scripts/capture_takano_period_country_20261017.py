@@ -1,5 +1,6 @@
 """Capture only the new final country game and its affected player."""
 import argparse
+from scripts import json_storage_io_v1 as storage_io
 from scripts import build_takano_period_country_20261017 as build
 from scripts.capture_shinnie_country_20261017 import main as capture,wait_owned
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
@@ -10,9 +11,9 @@ PROFILE=(10992,'takano_japan','Kenny Takano','Takano')
 
 def main(builder_pid):
     path=build.ROOT/'runtime-profile-spec.json'
-    if path.exists():raise ValueError('existing Takano country capture needs inspection, not restart')
+    if storage_io.exists(path):raise ValueError('existing Takano country capture needs inspection, not restart')
     wait_owned(builder_pid,'scripts.build_takano_period_country_20261017')
-    if not (build.ROOT/'complete-SOURCE-replay.json').exists():raise ValueError('country builder stopped before complete SOURCE proof')
+    if not storage_io.exists(build.ROOT / 'complete-SOURCE-replay.json'):raise ValueError('country builder stopped before complete SOURCE proof')
     actual=build.source.registry.load_registered_release(build.SEASON,build.RELEASE)
     carrier,label,search,token=PROFILE
     profile=dict(carrier_id=carrier,label=label,search=search,token=token)

@@ -9,6 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SNAPSHOT_SCHEMA = 'pm99-independent-snapshot-opening-review-v1'
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_package_compiler_v2 as compiler
@@ -22,8 +23,8 @@ CALENDAR_SOURCE_COUNTRIES = CALENDAR_YEAR_COUNTRIES | set(AUDIT_CALENDAR_COUNTRI
 
 def plan(season, audit_path):
     release = registry.load_preferred_release(season)
-    report = json.loads(audit_path.read_text())
-    package = json.loads(release.package_path.read_text())
+    report = json.loads(storage_io.read_text(audit_path))
+    package = json.loads(storage_io.read_text(release.package_path))
     binding = report['bindings']
     if report['schema_version'] not in (opening.SCHEMA, SNAPSHOT_SCHEMA) or report['season'] != season:
         raise ValueError('wrong independent opening review')

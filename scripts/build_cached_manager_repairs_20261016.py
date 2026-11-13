@@ -6,6 +6,7 @@ runner review. No ratings, player identities, tactics or artwork are rewritten.
 import argparse
 import os
 import shutil
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_cached_manager_repairs_20261016 as source
 from scripts import publish_historical_role_delta_v1 as publisher
@@ -23,9 +24,9 @@ REPLAY='replayed-cached-managers-20261016-r109b'
 def build(season, *, batch_root=ROOT,release_id=RELEASE,replay_id=REPLAY,source_module=source,source_release_id=None):
     ROOT,RELEASE,REPLAY,source=batch_root,release_id,replay_id,source_module
     root=ROOT/season;root.mkdir(parents=True,exist_ok=True)
-    if (root/'complete-SOURCE-replay.json').exists():
+    if storage_io.exists(root / 'complete-SOURCE-replay.json'):
         print(dict(season=season,reused_completed_private_manager_build=True),flush=True);return
-    if not (ROLE_ROOT/season/'complete-SOURCE-replay.json').exists():
+    if not storage_io.exists(ROLE_ROOT / season / 'complete-SOURCE-replay.json'):
         raise ValueError('parent role game is not complete; wait for the live own builder')
     if shutil.disk_usage(root).free<8.3*1024**3:
         raise ValueError('manager build refuses to threaten8GiB reserve')
@@ -41,11 +42,11 @@ def build(season, *, batch_root=ROOT,release_id=RELEASE,replay_id=REPLAY,source_
         package_sha256=registry.sha256_file(base.package_path),
         jug_sha256=registry.sha256_file(base.game_path/'DBDAT/JUG98030.FDI'),updates=[],unresolved=[])
     inert=root/'inert.json';retained(inert,descriptor)
-    if not registry.locator_path(season,RELEASE).exists():
+    if not storage_io.exists(registry.locator_path(season, RELEASE)):
         publisher.publish(season,inert,release_id=RELEASE,source_release_id=base_id,manager_plan_path=path)
     actual=registry.load_registered_release(season,RELEASE)
-    before=(base.game_path/'DBDAT/ENT98030.FDI').read_bytes()
-    after=(actual.game_path/'DBDAT/ENT98030.FDI').read_bytes()
+    before=storage_io.read_bytes(base.game_path / 'DBDAT/ENT98030.FDI')
+    after=storage_io.read_bytes(actual.game_path / 'DBDAT/ENT98030.FDI')
     selected={r['carrier_id'] for r in plan['updates']}
     preserve_other_records(before,after,selected)
     holders,names=_manager_graph(eq_path=actual.game_path/'DBDAT/EQ98030.FDI',
@@ -68,7 +69,7 @@ def build(season, *, batch_root=ROOT,release_id=RELEASE,replay_id=REPLAY,source_
         canonical_manager_corrections=len(plan['updates']),native_manager_name_changes=changes,
         all_unselected_ENT_records_identical=True,all_other_game_files_identical=True,
         complete_recipe_exact=True,original_source_reparsed=True,preferred_unchanged=True))
-    if registry.locator_path(season,REPLAY).exists():
+    if storage_io.exists(registry.locator_path(season, REPLAY)):
         raise ValueError('unreceipted manager SOURCE replay; inspect before retry')
     replay=builder._build_manager_reconstruction(actual,release_id=REPLAY)
     if not replay or not replay['complete_game_inventory_identical'] or not replay['complete_recipe_identical']:
@@ -78,10 +79,10 @@ def build(season, *, batch_root=ROOT,release_id=RELEASE,replay_id=REPLAY,source_
     for a,b in ((actual.package_path,rebuilt.package_path),
         (actual.game_path/'DBDAT/ENT98030.FDI',rebuilt.game_path/'DBDAT/ENT98030.FDI')):
         if registry.sha256_file(a)!=registry.sha256_file(b):raise ValueError('own manager replay content differs')
-        if a.stat().st_ino!=b.stat().st_ino:
+        if (storage_io.stat_result(a).st_ino != storage_io.stat_result(b).st_ino) and not storage_io.is_compressed(a) and not storage_io.is_compressed(b):
             temporary=b.with_name(b.name+'.verified-link')
-            if temporary.exists():raise ValueError('unreceipted manager sharing temporary')
-            os.link(a,temporary);os.replace(temporary,b)
+            if storage_io.exists(temporary):raise ValueError('unreceipted manager sharing temporary')
+            storage_io.link(a, temporary);storage_io.replace_file(temporary,b)
     print(dict(season=season,canonical_manager_corrections=len(plan['updates']),
         native_manager_name_changes=changes,complete_SOURCE_exact=True,preferred_unchanged=True),flush=True)
 

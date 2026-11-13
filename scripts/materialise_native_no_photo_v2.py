@@ -26,6 +26,7 @@ for candidate in (ROOT, EDITOR):
         sys.path.insert(0, str(candidate))
 
 from app.minifoto_bitmap_archive import decode_obfuscated_bitmap_name  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2 as package_v2  # noqa: E402
 
 
@@ -39,7 +40,7 @@ class NativeNoPhotoError(ValueError):
 
 
 def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def _active_offsets_for_player(archive: bytes | bytearray, player_id: int) -> list[int]:
@@ -105,13 +106,13 @@ def _targets(package: Mapping[str, Any]) -> list[tuple[str, int, str]]:
 def materialise_native_no_photo(*, package: Mapping[str, Any], game_tree: Path) -> dict[str, Any]:
     """Disable every unresolved/native-no-photo carrier asset in ``game_tree``."""
 
-    game_tree = game_tree.resolve()
+    game_tree = storage_io.resolve(game_tree)
     archive_path = game_tree / "DBDAT" / "MINIFOTO.PKF"
-    if not archive_path.is_file() or archive_path.is_symlink():
+    if not storage_io.is_file(archive_path) or archive_path.is_symlink():
         raise NativeNoPhotoError(f"missing regular MINIFOTO.PKF in {game_tree}")
     package_v2.validate_package(package, strict=True)
     target_rows = _targets(package)
-    original = archive_path.read_bytes()
+    original = storage_io.read_bytes(archive_path)
     archive = bytearray(original)
     loose_root = game_tree / "DBDAT" / "MINIFOTO"
     initial_offsets = _active_offsets_for_players(archive, (carrier_id for _id, carrier_id, _status in target_rows))
@@ -121,9 +122,9 @@ def materialise_native_no_photo(*, package: Mapping[str, Any], game_tree: Path) 
         for offset in offsets:
             archive[offset] = 0
         loose_path = loose_root / f"J96{carrier_id:05d}.BMP"
-        removed_loose = loose_path.is_file()
-        loose_path.unlink(missing_ok=True)
-        if loose_path.exists():
+        removed_loose = storage_io.is_file(loose_path)
+        storage_io.unlink(loose_path, missing_ok=True)
+        if storage_io.exists(loose_path):
             raise NativeNoPhotoError(f"failed to remove loose MINIFOTO override for player carrier {carrier_id}")
         outcomes.append({
             "player_id": player_id,
@@ -142,7 +143,7 @@ def materialise_native_no_photo(*, package: Mapping[str, Any], game_tree: Path) 
         )
     patched = bytes(archive)
     if patched != original:
-        archive_path.write_bytes(patched)
+        storage_io.write_bytes(archive_path, patched)
     return {
         "schema_version": RECEIPT_SCHEMA,
         "package_sha256": package_v2.sha256_bytes(package_v2.canonical_json_bytes(dict(package))),
@@ -165,7 +166,7 @@ def main(argv: list[str] | None = None) -> int:
     package = package_v2.read_canonical_package(args.package)
     receipt = materialise_native_no_photo(package=package, game_tree=args.game_tree)
     args.receipt.parent.mkdir(parents=True, exist_ok=True)
-    args.receipt.write_bytes(package_v2.canonical_json_bytes(receipt))
+    storage_io.write_bytes(args.receipt, package_v2.canonical_json_bytes(receipt))
     print(json.dumps({
         "target_player_count": receipt["target_player_count"],
         "native_no_photo_player_count": receipt["native_no_photo_player_count"],

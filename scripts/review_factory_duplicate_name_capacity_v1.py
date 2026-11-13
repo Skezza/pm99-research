@@ -6,6 +6,7 @@ from pathlib import Path
 import sys
 
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_compiler_v2 as compiler
 from scripts import season_release_registry_v1 as registry
 from scripts import season_published_family_component_v1 as family
@@ -30,19 +31,19 @@ def fitting_native_names(recovered, claim, person):
 
 
 def review(plan_root,people_path,output):
-    if output.exists():raise ValueError('capacity evidence is immutable')
-    plans=[(p,json.loads(p.read_text())) for p in sorted(plan_root.glob('*/ownership-plan.json'))]
+    if storage_io.exists(output):raise ValueError('capacity evidence is immutable')
+    plans=[(p,json.loads(storage_io.read_text(p))) for p in sorted(storage_io.glob(plan_root, '*/ownership-plan.json'))]
     requested={id for _,plan in plans for row in plan['unresolved']
         if row['reason']=='owner-proven-but-all-eligible-replacement-surnames-exceed-native-window'
         for id in row.get('eligible_source_person_ids',[]) if isinstance(id,int)}
     claims=family.claims(people_path,requested)
-    factory=FACTORY.read_bytes();entries={e.record_id:e.decode_payload(factory) for e in IndexedFDIFile.from_bytes(factory).entries}
+    factory=storage_io.read_bytes(FACTORY);entries={e.record_id:e.decode_payload(factory) for e in IndexedFDIFile.from_bytes(factory).entries}
     rows=[]
     for path,plan in plans:
         release=registry.load_preferred_release(plan['season'])
         base=registry.load_registered_release(plan['season'],plan['release_id'])
-        current=(release.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-        old=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+        current=storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
+        old=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
         indexed={e.record_id:e.decode_payload(current) for e in IndexedFDIFile.from_bytes(current).entries}
         old_indexed={e.record_id:e.decode_payload(old) for e in IndexedFDIFile.from_bytes(old).entries}
         for row in plan['unresolved']:

@@ -18,6 +18,7 @@ from urllib.parse import urlsplit
 from bs4 import BeautifulSoup
 from app.fdi_indexed import IndexedFDIFile
 from app.indexed_jug_roles import read_indexed_native_roles, rewrite_indexed_native_roles
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_adjudicated_player_facts_v1 as adjudicated
 from scripts import season_package_v2 as packages
 from scripts import season_pipeline_v2 as pipeline
@@ -49,7 +50,7 @@ def _sha(path: Path) -> str:
 def _path(relative: str) -> Path:
     path = registry.ROOT / relative
     if (Path(relative).is_absolute() or path.is_symlink()
-            or not path.resolve().is_relative_to(registry.ROOT.resolve()) or not path.is_file()):
+            or not storage_io.resolve(path).is_relative_to(storage_io.resolve(registry.ROOT)) or not storage_io.is_file(path)):
         raise ValueError("evidence path must be an existing retained workspace file")
     return path
 
@@ -190,7 +191,7 @@ def _verify_dated_lineup_pair(request: dict, annual_row: dict, annual_club: dict
             or ge_url.scheme != "https" or ge_url.hostname != "ge.globo.com"
             or not ge_url.path.startswith("/jogo/") or date_dash not in ge_url.path):
         raise ValueError("dated lineup source family/URL date binding differs")
-    folha = BeautifulSoup(folha_path.read_bytes(), "lxml")
+    folha = BeautifulSoup(storage_io.read_bytes(folha_path), "lxml")
     title = " ".join((folha.title.get_text(" ", strip=True) if folha.title else "").split())
     text = " ".join(folha.get_text(" ", strip=True).split())
     title_fold, text_fold = _fold(title), _fold(text)
@@ -206,7 +207,7 @@ def _verify_dated_lineup_pair(request: dict, annual_row: dict, annual_club: dict
     line = re.compile(rf"(?<!\d){evidence['shirt_number']}\.\s*{re.escape(label)}(?!\w)", re.I)
     if len(sections) != 1 or len(line.findall(sections[0])) != 1:
         raise ValueError("Folha lineup label/shirt is not unique inside the requested club's own lineup section")
-    ge = BeautifulSoup(ge_path.read_bytes(), "lxml")
+    ge = BeautifulSoup(storage_io.read_bytes(ge_path), "lxml")
     ge_title = _fold(ge.title.get_text(" ", strip=True) if ge.title else "")
     ge_text = " ".join(ge.get_text(" ", strip=True).split())
     if (date_slash not in ge_text or club_fold not in ge_title or opponent_fold not in ge_title
@@ -298,13 +299,13 @@ def _verify_fact_parent(base, request: dict):
         common.verify(fact_base, fact_plan)
         expected_package = common.bind(pipeline.read_json_file(fact_base.package_path), fact_plan)
         current_package = pipeline.read_json_file(base.package_path)
-        expected_jug, expected_eq = common.apply(fact_jug_path.read_bytes(), fact_eq_path.read_bytes(), fact_plan)
-        current_jug, current_eq = current_jug_path.read_bytes(), current_eq_path.read_bytes()
+        expected_jug, expected_eq = common.apply(storage_io.read_bytes(fact_jug_path), storage_io.read_bytes(fact_eq_path), fact_plan)
+        current_jug, current_eq = storage_io.read_bytes(current_jug_path), storage_io.read_bytes(current_eq_path)
         if expected_package != current_package or expected_jug != current_jug or expected_eq != current_eq:
             raise ValueError("current parent is not the exact approved adjudicated-facts layer postimage")
         _FACT_REPLAY_CACHE.add(key)
     return (fact_plan_path, fact_plan, fact_base, pipeline.read_json_file(base.package_path),
-            current_jug_path.read_bytes(), current_eq_path.read_bytes())
+            storage_io.read_bytes(current_jug_path), storage_io.read_bytes(current_eq_path))
 
 
 def _fact_witness(fact_plan: dict, carrier: int):
@@ -644,8 +645,8 @@ def apply(jug, eq, plan):
     validate_mask(plan)
     base = registry.load_registered_release(plan["season"], plan["release_id"])
     verify(base, plan)
-    original = (base.game_path / "DBDAT/JUG98030.FDI").read_bytes()
-    if _sha(base.game_path / "DBDAT/JUG98030.FDI") != plan["jug_sha256"] or _sha(base.game_path / "DBDAT/EQ98030.FDI") != plan["eq_sha256"] or eq != (base.game_path / "DBDAT/EQ98030.FDI").read_bytes():
+    original = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    if _sha(base.game_path / "DBDAT/JUG98030.FDI") != plan["jug_sha256"] or _sha(base.game_path / "DBDAT/EQ98030.FDI") != plan["eq_sha256"] or eq != storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI'):
         raise ValueError("exact corrected-facts native preimage required")
     target = plan["updates"][0]["carrier_id"]
     after, _ = rewrite_indexed_native_roles(original, {target: plan["updates"][0]["values"]["fine_roles"]})

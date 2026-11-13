@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_kit_render_bindings_v1 as render
@@ -22,11 +23,11 @@ SPECS = {3312: ('Wrexham', 'Racecourse Ground', 'wrexham-2012-opener.html',
 
 
 def link_original(source, target):
-    if target.exists():
+    if storage_io.exists(target):
         if registry.sha256_file(source) != registry.sha256_file(target):
             raise ValueError('original hardlink preimage differs')
     else:
-        os.link(source, target)
+        storage_io.link(source, target)
 
 
 def catalogue():
@@ -45,7 +46,7 @@ def catalogue():
     path = registry.ROOT / match['path']
     link_original(path, CACHE / SPECS[3312][2])
     link_original(path.with_name(path.name + '.source.json'), CACHE / (SPECS[3312][2] + '.source.json'))
-    soup = BeautifulSoup((CACHE / 'wrexham-kit-history.html').read_bytes(), 'html.parser')
+    soup = BeautifulSoup(storage_io.read_bytes(CACHE / 'wrexham-kit-history.html'), 'html.parser')
     image = soup.find('img', src='/Wrexham/images/wrexham_2012-2013.gif')
     if image is None or '2012-2013' not in image.parent.get_text(' ', strip=True):
         raise ValueError('original HFK image is not explicitly labelled 2012/13')
@@ -72,7 +73,7 @@ def catalogue():
 
 
 def prepare():
-    if (OUTPUT / 'kit-catalogue.json').exists():
+    if storage_io.exists(OUTPUT / 'kit-catalogue.json'):
         raise ValueError('asset rendering workspace is immutable')
     doc = catalogue()
     pipeline.write_canonical_json(OUTPUT / 'kit-catalogue.json', doc)

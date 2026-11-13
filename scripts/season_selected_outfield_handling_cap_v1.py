@@ -5,6 +5,7 @@ is explicit and bound to the current immutable actor, owner and native preimage.
 """
 import copy
 from pathlib import Path
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import season_opening_identity_exchange_v1 as identity
 from scripts import season_opening_order_repair_v1 as ownership
@@ -39,8 +40,8 @@ def rows(base, request_path):
     package=pipeline.read_json_file(base.package_path)
     players={row['carrier_id']:row for row in package['players']}
     clubs={row['id']:row for row in package['clubs']}
-    jug=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    jug=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     owners=ownership.native_owners(eq)
     result=[]
     for selection in selections:

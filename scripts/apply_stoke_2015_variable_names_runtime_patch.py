@@ -14,6 +14,14 @@ bytes and tail-relative skills are patched after the move.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import csv
 import json
@@ -26,12 +34,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR_ROOT = REPO_ROOT / "upstream" / "pm99-skezmod-db-editor"
 if str(EDITOR_ROOT) not in sys.path:
     sys.path.insert(0, str(EDITOR_ROOT))
-if str(Path(__file__).resolve().parent) not in sys.path:
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
+if str(storage_io.resolve(Path(__file__)).parent) not in sys.path:
+    sys.path.insert(0, str(storage_io.resolve(Path(__file__)).parent))
 
 from app.editor_actions import (  # noqa: E402
     _IndexedRawStageRecord,
@@ -541,7 +549,7 @@ def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
         "old_anchor",
         "new_anchor",
     ]
-    with path.open("w", newline="", encoding="utf-8") as handle:
+    with storage_io.open_file(path, 'w', newline='', encoding='utf-8') as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()
         for row in rows:
@@ -554,19 +562,19 @@ def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
 
 def main() -> int:
     args = _parse_args()
-    base_game = Path(args.base_game).expanduser().resolve()
-    out_game = Path(args.out_game).expanduser().resolve()
+    base_game = storage_io.resolve(Path(args.base_game).expanduser())
+    out_game = storage_io.resolve(Path(args.out_game).expanduser())
     if not base_game.is_dir():
         raise SystemExit(f"Base game root missing: {base_game}")
-    if out_game.exists():
+    if storage_io.exists(out_game):
         if not args.force:
             raise SystemExit(f"Output game already exists: {out_game}")
         if not args.dry_run:
             shutil.rmtree(out_game)
-    if not out_game.exists():
+    if not storage_io.exists(out_game):
         shutil.copytree(base_game, out_game, symlinks=True)
 
-    output_dir = Path(args.output_dir).expanduser().resolve() if args.output_dir else out_game / "artifacts" / "variable_names"
+    output_dir = storage_io.resolve(Path(args.output_dir).expanduser()) if args.output_dir else out_game / "artifacts" / "variable_names"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     dbdat = out_game / "DBDAT"
@@ -575,12 +583,12 @@ def main() -> int:
     coach_file = dbdat / "ENT98030.FDI"
     textos_pkf = dbdat / "TEXTOS.PKF"
     for path in (team_file, player_file, coach_file, textos_pkf):
-        if not path.is_file():
+        if not storage_io.is_file(path):
             raise SystemExit(f"Required PM99 file missing: {path}")
 
     country_codes = _extract_nationality_codes(textos_pkf)
     source_by_name = _target_source_rows(country_codes)
-    file_data = player_file.read_bytes()
+    file_data = storage_io.read_bytes(player_file)
     indexed = IndexedFDIFile.from_bytes(file_data)
     entries_by_id = {int(entry.record_id): entry for entry in indexed.entries}
     roster_rows = _resolve_stoke_roster(team_file, player_file, args.team_query)
@@ -617,7 +625,7 @@ def main() -> int:
     if stages and not args.dry_run:
         backup_path = write_player_staged_records(str(player_file), stages, create_backup_before_write=True)
 
-    post_file_data = player_file.read_bytes()
+    post_file_data = storage_io.read_bytes(player_file)
     post_indexed = IndexedFDIFile.from_bytes(post_file_data)
     post_entries_by_id = {int(entry.record_id): entry for entry in post_indexed.entries}
     readback_rows: list[dict[str, Any]] = []
@@ -670,9 +678,9 @@ def main() -> int:
     assignment_csv = output_dir / "stoke_2015_variable_name_assignments.csv"
     readback_json = output_dir / "stoke_2015_variable_name_readback.json"
     manifest_path = output_dir / "stoke_2015_variable_name_manifest.json"
-    assignment_json.write_text(json.dumps(patched_rows, indent=2), encoding="utf-8")
+    storage_io.write_text(assignment_json, json.dumps(patched_rows, indent=2), encoding='utf-8')
     _write_csv(assignment_csv, patched_rows)
-    readback_json.write_text(json.dumps(readback_rows, indent=2), encoding="utf-8")
+    storage_io.write_text(readback_json, json.dumps(readback_rows, indent=2), encoding='utf-8')
 
     manifest = {
         "schema": "pm99-stoke-2015-variable-name-runtime-proof-v1",
@@ -706,7 +714,7 @@ def main() -> int:
         "readback_json": str(readback_json),
         "failures": failures,
     }
-    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    storage_io.write_text(manifest_path, json.dumps(manifest, indent=2), encoding='utf-8')
     print(json.dumps({"ok": manifest["ok"], "out_game": str(out_game), "manifest": str(manifest_path)}, indent=2))
     return 0 if manifest["ok"] else 1
 

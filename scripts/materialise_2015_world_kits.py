@@ -35,6 +35,7 @@ from app.minifoto_bitmap_archive import (  # noqa: E402
     iter_obfuscated_bmp_records,
     load_riff_palette,
 )
+from scripts import json_storage_io_v1 as storage_io
 from scripts import pm99_kit_raster_v1 as kit_raster  # noqa: E402
 from scripts.pm99_kit_palette_v1 import runtime_kit_palette  # noqa: E402
 
@@ -64,7 +65,7 @@ def sha256_bytes(value: bytes) -> str:
 
 
 def sha256_file(path: Path) -> str:
-    return sha256_bytes(path.read_bytes())
+    return sha256_bytes(storage_io.read_bytes(path))
 
 
 def _club_key(value: Any) -> str:
@@ -378,10 +379,10 @@ def _write_content_addressed(payload: bytes, root: Path, suffix: str) -> tuple[P
     digest = sha256_bytes(payload)
     path = root / digest[:2] / f"{digest}{suffix}"
     path.parent.mkdir(parents=True, exist_ok=True)
-    if path.exists() and sha256_file(path) != digest:
+    if storage_io.exists(path) and sha256_file(path) != digest:
         raise KitMaterialisationError(f"content-addressed collision: {path}")
-    if not path.exists():
-        path.write_bytes(payload)
+    if not storage_io.exists(path):
+        storage_io.write_bytes(path, payload)
     return path, digest
 
 
@@ -399,11 +400,11 @@ def _fetch_pattern_layers(pattern_tokens: Mapping[str, str], cache_dir: Path, *,
             return {"status": "missing", "reason": f"empty-{part}-pattern-token"}
         url = f"https://commons.wikimedia.org/wiki/Special:Redirect/file/Kit_{part}_{stem}.png"
         index_path = cache_dir / "pattern-index" / f"{sha256_bytes(url.encode('utf-8'))}.json"
-        if index_path.is_file():
+        if storage_io.is_file(index_path):
             try:
-                cached = json.loads(index_path.read_text(encoding="utf-8"))
+                cached = json.loads(storage_io.read_text(index_path, encoding='utf-8'))
                 cached_path = Path(str(cached.get("path") or ""))
-                if cached_path.is_file() and sha256_file(cached_path) == str(cached.get("sha256")):
+                if storage_io.is_file(cached_path) and sha256_file(cached_path) == str(cached.get("sha256")):
                     layers[part] = cached
                     continue
             except (OSError, ValueError, json.JSONDecodeError):
@@ -419,9 +420,9 @@ def _fetch_pattern_layers(pattern_tokens: Mapping[str, str], cache_dir: Path, *,
                 image = Image.open(io.BytesIO(response.content))
                 image.verify()
                 path, digest = _write_content_addressed(bytes(response.content), cache_dir / "patterns", ".png")
-                layers[part] = {"url": url, "path": str(path.resolve()), "sha256": digest, "dimensions": {"width": image.width, "height": image.height}}
+                layers[part] = {"url": url, "path": str(storage_io.resolve(path)), "sha256": digest, "dimensions": {"width": image.width, "height": image.height}}
                 index_path.parent.mkdir(parents=True, exist_ok=True)
-                index_path.write_bytes(canonical_json_bytes(layers[part]))
+                storage_io.write_bytes(index_path, canonical_json_bytes(layers[part]))
                 break
             except Exception as exc:
                 if attempt == 2:
@@ -462,7 +463,7 @@ def materialise_kits(manifest: Mapping[str, Any], *, dbdat: Path, cache_dir: Pat
     archive_hashes: dict[str, str] = {}
     for archive in ARCHIVES:
         path = dbdat / archive
-        if not path.is_file():
+        if not storage_io.is_file(path):
             raise KitMaterialisationError(f"missing read-only kit archive: {path}")
         archive_hashes[archive] = sha256_file(path)
         archives[archive] = {int(re.fullmatch(r"EQ96(\d{4})\.BMP", str(record.file_name), flags=re.IGNORECASE).group(1)): record for record in iter_obfuscated_bmp_records(path, file_name_pattern=r"^EQ96\d{4}\.BMP$")}
@@ -487,7 +488,7 @@ def materialise_kits(manifest: Mapping[str, Any], *, dbdat: Path, cache_dir: Pat
         row["page"] = {key: value for key, value in fetched.items() if key != "wikitext"}
         page_cache_payload = canonical_json_bytes({"page_title": fetched.get("page_title"), "page_id": fetched.get("page_id"), "wikitext": fetched.get("wikitext")})
         page_cache_path, page_cache_hash = _write_content_addressed(page_cache_payload, cache_dir / "pages", ".json")
-        row["page"]["cache_path"] = str(page_cache_path.resolve())
+        row["page"]["cache_path"] = str(storage_io.resolve(page_cache_path))
         row["page"]["cache_sha256"] = page_cache_hash
         parsed = parse_home_fields(str(fetched["wikitext"]))
         row["home_kit"] = parsed
@@ -507,7 +508,7 @@ def materialise_kits(manifest: Mapping[str, Any], *, dbdat: Path, cache_dir: Pat
                     return row
                 payload = (_render_with_pattern_layers(record, pattern_layers, palette) if pattern_layers.get("status") == "ready" else render_candidate(record, parsed["fields"], palette))
                 path, digest = _write_content_addressed(payload, output_dir / "candidate-bmps" / archive, ".bmp")
-                assets[archive] = {"path": str(path.resolve()), "sha256": digest, "file_name": str(record.file_name), "width": int(record.width), "height": int(record.height)}
+                assets[archive] = {"path": str(storage_io.resolve(path)), "sha256": digest, "file_name": str(record.file_name), "width": int(record.width), "height": int(record.height)}
         except Exception as exc:
             row.update({"status": "blocked-render-failed", "action": "no-write", "reason": f"{type(exc).__name__}: {exc}"})
             return row
@@ -531,7 +532,7 @@ def materialise_kits(manifest: Mapping[str, Any], *, dbdat: Path, cache_dir: Pat
         counts[row["status"]] = counts.get(row["status"], 0) + 1
     exact_count = counts.get("release-eligible-exact-geometry-candidate", 0) + counts.get("release-eligible-exact-pattern-candidate", 0)
     unresolved_count = counts.get("rendered-colour-candidate-pattern-unresolved", 0)
-    return {"schema_version": SCHEMA, "season": "2015-16", "result": "source-only-kit-candidates; no PM99 binary writes", "policy": {"source": "strict Wikipedia season-page home-kit fields plus exact Wikimedia Kit_* pattern layers", "render": "PM99 silhouette is composited from the exact body/arm layers where available; only those or explicitly mapped generic geometry may be release-eligible", "inheritance": "base 1998 EQ96 art is never copied or claimed complete", "scope": "MINIESC/NANOESC/RIDIESC are read-only; candidate BMPs only"}, "coverage": {"foreign_carrier_count": len(clubs), "source_ready_carrier_count": len(ready), "status_counts": dict(sorted(counts.items())), "rendered_colour_candidate_count": unresolved_count, "release_eligible_exact_geometry_candidate_count": exact_count, "release_approved_count": exact_count, "missing_follow_up_count": len(rows) - unresolved_count - exact_count}, "source": {"candidate_manifest_sha256": sha256_bytes(canonical_json_bytes(manifest)), "dbdat": str(dbdat.resolve()), "archive_sha256": archive_hashes, "palette": {**palette_source, "sha256": sha256_file(Path(str(palette_source["path"]))) }}, "rows": rows, "missing_follow_up": [row for row in rows if row["status"] not in {"rendered-colour-candidate-pattern-unresolved", "release-eligible-exact-geometry-candidate", "release-eligible-exact-pattern-candidate"}]}
+    return {"schema_version": SCHEMA, "season": "2015-16", "result": "source-only-kit-candidates; no PM99 binary writes", "policy": {"source": "strict Wikipedia season-page home-kit fields plus exact Wikimedia Kit_* pattern layers", "render": "PM99 silhouette is composited from the exact body/arm layers where available; only those or explicitly mapped generic geometry may be release-eligible", "inheritance": "base 1998 EQ96 art is never copied or claimed complete", "scope": "MINIESC/NANOESC/RIDIESC are read-only; candidate BMPs only"}, "coverage": {"foreign_carrier_count": len(clubs), "source_ready_carrier_count": len(ready), "status_counts": dict(sorted(counts.items())), "rendered_colour_candidate_count": unresolved_count, "release_eligible_exact_geometry_candidate_count": exact_count, "release_approved_count": exact_count, "missing_follow_up_count": len(rows) - unresolved_count - exact_count}, "source": {"candidate_manifest_sha256": sha256_bytes(canonical_json_bytes(manifest)), "dbdat": str(storage_io.resolve(dbdat)), "archive_sha256": archive_hashes, "palette": {**palette_source, "sha256": sha256_file(Path(str(palette_source["path"]))) }}, "rows": rows, "missing_follow_up": [row for row in rows if row["status"] not in {"rendered-colour-candidate-pattern-unresolved", "release-eligible-exact-geometry-candidate", "release-eligible-exact-pattern-candidate"}]}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -544,14 +545,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--workers", type=int, default=8)
     args = parser.parse_args(argv)
     try:
-        raw, manifest_hash = args.candidate_manifest.read_bytes(), None
+        raw, manifest_hash = storage_io.read_bytes(args.candidate_manifest), None
         manifest = json.loads(raw.decode("utf-8")); manifest_hash = sha256_bytes(raw)
-        result = materialise_kits(manifest, dbdat=args.dbdat.resolve(), cache_dir=args.cache_dir.resolve(), output_dir=args.output_dir.resolve(), workers=args.workers)
+        result = materialise_kits(manifest, dbdat=storage_io.resolve(args.dbdat), cache_dir=storage_io.resolve(args.cache_dir), output_dir=storage_io.resolve(args.output_dir), workers=args.workers)
     except (OSError, UnicodeDecodeError, json.JSONDecodeError, KitMaterialisationError) as exc:
         parser.error(str(exc))
     result["source"]["candidate_manifest_file_sha256"] = manifest_hash
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_json_bytes(result))
+    storage_io.write_bytes(args.output, canonical_json_bytes(result))
     print(json.dumps({"output": str(args.output), **result["coverage"]}, sort_keys=True))
     return 0
 

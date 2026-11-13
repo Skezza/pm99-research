@@ -11,6 +11,7 @@ import json
 from pathlib import Path
 from bs4 import BeautifulSoup
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts.season_opening_identity_exchange_v1 import match_people
 from scripts import season_complete_mode1_opening_v1 as complete
@@ -72,15 +73,15 @@ def _assert_retirement_evidence(request: dict) -> None:
     value = request['evidence'][key]
     if (value.get('path'), value.get('sha256'), value.get('url')) != (ELPAIS_PATH, ELPAIS_SHA, ELPAIS_URL):
         raise ValueError('Amavisca retirement source path/hash/URL differs')
-    body = (registry.ROOT / ELPAIS_PATH).resolve(strict=True)
-    receipt = (registry.ROOT / ELPAIS_RECEIPT_PATH).resolve(strict=True)
-    if (not body.is_relative_to(registry.ROOT.resolve()) or sha(body.read_bytes()) != ELPAIS_SHA
-            or not receipt.is_relative_to(registry.ROOT.resolve())
-            or sha(receipt.read_bytes()) != ELPAIS_RECEIPT_SHA):
+    body = storage_io.resolve(registry.ROOT / ELPAIS_PATH, strict=True)
+    receipt = storage_io.resolve(registry.ROOT / ELPAIS_RECEIPT_PATH, strict=True)
+    if (not body.is_relative_to(storage_io.resolve(registry.ROOT)) or sha(storage_io.read_bytes(body)) != ELPAIS_SHA
+            or not receipt.is_relative_to(storage_io.resolve(registry.ROOT))
+            or sha(storage_io.read_bytes(receipt)) != ELPAIS_RECEIPT_SHA):
         raise ValueError('Amavisca retirement body or receipt hash differs')
-    if json.loads(receipt.read_text()) != {'sha256': ELPAIS_SHA, 'url': ELPAIS_URL}:
+    if json.loads(storage_io.read_text(receipt)) != {'sha256': ELPAIS_SHA, 'url': ELPAIS_URL}:
         raise ValueError('Amavisca source receipt does not bind body hash and URL')
-    page = BeautifulSoup(body.read_bytes(), 'lxml')
+    page = BeautifulSoup(storage_io.read_bytes(body), 'lxml')
     text = ' '.join(page.get_text(' ', strip=True).split())
     date = page.select_one('meta[property="article:published_time"]')
     if (not all(a in text for a in ('Amavisca', 'No jugaré más', 'Espanyol'))
@@ -133,13 +134,13 @@ def _assert_ownership_graph(request: dict, owners: dict[int, set[int]]) -> None:
     if (value.get('path'),value.get('sha256'),value.get('url'),value.get('date_anchor'),value.get('event_date')) != (
         PANDIANI_PATH,PANDIANI_SHA,PANDIANI_URL,'January 12, 2006','2006-01-12'):
         raise ValueError('Pandiani retirement source path/hash/URL/date differs')
-    body=(registry.ROOT/PANDIANI_PATH).resolve(strict=True)
-    receipt=(registry.ROOT/PANDIANI_RECEIPT_PATH).resolve(strict=True)
-    if (not body.is_relative_to(registry.ROOT.resolve()) or sha(body.read_bytes())!=PANDIANI_SHA
-            or not receipt.is_relative_to(registry.ROOT.resolve()) or sha(receipt.read_bytes())!=PANDIANI_RECEIPT_SHA
-            or json.loads(receipt.read_text())!={'sha256':PANDIANI_SHA,'url':PANDIANI_URL}):
+    body=storage_io.resolve(registry.ROOT / PANDIANI_PATH, strict=True)
+    receipt=storage_io.resolve(registry.ROOT / PANDIANI_RECEIPT_PATH, strict=True)
+    if (not body.is_relative_to(storage_io.resolve(registry.ROOT)) or sha(storage_io.read_bytes(body))!=PANDIANI_SHA
+            or not receipt.is_relative_to(storage_io.resolve(registry.ROOT)) or sha(storage_io.read_bytes(receipt))!=PANDIANI_RECEIPT_SHA
+            or json.loads(storage_io.read_text(receipt))!={'sha256':PANDIANI_SHA,'url':PANDIANI_URL}):
         raise ValueError('Pandiani retirement body/receipt binding differs')
-    ptext=' '.join(BeautifulSoup(body.read_bytes(),'lxml').get_text(' ',strip=True).split())
+    ptext=' '.join(BeautifulSoup(storage_io.read_bytes(body),'lxml').get_text(' ',strip=True).split())
     if not all(a in ptext for a in ('Thursday, January 12, 2006','Walter Pandiani','Birmingham City FC','RCD Espanyol')):
         raise ValueError('Pandiani dated ownership transition text differs')
     birmingham = [p for p in request.get('retirements', []) if p.get('carrier_id') == 1858]

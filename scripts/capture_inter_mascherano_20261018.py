@@ -5,6 +5,7 @@ visible row and still require independent exact-person visual/native review.
 This script neither approves evidence nor publishes either game.
 """
 import os
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import capture_registered_season_runtime_v1 as capture
 from scripts.capture_arsenal_owned_opening_20261016 import bound_capture
@@ -33,14 +34,14 @@ def main():
     inter_root = AUDIT / 'Gresko2000-Inter-opening-review-v1'
     inter = registry.load_registered_release('2000-01',
         'sourced-inter-august-contract-reserve-20261018-r160a')
-    if not (inter_root / 'colombo-rejected-wrong-search-result.json').exists():
+    if not storage_io.exists(inter_root / 'colombo-rejected-wrong-search-result.json'):
         raise ValueError('preserve rejected Roberto search result before new capture')
     profile(inter_root, inter, 21373, 'colombo_inter', 'Colombo',
             'inter_contract_2000_01_r160a_20261018_colombo_second', env, '120,182,1')
     root = AUDIT / 'Mascherano2010-dated-role-v1'
     release = registry.load_registered_release('2010-11',
         'sourced-dated-mascherano-midfield-20261018-r161a')
-    if not (root / 'complete-SOURCE-replay.json').exists():
+    if not storage_io.exists(root / 'complete-SOURCE-replay.json'):
         raise ValueError('complete actual SOURCE replay required before capture')
     command, evidence = capture.capture_command(season='2010-11', worker='default',
         run_tag='mascherano_midfield_2010_11_r161a_20261018',

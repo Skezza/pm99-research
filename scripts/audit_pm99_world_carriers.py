@@ -13,6 +13,14 @@ for the browser editor's field-capability matrix.
 """
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import json
 from collections import Counter, defaultdict
@@ -53,7 +61,7 @@ def _player_family(decoded: bytes) -> str:
 
 
 def _player_catalog(player_path: Path) -> tuple[dict[int, dict[str, Any]], dict[str, int]]:
-    data = player_path.read_bytes()
+    data = storage_io.read_bytes(player_path)
     indexed = IndexedFDIFile.from_bytes(data)
     catalog: dict[int, dict[str, Any]] = {}
     parse_states: Counter[str] = Counter()
@@ -82,7 +90,7 @@ def _player_catalog(player_path: Path) -> tuple[dict[int, dict[str, Any]], dict[
 
 
 def _manager_catalog(manager_path: Path) -> dict[int, dict[str, Any]]:
-    data = manager_path.read_bytes()
+    data = storage_io.read_bytes(manager_path)
     indexed = IndexedFDIFile.from_bytes(data)
     catalog: dict[int, dict[str, Any]] = {}
     for entry in indexed.entries:
@@ -111,9 +119,9 @@ def _carrier_classification(short_name: str) -> str:
 
 def main() -> int:
     args = _parse_args()
-    dbdat = args.dbdat.resolve()
+    dbdat = storage_io.resolve(args.dbdat)
     required = {name: dbdat / name for name in ("EQ98030.FDI", "JUG98030.FDI", "ENT98030.FDI", "MINIFOTO.PKF")}
-    missing = [str(path) for path in required.values() if not path.is_file()]
+    missing = [str(path) for path in required.values() if not storage_io.is_file(path)]
     if missing:
         raise SystemExit("missing required PM99 database files: " + ", ".join(missing))
 
@@ -128,7 +136,7 @@ def main() -> int:
         )
     }
 
-    eq_data = required["EQ98030.FDI"].read_bytes()
+    eq_data = storage_io.read_bytes(required['EQ98030.FDI'])
     eq_indexed = IndexedFDIFile.from_bytes(eq_data)
     carriers: list[dict[str, Any]] = []
     unsupported_eq_entries: list[dict[str, Any]] = []
@@ -310,7 +318,7 @@ def main() -> int:
         "carriers": carriers,
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    storage_io.write_text(args.output, json.dumps(report, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
     print(json.dumps(report["counts"], indent=2, ensure_ascii=False))
     return 0
 

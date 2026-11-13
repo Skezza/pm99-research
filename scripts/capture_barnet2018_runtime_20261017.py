@@ -1,6 +1,7 @@
 """Capture genuine startup and representative sourced Barnet native profiles."""
 import os
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry, season_pipeline_v2 as pipeline
 from scripts import capture_registered_season_runtime_v1 as capture
 from scripts.capture_arsenal_owned_opening_20261016 import bound_capture
@@ -12,9 +13,9 @@ PROFILES = ((11073, 'cousins', 'Cousins'), (11077, 'boucaud', 'Boucaud'))
 
 def main(*, folder=FOLDER, season=SEASON, release_id=RELEASE, tag=TAG, profiles=PROFILES):
     FOLDER,SEASON,RELEASE,TAG,PROFILES=folder,season,release_id,tag,profiles
-    if not (FOLDER / 'complete-SOURCE-replay.json').exists():
+    if not storage_io.exists(FOLDER / 'complete-SOURCE-replay.json'):
         raise ValueError('exact full SOURCE proof required before runtime capture')
-    if (FOLDER / 'startup-transport.json').exists():
+    if storage_io.exists(FOLDER / 'startup-transport.json'):
         raise ValueError('inspect retained runtime work rather than repeating the queue')
     release = registry.load_registered_release(SEASON, RELEASE)
     env = dict(os.environ, PM99_RUNNER_ARCHIVE_COLD_RUNS='0',

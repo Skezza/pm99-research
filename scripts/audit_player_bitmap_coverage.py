@@ -7,6 +7,14 @@ upstream editor tooling with minimal changes.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 from collections import Counter, defaultdict
 import hashlib
@@ -16,12 +24,12 @@ import re
 import sys
 from typing import Iterable
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR_ROOT = REPO_ROOT / "upstream" / "pm99-skezmod-db-editor"
 if str(EDITOR_ROOT) not in sys.path:
     sys.path.insert(0, str(EDITOR_ROOT))
-if str(Path(__file__).resolve().parent) not in sys.path:
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
+if str(storage_io.resolve(Path(__file__)).parent) not in sys.path:
+    sys.path.insert(0, str(storage_io.resolve(Path(__file__)).parent))
 
 from assert_pm99_isolated_input import choose_preferred_game_root, ensure_not_legacy_path
 from app.fdi_indexed import IndexedFDIFile
@@ -39,7 +47,7 @@ EXE_MARKERS = (
 
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
@@ -47,14 +55,14 @@ def _sha256(path: Path) -> str:
 
 def _rel(path: Path) -> str:
     try:
-        return str(path.resolve().relative_to(REPO_ROOT.resolve()))
+        return str(storage_io.resolve(path).relative_to(storage_io.resolve(REPO_ROOT)))
     except Exception:
         return str(path)
 
 
 def _candidate_first_existing(paths: Iterable[Path]) -> Path | None:
     for path in paths:
-        if path.exists():
+        if storage_io.exists(path):
             return path
     return None
 
@@ -73,14 +81,14 @@ def _default_minifoto_paths() -> list[Path]:
         REPO_ROOT / "FDI-PKF" / "FDI-PKF" / "DBDAT" / "MINIFOTO.PKF",
         REPO_ROOT / ".local" / "iso" / "DbDat" / "MINIFOTO.PKF",
     ]:
-        if path.exists():
+        if storage_io.exists(path):
             out.append(path)
     return out
 
 
 def _default_bigfoto_dir() -> Path | None:
     candidate = REPO_ROOT / ".local" / "iso" / "DbDat" / "BIGFOTO"
-    return candidate if candidate.exists() else None
+    return candidate if storage_io.exists(candidate) else None
 
 
 def _default_scan_roots() -> list[Path]:
@@ -93,7 +101,7 @@ def _default_scan_roots() -> list[Path]:
         REPO_ROOT / "FDI-PKF" / "FDI-PKF" / "DBDAT",
         REPO_ROOT / ".local" / "iso" / "DbDat",
     ]:
-        if path.exists():
+        if storage_io.exists(path):
             roots.append(path)
     return roots
 
@@ -139,11 +147,11 @@ def _scan_minifoto(minifoto_paths: list[Path]) -> tuple[list[dict[str, object]],
 
 
 def _scan_bigfoto(bigfoto_dir: Path | None) -> tuple[list[dict[str, object]], set[int]]:
-    if bigfoto_dir is None or not bigfoto_dir.exists():
+    if bigfoto_dir is None or not storage_io.exists(bigfoto_dir):
         return [], set()
     rows: list[dict[str, object]] = []
     id_union: set[int] = set()
-    for path in sorted(bigfoto_dir.glob("*.pkf")) + sorted(bigfoto_dir.glob("*.PKF")):
+    for path in sorted(storage_io.glob(bigfoto_dir, '*.pkf')) + sorted(storage_io.glob(bigfoto_dir, '*.PKF')):
         records = iter_obfuscated_bmp_records(path, file_name_pattern=J96_RE)
         record_ids = set()
         for record in records:
@@ -180,11 +188,11 @@ def _classify_j96_archive(path: Path) -> str:
 def _scan_j96_archives(scan_roots: list[Path]) -> dict[str, object]:
     pkf_paths: set[Path] = set()
     for root in scan_roots:
-        for path in root.rglob("*.pkf"):
-            if path.is_file():
+        for path in storage_io.glob(root, '*.pkf', recursive=True):
+            if storage_io.is_file(path):
                 pkf_paths.add(path)
-        for path in root.rglob("*.PKF"):
-            if path.is_file():
+        for path in storage_io.glob(root, '*.PKF', recursive=True):
+            if storage_io.is_file(path):
                 pkf_paths.add(path)
 
     archives_with_j96: list[dict[str, object]] = []
@@ -249,10 +257,10 @@ def _find_ascii_offsets(data: bytes, marker: str) -> list[int]:
 def _scan_exe_markers(exe_path: Path | None) -> dict[str, object]:
     if exe_path is None:
         return {"enabled": False, "reason": "No DBASEPRE executable path provided/found"}
-    if not exe_path.exists():
+    if not storage_io.exists(exe_path):
         return {"enabled": False, "reason": f"Executable not found: {exe_path}"}
 
-    data = exe_path.read_bytes()
+    data = storage_io.read_bytes(exe_path)
     markers = []
     all_found = True
     for marker in EXE_MARKERS:
@@ -307,7 +315,7 @@ def _scan_payload_for_embedded_images(jug_file: Path, *, enabled: bool) -> dict[
 
 def _scan_jug_for_18077_presence() -> list[dict[str, object]]:
     results = []
-    for path in sorted(REPO_ROOT.rglob("JUG*.FDI")):
+    for path in sorted(storage_io.glob(REPO_ROOT, 'JUG*.FDI', recursive=True)):
         try:
             ids = _collect_jug_ids(path)
             results.append({"path": _rel(path), "players": len(ids), "has_18077": bool(18077 in ids)})
@@ -358,7 +366,7 @@ def main() -> int:
         if str(args.jug_file or "").strip()
         else _default_jug_path()
     )
-    if not jug_file.exists():
+    if not storage_io.exists(jug_file):
         raise SystemExit(f"JUG file not found: {jug_file}")
 
     minifoto_paths = [
@@ -368,7 +376,7 @@ def main() -> int:
     ]
     if not minifoto_paths:
         minifoto_paths = _default_minifoto_paths()
-    minifoto_paths = [path for path in minifoto_paths if path.exists()]
+    minifoto_paths = [path for path in minifoto_paths if storage_io.exists(path)]
 
     bigfoto_dir = (
         ensure_not_legacy_path(args.bigfoto_dir, label="BIGFOTO directory")
@@ -382,7 +390,7 @@ def main() -> int:
     ]
     if not scan_roots:
         scan_roots = _default_scan_roots()
-    scan_roots = [path for path in scan_roots if path.exists()]
+    scan_roots = [path for path in scan_roots if storage_io.exists(path)]
 
     dbasepre_exe = (
         ensure_not_legacy_path(args.dbasepre_exe, label="DBASEPRE executable")
@@ -455,7 +463,7 @@ def main() -> int:
 
     output_path = Path(args.output).expanduser()
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(json.dumps(output, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    storage_io.write_text(output_path, json.dumps(output, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
 
     print("Player Bitmap Coverage Audit")
     print(f"Output: {output_path}")

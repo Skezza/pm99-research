@@ -38,6 +38,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2 as package_v2  # noqa: E402
 
 
@@ -124,7 +125,7 @@ def _selector_value(selector: Mapping[str, Any]) -> dict[str, str]:
 
 def _read_canonical(path: Path, label: str) -> tuple[dict[str, Any], str]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise SourceClubSelectionError(f"cannot read {label}: {path}: {exc}") from exc
@@ -470,11 +471,11 @@ def assess_existing_package_duplicate_sources(
 
 
 def _write_new(path: Path, value: Mapping[str, Any]) -> str:
-    if path.exists() or path.is_symlink():
+    if storage_io.exists(path) or path.is_symlink():
         raise SourceClubSelectionError(f"refusing to replace existing output: {path}")
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = canonical_json_bytes(value)
-    path.write_bytes(payload)
+    storage_io.write_bytes(path, payload)
     return _sha256_bytes(payload)
 
 
@@ -484,15 +485,15 @@ def write_selection(
 ) -> dict[str, Any]:
     """Write one new source-only selection root, never replacing prior evidence."""
 
-    output_root = output_root.resolve()
-    if output_root.exists() or output_root.is_symlink():
+    output_root = storage_io.resolve(output_root)
+    if storage_io.exists(output_root) or output_root.is_symlink():
         raise SourceClubSelectionError(f"refusing to overwrite source-club selection root: {output_root}")
-    source_intake, _input_sha256 = _read_canonical(source_intake_path.resolve(), "source intake")
-    manifest, _manifest_sha256 = _read_canonical(manifest_path.resolve(), "selection manifest")
+    source_intake, _input_sha256 = _read_canonical(storage_io.resolve(source_intake_path), "source intake")
+    manifest, _manifest_sha256 = _read_canonical(storage_io.resolve(manifest_path), "selection manifest")
     selection, audit = build_selection(source_intake=source_intake, manifest=manifest)
     if strict_package_path is not None:
         strict_package, strict_package_sha256 = _read_canonical(
-            strict_package_path.resolve(), "strict-package preflight package"
+            storage_io.resolve(strict_package_path), "strict-package preflight package"
         )
         audit["strict_package_preflight"] = assess_existing_package_duplicate_sources(
             selection=selection,

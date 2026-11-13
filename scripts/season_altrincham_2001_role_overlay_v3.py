@@ -16,12 +16,13 @@ from typing import Any
 from bs4 import BeautifulSoup
 from app.indexed_jug_roles import read_indexed_native_roles, rewrite_indexed_native_roles
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_altrincham_2001_whole_club_v2 as v2
 from scripts import season_package_v2 as package_v2
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
 
-HERE = Path(__file__).resolve().parent
+HERE = storage_io.resolve(Path(__file__)).parent
 SEASON = "2001-02"
 PARENT = "sourced-anelka-traore-lens-chain-20261024-r219a"
 BASE_PLAN_PATH = registry.ROOT / ".local/consolidated-audit-20261009/parallel-rc-20261023/altrincham-2001-delivery-v2/altrincham-2001-whole-club-exchange-v2.json"
@@ -55,7 +56,7 @@ def _canonical(document: dict) -> bytes:
 
 
 def _load_base_plan() -> dict:
-    raw = BASE_PLAN_PATH.read_bytes()
+    raw = storage_io.read_bytes(BASE_PLAN_PATH)
     if _sha(raw) != BASE_PLAN_SHA256:
         raise ValueError("pinned V2 exchange bytes differ")
     doc = json.loads(raw)
@@ -74,9 +75,9 @@ def _body(base_plan: dict, source_id: str) -> bytes:
     row = _source_rows(base_plan).get(source_id)
     if not row or row.get("kind") != "raw-source-body":
         raise ValueError(f"role evidence source is not a retained original body: {source_id}")
-    path = (registry.ROOT / row["path"]).resolve()
+    path = storage_io.resolve(registry.ROOT / row['path'])
     registry.relative_workspace_path(path)
-    raw = path.read_bytes()
+    raw = storage_io.read_bytes(path)
     if _sha(raw) != row.get("sha256"):
         raise ValueError(f"role evidence source hash mismatch: {source_id}")
     return raw
@@ -168,7 +169,7 @@ def _compile(base, *, expected_plan: dict | None = None) -> dict:
     v2.verify(base, v2_plan)
     # Recheck immutable source/parent bindings above before using cached results.
     cache_key = _sha(_canonical({"base": v2_plan,
-        "adapter_sha256": registry.sha256_file(Path(__file__).resolve()),
+        "adapter_sha256": registry.sha256_file(storage_io.resolve(Path(__file__))),
         "role_writer_sha256": registry.sha256_file(registry.ROOT / "upstream/pm99-skezmod-db-editor/app/indexed_jug_roles.py")}))
     if cache_key in _CACHE:
         cached = _CACHE[cache_key]
@@ -189,7 +190,7 @@ def _compile(base, *, expected_plan: dict | None = None) -> dict:
     implementations = [
         {"path": "scripts/season_altrincham_2001_whole_club_v2.py", "sha256": registry.sha256_file(registry.ROOT / "scripts/season_altrincham_2001_whole_club_v2.py")},
         {"path": "upstream/pm99-skezmod-db-editor/app/indexed_jug_roles.py", "sha256": registry.sha256_file(registry.ROOT / "upstream/pm99-skezmod-db-editor/app/indexed_jug_roles.py")},
-        {"path": registry.relative_workspace_path(Path(__file__).resolve()), "sha256": registry.sha256_file(Path(__file__).resolve())},
+        {"path": registry.relative_workspace_path(storage_io.resolve(Path(__file__))), "sha256": registry.sha256_file(storage_io.resolve(Path(__file__)))},
     ]
     plan = {
         "schema": SCHEMA, "mode": MODE, "season": SEASON,
@@ -211,8 +212,8 @@ def _compile(base, *, expected_plan: dict | None = None) -> dict:
     }
     plan["transaction_id"] = _sha(_canonical(plan))[:24]
     result = {"plan": plan, "package": package, "native": native,
-        "parent_package": json.loads(base.package_path.read_bytes()),
-        "parent_native": {name: (base.game_path / "DBDAT" / name).read_bytes()
+        "parent_package": json.loads(storage_io.read_bytes(base.package_path)),
+        "parent_native": {name: storage_io.read_bytes(base.game_path / 'DBDAT' / name)
                           for name in ("JUG98030.FDI", "EQ98030.FDI", "ENT98030.FDI", "MINIFOTO.PKF")},
         "v2_plan": v2_plan, "audit": audit}
     if expected_plan is not None and plan != expected_plan:
@@ -311,19 +312,19 @@ def reconstruction(previous, release_id: str):
     if receipt.get("compilation_mode") != MODE: return None
     relative = previous.locator.get("sourced_profile_assignment_plan_path")
     if not relative: raise ValueError("V3 SOURCE lacks exact outer plan locator")
-    plan_path = (registry.ROOT / relative).resolve()
+    plan_path = storage_io.resolve(registry.ROOT / relative)
     plan = pipeline.read_json_file(plan_path)
     parent = registry.load_registered_release(SEASON, plan["parent"]["release_id"])
     verify(parent, plan)
-    if (plan_path != (previous.package_path.parent / filename(plan)).resolve()
+    if (plan_path != storage_io.resolve(previous.package_path.parent / filename(plan))
             or registry.sha256_file(plan_path) != receipt.get("original_profile_assignment_plan_sha256")):
         raise ValueError("V3 SOURCE outer plan path/hash mismatch")
     artifact = source_artifact(plan)
     artifact_path = previous.package_path.parent / artifact["filename"]
     if registry.sha256_file(artifact_path) != artifact["sha256"]:
         raise ValueError("V3 SOURCE inner artifact hash mismatch")
-    expected = bind(json.loads(parent.package_path.read_bytes()), plan)
-    previous_package_bytes = previous.package_path.read_bytes()
+    expected = bind(json.loads(storage_io.read_bytes(parent.package_path)), plan)
+    previous_package_bytes = storage_io.read_bytes(previous.package_path)
     if (json.loads(previous_package_bytes) != expected or previous_package_bytes != _canonical(expected)):
         raise ValueError("V3 SOURCE package differs from exact source-bound overlay")
     inventory = pipeline.read_json_file(previous.inventory_path)
@@ -339,8 +340,8 @@ def reconstruction(previous, release_id: str):
         profile_assignment_plan_path=plan_path)
     rebuilt = registry.load_registered_release(SEASON, release_id)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path, inventory)
-    if (json.loads(rebuilt.package_path.read_bytes()) != expected
-            or rebuilt.package_path.read_bytes() != previous_package_bytes):
+    if (json.loads(storage_io.read_bytes(rebuilt.package_path)) != expected
+            or storage_io.read_bytes(rebuilt.package_path) != previous_package_bytes):
         raise ValueError("V3 SOURCE complete game/recipe replay differs")
     return {"season": SEASON, "release_id": release_id,
         "compilation_mode": MODE, "complete_game_inventory_identical": True,

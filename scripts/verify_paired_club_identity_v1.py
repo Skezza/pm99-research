@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import sys
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import audit_published_player_identities_v1 as identities
 from scripts import prepare_duplicate_whole_club_native_v1 as native
 from scripts import season_pipeline_v2 as pipeline
@@ -22,29 +23,29 @@ def groups(package,people):
 
 
 def verify(candidate,person_input,output):
-    if output.exists():raise ValueError('identity comparison is immutable')
-    receipt=json.loads((candidate/'candidate-receipt.json').read_text())
-    pair=json.loads(native.original(receipt['source_pair']).read_text())
+    if storage_io.exists(output):raise ValueError('identity comparison is immutable')
+    receipt=json.loads(storage_io.read_text(candidate / 'candidate-receipt.json'))
+    pair=json.loads(storage_io.read_text(native.original(receipt['source_pair'])))
     base=registry.load_registered_release(pair['season'],pair['release_id'])
-    before=json.loads(base.package_path.read_text());after=json.loads((candidate/'season-package.json').read_text())
+    before=json.loads(storage_io.read_text(base.package_path));after=json.loads(storage_io.read_text(candidate / 'season-package.json'))
     supplement_sha=registry.sha256_file(person_input)
     people,snapshot=identities.load_identity_snapshot()
-    people,merge=public.merge(people,json.loads(person_input.read_text()))
+    people,merge=public.merge(people,json.loads(storage_io.read_text(person_input)))
     old,new=groups(before,people),groups(after,people)
     if new.keys()-old.keys():raise ValueError('new cross-club person candidates introduced')
-    proposals=[json.loads(native.original(b).read_text()) for b in pair['proposals']]
+    proposals=[json.loads(storage_io.read_text(native.original(b))) for b in pair['proposals']]
     corrected={r['carrier_id'] for p in proposals for r in p['allocation']}
     players={p['carrier_id']:p for p in after['players']}
     if any(players[p['carrier_id']]!=p for p in before['players'] if p['carrier_id'] not in corrected):
         raise ValueError('unselected recipe player changed')
     if any(any(id in corrected for id,_ in rows) for rows in new.values()):
         raise ValueError('replacement remains in an outside cross-club identity group')
-    archive=(candidate/'game/DBDAT/MINIFOTO.PKF').read_bytes()
+    archive=storage_io.read_bytes(candidate / 'game/DBDAT/MINIFOTO.PKF')
     cleared,offsets=native.delta.no_photo_archive(archive,corrected)
-    if cleared!=archive or any((candidate/'game/DBDAT/MINIFOTO'/f'J96{id:05d}.BMP').exists() for id in corrected):
+    if cleared!=archive or any(storage_io.exists(candidate / 'game/DBDAT/MINIFOTO' / f'J96{id:05d}.BMP') for id in corrected):
         raise ValueError('retired player portrait is still attached to a replacement')
     from scripts import season_whole_club_keeper_exchange_v1 as keeper
-    jug=(candidate/'game/DBDAT/JUG98030.FDI').read_bytes();eq=(candidate/'game/DBDAT/EQ98030.FDI').read_bytes()
+    jug=storage_io.read_bytes(candidate / 'game/DBDAT/JUG98030.FDI');eq=storage_io.read_bytes(candidate / 'game/DBDAT/EQ98030.FDI')
     replayed,changes=keeper.replay(jug,eq,after,candidate/'season-package.json')
     if replayed!=jug:raise ValueError('bound keeper-order replay is not idempotent')
     if registry.sha256_file(person_input)!=supplement_sha:raise ValueError('identity input changed during comparison')

@@ -3,6 +3,14 @@
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import datetime as dt
 import json
@@ -17,7 +25,7 @@ from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 
-REPO = Path(__file__).resolve().parents[1]
+REPO = storage_io.resolve(Path(__file__)).parents[1]
 DEFAULT_BROWSER_DIR = REPO / "work" / "artifact_browser"
 DEFAULT_TRASH_DIR = REPO / "work" / "artifact_browser_trash"
 DATA_PREFIX = "window.ARTIFACT_BROWSER_DATA = "
@@ -54,7 +62,7 @@ def find_port(host: str, preferred: int) -> int:
 
 
 def load_browser_data(data_path: Path) -> dict[str, Any]:
-    text = data_path.read_text(encoding="utf-8").strip()
+    text = storage_io.read_text(data_path, encoding='utf-8').strip()
     if not text.startswith(DATA_PREFIX):
         raise ValueError(f"Unexpected data format in {data_path}")
     payload = text[len(DATA_PREFIX) :]
@@ -67,7 +75,7 @@ def write_browser_data(data_path: Path, data: dict[str, Any]) -> None:
     data["imageCount"] = sum(int(run.get("count", 0)) for run in data.get("runs", []))
     data["runCount"] = len(data.get("runs", []))
     text = DATA_PREFIX + json.dumps(data, ensure_ascii=False, separators=(",", ":")) + ";\n"
-    data_path.write_text(text, encoding="utf-8")
+    storage_io.write_text(data_path, text, encoding='utf-8')
 
 
 def normalized(path: str | Path) -> Path:
@@ -95,14 +103,14 @@ def safe_relative(path: Path) -> Path:
 
 
 def unique_target(path: Path) -> Path:
-    if not path.exists():
+    if not storage_io.exists(path):
         return path
     stem = path.stem
     suffix = path.suffix
     parent = path.parent
     for index in range(2, 1000):
         candidate = parent / f"{stem}-{index}{suffix}"
-        if not candidate.exists():
+        if not storage_io.exists(candidate):
             return candidate
     raise RuntimeError(f"Could not allocate unique trash path for {path}")
 
@@ -141,7 +149,7 @@ class ArtifactIndex:
     def move_to_trash(self, path: Path) -> Path | None:
         if path in (REPO, Path.home(), self.browser_dir, self.trash_dir):
             raise ValueError(f"Refusing to move unsafe path: {path}")
-        if not path.exists():
+        if not storage_io.exists(path):
             return None
 
         timestamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -222,16 +230,16 @@ def make_handler(index: ArtifactIndex, browser_dir: Path) -> type[SimpleHTTPRequ
             if index.find_image(path) is None:
                 self.send_json(HTTPStatus.NOT_FOUND, {"ok": False, "error": "Image is not in the current artifact index"})
                 return
-            if not path.is_file():
+            if not storage_io.is_file(path):
                 self.send_json(HTTPStatus.NOT_FOUND, {"ok": False, "error": "Image file is missing"})
                 return
 
             content_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-Type", content_type)
-            self.send_header("Content-Length", str(path.stat().st_size))
+            self.send_header("Content-Length", str(storage_io.size(path)))
             self.end_headers()
-            with path.open("rb") as source:
+            with storage_io.open_file(path, 'rb') as source:
                 shutil.copyfileobj(source, self.wfile)
 
         def do_GET(self) -> None:
@@ -278,9 +286,9 @@ def main() -> int:
     args = parse_args()
     browser_dir = Path(args.browser_dir).expanduser().absolute()
     trash_dir = Path(args.trash_dir).expanduser().absolute()
-    if not (browser_dir / "index.html").exists():
+    if not storage_io.exists(browser_dir / 'index.html'):
         raise SystemExit(f"Browser index not found: {browser_dir / 'index.html'}")
-    if not (browser_dir / "artifact-data.js").exists():
+    if not storage_io.exists(browser_dir / 'artifact-data.js'):
         raise SystemExit(f"Browser data not found: {browser_dir / 'artifact-data.js'}")
 
     port = find_port(args.host, args.port)

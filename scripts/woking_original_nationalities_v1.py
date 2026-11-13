@@ -1,5 +1,6 @@
 """Recover literal nationality rows from sixteen already bound biographies."""
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import season_package_compiler_v2 as compiler
 from scripts import capture_soccerbase_august_squads_v1 as biographies
@@ -33,7 +34,7 @@ def rows(base):
     for wanted in source['proposal']['desired_people']:
         path=registry.ROOT/wanted['raw_evidence']['local_path']
         if registry.sha256_file(path)!=wanted['raw_evidence']['source_sha256']:raise ValueError('original biography changed')
-        raw=path.read_bytes();person=biographies.player_profile(raw,fallback_name='',fallback_position='?')
+        raw=storage_io.read_bytes(path);person=biographies.player_profile(raw,fallback_name='',fallback_position='?')
         old=people[wanted['source_player']['name']]
         same_dob=person['birth_date']==old['facts']['birth_date']
         # Liam's original biography publishes no DOB. His already verified

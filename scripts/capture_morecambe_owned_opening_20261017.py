@@ -1,5 +1,6 @@
 """One genuine startup plus targeted keeper, birthday and position profiles."""
 import argparse
+from scripts import json_storage_io_v1 as storage_io
 from scripts import build_morecambe_owned_opening_20261017 as build
 from scripts.capture_shinnie_country_20261017 import main as capture,wait_owned
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
@@ -13,9 +14,9 @@ PROFILES=[(11002,'mark_smith','Mark Smith','Smith'),
 
 def main(builder_pid):
     spec=build.ROOT/'runtime-profile-spec.json'
-    if spec.exists():raise ValueError('existing Morecambe captures require inspection, not restart')
+    if storage_io.exists(spec):raise ValueError('existing Morecambe captures require inspection, not restart')
     wait_owned(builder_pid,'scripts.build_morecambe_owned_opening_20261017')
-    if not (build.ROOT/'complete-SOURCE-replay.json').exists():
+    if not storage_io.exists(build.ROOT / 'complete-SOURCE-replay.json'):
         raise ValueError('Morecambe builder stopped before complete SOURCE; no intermediate capture')
     release=build.source.registry.load_registered_release(build.SEASON,build.RELEASE)
     retained(spec,dict(season=build.SEASON,release_id=build.RELEASE,manifest_sha256=release.manifest_sha256,

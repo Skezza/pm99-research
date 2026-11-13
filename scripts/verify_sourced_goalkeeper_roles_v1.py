@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_sourced_goalkeeper_roles_v1 as source
 from scripts import season_historical_roster_audit_v1 as audit
 from scripts import season_release_registry_v1 as registry
@@ -11,17 +12,17 @@ from scripts import season_pipeline_v2 as pipeline
 
 
 def verify(season, release_id, plan_path, output):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('goalkeeper role verification evidence is immutable')
-    plan = json.loads(plan_path.read_text())
+    plan = json.loads(storage_io.read_text(plan_path))
     base = registry.load_registered_release(season, plan['release_id'])
     release = registry.load_registered_release(season, release_id)
     source.verify(base, plan)
     saved = registry.ROOT / release.locator['historical_role_plan_path']
-    if json.loads(saved.read_text()) != plan:
+    if json.loads(storage_io.read_text(saved)) != plan:
         raise ValueError('compiled goalkeeper source plan differs')
-    before = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    after = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    before = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    after = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     if len(before) != len(after):
         raise ValueError('role-only delta changed the indexed file length')
     index = {e.record_id: e for e in IndexedFDIFile.from_bytes(before).entries}
@@ -49,8 +50,8 @@ def verify(season, release_id, plan_path, output):
         unchanged[name] = digest
     if registry.sha256_file(release.game_path / 'MANAGPRE.EXE') != registry.sha256_file(base.game_path / 'MANAGPRE.EXE'):
         raise ValueError('goalkeeper delta changed the executable')
-    original = json.loads(base.package_path.read_text())
-    package = json.loads(release.package_path.read_text())
+    original = json.loads(storage_io.read_text(base.package_path))
+    package = json.loads(storage_io.read_text(release.package_path))
     expected_people = copy.deepcopy(original['players'])
     updates = {r['player_id']: r for r in plan['updates']}
     for player in expected_people:

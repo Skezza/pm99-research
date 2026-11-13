@@ -7,6 +7,7 @@ import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts.archive_rejected_rating_recovery_to_pi_20261011 import ssh, HOST, UUID
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
@@ -19,7 +20,7 @@ SCOPE = 'Only regenerable headless-shell1228 cache; no games, source datasets, r
 
 
 def guard():
-    if (SOURCE.is_symlink() or SOURCE.resolve() != SOURCE or not SOURCE.is_dir()
+    if (SOURCE.is_symlink() or storage_io.resolve(SOURCE) != SOURCE or not SOURCE.is_dir()
             or not CURRENT.is_dir()):
         raise ValueError('exact old browser and retained current version required')
     commands = subprocess.check_output(['ps', '-eo', 'args'], text=True).splitlines()
@@ -31,8 +32,8 @@ def guard():
 
 def main():
     receipt = ROOT / 'completed-transfer.json'
-    if receipt.exists():
-        if SOURCE.exists():
+    if storage_io.exists(receipt):
+        if storage_io.exists(SOURCE):
             raise ValueError('browser cache was recreated after its recorded retirement')
         print(pipeline.read_json_file(receipt), flush=True)
         return

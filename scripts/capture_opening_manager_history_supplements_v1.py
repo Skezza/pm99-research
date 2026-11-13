@@ -24,6 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import capture_transfermarkt_opening_lineups_v1 as opening
 
 
@@ -40,7 +41,7 @@ def _canonical_bytes(value: Any) -> bytes:
 
 def _load(path: Path, label: str) -> tuple[dict[str, Any], str]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise ManagerHistoryError(f"cannot read {label}: {path}") from exc
@@ -247,7 +248,7 @@ def main(argv: list[str] | None = None) -> int:
     except (OSError, ManagerHistoryError, opening.CaptureError) as exc:
         parser.error(str(exc))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(_canonical_bytes(result))
+    storage_io.write_bytes(args.output, _canonical_bytes(result))
     print(json.dumps(result["summary"], sort_keys=True))
     return 1 if args.strict and result["gaps"] else 0
 

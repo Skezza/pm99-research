@@ -7,6 +7,14 @@ and writes a receipt for a fresh-game dashboard capture.
 """
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -79,8 +87,8 @@ def main() -> int:
         raise SystemExit(f"name is not CP1252 encodable: {exc}") from exc
     if not replacement:
         raise SystemExit("new manager surname must not be empty")
-    ent_path = args.dbdat.resolve() / "ENT98030.FDI"
-    before_file = ent_path.read_bytes()
+    ent_path = storage_io.resolve(args.dbdat) / "ENT98030.FDI"
+    before_file = storage_io.read_bytes(ent_path)
     indexed = IndexedFDIFile.from_bytes(before_file)
     entry = next((item for item in indexed.entries if item.record_id == args.manager_record_id), None)
     if entry is None:
@@ -124,7 +132,7 @@ def main() -> int:
             raise SystemExit(f"unrelated ENT payload changed: {old_entry.record_id}")
         else:
             unchanged_payloads += 1
-    ent_path.write_bytes(after_file)
+    storage_io.write_bytes(ent_path, after_file)
     receipt = {
         "schema": "pm99-manager-ent-variable-surname-probe/v1",
         "ent_path": str(ent_path),
@@ -139,7 +147,7 @@ def main() -> int:
         "after_sha256": hashlib.sha256(after_file).hexdigest(),
     }
     args.receipt.parent.mkdir(parents=True, exist_ok=True)
-    args.receipt.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
+    storage_io.write_text(args.receipt, json.dumps(receipt, indent=2) + '\n', encoding='utf-8')
     print(json.dumps(receipt, indent=2))
     return 0
 

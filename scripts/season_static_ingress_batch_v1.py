@@ -25,6 +25,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2 as package_v2  # noqa: E402
 from scripts import season_static_ingress_v1 as static_ingress  # noqa: E402
 
@@ -38,14 +39,14 @@ class StaticIngressBatchError(ValueError):
 
 
 def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def _write_new(path: Path, value: Any) -> str:
-    if path.exists() or path.is_symlink():
+    if storage_io.exists(path) or path.is_symlink():
         raise StaticIngressBatchError(f"refusing to replace existing output: {path}")
     payload = package_v2.canonical_json_bytes(value)
-    path.write_bytes(payload)
+    storage_io.write_bytes(path, payload)
     return hashlib.sha256(payload).hexdigest()
 
 
@@ -53,14 +54,14 @@ def run_batch(
     *, package_root: Path, base_tree: Path, verified_base_path: Path,
     output_root: Path, seasons: Sequence[str],
 ) -> dict[str, Any]:
-    package_root = package_root.resolve()
-    base_tree = base_tree.resolve()
-    verified_base_path = verified_base_path.resolve()
-    output_root = output_root.resolve()
+    package_root = storage_io.resolve(package_root)
+    base_tree = storage_io.resolve(base_tree)
+    verified_base_path = storage_io.resolve(verified_base_path)
+    output_root = storage_io.resolve(output_root)
     selected = sorted(set(seasons))
     if not selected or any(SEASON_RE.fullmatch(season) is None for season in selected):
         raise StaticIngressBatchError("seasons must be one or more YYYY-YY identifiers")
-    if output_root.exists() or output_root.is_symlink():
+    if storage_io.exists(output_root) or output_root.is_symlink():
         raise StaticIngressBatchError(f"output root must be new: {output_root}")
     if not output_root.parent.is_dir() or output_root.parent.is_symlink():
         raise StaticIngressBatchError(
@@ -69,12 +70,12 @@ def run_batch(
     package_paths = {
         season: package_root / season / "draft-season-package.json" for season in selected
     }
-    missing = [f"{season}: {path}" for season, path in package_paths.items() if not path.is_file()]
+    missing = [f"{season}: {path}" for season, path in package_paths.items() if not storage_io.is_file(path)]
     if missing:
         raise StaticIngressBatchError("missing draft packages: " + "; ".join(missing))
     if not base_tree.is_dir() or base_tree.is_symlink():
         raise StaticIngressBatchError(f"base tree must be a non-symlink directory: {base_tree}")
-    if not verified_base_path.is_file() or verified_base_path.is_symlink():
+    if not storage_io.is_file(verified_base_path) or verified_base_path.is_symlink():
         raise StaticIngressBatchError(f"verified base must be a non-symlink file: {verified_base_path}")
 
     output_root.mkdir()
@@ -95,7 +96,7 @@ def run_batch(
                 "input_package_sha256": _sha256(package_path),
                 "state": "blocked-before-clean-static-ingress",
                 "release_eligible": False,
-                "output_directory": child.name if child.exists() else None,
+                "output_directory": child.name if storage_io.exists(child) else None,
                 "error": str(exc),
             })
             continue

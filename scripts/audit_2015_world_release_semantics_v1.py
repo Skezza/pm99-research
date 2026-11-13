@@ -11,6 +11,14 @@ conditions explicitly.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -23,7 +31,7 @@ from pathlib import Path
 from typing import Any
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR = ROOT / "upstream" / "pm99-skezmod-db-editor"
 for candidate in (ROOT, EDITOR):
     if str(candidate) not in sys.path:
@@ -52,12 +60,12 @@ def _canonical_bytes(value: Any) -> bytes:
 
 
 def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def _read_object(path: Path, label: str) -> tuple[dict[str, Any], str]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise SemanticQaError(f"cannot read {label}: {path}") from exc
@@ -68,7 +76,7 @@ def _read_object(path: Path, label: str) -> tuple[dict[str, Any], str]:
 
 def _read_list(path: Path, label: str) -> tuple[list[dict[str, Any]], str]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise SemanticQaError(f"cannot read {label}: {path}") from exc
@@ -89,7 +97,7 @@ def _team_name(raw_payload: bytes) -> str:
 
 
 def _manager_graph(*, eq_path: Path, ent_path: Path) -> tuple[dict[int, list[dict[str, Any]]], dict[int, str]]:
-    eq_bytes, ent_bytes = eq_path.read_bytes(), ent_path.read_bytes()
+    eq_bytes, ent_bytes = storage_io.read_bytes(eq_path), storage_io.read_bytes(ent_path)
     manager_names: dict[int, str] = {}
     for entry in IndexedFDIFile.from_bytes(ent_bytes).entries:
         raw = ent_bytes[entry.payload_offset:entry.payload_offset + entry.payload_length]
@@ -211,7 +219,7 @@ def _runtime_handling_indexes(jug_path: Path, player_rows: Iterable[Mapping[str,
     needed_dd6360 = {int(row["record_id"]) for row in player_rows if row["family"] == "dd6360"}
     needed_dd6361 = {int(row["record_id"]) for row in player_rows if row["family"] == "dd6361"}
     index = IndexedFDIFile.from_path(jug_path)
-    data = jug_path.read_bytes()
+    data = storage_io.read_bytes(jug_path)
     compact: dict[int, int] = {}
     for entry in index.entries:
         if entry.record_id not in needed_dd6360:
@@ -399,14 +407,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (OSError, SemanticQaError, ValueError) as exc:
         parser.error(str(exc))
     result["inputs"] = {
-        "game_tree": str(args.game_tree.resolve()),
-        "world_package": {"path": str(args.world_package.resolve()), "sha256": package_sha},
-        "english_player_ledger": {"path": str(args.english_player_ledger.resolve()), "sha256": ledger_sha},
-        "foreign_kit_receipt": {"path": str(args.foreign_kit_receipt.resolve()), "sha256": kits_sha},
-        "kit_review_receipt": None if review_sha is None else {"path": str(args.kit_review_receipt.resolve()), "sha256": review_sha},
+        "game_tree": str(storage_io.resolve(args.game_tree)),
+        "world_package": {"path": str(storage_io.resolve(args.world_package)), "sha256": package_sha},
+        "english_player_ledger": {"path": str(storage_io.resolve(args.english_player_ledger)), "sha256": ledger_sha},
+        "foreign_kit_receipt": {"path": str(storage_io.resolve(args.foreign_kit_receipt)), "sha256": kits_sha},
+        "kit_review_receipt": None if review_sha is None else {"path": str(storage_io.resolve(args.kit_review_receipt)), "sha256": review_sha},
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(_canonical_bytes(result))
+    storage_io.write_bytes(args.output, _canonical_bytes(result))
     print(json.dumps({"result": result["result"], **result["summary"]}, sort_keys=True))
     return 0 if result["result"] == "pass" else 1
 

@@ -6,6 +6,7 @@ recipe is never treated as an external authority for selecting a person.
 """
 from collections import defaultdict
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_historical_roster_audit_v1 as sources
 from scripts import season_number_label_names_v2 as names
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
@@ -15,7 +16,7 @@ ROOT = registry.ROOT / '.local/consolidated-audit-20261009/original-number-label
 
 def main():
     output = ROOT / 'remaining-cross-period-biography-review-v1.json'
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('completed original biography review must not be overwritten')
     pending = pipeline.read_json_file(ROOT / 'private-remaining-literal-birthdays-v1.json')
     wanted = {names.literal_name(names.undecorated(f['name']))

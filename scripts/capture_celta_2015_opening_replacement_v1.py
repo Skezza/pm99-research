@@ -2,6 +2,7 @@
 from bs4 import BeautifulSoup
 import re
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import prepare_ofk_2004_source_allocation_v1 as source
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_published_transfer_history_v1 as histories
@@ -29,9 +30,9 @@ def capture():
     cache=source.AUDIT/'celta-2015-history-originals'
     history_path=source.AUDIT/'celta-2015-madinda-original-history-v1.json'
     person_path=source.AUDIT/'celta-2015-madinda-original-person-v1.json'
-    if not history_path.exists(): histories.capture_ids({21297},cache,history_path,inputs,
+    if not storage_io.exists(history_path): histories.capture_ids({21297},cache,history_path,inputs,
         'Exact original Celta15/16 stable21297 annual row. Requires completed transfer bracket at2015-08-01; annual appearance alone not ownership.')
-    if not person_path.exists(): people.capture_ids([21297],cache,person_path,inputs)
+    if not storage_io.exists(person_path): people.capture_ids([21297],cache,person_path,inputs)
     history=pipeline.read_json_file(history_path)
     if history['input_plans']!=inputs: raise ValueError('Celta original history query source changed')
     events,review=histories.merge({},history)
@@ -45,7 +46,7 @@ def capture():
     if '07-agosto-2015' not in announcement or 'Drazic' not in announcement:
         raise ValueError('Celta original announcement lacks the dated target signing')
     output=source.AUDIT/'celta-2015-opening-replacement-source-review-v1.json'
-    if output.exists(): raise ValueError('Celta replacement source review is immutable')
+    if storage_io.exists(output): raise ValueError('Celta replacement source review is immutable')
     result=dict(season='2015-16',opening_reference_date='2015-08-01',
         source_player_id=21297,original_annual_binding=binding,
         history_binding=dict(path=registry.relative_workspace_path(history_path),sha256=registry.sha256_file(history_path)),

@@ -105,7 +105,8 @@ def run(manifest_path: Path, *, root: Path = ROOT, apply: bool = False,
             if already:
                 handle.write(json.dumps({"event": "already-converted", "path": row["path"]}) + "\n")
             else:
-                result = storage.restore_file(path) if restore else storage.compress_file(path)
+                result = (storage.restore_file(path, expected_sha256=row['sha256']) if restore
+                          else storage.compress_file(path, expected_sha256=row['sha256']))
                 if storage.sha256_file(path) != row["sha256"]:
                     raise ValueError("post-conversion original byte hash differs")
                 total += result["allocated_released"]

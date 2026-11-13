@@ -7,6 +7,14 @@ through an SSH tunnel and directly on tiny-m73.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import json
 import sys
@@ -264,7 +272,7 @@ def main() -> int:
     if args.report:
         path = Path(args.report)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text, encoding="utf-8")
+        storage_io.write_text(path, text, encoding='utf-8')
     print(text, end="")
     return 0
 

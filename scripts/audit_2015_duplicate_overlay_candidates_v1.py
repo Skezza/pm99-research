@@ -12,6 +12,7 @@ import sys
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_duplicate_source_context_v1 as context
 from scripts import season_duplicate_ownership_delta_v1 as delta
 from scripts import season_dated_reserve_owner_v1 as owners
@@ -25,8 +26,8 @@ from scripts import season_release_registry_v1 as registry
 
 
 def review(plan_path, output):
-    if output.exists(): raise ValueError('overlay source evidence is immutable')
-    plan=json.loads(plan_path.read_text())
+    if storage_io.exists(output): raise ValueError('overlay source evidence is immutable')
+    plan=json.loads(storage_io.read_text(plan_path))
     if plan['season']!='2015-16': raise ValueError('this bounded review is only for the 2015 English overlay')
     pin=plan['bindings']['snapshot']
     people,events,binding=context.load_snapshot(ROOT/pin['path'],ROOT/pin['pinned_receipt_path'])
@@ -35,7 +36,7 @@ def review(plan_path, output):
     used_identity={roster.person_identity_key(p) for p in ctx['players'].values()}
     dates,undated=soccerbase.existing_identity_protection(list(ctx['players'].values()))
     display_claims=aliases.claims(ROOT/plan['bindings']['published_person_supplement']['path'])
-    original=(ctx['release'].game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    original=storage_io.read_bytes(ctx['release'].game_path / 'DBDAT/JUG98030.FDI')
     rows=[]
     for problem in plan['unresolved']:
         if problem['reason']!='english-overlay-requires-separately-bound-transaction': continue

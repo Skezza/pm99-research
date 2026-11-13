@@ -3,6 +3,14 @@
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -12,7 +20,7 @@ import sys
 from pathlib import Path
 from typing import Any, Mapping
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR = ROOT / "upstream" / "pm99-skezmod-db-editor"
 if str(EDITOR) not in sys.path:
     sys.path.insert(0, str(EDITOR))
@@ -36,7 +44,7 @@ def sha256_bytes(payload: bytes) -> str:
 
 
 def sha256_file(path: Path) -> str:
-    return sha256_bytes(path.read_bytes())
+    return sha256_bytes(storage_io.read_bytes(path))
 
 
 def records_by_carrier(path: Path) -> dict[int, Any]:
@@ -69,7 +77,7 @@ def verify_english_source(dbdat: Path, receipt: Mapping[str, Any]) -> dict[str, 
 def apply_world_kits(*, materialisation: Mapping[str, Any], english_dbdat: Path, english_receipt: Mapping[str, Any], target_game_tree: Path) -> dict[str, Any]:
     if materialisation.get("schema_version") not in MATERIALISATION_SCHEMAS:
         raise KitApplicationError("foreign kit materialisation schema is unsupported")
-    english_dbdat, target_dbdat = english_dbdat.resolve(), (target_game_tree.resolve() / "DBDAT")
+    english_dbdat, target_dbdat = storage_io.resolve(english_dbdat), (storage_io.resolve(target_game_tree) / "DBDAT")
     if english_dbdat == target_dbdat:
         raise KitApplicationError("English source and target DBDAT must be different")
     if not target_dbdat.is_dir():
@@ -78,9 +86,9 @@ def apply_world_kits(*, materialisation: Mapping[str, Any], english_dbdat: Path,
     target_before = {archive: sha256_file(target_dbdat / archive) for archive in ALL_ARCHIVES}
     for archive in ALL_ARCHIVES:
         source, target = english_dbdat / archive, target_dbdat / archive
-        if source.is_symlink() or target.is_symlink() or not source.is_file() or not target.is_file():
+        if source.is_symlink() or target.is_symlink() or not storage_io.is_file(source) or not storage_io.is_file(target):
             raise KitApplicationError(f"kit archive must be a regular existing file: {archive}")
-        shutil.copy2(source, target)
+        storage_io.copy_file(source, target, metadata=True)
 
     approved = [row for row in materialisation.get("rows", []) if row.get("status") in APPROVED_STATUSES]
     approved_ids = [int(row["carrier_id"]) for row in approved]
@@ -90,7 +98,7 @@ def apply_world_kits(*, materialisation: Mapping[str, Any], english_dbdat: Path,
     native_fallbacks: list[dict[str, Any]] = []
     for archive in FOREIGN_ARCHIVES:
         path = target_dbdat / archive
-        baseline = path.read_bytes()
+        baseline = storage_io.read_bytes(path)
         before_records = records_by_carrier(path)
         patched = bytearray(baseline)
         allowed_ranges: list[tuple[int, int]] = []
@@ -99,9 +107,9 @@ def apply_world_kits(*, materialisation: Mapping[str, Any], english_dbdat: Path,
             record = before_records.get(carrier)
             asset = (row.get("assets") or {}).get(archive) or {}
             candidate = Path(str(asset.get("path") or ""))
-            if record is None or not candidate.is_file() or sha256_file(candidate) != asset.get("sha256"):
+            if record is None or not storage_io.is_file(candidate) or sha256_file(candidate) != asset.get("sha256"):
                 raise KitApplicationError(f"candidate/record missing or hash mismatch: {archive} carrier {carrier}")
-            payload = candidate.read_bytes()
+            payload = storage_io.read_bytes(candidate)
             if len(payload) != record.bitmap_length or payload[:26] != record.raw_bitmap[:26]:
                 raise KitApplicationError(f"candidate shape/header mismatch: {archive} carrier {carrier}")
             start, end = int(record.bitmap_offset), int(record.bitmap_offset + record.bitmap_length)
@@ -113,7 +121,7 @@ def apply_world_kits(*, materialisation: Mapping[str, Any], english_dbdat: Path,
         changed = [index for index, (before, after) in enumerate(zip(baseline, patched)) if before != after]
         if any(not any(start <= index < end for start, end in allowed_ranges) for index in changed):
             raise KitApplicationError(f"bytes outside approved {archive} record extents changed")
-        path.write_bytes(bytes(patched))
+        storage_io.write_bytes(path, bytes(patched))
         after_records = records_by_carrier(path)
         for row in approved:
             carrier = int(row["carrier_id"])
@@ -126,7 +134,7 @@ def apply_world_kits(*, materialisation: Mapping[str, Any], english_dbdat: Path,
     for row in materialisation.get("rows", []):
         if row.get("source_status") == "source-squad-ready" and row.get("status") not in APPROVED_STATUSES:
             native_fallbacks.append({"carrier_id": int(row["carrier_id"]), "source_club_name": row.get("source_club_name"), "reason": row.get("status"), "resulting_state": "certified-English-tree native PM99 compact kit retained; historical kit unresolved"})
-    return {"schema_version": SCHEMA, "result": "complete-for-approved-kits", "coverage": {"english_club_count": 92, "english_verified_record_count": english_proof["verified_record_count"], "foreign_approved_carrier_count": len(approved), "foreign_patched_record_count": len(events), "foreign_native_fallback_count": len(native_fallbacks)}, "english_source": english_proof, "target": {"game_tree": str(target_game_tree.resolve()), "archive_sha256_before": target_before, "archive_sha256_after": {archive: sha256_file(target_dbdat / archive) for archive in ALL_ARCHIVES}}, "foreign_events": events, "native_fallbacks": native_fallbacks}
+    return {"schema_version": SCHEMA, "result": "complete-for-approved-kits", "coverage": {"english_club_count": 92, "english_verified_record_count": english_proof["verified_record_count"], "foreign_approved_carrier_count": len(approved), "foreign_patched_record_count": len(events), "foreign_native_fallback_count": len(native_fallbacks)}, "english_source": english_proof, "target": {"game_tree": str(storage_io.resolve(target_game_tree)), "archive_sha256_before": target_before, "archive_sha256_after": {archive: sha256_file(target_dbdat / archive) for archive in ALL_ARCHIVES}}, "foreign_events": events, "native_fallbacks": native_fallbacks}
 
 
 def main() -> int:
@@ -138,14 +146,14 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     try:
-        materialisation = json.loads(args.materialisation.read_text(encoding="utf-8"))
-        english_receipt = json.loads(args.english_kit_receipt.read_text(encoding="utf-8"))
+        materialisation = json.loads(storage_io.read_text(args.materialisation, encoding='utf-8'))
+        english_receipt = json.loads(storage_io.read_text(args.english_kit_receipt, encoding='utf-8'))
         result = apply_world_kits(materialisation=materialisation, english_dbdat=args.english_kit_dbdat, english_receipt=english_receipt, target_game_tree=args.target_game_tree)
     except (OSError, UnicodeDecodeError, json.JSONDecodeError, KitApplicationError) as exc:
         parser.error(str(exc))
     result["sources"] = {"materialisation_sha256": sha256_file(args.materialisation), "english_receipt_sha256": sha256_file(args.english_kit_receipt)}
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(result, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+    storage_io.write_text(args.output, json.dumps(result, ensure_ascii=False, sort_keys=True, separators=(',', ':')) + '\n', encoding='utf-8')
     print(json.dumps(result["coverage"], sort_keys=True))
     return 0
 

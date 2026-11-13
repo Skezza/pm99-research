@@ -3,6 +3,14 @@
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 from dataclasses import asdict
 from datetime import UTC, datetime
@@ -19,7 +27,7 @@ from urllib.parse import urlparse
 import requests
 from PIL import Image, ImageOps
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR_ROOT = REPO_ROOT / "upstream" / "pm99-skezmod-db-editor"
 RUNNER_SCRIPTS = REPO_ROOT / "upstream" / "pm99-runner" / "scripts" / "pm99_runner"
 
@@ -27,8 +35,8 @@ if str(EDITOR_ROOT) not in sys.path:
     sys.path.insert(0, str(EDITOR_ROOT))
 if str(RUNNER_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(RUNNER_SCRIPTS))
-if str(Path(__file__).resolve().parent) not in sys.path:
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
+if str(storage_io.resolve(Path(__file__)).parent) not in sys.path:
+    sys.path.insert(0, str(storage_io.resolve(Path(__file__)).parent))
 
 from app.eq_jug_linked import load_eq_linked_team_rosters  # noqa: E402
 from app.minifoto_bitmap_archive import (  # noqa: E402
@@ -363,13 +371,13 @@ def main() -> int:
         required_files=("JUG98030.FDI", "EQ98030.FDI", "ENT98030.FDI", "MINIFOTO.PKF"),
         default_to_fixture=not bool(source_game_root),
     )
-    output_root = Path(args.output_root).expanduser().resolve()
+    output_root = storage_io.resolve(Path(args.output_root).expanduser())
     timestamp = _now_stamp()
 
     if args.output_dir:
-        output_dir = Path(args.output_dir).expanduser().resolve()
+        output_dir = storage_io.resolve(Path(args.output_dir).expanduser())
     else:
-        output_dir = (output_root / f"stoke_2015_face_milestone_{timestamp}").resolve()
+        output_dir = storage_io.resolve(output_root / f'stoke_2015_face_milestone_{timestamp}')
 
     game_dir = output_dir / "game"
     dbdat_dir = game_dir / "DBDAT"
@@ -386,9 +394,9 @@ def main() -> int:
     required_files = ("JUG98030.FDI", "EQ98030.FDI", "ENT98030.FDI", "MINIFOTO.PKF")
     for file_name in required_files:
         source_file = source_dbdat_dir / file_name
-        if not source_file.is_file():
+        if not storage_io.is_file(source_file):
             raise FileNotFoundError(f"Missing required source file: {source_file}")
-        shutil.copy2(source_file, dbdat_dir / file_name)
+        storage_io.copy_file(source_file, dbdat_dir / file_name, metadata=True)
 
     eq_file = dbdat_dir / "EQ98030.FDI"
     jug_file = dbdat_dir / "JUG98030.FDI"
@@ -419,7 +427,7 @@ def main() -> int:
         "name_mismatches": name_mismatches,
         "allow_name_mismatch": bool(args.allow_name_mismatch),
     }
-    apply_summary_path.write_text(json.dumps(apply_summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    storage_io.write_text(apply_summary_path, json.dumps(apply_summary, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
 
     if name_mismatches and not bool(args.allow_name_mismatch):
         raise RuntimeError(
@@ -427,7 +435,7 @@ def main() -> int:
             "Re-run with --allow-name-mismatch to continue anyway."
         )
     minifoto_records = {record.player_record_id: record for record in iter_minifoto_records(minifoto_file)}
-    minifoto_bytes = minifoto_file.read_bytes()
+    minifoto_bytes = storage_io.read_bytes(minifoto_file)
 
     palette_path, palette_source = discover_riff_palette_resource(minifoto_file, extra_roots=[source_dbdat_dir, game_dir])
     if palette_path is None:
@@ -472,7 +480,7 @@ def main() -> int:
         image_bytes = _download_image_bytes(session, image_url=image_url, headers=headers)
         extension = Path(urlparse(image_url).path).suffix.lower() or ".jpg"
         source_image_path = sources_dir / f"{slot:02d}_{pid}_{_slug(target_name)}{extension}"
-        source_image_path.write_bytes(image_bytes)
+        storage_io.write_bytes(source_image_path, image_bytes)
 
         with Image.open(io.BytesIO(image_bytes)) as source_image:
             record = minifoto_records[pid]
@@ -493,7 +501,7 @@ def main() -> int:
         replacement_bmp_path = generated_dir / f"{slot:02d}_{pid}_{_slug(target_name)}.bmp"
         prepared_face.save(prepared_face_path)
         indexed_preview.save(preview_path)
-        replacement_bmp_path.write_bytes(replacement_bitmap)
+        storage_io.write_bytes(replacement_bmp_path, replacement_bitmap)
 
         minifoto_bytes, replace_result = replace_minifoto_bitmap_in_bytes(
             minifoto_bytes,
@@ -512,9 +520,9 @@ def main() -> int:
 
     minifoto_original_path = output_dir / "MINIFOTO.original.PKF"
     minifoto_patched_path = output_dir / "MINIFOTO.patched.PKF"
-    minifoto_original_path.write_bytes(minifoto_file.read_bytes())
-    minifoto_patched_path.write_bytes(minifoto_bytes)
-    minifoto_file.write_bytes(minifoto_bytes)
+    storage_io.write_bytes(minifoto_original_path, storage_io.read_bytes(minifoto_file))
+    storage_io.write_bytes(minifoto_patched_path, minifoto_bytes)
+    storage_io.write_bytes(minifoto_file, minifoto_bytes)
 
     applied_files: dict[str, Any] = {}
     if apply_to_game_root is not None:
@@ -522,8 +530,8 @@ def main() -> int:
         for file_name in required_files:
             target_file = target_dbdat_dir / file_name
             source_file = dbdat_dir / file_name
-            before_hash = sha256(target_file) if target_file.exists() else ""
-            shutil.copy2(source_file, target_file)
+            before_hash = sha256(target_file) if storage_io.exists(target_file) else ""
+            storage_io.copy_file(source_file, target_file, metadata=True)
             applied_files[file_name] = {
                 "target_path": str(target_file),
                 "before_sha256": before_hash,
@@ -576,8 +584,8 @@ def main() -> int:
         },
     }
 
-    manifest_path = Path(args.json_output).expanduser().resolve() if args.json_output else output_dir / "prepare_manifest.json"
-    manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    manifest_path = storage_io.resolve(Path(args.json_output).expanduser()) if args.json_output else output_dir / "prepare_manifest.json"
+    storage_io.write_text(manifest_path, json.dumps(manifest, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
 
     print(
         json.dumps(

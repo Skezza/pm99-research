@@ -10,6 +10,14 @@ that cannot be joined exactly is deliberately left as native no-photo.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -239,9 +247,9 @@ def main() -> int:
     args = parser.parse_args()
     try:
         result = rebind(
-            package=json.loads(args.season_package.read_text(encoding="utf-8")),
-            old_manifest=json.loads(args.old_asset_manifest.read_text(encoding="utf-8")),
-            old_materialisation=json.loads(args.old_materialisation.read_text(encoding="utf-8")),
+            package=json.loads(storage_io.read_text(args.season_package, encoding='utf-8')),
+            old_manifest=json.loads(storage_io.read_text(args.old_asset_manifest, encoding='utf-8')),
+            old_materialisation=json.loads(storage_io.read_text(args.old_materialisation, encoding='utf-8')),
         )
     except (OSError, UnicodeDecodeError, json.JSONDecodeError, RebindError) as exc:
         parser.error(str(exc))
@@ -249,7 +257,7 @@ def main() -> int:
         (args.output_manifest, args.output_materialisation, args.output_receipt), result,
     ):
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(canonical_bytes(value))
+        storage_io.write_bytes(path, canonical_bytes(value))
     print(json.dumps(result[2]["coverage"], sort_keys=True))
     return 0
 

@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts.reconcile_2015_world_source_player_facts import _read_fifa_rows, build_reconciliation
 
 CAPTURE_SCHEMA = "pm99-footballsquads-season-capture-v1"
@@ -77,11 +78,11 @@ def main() -> int:
     parser.add_argument("--integrated-draft-output", required=True, type=Path)
     parser.add_argument("--reconciliation-output", required=True, type=Path)
     args = parser.parse_args()
-    load = lambda p: json.loads(p.read_text(encoding="utf-8"))
+    load = lambda p: json.loads(storage_io.read_text(p, encoding='utf-8'))
     capture, draft, reconciliation = integrate(registry=load(args.registry), base_capture=load(args.base_capture), base_draft=load(args.base_draft), conflict_capture=load(args.conflict_capture), fifa_csv=args.fifa16_player_csv)
     for path, value in ((args.integrated_capture_output, capture), (args.integrated_draft_output, draft), (args.reconciliation_output, reconciliation)):
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(canonical_bytes(value))
+        storage_io.write_bytes(path, canonical_bytes(value))
     print(json.dumps({"capture": capture["summary"], "draft": draft["coverage"], "reconciliation": reconciliation["coverage"]}, sort_keys=True))
     return 0
 

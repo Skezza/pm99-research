@@ -31,6 +31,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2 as package_v2
 from scripts.reconcile_opening_date_identities_v1 import (
     RESOLVED_SCHEMA,
@@ -56,7 +57,7 @@ def _hash(value: Any) -> str:
 
 def _read_json(path: Path, *, label: str) -> dict[str, Any]:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(storage_io.read_text(path, encoding='utf-8'))
     except (OSError, json.JSONDecodeError) as exc:
         raise SourceReadinessError(f"cannot read {label}: {path}: {exc}") from exc
     if not isinstance(value, dict):
@@ -228,7 +229,7 @@ def main(argv: list[str] | None = None) -> int:
         source_ledger = _read_json(args.source_ledger, label="source ledger")
         output = build_readiness(package, resolution, opening, source_ledger)
         args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_bytes(_canonical_bytes(output))
+        storage_io.write_bytes(args.output, _canonical_bytes(output))
         print(json.dumps({"output": str(args.output), **output["summary"]}, sort_keys=True))
     except (SourceReadinessError, package_v2.PackageValidationError, OSError) as exc:
         print(f"opening-date replacement-source audit error: {exc}", file=sys.stderr)

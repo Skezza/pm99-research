@@ -19,6 +19,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT), str(ROOT / 'upstream/pm99-skezmod-db-editor'), str(ROOT / 'upstream/pm99-skezmod-patcher')]
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_amendment_candidates_v1 as candidates  # noqa: E402
 from scripts import season_editorial_field_policy_v1 as field_policy  # noqa: E402
 from scripts import season_pipeline_v2 as pipeline  # noqa: E402
@@ -62,7 +63,7 @@ def newest_checklist():
     def version(path):
         match = re.search(r'-v(\d+)\.json$', path.name)
         return int(match.group(1)) if match else -1
-    found = sorted(ROOT.glob(CHECKLIST_GLOB), key=version)
+    found = sorted(storage_io.glob(ROOT, CHECKLIST_GLOB), key=version)
     return found[-1] if found else None
 
 
@@ -70,7 +71,7 @@ def load_checklist():
     path = newest_checklist()
     if path is None:
         return None, {}
-    data = json.loads(path.read_text(encoding='utf-8'))
+    data = json.loads(storage_io.read_text(path, encoding='utf-8'))
     by_season = {}
     for row in data.get('additional_confirmed_findings', []):
         season = row.get('season')
@@ -88,8 +89,8 @@ def load_checklist():
             by_season.setdefault(match.group(1), {}).setdefault('runtime_candidates', []).append(row)
     scan_path = ROOT / data.get('cross_club_case_file', '')
     scanned = {}
-    if scan_path.is_file():
-        for row in json.loads(scan_path.read_text(encoding='utf-8')).get('seasons', []):
+    if storage_io.is_file(scan_path):
+        for row in json.loads(storage_io.read_text(scan_path, encoding='utf-8')).get('seasons', []):
             scanned[row.get('season')] = len(row.get('candidates', []))
     vocabulary = {}
     for row in data.get('additional_confirmed_findings', []):
@@ -104,7 +105,7 @@ def load_checklist():
 
 def recipe_facts(release):
     """Per-field capability counts at recipe level (native agreement is still proven when a build runs)."""
-    package = json.loads(release.package_path.read_text(encoding='utf-8'))
+    package = json.loads(storage_io.read_text(release.package_path, encoding='utf-8'))
     players, managers = package['players'], package['managers']
     capable = {}
     for label, kind, field in (('rating', 'player-rating', 'passing'), ('broad_position', 'player-fact', 'primary_position'),
@@ -218,8 +219,8 @@ def main(argv=None):
     report = build_report(seasons, release_level=args.release_level)
     if not args.no_write:
         args.output.mkdir(parents=True, exist_ok=True)
-        (args.output / 'status.json').write_text(json.dumps(report, indent=2, sort_keys=True, ensure_ascii=False) + '\n', encoding='utf-8')
-        (args.output / 'status.md').write_text(markdown(report), encoding='utf-8')
+        storage_io.write_text(args.output / 'status.json', json.dumps(report, indent=2, sort_keys=True, ensure_ascii=False) + '\n', encoding='utf-8')
+        storage_io.write_text(args.output / 'status.md', markdown(report), encoding='utf-8')
     if args.json:
         print(json.dumps(report, indent=2, sort_keys=True, ensure_ascii=False))
     else:

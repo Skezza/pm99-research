@@ -12,6 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_historical_roster_audit_v1 as roster
@@ -35,20 +36,20 @@ def main():
         destination = args.output / season
         native_path = destination / 'report.json'; fact_path = destination / 'player-facts-audit.json'
         for path in (native_path, fact_path):
-            if path.exists() and json.loads(path.read_text())['bindings']['package_sha256'] != registry.sha256_file(release.package_path):
+            if storage_io.exists(path) and json.loads(storage_io.read_text(path))['bindings']['package_sha256'] != registry.sha256_file(release.package_path):
                 raise ValueError('saved club-label review is stale')
         prior_native = args.prior_root / season / 'roster-audit.json'
         prior_facts = args.prior_root / season / 'player-facts-audit.json'
-        if not native_path.exists(): roster.audit_season(season, destination, prior_native)
-        old = json.loads(prior_facts.read_text())
+        if not storage_io.exists(native_path): roster.audit_season(season, destination, prior_native)
+        old = json.loads(storage_io.read_text(prior_facts))
         detail = old['bindings'].get('detailed_capture')
         detail_path = ROOT / detail['path'] if detail else None
         if detail and registry.sha256_file(detail_path) != detail['sha256']:
             raise ValueError('prior dated player-fact source changed')
-        if not fact_path.exists(): facts.audit_season(season, native_path, detail_path, fifa, destination)
-        if not (destination / 'review/summary.json').exists():
+        if not storage_io.exists(fact_path): facts.audit_season(season, native_path, detail_path, fifa, destination)
+        if not storage_io.exists(destination / 'review/summary.json'):
             inventory.export(season, native_path, fact_path, destination / 'review')
-        native = json.loads(native_path.read_text()); new_facts = json.loads(fact_path.read_text())
+        native = json.loads(storage_io.read_text(native_path)); new_facts = json.loads(storage_io.read_text(fact_path))
         result = {'season': season, 'release_id': release.release_id,
             'prior_same_club_verified': old['summary']['same-club-season-squad-identity-match'],
             'current_same_club_verified': new_facts['summary']['same-club-season-squad-identity-match'],

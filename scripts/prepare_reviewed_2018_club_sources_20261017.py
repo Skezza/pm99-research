@@ -5,6 +5,7 @@ Only three bounded source proposals, no scan, native writes or publication.
 from datetime import date
 from pathlib import Path
 import re
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import prepare_duplicate_club_disposition_v1 as whole
 from scripts import derive_provider_identity_resolutions_v1 as identities
@@ -30,14 +31,14 @@ def wiki_identity(raw):
     return name[0].strip(),full[0].split('<ref',1)[0].strip(),date(*numbers).isoformat()
 
 def run():
-    if (OUT/'summary.json').exists():raise ValueError('completed source batch must not repeat')
+    if storage_io.exists(OUT / 'summary.json'):raise ValueError('completed source batch must not repeat')
     if registry.sha256_file(REPORT)!=REPORT_SHA:raise ValueError('review report changed')
     report=pipeline.read_json_file(REPORT);reviews=report['reviews']
     if len(reviews)!=8 or len({r['soccerbase_id'] for r in reviews})!=8:raise ValueError('exact eight people required')
     for row in reviews:
         source=row['independent_source'];path=registry.ROOT/source['cached_body']
         if registry.sha256_file(path)!=source['sha256']:raise ValueError('independent raw body changed')
-        raw=path.read_text();name,full,born=wiki_identity(raw)
+        raw=storage_io.read_text(path);name,full,born=wiki_identity(raw)
         if (name,full,born)!=(row['display_name'],row['full_name'],row['soccerbase_dob']):
             raise ValueError('independent raw identity/DOB differs from the proposed review')
         if row['club'] not in raw:raise ValueError('independent career context lacks the source club')
@@ -58,7 +59,7 @@ def run():
     decisions=[]
     for target,reported in (('Chesterfield','Chesterfield'),('Fylde','AFC Fylde'),('Leyton Orient','Leyton Orient')):
         path=OUT/(whole.roster.normalise(target)+'.json');decision=path.with_name(path.stem+'-decision.json')
-        if path.exists() or decision.exists():raise ValueError('inspect existing partial source decision before continuing')
+        if storage_io.exists(path) or storage_io.exists(decision):raise ValueError('inspect existing partial source decision before continuing')
         matches=[c for c in captures if c['source_path'].startswith('soccerbase/team/') and whole.club_keys(target)&whole.club_keys(c['club_name'])]
         annuals=[c for c in captures if c['source_path'].endswith('.txt') and whole.club_keys(target)&whole.club_keys(c['club_name'])]
         if len(matches)!=1 or len(annuals)!=1:raise ValueError('one exact original capture and annual required')

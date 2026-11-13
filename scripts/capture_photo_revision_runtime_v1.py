@@ -11,6 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_visual_patch_v1 as art
 
@@ -43,7 +44,7 @@ def main():
         environment['PM99_RUNNER_ARCHIVE_COLD_RUNS'] = '0'
         environment['PM99_RUNNER_RUN_ROOT_BUDGET_ENFORCE'] = '0'
         log = args.output_root / (season + '.log')
-        with log.open('w') as handle:
+        with storage_io.open_file(log, 'w') as handle:
             result = subprocess.run(command, cwd=ROOT, env=environment, stdout=handle, stderr=subprocess.STDOUT)
         return {'season': season, 'exit_code': result.returncode, 'log': str(log), 'run_tag': tag}
 

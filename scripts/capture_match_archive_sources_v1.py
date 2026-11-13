@@ -15,6 +15,7 @@ from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
 from scripts.season_art_transaction_v1 import atomic_bytes
@@ -32,13 +33,13 @@ def capture(url, cache):
     validate_url(url)
     key = hashlib.sha256(url.encode()).hexdigest()
     path, receipt = cache / (key + '.html'), cache / (key + '.source.json')
-    if path.exists():
-        raw = path.read_bytes()
-        if json.loads(receipt.read_text()) != {'url': url, 'sha256': hashlib.sha256(raw).hexdigest()}:
+    if storage_io.exists(path):
+        raw = storage_io.read_bytes(path)
+        if json.loads(storage_io.read_text(receipt)) != {'url': url, 'sha256': hashlib.sha256(raw).hexdigest()}:
             raise ValueError('original match archive URL/hash receipt changed')
         reused = True
     else:
-        if receipt.exists():
+        if storage_io.exists(receipt):
             raise ValueError('original archive receipt exists but its source page is missing')
         with urlopen(Request(url, headers={'User-Agent': 'PM99 historical football research',
                 'Accept-Language': 'en-GB'}), timeout=25) as response:

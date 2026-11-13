@@ -7,6 +7,7 @@ mapping overridden by a later edge must never become a public default.
 from dataclasses import dataclass
 
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_original_secondary_facts_v1 as v1
 from scripts import season_original_country_policy_v2 as v2
@@ -68,7 +69,7 @@ def walk(actual, base, descriptors):
 
 def verify_edge(parent, child, edge, source, path, plan):
     source.verify(parent, plan)  # Reparse/hash dated raw witnesses; no cached approval.
-    if (path.resolve() != (child.package_path.parent / source.filename(plan)).resolve()
+    if (storage_io.resolve(path) != storage_io.resolve(child.package_path.parent / source.filename(plan))
             or registry.sha256_file(path) != registry.sha256_file(edge.root / 'country-plan.json')):
         raise ValueError('country ancestry source plan differs from retained build proof')
     replay = registry.load_registered_release(child.season, edge.replay_id)
@@ -95,11 +96,11 @@ def verify_edge(parent, child, edge, source, path, plan):
     for release in (parent, child, replay):
         pipeline.assert_tree_matches_inventory(release.game_path, pipeline.read_json_file(release.inventory_path))
     pipeline.assert_tree_matches_inventory(replay.game_path, pipeline.read_json_file(child.inventory_path))
-    if replay.package_path.read_bytes() != child.package_path.read_bytes():
+    if storage_io.read_bytes(replay.package_path) != storage_io.read_bytes(child.package_path):
         raise ValueError('country ancestry full SOURCE recipe differs')
-    before = (parent.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    after = (child.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (parent.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    before = storage_io.read_bytes(parent.game_path / 'DBDAT/JUG98030.FDI')
+    after = storage_io.read_bytes(child.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(parent.game_path / 'DBDAT/EQ98030.FDI')
     if source.apply(before, eq, plan) != (after, eq) or source.apply(after, eq, plan) != (after, eq):
         raise ValueError('country ancestry whole native reconstruction or idempotence differs')
     if source.bind(pipeline.read_json_file(parent.package_path), plan) != pipeline.read_json_file(child.package_path):
@@ -137,8 +138,8 @@ def verify(actual, base, descriptors):
             origins[row['carrier_id']] = binding(path)
     # Independent final-vs-public byte scope; latest source country wins. Final
     # semantic labels are checked by the publication gate, never by the old map.
-    before = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    after = (actual.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    before = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    after = storage_io.read_bytes(actual.game_path / 'DBDAT/JUG98030.FDI')
     entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(before).entries}
     allowed = set()
     for carrier, row in effective.items():

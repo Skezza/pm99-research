@@ -1,4 +1,5 @@
 """Admit the four missing original DOBs and one unpublished bench role."""
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_external_soccerbase_birthday_v2 as birthdays
 from scripts import season_original_secondary_bench_role_v1 as bench_roles
 from scripts import prepare_duplicate_club_disposition_v1 as whole
@@ -10,7 +11,7 @@ ROOT = birthdays.registry.ROOT / '.local/consolidated-audit-20261009/morecambe20
 
 def main():
     output = ROOT / 'provider-identity-and-bench-role-review-v2.json'
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('completed Morecambe identity admission must not repeat')
     actual = birthdays.pipeline.read_json_file(ROOT / 'original-opening-equivalence.json')['actual']
     prior = birthdays.pipeline.read_json_file(ROOT / 'secondary-birthdays-source-admission.json')

@@ -2,6 +2,7 @@
 from datetime import UTC,datetime
 from urllib.request import Request,urlopen
 import shutil
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts.season_art_transaction_v1 import atomic_bytes
 
@@ -12,7 +13,7 @@ ROOT=registry.ROOT/'.local/consolidated-audit-20261009/stock-club-history-v1'
 def capture():
     path=ROOT/'estudiantes-2000-original-CONMEBOL-magazine66.pdf'
     receipt=path.with_suffix('.source.json')
-    if path.exists():
+    if storage_io.exists(path):
         previous=pipeline.read_json_file(receipt)
         if previous['url']!=URL or previous['sha256']!=registry.sha256_file(path):
             raise ValueError('retained original magazine differs')

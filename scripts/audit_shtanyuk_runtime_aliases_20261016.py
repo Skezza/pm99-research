@@ -7,6 +7,7 @@ This does not alter the frozen82 within-club or2797 cross-club denominators.
 from collections import defaultdict
 import hashlib
 from datetime import UTC, datetime, date
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_historical_roster_audit_v1 as roster
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
@@ -17,7 +18,7 @@ ALIASES = {roster.normalise(n) for n in ('Sergey Shtanyuk','Sergei Shtanyuk',
 
 
 def main():
-    if (ROOT/'current-native-alias-candidates.json').exists():
+    if storage_io.exists(ROOT / 'current-native-alias-candidates.json'):
         raise ValueError('completed read-only discovery must not repeat')
     ROOT.mkdir(parents=True,exist_ok=True); rows=[]; groups=[]
     for season in registry.supported_seasons():
@@ -28,7 +29,7 @@ def main():
         if not found:
             continue
         clubs={c['id']:c for c in package['clubs']}
-        jug=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+        jug=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
         entries={e.record_id:e for e in roster.IndexedFDIFile.from_bytes(jug).entries}
         by_club=defaultdict(list)
         for player in found:

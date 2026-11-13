@@ -23,6 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import capture_2015_fifa16_secondary_player_facts_v1 as fifa16  # noqa: E402
 from scripts import capture_2015_declared_historical_player_facts_v1 as declared  # noqa: E402
 from scripts import capture_2015_sofifa_secondary_player_facts_v1 as sofifa  # noqa: E402
@@ -39,7 +40,7 @@ class FactCompositionError(ValueError):
 
 
 def _read(path: Path) -> tuple[dict[str, Any], bytes]:
-    raw = path.read_bytes()
+    raw = storage_io.read_bytes(path)
     try:
         value = json.loads(raw.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
@@ -88,7 +89,7 @@ def compose(receipts: Sequence[tuple[Path, Mapping[str, Any], bytes]]) -> dict[s
             "missing_fields": first.get("missing_fields"),
             "facts": {field: next(iter(items)) for field, items in sorted(values[player_id].items())},
             "source_receipts": [
-                {"path": entry["path"].resolve().relative_to(ROOT).as_posix(),
+                {"path": storage_io.resolve(entry['path']).relative_to(ROOT).as_posix(),
                  "source_name": entry["row"].get("source_name")}
                 for entry in source_rows[player_id]
             ],
@@ -101,7 +102,7 @@ def compose(receipts: Sequence[tuple[Path, Mapping[str, Any], bytes]]) -> dict[s
         "sources": {
             "base_package_sha256": next(iter(base_hashes)),
             "receipts": [
-                {"path": path.resolve().relative_to(ROOT).as_posix(), "sha256": hashlib.sha256(raw).hexdigest(), "schema_version": receipt["schema_version"]}
+                {"path": storage_io.resolve(path).relative_to(ROOT).as_posix(), "sha256": hashlib.sha256(raw).hexdigest(), "schema_version": receipt["schema_version"]}
                 for path, receipt, raw in receipts
             ],
         },
@@ -119,16 +120,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
-        if args.output.exists() or args.output.is_symlink():
+        if storage_io.exists(args.output) or args.output.is_symlink():
             raise FactCompositionError(f"refusing to overwrite output: {args.output}")
-        paths = [path.resolve() for path in args.receipt]
+        paths = [storage_io.resolve(path) for path in args.receipt]
         if len(paths) != len(set(paths)):
             raise FactCompositionError("each receipt may be supplied once")
         result = compose([(path, *_read(path)) for path in paths])
     except (OSError, FactCompositionError) as exc:
         parser.error(str(exc))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(package_v2.canonical_json_bytes(result))
+    storage_io.write_bytes(args.output, package_v2.canonical_json_bytes(result))
     print(json.dumps(result["coverage"], ensure_ascii=False, sort_keys=True))
     return 0
 

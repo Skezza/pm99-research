@@ -8,6 +8,7 @@ import copy
 import json
 import re
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import capture_duplicate_missing_soccerbase_openings_v1 as collector
 from scripts import replay_original_soccerbase_openings_v1 as replay
 from scripts import season_soccerbase_original_opening_v1 as original
@@ -23,7 +24,7 @@ def read_capture(binding):
     path = registry.ROOT / binding['path']
     if registry.sha256_file(path) != binding['sha256']:
         raise ValueError('targeted original capture changed')
-    saved = json.loads(path.read_text())
+    saved = json.loads(storage_io.read_text(path))
     if (saved.get('schema_version') != SCHEMA or saved.get('native_writes') != 0
             or saved.get('recipes_modified') != 0 or saved.get('historical_ownership_approved') is not False):
         raise ValueError('targeted original source must not claim native or ownership approval')
@@ -40,7 +41,7 @@ def replay_capture(binding, season, people):
         path = registry.ROOT / proof['path']; receipt = registry.ROOT / proof['receipt_path']
         if (registry.sha256_file(path) != proof['sha256']
                 or registry.sha256_file(receipt) != proof['receipt_sha256']
-                or json.loads(receipt.read_text()) != {'url': proof['url'], 'sha256': proof['sha256']}):
+                or json.loads(storage_io.read_text(receipt)) != {'url': proof['url'], 'sha256': proof['sha256']}):
             raise ValueError('targeted original URL/SHA receipt changed')
         if proof['url'] in by_url:
             raise ValueError('targeted original URL is ambiguous')
@@ -50,7 +51,7 @@ def replay_capture(binding, season, people):
     def raw(url):
         if url not in by_url:
             raise ValueError('targeted original lacks exact required URL')
-        return by_url[url].read_bytes()
+        return storage_io.read_bytes(by_url[url])
     team = saved['provider_team_id']; year = int(season[:4])
     discovery_url = f'https://www.soccerbase.com/teams/team.sd?team_id={team}&season_id=0&teamTabs=results'
     page = BeautifulSoup(raw(discovery_url), 'lxml')

@@ -9,6 +9,14 @@ squad-capacity check before it can enter a source package.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -54,7 +62,7 @@ def canonical_bytes(value: Any) -> bytes:
 
 
 def sha256_file(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def identity_key(value: object) -> str:
@@ -65,7 +73,7 @@ def identity_key(value: object) -> str:
 
 def _load(path: Path, *, label: str) -> dict[str, Any]:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(storage_io.read_text(path, encoding='utf-8'))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise ValueError(f"cannot read {label}: {path}") from exc
     if not isinstance(value, dict):
@@ -327,7 +335,7 @@ def main(argv: list[str] | None = None) -> int:
         "membership_sha256": sha256_file(args.membership),
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_bytes(result))
+    storage_io.write_bytes(args.output, canonical_bytes(result))
     print(json.dumps(result["summary"], sort_keys=True))
     return 0
 

@@ -9,6 +9,7 @@ import re
 from urllib.parse import parse_qs, urljoin, urlsplit
 
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_opening_identity_exchange_v1 as exchange
 from scripts.capture_transfermarkt_opening_lineups_v1 import _club_key
 
@@ -37,7 +38,7 @@ def wikidata_birthday(value, name, provider_player_id):
             or value.get('transfermarkt_player_id') != provider_player_id
             or value.get('url') != f'https://www.wikidata.org/wiki/Special:EntityData/{qid}.json'):
         raise ValueError('exact Wikidata entity and known squad provider identity required')
-    document = json.loads(exchange.original(value).read_bytes())
+    document = json.loads(storage_io.read_bytes(exchange.original(value)))
     if set(document.get('entities', {})) != {qid}:
         raise ValueError('one exact retained Wikidata entity required')
     entity = document['entities'][qid]
@@ -71,7 +72,7 @@ def published_family_display(selection, evidence):
         raise ValueError('explicit family display requires the same Wikidata identity witness')
     if wikidata_birthday(witness, name, pid) != selection['birth_date']:
         raise ValueError('family display identity birthday differs')
-    entity = json.loads(exchange.original(witness).read_bytes())['entities'][witness['wikidata_id']]
+    entity = json.loads(storage_io.read_bytes(exchange.original(witness)))['entities'][witness['wikidata_id']]
     claims = [r for r in entity.get('claims', {}).get('P734', [])
               if r.get('rank') in ('normal', 'preferred')]
     if (len(claims) != 1 or claims[0].get('mainsnak', {}).get('snaktype') != 'value'):
@@ -82,7 +83,7 @@ def published_family_display(selection, evidence):
             or family_source.get('url') !=
                 f'https://www.wikidata.org/wiki/Special:EntityData/{family_id}.json'):
         raise ValueError('family-name entity URL does not follow the original P734 claim')
-    document = json.loads(exchange.original(family_source).read_bytes())
+    document = json.loads(storage_io.read_bytes(exchange.original(family_source)))
     if set(document.get('entities', {})) != {family_id}:
         raise ValueError('one exact family-name entity required')
     family = document['entities'][family_id]
@@ -105,7 +106,7 @@ def independent_birthday(value, name, provider_player_id=None):
             or url.netloc != 'www.soccerbase.com' or url.path != '/players/player.sd'
             or parse_qs(url.query) != {'player_id': [str(pid)]} or url.fragment):
         raise ValueError('independent exact Soccerbase biography required')
-    page = BeautifulSoup(exchange.original(value).read_bytes(), 'lxml')
+    page = BeautifulSoup(storage_io.read_bytes(exchange.original(value)), 'lxml')
     title = page.title.get_text(' ', strip=True) if page.title else ''
     rows = [r for r in page.select('tr') if r.find('th') is not None
             and r.find('th').get_text(' ', strip=True) == 'Real name']
@@ -134,7 +135,7 @@ def read(value, pid, *, season, club_name, provider_club_id):
     if (url.scheme != 'https' or url.netloc not in HOSTS or url.query or url.fragment
             or not re.fullmatch(club_path + '/saison_id/' + str(year) + r'(?:/plus/1)?/?', url.path)):
         raise ValueError('exact target-year squad origin/club required')
-    page = BeautifulSoup(exchange.original(value).read_bytes(), 'lxml')
+    page = BeautifulSoup(storage_io.read_bytes(exchange.original(value)), 'lxml')
     canon = page.select_one('link[rel="canonical"]')
     declared = urlsplit(canon.get('href', '') if canon else '')
     title = page.title.get_text(' ', strip=True) if page.title else ''

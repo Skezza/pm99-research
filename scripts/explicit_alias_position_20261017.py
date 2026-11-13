@@ -1,6 +1,7 @@
 """Build/capture/deliver explicit V2 positions; never repeat completed stages."""
 import argparse
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import build_exact_position_batch_20261017 as builder
 from scripts import capture_exact_position_batch_20261017 as capturer
 from scripts import season_exact_primary_position_delta_v2 as source
@@ -27,7 +28,7 @@ def main(args):
     folder = ROOT / args.season
     if args.stage == 'build':
         ROOT.mkdir(parents=True, exist_ok=True)
-        if (folder / 'position-plan.json').exists() or builder.registry.locator_path(args.season, RELEASE).exists():
+        if storage_io.exists(folder / 'position-plan.json') or storage_io.exists(builder.registry.locator_path(args.season, RELEASE)):
             raise ValueError('existing alias-position transaction needs inspection, not regeneration')
         base = builder.registry.load_preferred_release(args.season)
         plan = source.prepare(base, args.carriers)

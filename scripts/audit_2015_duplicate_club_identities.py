@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 """Audit known legal-name aliases and strict club identities after closeout."""
 from __future__ import annotations
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse, hashlib, json, re, unicodedata
 from collections import defaultdict
 from pathlib import Path
@@ -15,7 +23,7 @@ def norm(s):
  s=re.sub(r"[^a-z0-9]+"," ",s).strip(); return ALIASES.get(s,s)
 def canonical(v): return (json.dumps(v,ensure_ascii=False,sort_keys=True,separators=(",",":"))+"\n").encode()
 def main():
- ap=argparse.ArgumentParser();ap.add_argument("--draft",type=Path,required=True);ap.add_argument("--output",type=Path,required=True);a=ap.parse_args();d=json.loads(a.draft.read_text())
+ ap=argparse.ArgumentParser();ap.add_argument("--draft",type=Path,required=True);ap.add_argument("--output",type=Path,required=True);a=ap.parse_args();d=json.loads(storage_io.read_text(a.draft))
  seen=defaultdict(list)
  for p in d["proposals"]:
   name=(p.get("source_selector") or {}).get("club_name")
@@ -24,6 +32,6 @@ def main():
  by_id={int(p["carrier_id"]):(p.get("source_selector") or {}).get("club_name") for p in d["proposals"]}
  decisions=[{"carrier_id":cid,"selected_2015_club":name,"actual":by_id.get(cid),"same_country_fixed_carrier":True,"status":"pass" if by_id.get(cid)==name else "fail"} for cid,name in sorted(EXPECTED_REBINDINGS.items())]
  failed_decisions=[x for x in decisions if x["status"]!="pass"]
- out={"schema_version":"pm99-world-2015-duplicate-club-identity-audit-v1","source_draft_sha256":hashlib.sha256(a.draft.read_bytes()).hexdigest(),"carrier_count":len(d["proposals"]),"sourced_identity_count":len(seen),"duplicate_count":len(duplicates),"duplicates":duplicates,"replacement_decisions":decisions,"result":"pass" if not duplicates and not failed_decisions else "fail"}
- a.output.write_bytes(canonical(out));print(json.dumps({"duplicate_count":len(duplicates),"result":out["result"]}));return 0 if not duplicates else 1
+ out={"schema_version":"pm99-world-2015-duplicate-club-identity-audit-v1","source_draft_sha256":hashlib.sha256(storage_io.read_bytes(a.draft)).hexdigest(),"carrier_count":len(d["proposals"]),"sourced_identity_count":len(seen),"duplicate_count":len(duplicates),"duplicates":duplicates,"replacement_decisions":decisions,"result":"pass" if not duplicates and not failed_decisions else "fail"}
+ storage_io.write_bytes(a.output, canonical(out));print(json.dumps({"duplicate_count":len(duplicates),"result":out["result"]}));return 0 if not duplicates else 1
 if __name__=="__main__":raise SystemExit(main())

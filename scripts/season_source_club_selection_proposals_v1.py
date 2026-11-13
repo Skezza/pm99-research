@@ -34,6 +34,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2 as package_v2  # noqa: E402
 
 
@@ -73,14 +74,14 @@ def _sha256_value(value: Any) -> str:
 
 def _relative(path: Path) -> str:
     try:
-        return path.resolve().relative_to(ROOT).as_posix()
+        return storage_io.resolve(path).relative_to(ROOT).as_posix()
     except ValueError:
-        return path.resolve().as_posix()
+        return storage_io.resolve(path).as_posix()
 
 
 def _read_canonical_matrix(path: Path) -> tuple[dict[str, Any], str]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise ProposalError(f"cannot read collision matrix {path}: {exc}") from exc
@@ -485,11 +486,11 @@ def validate_report(report: Mapping[str, Any], *, expected_season_count: int | N
 
 
 def _write_new(path: Path, value: Mapping[str, Any]) -> str:
-    if path.exists() or path.is_symlink():
+    if storage_io.exists(path) or path.is_symlink():
         raise ProposalError(f"refusing to replace existing output: {path}")
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = canonical_json_bytes(value)
-    path.write_bytes(payload)
+    storage_io.write_bytes(path, payload)
     return _sha256_bytes(payload)
 
 
@@ -509,7 +510,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if args.expected_season_count < 1:
             raise ProposalError("expected season count must be positive")
-        matrix_path = args.matrix.resolve()
+        matrix_path = storage_io.resolve(args.matrix)
         matrix, matrix_sha256 = _read_canonical_matrix(matrix_path)
         report = build_report(matrix=matrix, matrix_path=matrix_path, matrix_sha256=matrix_sha256)
         validate_report(report, expected_season_count=args.expected_season_count)
@@ -520,7 +521,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "summary": report["summary"],
         }
         if args.output is not None:
-            output = args.output.resolve()
+            output = storage_io.resolve(args.output)
             summary["output_path"] = _relative(output)
             summary["output_sha256"] = _write_new(output, report)
         print(json.dumps(summary, ensure_ascii=False, sort_keys=True))

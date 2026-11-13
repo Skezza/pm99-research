@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'upstream/pm99-skezmod-db-editor'))
 from app.minifoto_bitmap_archive import iter_minifoto_records, validate_minifoto_bitmap
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_duplicate_ownership_plan_v1 as planner
 from scripts import season_historical_roster_audit_v1 as roster
 from scripts import season_package_compiler_v2 as compiler
@@ -36,7 +37,7 @@ def ownership_group(clubs, modes, declarations):
 
 
 def run(output):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('portrait coverage evidence is immutable; use a fresh path')
     archive_cache = {}
     seasons = []
@@ -50,7 +51,7 @@ def run(output):
                            'sha256': registry.sha256_file(path)})
         dbdat = release.game_path / 'DBDAT'
         eq_path = dbdat / 'EQ98030.FDI'
-        owners, _, modes = compiler._source_roster_owners(eq_path.read_bytes())
+        owners, _, modes = compiler._source_roster_owners(storage_io.read_bytes(eq_path))
         archive_path = dbdat / 'MINIFOTO.PKF'
         digest = registry.sha256_file(archive_path)
         if digest not in archive_cache:
@@ -63,9 +64,9 @@ def run(output):
             group = ownership_group(native_clubs, modes, clubs)
             loose = dbdat / f'MINIFOTO/J96{carrier:05d}.BMP'
             status = 'missing'
-            if loose.is_file():
+            if storage_io.is_file(loose):
                 try:
-                    validate_minifoto_bitmap(loose.read_bytes())
+                    validate_minifoto_bitmap(storage_io.read_bytes(loose))
                     status = 'loose-bitmap-present-identity-unverified'
                 except ValueError:
                     status = 'invalid-loose-bitmap'

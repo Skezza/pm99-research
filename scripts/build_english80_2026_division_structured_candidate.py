@@ -3,6 +3,14 @@
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import json
 import os
@@ -13,7 +21,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR_ROOT = REPO_ROOT / "upstream" / "pm99-skezmod-db-editor"
 if str(EDITOR_ROOT) not in sys.path:
     sys.path.insert(0, str(EDITOR_ROOT))
@@ -168,7 +176,7 @@ def _write_xor_string_fixed(raw_payload: bytearray, start: int, end: int, value:
 
 def _patch_linked_visible_names(game_root: Path, assignment: dict[str, Any], output_dir: Path) -> dict[str, Any]:
     team_file = game_root / "DBDAT" / "EQ98030.FDI"
-    team_bytes = bytearray(team_file.read_bytes())
+    team_bytes = bytearray(storage_io.read_bytes(team_file))
     indexed = IndexedFDIFile.from_path(team_file)
     entries_by_id = {int(entry.record_id): entry for entry in indexed.entries}
     events: list[dict[str, Any]] = []
@@ -206,7 +214,7 @@ def _patch_linked_visible_names(game_root: Path, assignment: dict[str, Any], out
             }
         )
 
-    team_file.write_bytes(bytes(team_bytes))
+    storage_io.write_bytes(team_file, bytes(team_bytes))
     manifest = {
         "schema": "pm99-english80-linked-visible-team-names-v1",
         "generated_at_utc": datetime.now(UTC).isoformat(),
@@ -220,7 +228,7 @@ def _patch_linked_visible_names(game_root: Path, assignment: dict[str, Any], out
 
 
 def _load_sources(path: Path) -> list[ClubSource]:
-    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload = json.loads(storage_io.read_text(path, encoding='utf-8'))
     out: list[ClubSource] = []
     for club in payload["clubs"]:
         out.append(
@@ -435,20 +443,20 @@ def apply_team_names(game_root: Path, assignment: dict[str, Any], output_dir: Pa
 
 
 def build(args: argparse.Namespace) -> dict[str, Any]:
-    previous_build = Path(args.previous_build).expanduser().resolve()
-    output_dir = Path(args.output_dir).expanduser().resolve() if args.output_dir else (
-        Path(args.output_root).expanduser().resolve()
+    previous_build = storage_io.resolve(Path(args.previous_build).expanduser())
+    output_dir = storage_io.resolve(Path(args.output_dir).expanduser()) if args.output_dir else (
+        storage_io.resolve(Path(args.output_root).expanduser())
         / f"english80_2026_division_structured_{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}"
     )
-    if output_dir.exists():
+    if storage_io.exists(output_dir):
         if not args.force:
             raise FileExistsError(output_dir)
         shutil.rmtree(output_dir)
     output_dir.mkdir(parents=True)
 
     sources = _load_sources(previous_build / "football_squads_source_ledger.json")
-    previous_assignment = json.loads((previous_build / "slot_assignment_english80_2026_football_squads.json").read_text(encoding="utf-8"))
-    previous_world = json.loads((previous_build / "world_english80_2026_football_squads.json").read_text(encoding="utf-8"))
+    previous_assignment = json.loads(storage_io.read_text(previous_build / 'slot_assignment_english80_2026_football_squads.json', encoding='utf-8'))
+    previous_world = json.loads(storage_io.read_text(previous_build / 'world_english80_2026_football_squads.json', encoding='utf-8'))
 
     assignment = build_structured_assignment(previous_assignment, sources)
     assignment_path = output_dir / "slot_assignment_english80_2026_division_structured.json"
@@ -456,9 +464,9 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
     source_path = output_dir / "football_squads_source_ledger.json"
     _json_dump(assignment_path, assignment)
     _json_dump(world_path, build_world(previous_world, assignment))
-    shutil.copy2(previous_build / "football_squads_source_ledger.json", source_path)
+    storage_io.copy_file(previous_build / 'football_squads_source_ledger.json', source_path, metadata=True)
 
-    base_game = Path(args.base_game).expanduser().resolve()
+    base_game = storage_io.resolve(Path(args.base_game).expanduser())
     writable_base_game = output_dir / "base_game_writable"
     shutil.copytree(base_game, writable_base_game, symlinks=True)
     _make_tree_user_writable(writable_base_game)
@@ -477,7 +485,7 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
         game_root=game_root,
         assignment_path=assignment_path,
         output_dir=output_dir / "kit_patch",
-        kit_manifest_path=Path(args.kit_manifest).expanduser().resolve(),
+        kit_manifest_path=storage_io.resolve(Path(args.kit_manifest).expanduser()),
     )
 
     manifest = {

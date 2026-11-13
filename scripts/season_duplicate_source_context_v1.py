@@ -9,6 +9,7 @@ import collections
 import json
 from pathlib import Path
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_duplicate_ownership_plan_v1 as planner
 from scripts import season_historical_transfer_review_v1 as transfer
@@ -20,7 +21,7 @@ from scripts import season_soccerbase_duplicate_source_policy_v1 as soccerbase
 
 def load_snapshot(database, receipt_path):
     import duckdb
-    receipt = json.loads(receipt_path.read_text()); source = receipt['source']
+    receipt = json.loads(storage_io.read_text(receipt_path)); source = receipt['source']
     expected = source['database_sha256']
     if registry.sha256_file(database) != expected:
         raise ValueError('duplicate snapshot differs from the immutable original pin')
@@ -71,7 +72,7 @@ def context(plan, snapshot_people, snapshot_events, snapshot_binding, progress=N
     for path, expected in inputs:
         path = registry.ROOT/path
         if registry.sha256_file(path) != expected: raise ValueError('bound original opening review changed')
-        doc = json.loads(path.read_text()); transfer.verify_opening_sources(doc)
+        doc = json.loads(storage_io.read_text(path)); transfer.verify_opening_sources(doc)
         for row in doc['clubs']:
             club = carriers.get(row['carrier_id'])
             if club and club['name'] == row['club'] and row['status'] == 'original-first-fixture-reparsed':
@@ -81,7 +82,7 @@ def context(plan, snapshot_people, snapshot_events, snapshot_binding, progress=N
     if capture_bindings != bindings['captures']: raise ValueError('bound original squad captures changed')
     previous = registry.ROOT/bindings['review_path']
     if registry.sha256_file(previous) != bindings['review_sha256']: raise ValueError('bound prior roster review changed')
-    verifier = roster.SourceVerifier(plan['season'], json.loads(previous.read_text()), capture_bindings)
+    verifier = roster.SourceVerifier(plan['season'], json.loads(storage_io.read_text(previous)), capture_bindings)
     report('original-squad-captures-rehashed')
     people, events, _ = public.merge_bound(snapshot_people, snapshot_events, bindings)
     report('original-public-person-and-transfer-inputs-replayed')

@@ -7,6 +7,7 @@ import hashlib
 import shutil
 import subprocess
 import tarfile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry,season_pipeline_v2 as pipeline
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
 
@@ -22,18 +23,18 @@ def run():
         for prefix,suffix in [('sourced','r100a'),('replayed','r100b')]:
             rid=prefix+'-rating-calibration-20261011-'+season+'-'+suffix
             workspace=registry.ROOT/'.local/historical-role-deltas-v1'/season/rid
-            if not workspace.exists():continue
-            if workspace.is_symlink() or workspace.resolve()!=workspace.absolute():raise ValueError('unsafe rejected workspace')
+            if not storage_io.exists(workspace):continue
+            if workspace.is_symlink() or storage_io.resolve(workspace)!=workspace.absolute():raise ValueError('unsafe rejected workspace')
             if str(workspace) in processes:raise ValueError('rejected workspace still in use; wait for existing transport, never kill host lock')
             locator=registry.locator_path(season,rid)
             archive=archive_root/(season+'-'+suffix+'.tar.gz');receipt=archive_root/(season+'-'+suffix+'-receipt.json')
-            files=[p for p in workspace.rglob('*') if p.is_file() and not p.is_relative_to(workspace/'game')]
+            files=[p for p in storage_io.glob(workspace, '*', recursive=True) if storage_io.is_file(p) and not p.is_relative_to(workspace/'game')]
             jug=workspace/'game/DBDAT/JUG98030.FDI'
-            if jug.exists():files.append(jug)
+            if storage_io.exists(jug):files.append(jug)
             items=[(p,p.relative_to(workspace).as_posix()) for p in files]
-            if locator.exists():items.append((locator,'registered-locator.json'))
+            if storage_io.exists(locator):items.append((locator,'registered-locator.json'))
             expected={name:registry.sha256_file(path) for path,name in items}
-            if not archive.exists():
+            if not storage_io.exists(archive):
                 with tarfile.open(archive,'w:gz',dereference=True) as stream:
                     for path,name in items:stream.add(path,arcname=name,recursive=False)
             with tarfile.open(archive,'r:gz') as stream:
@@ -48,23 +49,23 @@ def run():
             for row in base_inventory['files']:
                 if row['path']=='DBDAT/JUG98030.FDI':continue
                 target=workspace/'game'/row['path']
-                if not target.exists() or registry.sha256_file(target)!=row['sha256']:raise ValueError('rejected game contains unique non-JUG changes')
+                if not storage_io.exists(target) or registry.sha256_file(target)!=row['sha256']:raise ValueError('rejected game contains unique non-JUG changes')
             retained(receipt,dict(season=season,rejected_release=rid,baseline=b['release_id'],
                 workspace=registry.relative_workspace_path(workspace),archive=registry.relative_workspace_path(archive),
                 archive_sha256=registry.sha256_file(archive),archived_member_hashes=expected,
                 all_other_game_bytes_recoverable_from_exact_unchanged_baseline=True,
                 reason='Rejected before promotion: unknown foreign XI treated as bench; known-star calibration regression',
                 existing_playable_games_untouched=True))
-            if locator.exists():locator.unlink()
+            if storage_io.exists(locator):storage_io.unlink(locator)
             shutil.rmtree(workspace)
             ledger.append(dict(receipt=registry.relative_workspace_path(receipt),archive=registry.relative_workspace_path(archive),
                 deleted_rejected_buffer=registry.relative_workspace_path(workspace),recoverable=True))
     # Include any already safely archived/retired rows from a prior bounded
     # pass that stopped at a still-active transport.
     ledger=[]
-    for path in sorted(archive_root.glob('*-receipt.json')):
+    for path in sorted(storage_io.glob(archive_root, '*-receipt.json')):
         receipt=pipeline.read_json_file(path)
-        if (registry.ROOT/receipt['workspace']).exists():continue
+        if storage_io.exists(registry.ROOT / receipt['workspace']):continue
         archive=registry.ROOT/receipt['archive']
         if registry.sha256_file(archive)!=receipt['archive_sha256']:raise ValueError('retained recovery archive differs')
         ledger.append(dict(receipt=registry.relative_workspace_path(path),archive=receipt['archive'],

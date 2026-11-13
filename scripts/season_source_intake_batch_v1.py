@@ -43,6 +43,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import foreign_carrier_assignment_v1 as assignment_lib  # noqa: E402
 from scripts import season_source_bundle_v1 as bundle_lib  # noqa: E402
 from scripts import season_source_intake_v1 as intake_lib  # noqa: E402
@@ -96,7 +97,7 @@ def _block(code: str, **details: Any) -> dict[str, Any]:
 def _candidate_summary(path: Path, *, seasons_root: Path) -> dict[str, Any] | None:
     """Describe, but never use, a separate candidate-only assignment ledger."""
 
-    if not path.is_file():
+    if not storage_io.is_file(path):
         return None
     try:
         document, digest = _read_canonical(path, label="candidate carrier assignment")
@@ -134,9 +135,9 @@ def _discover_capture_documents(
         return [], [], False
     captures: list[dict[str, Any]] = []
     invalid: list[dict[str, Any]] = []
-    for path in sorted(source_dir.rglob("*.json")):
+    for path in sorted(storage_io.glob(source_dir, '*.json', recursive=True)):
         try:
-            raw = path.read_bytes()
+            raw = storage_io.read_bytes(path)
             document = json.loads(raw.decode("utf-8"))
         except (OSError, UnicodeDecodeError, json.JSONDecodeError):
             # It cannot declare a usable source-capture schema, so it is
@@ -213,7 +214,7 @@ def _write_missing(path: Path, value: Mapping[str, Any]) -> None:
 
     path.parent.mkdir(parents=True, exist_ok=True)
     try:
-        with path.open("xb") as handle:
+        with storage_io.open_file(path, 'xb') as handle:
             handle.write(canonical_json_bytes(value))
     except FileExistsError as exc:
         raise BatchError(f"refusing to overwrite existing receipt: {path}") from exc
@@ -230,12 +231,12 @@ def _receipt_state(
     """Validate an existing receipt or optionally write its exact expected form."""
 
     display_path = _relative_path(seasons_root=seasons_root, path=path)
-    if not path.exists():
+    if not storage_io.exists(path):
         if write:
             _write_missing(path, expected)
             return {"path": display_path, "status": "materialised", "sha256": _sha256(expected)}, []
         return {"path": display_path, "status": "missing"}, []
-    if not path.is_file():
+    if not storage_io.is_file(path):
         return {"path": display_path, "status": "invalid"}, [_block("existing-receipt-not-a-file", path=display_path)]
     try:
         existing, digest = _read_canonical(path, label=label)
@@ -265,7 +266,7 @@ def _active_assignment(
     if requested_name is not None:
         return requested_name, None, None
     bundle_path = season_dir / SOURCE_BUNDLE_NAME
-    if not bundle_path.exists():
+    if not storage_io.exists(bundle_path):
         return BASE_ASSIGNMENT_NAME, None, None
     try:
         bundle = bundle_lib.read_bundle(bundle_path)
@@ -486,7 +487,7 @@ def build_matrix(
 ) -> dict[str, Any]:
     """Build a canonical matrix; only ``write=True`` materialises receipts."""
 
-    seasons_root = seasons_root.resolve()
+    seasons_root = storage_io.resolve(seasons_root)
     if (
         assignment_name is not None
         and (

@@ -1,4 +1,5 @@
 """Build the actual paired Woking/Oxford correction and full SOURCE replay."""
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import season_woking_2003_owned_opening_v1 as source
 from scripts import publish_historical_role_delta_v1 as publisher
@@ -25,12 +26,12 @@ def skills(data,carrier):
 
 
 def native_proof(base,release,plan):
-    original=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
-    ent=(base.game_path/'DBDAT/ENT98030.FDI').read_bytes()
-    actual=(release.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    actual_eq=(release.game_path/'DBDAT/EQ98030.FDI').read_bytes()
-    actual_ent=(release.game_path/'DBDAT/ENT98030.FDI').read_bytes()
+    original=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
+    ent=storage_io.read_bytes(base.game_path / 'DBDAT/ENT98030.FDI')
+    actual=storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
+    actual_eq=storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
+    actual_ent=storage_io.read_bytes(release.game_path / 'DBDAT/ENT98030.FDI')
     if source.apply(original,eq,plan)!=(actual,actual_eq) or source.apply_ent(ent,plan)!=actual_ent:
         raise ValueError('actual native paired correction differs')
     if source.apply(actual,actual_eq,plan)!=(actual,actual_eq) or source.apply_ent(actual_ent,plan)!=actual_ent:
@@ -49,9 +50,9 @@ def native_proof(base,release,plan):
             preserved.append(dict(person=p['source_name'],old_carrier=person['carrier_id'],new_carrier=p['carrier_id'],skills=right))
     if len(preserved)!=10:raise ValueError('expected nine residents and Louis native skill preservation')
     selected=source.selected_carriers(plan)
-    archive,_=delta.no_photo_archive((base.game_path/'DBDAT/MINIFOTO.PKF').read_bytes(),selected)
-    if archive!=(release.game_path/'DBDAT/MINIFOTO.PKF').read_bytes():raise ValueError('portrait clear differs')
-    if any((release.game_path/f'DBDAT/MINIFOTO/J96{k:05d}.BMP').exists() for k in selected):raise ValueError('stale slot portrait remains')
+    archive,_=delta.no_photo_archive(storage_io.read_bytes(base.game_path / 'DBDAT/MINIFOTO.PKF'),selected)
+    if archive!=storage_io.read_bytes(release.game_path / 'DBDAT/MINIFOTO.PKF'):raise ValueError('portrait clear differs')
+    if any(storage_io.exists(release.game_path / f'DBDAT/MINIFOTO/J96{k:05d}.BMP') for k in selected):raise ValueError('stale slot portrait remains')
     left={r['path']:r['sha256'] for r in pipeline.read_json_file(base.inventory_path)['files']}
     right={r['path']:r['sha256'] for r in pipeline.read_json_file(release.inventory_path)['files']}
     allowed={'DBDAT/JUG98030.FDI','DBDAT/EQ98030.FDI','DBDAT/ENT98030.FDI','DBDAT/MINIFOTO.PKF'}|{f'DBDAT/MINIFOTO/J96{k:05d}.BMP' for k in selected}
@@ -70,17 +71,17 @@ def native_proof(base,release,plan):
 def main():
     ROOT.mkdir(exist_ok=True);base=registry.load_registered_release(SEASON,BASE)
     path=ROOT/'opening-ownership-plan.json'
-    if path.exists():plan=pipeline.read_json_file(path)
+    if storage_io.exists(path):plan=pipeline.read_json_file(path)
     else:plan=source.prepare(base);retained(path,plan)
     descriptor=ROOT/'inert.json'
     retained(descriptor,dict(season=SEASON,release_id=BASE,package_sha256=registry.sha256_file(base.package_path),
         jug_sha256=registry.sha256_file(base.game_path/'DBDAT/JUG98030.FDI'),updates=[],unresolved=[]))
-    if not registry.locator_path(SEASON,RELEASE).exists():
+    if not storage_io.exists(registry.locator_path(SEASON, RELEASE)):
         publisher.publish(SEASON,descriptor,release_id=RELEASE,source_release_id=BASE,profile_assignment_plan_path=path)
     release=registry.load_registered_release(SEASON,RELEASE)
-    if not (ROOT/'native-byte-proof.json').exists():native_proof(base,release,plan)
-    if not (ROOT/'complete-SOURCE-replay.json').exists():
-        if registry.locator_path(SEASON,REPLAY).exists():raise ValueError('unreceipted Woking replay exists')
+    if not storage_io.exists(ROOT / 'native-byte-proof.json'):native_proof(base,release,plan)
+    if not storage_io.exists(ROOT / 'complete-SOURCE-replay.json'):
+        if storage_io.exists(registry.locator_path(SEASON, REPLAY)):raise ValueError('unreceipted Woking replay exists')
         retained(ROOT/'complete-SOURCE-replay.json',source.reconstruction(release,REPLAY))
     print(dict(built=True,complete_SOURCE_game_and_recipe_exact=True,runtime_pending=True),flush=True)
 

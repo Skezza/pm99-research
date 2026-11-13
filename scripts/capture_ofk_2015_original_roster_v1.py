@@ -1,4 +1,5 @@
 """Re-use retained2015 originals; acquire dated histories, not annual ownership."""
+from scripts import json_storage_io_v1 as storage_io
 from scripts import prepare_ofk_2004_source_allocation_v1 as source
 from scripts import capture_transfermarkt_opening_lineups_v1 as openings
 from scripts.capture_ofk_2004_reserve_brackets_20261010 import original_ids
@@ -8,7 +9,7 @@ from scripts import season_pipeline_v2 as pipeline
 
 def capture():
     output = source.AUDIT / 'ofk-2015-original-opening-and-history-v1.json'
-    if output.exists(): raise ValueError('completed original review must not be repeated')
+    if storage_io.exists(output): raise ValueError('completed original review must not be repeated')
     annual, annual_binding = original_ids(2015)
     annual_raw, _ = source.original('ofk-beograd-2015')
     roles = source.annual_roles(annual_raw, expected_year=2015)
@@ -30,7 +31,7 @@ def capture():
         raise ValueError('2015 original XI and three published bench people changed')
     inputs = [annual_binding, schedule_binding, report_binding]
     history_path = source.AUDIT / 'ofk-2015-target-annual-history-v1.json'
-    if not history_path.exists():
+    if not storage_io.exists(history_path):
         histories.capture_ids(set(annual), source.AUDIT / 'ofk-2015-history-originals',
             history_path, inputs, 'Original2015/16 annual stable IDs only. Annual appearance NOT approval of opening membership.')
     document = pipeline.read_json_file(history_path)

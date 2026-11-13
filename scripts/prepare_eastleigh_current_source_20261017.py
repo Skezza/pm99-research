@@ -4,6 +4,7 @@ Source-only complete-club proposal. Existing original sources and previously
 delivered birthday proofs are replayed; no current season is regenerated.
 """
 import copy
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import season_historical_roster_audit_v1 as roster
 from scripts import replay_original_soccerbase_openings_v1 as replay
@@ -77,6 +78,6 @@ def prepare():
 
 
 if __name__=='__main__':
-    if ROOT.exists():raise ValueError('retained current source attempt exists; inspect instead of overwriting')
+    if storage_io.exists(ROOT):raise ValueError('retained current source attempt exists; inspect instead of overwriting')
     ROOT.mkdir(parents=True)
     prepare()

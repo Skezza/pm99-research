@@ -25,6 +25,7 @@ for candidate in (ROOT, EDITOR):
         sys.path.insert(0, str(candidate))
 
 from app.minifoto_bitmap_archive import iter_obfuscated_bmp_records  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts import pm99_factory_kit_renderer_v1 as factory_renderer  # noqa: E402
 from scripts.pm99_kit_palette_v1 import runtime_kit_palette  # noqa: E402
 from scripts.pm99_kit_recipe_v1 import recipe_from_source  # noqa: E402
@@ -35,7 +36,7 @@ DEFAULT_CLUBS = ("Barcelona", "Athletic Bilbao", "Villarreal", "Real Madrid", "V
 
 def file_sha256(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
@@ -76,7 +77,7 @@ def main() -> int:
     args = parser.parse_args()
     requested = tuple(args.club) if args.club else DEFAULT_CLUBS
     try:
-        manifest = json.loads(args.materialisation.read_text(encoding="utf-8"))
+        manifest = json.loads(storage_io.read_text(args.materialisation, encoding='utf-8'))
         by_club = {
             str(row.get("source_club_name")): row
             for row in manifest.get("rows", [])
@@ -110,7 +111,7 @@ def main() -> int:
                 {
                     "source_club_name": club,
                     "carrier_id": int(row["carrier_id"]),
-                    "source_png": str(source_path.resolve()),
+                    "source_png": str(storage_io.resolve(source_path)),
                     "source_png_sha256": file_sha256(source_path),
                     "recipe": recipe,
                     "factory_template_carrier": template_carrier,
@@ -130,10 +131,10 @@ def main() -> int:
             },
             "runtime_palette": palette_info,
             "rows": receipt_rows,
-            "preview": str(args.output.resolve()),
+            "preview": str(storage_io.resolve(args.output)),
         }
         args.receipt.parent.mkdir(parents=True, exist_ok=True)
-        args.receipt.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        storage_io.write_text(args.receipt, json.dumps(receipt, indent=2, sort_keys=True) + '\n', encoding='utf-8')
         print(receipt["preview"])
         return 0
     except (OSError, ValueError, KeyError) as exc:

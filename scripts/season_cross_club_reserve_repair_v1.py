@@ -8,6 +8,7 @@ carrier can be replaced. No transfer-day or first-XI appearance is invented.
 import copy
 from datetime import date
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_duplicate_ownership_plan_v1 as planner
 from scripts import season_historical_roster_audit_v1 as roster
 from scripts import season_opening_order_repair_v1 as ownership
@@ -53,8 +54,8 @@ def make_plan(release, displaced, retained, replacement_name, replacement_slug,
     before, keep = by_carrier[displaced], by_carrier[retained]
     clubs = {c['id']: c for c in package['clubs']}
     club, retained_club = clubs[before['club_id']], clubs[keep['club_id']]
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (release.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
     first, second = facts.native_facts(jug, displaced), facts.native_facts(jug, retained)
     owners = ownership.native_owners(eq)
     guard_pair(before, keep, first, second, owners, club, retained_club)
@@ -161,11 +162,11 @@ def reconstruction(previous, release_id):
     from scripts import season_duplicate_ownership_delta_v1 as delta
     base = registry.load_registered_release(plan['season'], plan['release_id'])
     verify_plan(base, plan)
-    if path.resolve() != (previous.package_path.parent / delta.plan_filename(plan)).resolve():
+    if storage_io.resolve(path) != storage_io.resolve(previous.package_path.parent / delta.plan_filename(plan)):
         raise ValueError('cross-club SOURCE plan is not the release-local owned input')
     # Check the full expected recipe, not just the selected player's name.
     from scripts import season_duplicate_layered_packages_v1 as layered
-    original = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    original = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
     expected, english, _, _ = layered.prepare(base, plan, original)
     if english is not None or pipeline.read_json_file(previous.package_path) != expected:
         raise ValueError('cross-club SOURCE recipe differs from complete source reconstruction')

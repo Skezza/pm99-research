@@ -26,6 +26,7 @@ for candidate in (ROOT, EDITOR):
         sys.path.insert(0, str(candidate))
 
 from app.minifoto_bitmap_archive import iter_obfuscated_bmp_records, validate_minifoto_bitmap  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts.materialise_2015_world_kits import ARCHIVES, sha256_file  # noqa: E402
 from scripts import pm99_factory_kit_renderer_v1 as factory_renderer  # noqa: E402
 from scripts.pm99_kit_palette_v1 import runtime_kit_palette  # noqa: E402
@@ -72,7 +73,7 @@ def build_probe(
     events = []
     for archive in ARCHIVES:
         archive_path = dbdat / archive
-        before = archive_path.read_bytes()
+        before = storage_io.read_bytes(archive_path)
         records = _records(archive_path)
         target = records.get(target_carrier)
         if target is None:
@@ -99,7 +100,7 @@ def build_probe(
         changed_offsets = [offset for offset, (old, new) in enumerate(zip(before, after)) if old != new]
         if any(offset < start or offset >= end for offset in changed_offsets):
             raise ProbeError(f"{archive} probe would change bytes outside target record")
-        archive_path.write_bytes(after)
+        storage_io.write_bytes(archive_path, after)
         readback = _records(archive_path).get(target_carrier)
         if readback is None or readback.raw_bitmap != payload:
             raise ProbeError(f"{archive} target readback failed")
@@ -126,7 +127,7 @@ def build_probe(
             "recipe": recipe,
         },
         "temporary_target": {"club": "Arsenal", "carrier_id": target_carrier},
-        "target_game_tree": str(target_game_tree.resolve()),
+        "target_game_tree": str(storage_io.resolve(target_game_tree)),
         "runtime_palette": {**palette_info, "sha256": sha256_file(Path(str(palette_info["path"])))},
         "events": events,
     }
@@ -142,7 +143,7 @@ def main() -> int:
     args = parser.parse_args()
     try:
         result = build_probe(
-            materialisation=json.loads(args.candidate_materialisation.read_text(encoding="utf-8")),
+            materialisation=json.loads(storage_io.read_text(args.candidate_materialisation, encoding='utf-8')),
             target_game_tree=args.target_game_tree,
             source_club=args.source_club,
             target_carrier=args.target_carrier,
@@ -151,7 +152,7 @@ def main() -> int:
         parser.error(str(exc))
         return 2
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(args.output, json.dumps(result, indent=2, sort_keys=True) + '\n', encoding='utf-8')
     print(json.dumps({"result": result["result"], "events": len(result["events"])}, sort_keys=True))
     return 0
 

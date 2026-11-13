@@ -26,6 +26,14 @@ and do not require the package or the local source snapshot.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -35,7 +43,7 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = storage_io.resolve(Path(__file__)).parents[1]
 SCHEMA = "pm99-world-2015-transfermarkt-opening-fixtures-v1"
 # ``SCHEMA`` above is the immutable, published 2015/16 receipt contract.
 # New seasons use this distinct schema through the generic command wrapper.
@@ -117,7 +125,7 @@ def canonical_json_bytes(value: Any) -> bytes:
 
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
@@ -459,7 +467,7 @@ def extract_receipt(
     country_mapping: Mapping[str, str] | None = None,
     schema_version: str = SCHEMA,
 ) -> dict[str, Any]:
-    if not database.is_file():
+    if not storage_io.is_file(database):
         raise SourceReceiptError(f"DuckDB source does not exist: {database}")
     selected_countries = validate_country_mapping(country_mapping or SUPPORTED_FOREIGN_COUNTRIES)
     duckdb = _import_duckdb()
@@ -506,7 +514,7 @@ def main(argv: list[str] | None = None) -> int:
     except (OSError, SourceReceiptError) as exc:
         parser.error(str(exc))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_json_bytes(receipt))
+    storage_io.write_bytes(args.output, canonical_json_bytes(receipt))
     print(json.dumps(receipt["summary"], sort_keys=True))
     return 0
 

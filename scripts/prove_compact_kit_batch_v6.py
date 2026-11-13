@@ -13,6 +13,7 @@ from types import SimpleNamespace
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'upstream/pm99-skezmod-db-editor'))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import build_registered_quality_release_v1 as builder
 from scripts import capture_registered_season_runtime_v1 as capture
 from scripts import pm99_factory_kit_renderer_v6 as factory
@@ -24,13 +25,13 @@ from scripts import verify_compact_kit_runtime_v6 as pixels
 def require_installed_v6(season):
     release = registry.load_preferred_release(season)
     receipt_path = builder._kit_receipt(season)
-    receipt = json.loads(receipt_path.read_text())
+    receipt = json.loads(storage_io.read_text(receipt_path))
     if receipt.get('renderer') != factory.RENDERER_ID:
         raise ValueError('V6 kit fix is not installed; old release is not new-kit evidence')
     audit_path = Path(receipt['audit_path'])
     if visual.sha(audit_path) != receipt['audit_sha256']:
         raise ValueError('kit audit changed')
-    audit = json.loads(audit_path.read_text())
+    audit = json.loads(storage_io.read_text(audit_path))
     if audit['blockers'] or audit['all_records'] != 544:
         raise ValueError('complete kit audit has not passed')
     return release

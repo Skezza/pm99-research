@@ -1,5 +1,6 @@
 """Reuse the annual-label build/capture/delivery workflow for sourced2001."""
 import argparse
+from scripts import json_storage_io_v1 as storage_io
 from scripts import build_hertha_cohort_label_20261017 as build
 from scripts.capture_shinnie_country_20261017 import main as capture,wait_owned
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
@@ -27,9 +28,9 @@ def main(args):
         build.main()
     elif args.stage=='capture':
         path=ROOT/'runtime-profile-spec.json'
-        if path.exists():raise ValueError('existing Hertha2001 capture must be inspected, not restarted')
+        if storage_io.exists(path):raise ValueError('existing Hertha2001 capture must be inspected, not restarted')
         wait_owned(args.previous_runner_pid,'scripts.capture_haladas2000_opening_keeper_20261017')
-        if not (ROOT/'complete-SOURCE-replay.json').exists():raise ValueError('Hertha2001 complete SOURCE required')
+        if not storage_io.exists(ROOT / 'complete-SOURCE-replay.json'):raise ValueError('Hertha2001 complete SOURCE required')
         actual=build.source.registry.load_registered_release('2001-02',RELEASE)
         carrier,label,search,token=PROFILE;profile=dict(carrier_id=carrier,label=label,search=search,token=token)
         retained(path,dict(season='2001-02',release_id=RELEASE,manifest_sha256=actual.manifest_sha256,profiles=[profile],visual_approval=False))

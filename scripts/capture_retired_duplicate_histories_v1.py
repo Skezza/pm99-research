@@ -16,6 +16,7 @@ from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_historical_transfer_review_v1 as transfer
 from scripts import season_published_person_identity_v1 as people_source
 from scripts import season_published_transfer_history_v1 as history
@@ -47,16 +48,16 @@ def requests_from_plans(documents, people):
 
 
 def capture(plan_roots, person_path, cache, output):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('retired history evidence is immutable')
-    paths = sorted({p for root in plan_roots for p in root.glob('*/ownership-plan.json')})
+    paths = sorted({p for root in plan_roots for p in storage_io.glob(root, '*/ownership-plan.json')})
     input_plans = [{'path': registry.relative_workspace_path(p), 'sha256': registry.sha256_file(p)} for p in paths]
     person_digest = registry.sha256_file(person_path)
-    documents = [json.loads(p.read_text()) for p in paths]
+    documents = [json.loads(storage_io.read_text(p)) for p in paths]
     people, _, _, pin = transfer.load_snapshot(
         ROOT / '.local/external-sources/transfermarkt-datasets/transfermarkt-datasets.duckdb',
         ROOT / '.local/season-pipeline-v2/world-2015-transfermarkt-opening-fixtures-20260831.json')
-    people, merge_report = people_source.merge(people, json.loads(person_path.read_text()))
+    people, merge_report = people_source.merge(people, json.loads(storage_io.read_text(person_path)))
     claims = requests_from_plans(documents, people)
     results = []
     for id in sorted(claims):
@@ -64,9 +65,9 @@ def capture(plan_roots, person_path, cache, output):
         path = cache / 'history' / f'{id}.json'
         receipt = path.with_suffix('.source.json')
         try:
-            if path.exists():
-                raw = path.read_bytes()
-                if json.loads(receipt.read_text()) != {'url': url, 'sha256': hashlib.sha256(raw).hexdigest()}:
+            if storage_io.exists(path):
+                raw = storage_io.read_bytes(path)
+                if json.loads(storage_io.read_text(receipt)) != {'url': url, 'sha256': hashlib.sha256(raw).hexdigest()}:
                     raise ValueError('cached retired history URL/SHA changed')
             else:
                 with urlopen(Request(url, headers={'Accept': 'application/json',
@@ -85,7 +86,7 @@ def capture(plan_roots, person_path, cache, output):
                 'events': history.parse(json.loads(raw), id)}
         except Exception as exc:
             row = {'player_id': id, 'status': 'source-history-gap', 'source_url': url, 'reason': str(exc)}
-            if not path.exists():
+            if not storage_io.exists(path):
                 time.sleep(1)
         results.append(row)
         print(json.dumps({'completed': len(results), 'total': len(claims),

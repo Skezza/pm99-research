@@ -14,6 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'upstream/pm99-skezmod-db-editor'))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
 from scripts.attest_registered_season_runtime_v1 import _atomic_replace_json
@@ -35,22 +36,22 @@ def publish(season, *, release_id, register=False):
         raise ValueError('invalid release ID')
     release = registry.load_preferred_release(season)
     source = release.game_path / 'DBDAT/JUG98030.FDI'
-    old_bytes = source.read_bytes()
+    old_bytes = storage_io.read_bytes(source)
     repaired, rows = repair(old_bytes)
-    declared_repairs(json.loads(release.package_path.read_text()), rows)
+    declared_repairs(json.loads(storage_io.read_text(release.package_path)), rows)
     if not rows:
         return {'season': season, 'status': 'already-correct', 'repaired_players': 0}
     destination = registry.locator_path(season, release_id).parent
     game = ROOT / '.local/season-identity-repairs-v1' / season / release_id / 'game'
-    if destination.exists() or game.parent.exists():
+    if storage_io.exists(destination) or storage_io.exists(game.parent):
         raise ValueError('repair release already exists; never overwrite')
     before, runtime_config = source_inventory(release)
     game.parent.mkdir(parents=True)
     shutil.copytree(release.game_path, game, copy_function=os.link)
     # Never write through a hardlink into the old release.
     temporary = game.parent / 'JUG98030.FDI.partial'
-    temporary.write_bytes(repaired)
-    os.replace(temporary, game / 'DBDAT/JUG98030.FDI')
+    storage_io.write_bytes(temporary, repaired)
+    storage_io.replace_file(temporary, game / 'DBDAT/JUG98030.FDI')
     after = pipeline.build_tree_inventory(game)
     difference = pipeline.inventory_difference(before, after)
     if (difference['only_left'] or difference['only_right'] or

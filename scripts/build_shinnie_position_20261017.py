@@ -2,6 +2,7 @@
 import shutil
 
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_exact_primary_position_delta_v1 as source
 from scripts import publish_historical_role_delta_v1 as publisher
@@ -17,7 +18,7 @@ REPLAY = 'replayed-shinnie-exact-midfield-20261017-r126b'
 
 def main():
     ROOT.mkdir(parents=True, exist_ok=True)
-    if registry.locator_path(country.SEASON, RELEASE).exists():
+    if storage_io.exists(registry.locator_path(country.SEASON, RELEASE)):
         raise ValueError('existing position game needs inspection, never automatic rebuild')
     base = registry.load_registered_release(country.SEASON, BASE)
     plan = source.prepare(base, [9718])
@@ -33,8 +34,8 @@ def main():
     publisher.publish(country.SEASON,descriptor,release_id=RELEASE,source_release_id=BASE,
         profile_assignment_plan_path=path)
     actual = registry.load_registered_release(country.SEASON,RELEASE)
-    before=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    after=(actual.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    before=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    after=storage_io.read_bytes(actual.game_path / 'DBDAT/JUG98030.FDI')
     entries={e.record_id:e for e in IndexedFDIFile.from_bytes(before).entries}
     entry=entries[9718];payload=entry.decode_payload(after)
     native=source.roster.native_player(payload,9718);end=native['name_end']

@@ -3,6 +3,7 @@ import copy
 import hashlib
 
 from app.indexed_jug_shirt_number import rewrite_indexed_native_shirt_numbers
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry,season_pipeline_v2 as pipeline
 from scripts import season_package_v2 as packages
 from scripts import arsenal_2021_shirt_source_v1 as admission
@@ -60,8 +61,8 @@ def bind(package,plan):
 
 def apply(jug,eq,plan):
     base=registry.load_registered_release(plan['season'],plan['release_id'])
-    original=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    original_eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    original=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    original_eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     if (digest(original),digest(original_eq))!=(plan['jug_sha256'],plan['eq_sha256']) or eq!=original_eq:
         raise ValueError('shirt-only immutable native source changed')
     updates={r['carrier_id']:{k:r[k] for k in ('native_name','before_number','number')} for r in plan['updates']}
@@ -81,7 +82,7 @@ def reconstruction(previous,release_id):
     base=registry.load_registered_release(previous.season,plan['release_id']);verify(base,plan)
     package=pipeline.read_json_file(previous.package_path)
     artifact=next(a for a in package['artifacts'] if a['id']==PREFIX+previous.season)
-    if path.resolve()!=(previous.package_path.parent/FILENAME).resolve() or registry.sha256_file(path)!=artifact['sha256']:
+    if storage_io.resolve(path)!=storage_io.resolve(previous.package_path.parent / FILENAME) or registry.sha256_file(path)!=artifact['sha256']:
         raise ValueError('shirt original input artifact changed')
     if bind(pipeline.read_json_file(base.package_path),plan)!=package:raise ValueError('edited shirt recipe cannot be silently replayed')
     descriptor=previous.package_path.parent/'role-delta-input.json'

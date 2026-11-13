@@ -10,6 +10,7 @@ from datetime import date
 
 from bs4 import BeautifulSoup
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts.capture_stock_replacement_sources_20261010 import ROOT
 
@@ -107,7 +108,7 @@ def main():
         binding = pipeline.read_json_file(receipt)
         if binding['status'] != 'original-captured' or registry.sha256_file(path) != binding['sha256']:
             raise ValueError('retained original newspaper evidence changed')
-        originals[key] = path.read_bytes()
+        originals[key] = storage_io.read_bytes(path)
         sources[key] = dict(path=registry.relative_workspace_path(path), sha256=binding['sha256'], url=binding['url'])
     preview = preseason(originals['becej-2015-opening-roster'])
     opening = first_fixture(originals['becej-2015-first-fixture'], preview['players'])

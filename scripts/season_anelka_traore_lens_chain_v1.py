@@ -17,6 +17,7 @@ from pathlib import Path
 from app.fdi_indexed import IndexedFDIFile
 from app.indexed_jug_shirt_number import rewrite_indexed_native_shirt_numbers
 from app.player_initial_order import OrderReplacement, patch_initial_orders, read_initial_order
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2 as packages
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_package_compiler_v2 as compiler
@@ -50,15 +51,15 @@ def digest(data: bytes) -> str:
 
 
 def _path(relative: str) -> Path:
-    path = (registry.ROOT / relative).resolve()
-    if not path.is_relative_to(registry.ROOT.resolve()) or path.is_symlink() or not path.is_file():
+    path = storage_io.resolve(registry.ROOT / relative)
+    if not path.is_relative_to(storage_io.resolve(registry.ROOT)) or path.is_symlink() or not storage_io.is_file(path):
         raise ValueError("source path is not a retained regular workspace file")
     return path
 
 
 def _binding(row: dict) -> dict:
     path = _path(row["path"])
-    raw = path.read_bytes()
+    raw = storage_io.read_bytes(path)
     if digest(raw) != row["sha256"]:
         raise ValueError("retained source SHA differs: " + row["path"])
     return {"path": registry.relative_workspace_path(path), "sha256": digest(raw)}
@@ -108,7 +109,7 @@ def _read_sources(request: dict) -> tuple[dict, dict, dict]:
         actual[key] = _binding(row)
         if row.get("receipt_path") and row.get("representation"):
             receipt_path = _path(row["receipt_path"])
-            receipt_bytes = receipt_path.read_bytes()
+            receipt_bytes = storage_io.read_bytes(receipt_path)
             if digest(receipt_bytes) != row.get("receipt_sha256"):
                 raise ValueError("retained source receipt SHA differs: " + key)
             receipt = pipeline.read_json_file(receipt_path)
@@ -121,21 +122,21 @@ def _read_sources(request: dict) -> tuple[dict, dict, dict]:
                 "receipt_sha256":digest(receipt_bytes),"url":row["url"],
                 "representation":row["representation"]})
 
-    lp = _path(bindings["liverpool_opening_fixture"]["path"]).read_text(encoding="utf-8", errors="replace")
-    lens = _path(bindings["lens_opening_fixture"]["path"]).read_text(encoding="utf-8", errors="replace")
+    lp = storage_io.read_text(_path(bindings['liverpool_opening_fixture']['path']), encoding='utf-8', errors='replace')
+    lens = storage_io.read_text(_path(bindings['lens_opening_fixture']['path']), encoding='utf-8', errors='replace')
     if "<title>Liverpool FC - West Ham United, 18/08/2001 - Premier League - Match sheet | Transfermarkt</title>" not in lp:
         raise ValueError("Liverpool retained fixture title/date differs")
     if "<title>RC Lens - Olympique Lyon, 28/07/2001 - Ligue 1 - Match sheet | Transfermarkt</title>" not in lens:
         raise ValueError("Lens retained fixture title/date differs")
     if "Starting Line-up: 4-4-2" not in lp or "Starting Line-up: 4-4-2" not in lens:
         raise ValueError("both retained opening fixtures must publish the bound 4-4-2 formation")
-    uefa = _path(bindings["anelka_december_transfer"]["path"]).read_text(encoding="utf-8", errors="replace")
+    uefa = storage_io.read_text(_path(bindings['anelka_december_transfer']['path']), encoding='utf-8', errors='replace')
     if ("Liverpool swoop for Anelka" not in uefa
             or "Friday, December 21, 2001" not in uefa
             or "Liverpool FC have signed French international Nicolas Anelka on loan" not in uefa
             or "Paris Saint-Germain FC striker" not in uefa):
         raise ValueError("UEFA Anelka transfer source does not bind the Dec 21 PSG-to-Liverpool move")
-    sky = _path(bindings["traore_lens_transfer"]["path"]).read_text(encoding="utf-8", errors="replace")
+    sky = storage_io.read_text(_path(bindings['traore_lens_transfer']['path']), encoding='utf-8', errors='replace')
     if ("<span itemprop=\"name\">Djimi Traore</span>" not in sky
             or "<strong>Liverpool</strong>" not in sky or "<strong>RC Lens</strong>" not in sky
             or 'data-short-text="31/08/01">31 Aug 2001' not in sky):
@@ -201,13 +202,13 @@ def _read_sources(request: dict) -> tuple[dict, dict, dict]:
         raise ValueError("fallback goalkeeper unexpectedly appears in Lens opener XI")
 
     metz_path = _path(bindings["bruno_official_club_profile"]["path"])
-    metz = metz_path.read_text(encoding="utf-8", errors="replace")
+    metz = storage_io.read_text(metz_path, encoding='utf-8', errors='replace')
     for anchor in ("<title>Bruno RODRIGUEZ | FC Metz</title>", "BRUNO RODRIGUEZ", "Attaquant", "25/11/1972", "180 m", "79 kg"):
         if anchor not in metz:
             raise ValueError("FC Metz official profile source anchor missing: " + anchor)
     receipt_path = _path(bindings["bruno_official_club_profile"]["receipt_path"])
     receipt = pipeline.read_json_file(receipt_path)
-    if (digest(receipt_path.read_bytes()) != bindings["bruno_official_club_profile"]["receipt_sha256"]
+    if (digest(storage_io.read_bytes(receipt_path)) != bindings["bruno_official_club_profile"]["receipt_sha256"]
             or receipt.get("url") != bindings["bruno_official_club_profile"]["url"]
             or receipt.get("sha256") != bindings["bruno_official_club_profile"]["sha256"]
             or receipt.get("representation") != "raw-html via curl -L"):
@@ -269,9 +270,9 @@ def _parent_checks(base, request: dict) -> tuple[dict, dict, bytes, bytes, bytes
     if actual != request.get("parent"):
         raise ValueError("explicit manifest/package/JUG/EQ/photo parent hashes differ")
     package = pipeline.read_json_file(base.package_path)
-    jug = (base.game_path / "DBDAT/JUG98030.FDI").read_bytes()
-    eq = (base.game_path / "DBDAT/EQ98030.FDI").read_bytes()
-    photo = (base.game_path / "DBDAT/MINIFOTO.PKF").read_bytes()
+    jug = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
+    photo = storage_io.read_bytes(base.game_path / 'DBDAT/MINIFOTO.PKF')
     if package["season"]["label"] != "2001/02":
         raise ValueError("wrong package season")
     return actual, package, jug, eq, photo
@@ -281,8 +282,8 @@ def prepare(base, input_path=INPUT_PATH) -> dict:
     path = Path(input_path)
     if not path.is_absolute():
         path = registry.ROOT / path
-    path = path.resolve()
-    if not path.is_relative_to(registry.ROOT.resolve()) or path.is_symlink() or not path.is_file():
+    path = storage_io.resolve(path)
+    if not path.is_relative_to(storage_io.resolve(registry.ROOT)) or path.is_symlink() or not storage_io.is_file(path):
         raise ValueError("input must be a retained regular workspace file")
     request = pipeline.read_json_file(path)
     if request.get("schema") != INPUT_SCHEMA:
@@ -417,7 +418,7 @@ def prepare(base, input_path=INPUT_PATH) -> dict:
                 after_name=("Djimi TRAORE" if carrier==ANELKA_CARRIER else ("Rodriguez" if carrier==TRAORE_CARRIER else old_name))
                 order_rows.append({"club_carrier_id":club_carrier,"carrier_id":carrier,"before_name":old_name,"after_name":after_name,"before":before,"after":target})
     # Compile/package proofs avoid pinning a global editor or compiler hash.
-    bindings = {"input":{"path":registry.relative_workspace_path(path),"sha256":digest(path.read_bytes())},
+    bindings = {"input":{"path":registry.relative_workspace_path(path),"sha256":digest(storage_io.read_bytes(path))},
         "sources":source_bindings}
     update_rows=[
         {"carrier_id":ANELKA_CARRIER,"before":copy.deepcopy(anelka),"after":traore_after,
@@ -447,7 +448,7 @@ def _expected_source_plan(base, plan):
     if plan.get("schema")!=SCHEMA or plan.get("mode")!=MODE:
         raise ValueError("unique transaction schema/mode mismatch")
     path=_path(plan["source_input"]["path"])
-    if digest(path.read_bytes())!=plan["source_input"]["sha256"]:
+    if digest(storage_io.read_bytes(path))!=plan["source_input"]["sha256"]:
         raise ValueError("transaction input source SHA differs")
     actual=prepare(base,path)
     if actual!=plan:
@@ -543,7 +544,7 @@ def _ids_from_carriers(package, order_rows, club_carrier, opening_ids):
     rest=[pid for pid in ids if pid not in selected]
     changed={row["carrier_id"]:row["after"] for row in order_rows if row["club_carrier_id"]==club_carrier}
     base=registry.load_registered_release("2001-02","sourced-keeper-profile-countries-20261023-r182a")
-    jug=(base.game_path/"DBDAT/JUG98030.FDI").read_bytes()
+    jug=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
     order_by_carrier=_actor_order_map(package,jug)
     for carrier,target in changed.items(): order_by_carrier[carrier]=target
     rest.sort(key=lambda pid:order_by_carrier[actor_by_id[pid]["carrier_id"]])
@@ -561,7 +562,7 @@ def source_artifact(plan):
 def apply_photo_archive(minifoto: bytes, plan: dict) -> tuple[bytes, dict]:
     base = registry.load_registered_release(plan["season"], plan["release_id"])
     verify(base, plan)
-    original = (base.game_path / "DBDAT/MINIFOTO.PKF").read_bytes()
+    original = storage_io.read_bytes(base.game_path / 'DBDAT/MINIFOTO.PKF')
     if digest(original) != plan["parent"]["minifoto_sha256"]:
         raise ValueError("registered portrait archive differs from the exact parent")
     from scripts.season_duplicate_ownership_delta_v1 import no_photo_archive
@@ -574,8 +575,8 @@ def apply_photo_archive(minifoto: bytes, plan: dict) -> tuple[bytes, dict]:
 def apply(jug: bytes, eq: bytes, plan: dict) -> tuple[bytes,bytes]:
     base=registry.load_registered_release(plan["season"],plan["release_id"])
     verify(base,plan)
-    original_jug=(base.game_path/"DBDAT/JUG98030.FDI").read_bytes()
-    original_eq=(base.game_path/"DBDAT/EQ98030.FDI").read_bytes()
+    original_jug=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    original_eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     if (digest(original_jug),digest(original_eq))!=(plan["parent"]["jug_sha256"],plan["parent"]["eq_sha256"]):
         raise ValueError("registered native preimage differs")
     pre=(digest(original_jug),digest(original_eq)); supplied=(digest(jug),digest(eq))
@@ -646,16 +647,16 @@ def reconstruction(previous,release_id):
     relative=getattr(previous,"locator",{}).get("sourced_profile_assignment_plan_path")
     if not relative:
         raise ValueError("owned chain receipt lacks exact source plan locator")
-    path=(registry.ROOT/relative).resolve()
-    if not path.is_relative_to(registry.ROOT.resolve()):
+    path=storage_io.resolve(registry.ROOT / relative)
+    if not path.is_relative_to(storage_io.resolve(registry.ROOT)):
         raise ValueError("source-bound plan escaped workspace")
     plan=pipeline.read_json_file(path)
     if plan.get("schema")!=SCHEMA or plan.get("mode")!=MODE:
         raise ValueError("receipt points to another transaction schema/mode")
     base=registry.load_registered_release(plan["season"],plan["release_id"])
     verify(base,plan)
-    expected=(previous.package_path.parent/filename(plan)).resolve()
-    if path!=expected or digest(path.read_bytes())!=receipt.get("original_profile_assignment_plan_sha256"):
+    expected=storage_io.resolve(previous.package_path.parent / filename(plan))
+    if path!=expected or digest(storage_io.read_bytes(path))!=receipt.get("original_profile_assignment_plan_sha256"):
         raise ValueError("receipt plan path or raw SHA differs")
     expected_package=bind(pipeline.read_json_file(base.package_path),plan)
     if pipeline.read_json_file(previous.package_path)!=expected_package:
@@ -674,7 +675,7 @@ def reconstruction(previous,release_id):
     rebuilt=registry.load_registered_release(previous.season,release_id)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path,prior_inventory)
     if (pipeline.read_json_file(rebuilt.package_path)!=expected_package
-            or rebuilt.package_path.read_bytes()!=previous.package_path.read_bytes()):
+            or storage_io.read_bytes(rebuilt.package_path)!=storage_io.read_bytes(previous.package_path)):
         raise ValueError("complete SOURCE replay recipe bytes differ")
     return {"season":plan["season"],"release_id":release_id,"complete_game_inventory_identical":True,
             "complete_recipe_identical":True,"compilation_mode":MODE}

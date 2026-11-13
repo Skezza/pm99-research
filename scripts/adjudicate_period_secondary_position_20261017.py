@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_exact_primary_position_delta_v2 as roles
 from scripts.consolidated_season_discovery_v1 import bindings
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
@@ -44,7 +45,7 @@ def main(previous_version):
     season, carrier = '2017-18', 18201
     output = ROOT.parent / f'release-delivery-checklist-v{previous_version+1}.json'
     proof_path = ROOT / 'Donohue2017-dual-role-original-proof.json'
-    if output.exists() or proof_path.exists():
+    if storage_io.exists(output) or storage_io.exists(proof_path):
         raise ValueError('completed secondary-role adjudication must not repeat')
     previous_path = ROOT.parent / f'release-delivery-checklist-v{previous_version}.json'
     previous = roles.pipeline.read_json_file(previous_path)
@@ -54,7 +55,7 @@ def main(previous_version):
     release = roles.registry.load_preferred_release(season)
     package = roles.pipeline.read_json_file(release.package_path)
     player = next(p for p in package['players'] if p['carrier_id'] == carrier)
-    data = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    data = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     entry = next(e for e in IndexedFDIFile.from_bytes(data).entries if e.record_id == carrier)
     payload = entry.decode_payload(data)
     native = roles.roster.native_player(payload, carrier)

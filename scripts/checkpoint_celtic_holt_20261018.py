@@ -1,6 +1,7 @@
 """Publish the composed Celtic ownership/Holt role fix, after genuine runner proof."""
 import copy
 from datetime import UTC, datetime
+from scripts import json_storage_io_v1 as storage_io
 from scripts.checkpoint_larsson_holt_kroos_20261018 import (
     AUDIT, fields, exchange, source_step, startup_review, binding, retained,
     profiles, digits, runtime, publisher, registry, pipeline, bindings,
@@ -14,7 +15,7 @@ CASE = '47ca91f51d09393fdb65c808c77cc8adf34715d2400f39aedd61587bc6b52c1b'
 def run():
     previous = AUDIT / 'release-delivery-checklist-v120.json'
     output = AUDIT / 'release-delivery-checklist-v121.json'
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('completed Celtic checkpoint must not repeat')
     original = pipeline.read_json_file(previous)
     old = {row['season']: row for row in original['current_release_bindings']}
@@ -34,7 +35,7 @@ def run():
     publisher.register_completed_delta('2000-01', holt.RELEASE,
         verified_ancestor_chain=[celtic.BASE, celtic.RELEASE, holt.RELEASE])
     final = holt.ROOT / 'final-attestation.json'
-    if final.exists():
+    if storage_io.exists(final):
         if registry._validate_runtime_attestation(registry.load_preferred_release('2000-01')):
             raise ValueError('existing final attestation differs')
     else:

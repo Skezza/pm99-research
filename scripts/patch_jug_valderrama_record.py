@@ -14,6 +14,14 @@ This is a data-only workaround experiment (no EXE changes).
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -24,14 +32,14 @@ from pathlib import Path
 from typing import Any
 import sys
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from app.xor import decode_entry, encode_entry
 
 SEPARATOR = bytes([0xDD, 0x63, 0x60])
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 DEFAULT_JUG = REPO_ROOT / ".local" / "premier-manager-ninety-nine" / "DBDAT" / "JUG98030.FDI"
 
 
@@ -50,7 +58,7 @@ class LocatedSubrecord:
 
 def _sha256(path: Path) -> str:
     h = hashlib.sha256()
-    h.update(path.read_bytes())
+    h.update(storage_io.read_bytes(path))
     return h.hexdigest()
 
 
@@ -124,7 +132,7 @@ def patch_file(
     output_path: Path | None,
     dry_run: bool,
 ) -> dict[str, Any]:
-    raw = jug_path.read_bytes()
+    raw = storage_io.read_bytes(jug_path)
 
     target = _locate_by_name(raw, target_name)
     donor = _locate_by_name(raw, donor_name)
@@ -190,7 +198,7 @@ def patch_file(
 
     if not dry_run:
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_bytes(bytes(patched_raw))
+        storage_io.write_bytes(out_path, bytes(patched_raw))
 
     return {
         "jug_path": str(jug_path),
@@ -251,7 +259,7 @@ def main() -> int:
     if args.in_place and args.backup and not args.dry_run:
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         backup_path = jug.with_name(f"{jug.name}.bak_valderrama_dbpatch_{stamp}")
-        shutil.copy2(jug, backup_path)
+        storage_io.copy_file(jug, backup_path, metadata=True)
 
     report = patch_file(
         jug_path=jug,
@@ -267,7 +275,7 @@ def main() -> int:
     report["backup_path"] = str(backup_path) if backup_path else None
     if args.in_place and not args.dry_run:
         report["sha256_after"] = _sha256(jug)
-    elif out is not None and out.exists() and not args.dry_run:
+    elif out is not None and storage_io.exists(out) and not args.dry_run:
         report["sha256_after"] = _sha256(out)
     else:
         report["sha256_after"] = before_hash
@@ -277,7 +285,7 @@ def main() -> int:
     if args.json_output:
         j = Path(args.json_output)
         j.parent.mkdir(parents=True, exist_ok=True)
-        j.write_text(text + "\n", encoding="utf-8")
+        storage_io.write_text(j, text + '\n', encoding='utf-8')
     return 0
 
 

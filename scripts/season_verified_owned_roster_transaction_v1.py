@@ -8,6 +8,7 @@ source group in this same transaction. No intermediate duplicate may publish.
 import copy
 from app.fdi_indexed import IndexedFDIFile
 from app.player_initial_order import OrderReplacement,read_initial_order,patch_owned_mode1_complete_orders
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_source_verified_player_changes_v1 as fields
 from scripts import season_verified_opening_roster_sources_v1 as sources
 from scripts import season_duplicate_ownership_delta_v1 as delta
@@ -53,8 +54,8 @@ def prepare(base,input_path):
     package=main_package(base)
     clubs={c['carrier_id']:c for c in package['clubs']}
     actors={p['carrier_id']:p for p in package['players']}
-    jug=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    jug=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     owners=fields.ownership.native_owners(eq)
     rows=[];groups=[];selected=set();full_incoming={};partial_displaced=[]
     for selection in request['groups']:
@@ -160,7 +161,7 @@ def bind(package,plan):
 
 def apply(jug,eq,plan):
     base=registry.load_registered_release(plan['season'],plan['release_id']);verify(base,plan)
-    initial=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    initial=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
     if digest(initial)!=plan['jug_sha256'] or digest(eq)!=plan['eq_sha256']:
         raise ValueError('exact whole native baseline/EQ required')
     package=bind(pipeline.read_json_file(base.package_path),plan)
@@ -189,7 +190,7 @@ def reconstruction(previous,release_id):
     base=registry.load_registered_release(previous.season,plan['release_id']);verify(base,plan)
     receipt=pipeline.read_json_file(previous.compiler_receipt_path)
     if (receipt.get('compilation_mode')!=MODE
-            or path.resolve()!=(previous.package_path.parent/filename(plan)).resolve()
+            or storage_io.resolve(path)!=storage_io.resolve(previous.package_path.parent / filename(plan))
             or registry.sha256_file(path)!=receipt['original_profile_assignment_plan_sha256']):
         raise ValueError('owned-roster SOURCE receipt/plan binding differs')
     if bind(pipeline.read_json_file(base.package_path),plan)!=pipeline.read_json_file(previous.package_path):
@@ -203,6 +204,6 @@ def reconstruction(previous,release_id):
         source_release_id=base.release_id,profile_assignment_plan_path=path)
     rebuilt=registry.load_registered_release(previous.season,release_id)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path,pipeline.read_json_file(previous.inventory_path))
-    if rebuilt.package_path.read_bytes()!=previous.package_path.read_bytes():
+    if storage_io.read_bytes(rebuilt.package_path)!=storage_io.read_bytes(previous.package_path):
         raise ValueError('whole owned-roster SOURCE recipe differs')
     return dict(season=previous.season,complete_game_inventory_identical=True,complete_recipe_identical=True)

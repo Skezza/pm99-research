@@ -20,6 +20,7 @@ sys.path[:0] = [str(ROOT), str(ROOT / 'upstream/pm99-skezmod-db-editor')]
 from app.ent_manager_profiles import parse_indexed_ent_manager_profile, replace_indexed_ent_manager_names
 from app.fdi_indexed import IndexedFDIFile
 from app.xor import xor_decode
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_package_v2 as packages
@@ -95,18 +96,18 @@ def reconcile_legacy_english(english, holders, names):
 
 
 def prepare(season, output, *, field_probe=False):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('candidate output exists; never overwrite')
     release = registry.load_preferred_release(season)
     if not registry.validate_preferred_release(season, level='playable')['valid']:
         raise ValueError('current game failed its immutable hash check')
-    package = json.loads(release.package_path.read_text())
+    package = json.loads(storage_io.read_text(release.package_path))
     english = tactics.load_english(release, package)
     separate_english = english != package
     working = copy.deepcopy(package)
     english_working = copy.deepcopy(english) if separate_english else working
     ent = release.game_path / 'DBDAT/ENT98030.FDI'
-    before = ent.read_bytes()
+    before = storage_io.read_bytes(ent)
     index = IndexedFDIFile.from_bytes(before)
     entries = {e.record_id: e for e in index.entries}
     holders, names = _manager_graph(eq_path=release.game_path / 'DBDAT/EQ98030.FDI', ent_path=ent)
@@ -185,8 +186,8 @@ def prepare(season, output, *, field_probe=False):
     # and copies only the changed ENT from here. Do not register this folder.
     for file in ('EQ98030.FDI', 'JUG98030.FDI', 'ENT98030.FDI', 'TEXTOS.PKF', 'MINIFOTO.PKF',
                  'BIGCAMP.PKF', 'BIGESC.PKF', 'MINIESC.PKF', 'NANOESC.PKF', 'RIDIESC.PKF'):
-        shutil.copy2(release.game_path / 'DBDAT' / file, dbdat / file)
-    (dbdat / 'ENT98030.FDI').write_bytes(after)
+        storage_io.copy_file(release.game_path / 'DBDAT' / file, dbdat / file, metadata=True)
+    storage_io.write_bytes(dbdat / 'ENT98030.FDI', after)
     packages.write_canonical_package(output / 'season-package.json', working)
     if separate_english:
         packages.write_canonical_package(output / 'english-season-package.json', english_working)
@@ -215,6 +216,6 @@ if __name__ == '__main__':
         if args.field_probe:
             raise ValueError('field-isolation probes are limited to one season')
         for season in registry.supported_seasons():
-            print(json.dumps(prepare(season, args.output.resolve() / season / 'candidate-v1')), flush=True)
+            print(json.dumps(prepare(season, storage_io.resolve(args.output) / season / 'candidate-v1')), flush=True)
     else:
-        print(json.dumps(prepare(args.season, args.output.resolve(), field_probe=args.field_probe)))
+        print(json.dumps(prepare(args.season, storage_io.resolve(args.output), field_probe=args.field_probe)))

@@ -11,6 +11,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import archive_retired_season_tests_20261004 as transport
 from scripts import archive_superseded_ingress_games_20261004 as ingress
 from scripts import season_release_registry_v1 as registry
@@ -25,7 +26,7 @@ NAMES = (
 
 @lru_cache(maxsize=128)
 def references(path, mtime_ns, size):
-    return tuple(ingress.nested_strings(json.loads(path.read_text())))
+    return tuple(ingress.nested_strings(json.loads(storage_io.read_text(path))))
 
 def check_references(source):
     for season in registry.supported_seasons():
@@ -33,7 +34,7 @@ def check_references(source):
         documents = [release.locator]
         for path in (release.package_path, release.release_manifest_path,
                      release.compiler_receipt_path, release.build_chain_path):
-            stat = path.stat()
+            stat = storage_io.stat_result(path)
             documents.append(list(references(path, stat.st_mtime_ns, stat.st_size)))
         # Literal directory name catches absolute and workspace-relative paths.
         if any(source.name in value for document in documents

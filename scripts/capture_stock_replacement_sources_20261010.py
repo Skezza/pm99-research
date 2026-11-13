@@ -5,6 +5,7 @@ import time
 import subprocess
 
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts.capture_transfermarkt_opening_lineups_v1 import _validate_snapshot_payload
 from scripts.capture_transfermarkt_historical_squads_v1 import parse_squad_with_dom_fallback
@@ -50,7 +51,7 @@ def main(extra_sources=None, only_extra=False, transport='urllib', validator=_va
         urls = list(extra_sources) if only_extra else urls + list(extra_sources)
     for key, url in urls:
         path, receipt = ROOT / (key + '.html'), ROOT / (key + '.source.json')
-        if receipt.exists():
+        if storage_io.exists(receipt):
             prior = pipeline.read_json_file(receipt)
             if prior['url'] != url or prior.get('sha256') and registry.sha256_file(path) != prior['sha256']:
                 raise ValueError('retained source candidate changed')
@@ -68,7 +69,7 @@ def main(extra_sources=None, only_extra=False, transport='urllib', validator=_va
             if len(payload) > 2 * 1024 ** 2:
                 raise ValueError('candidate original exceeds 2MiB bound')
             validator(payload, url)
-            path.write_bytes(payload)
+            storage_io.write_bytes(path, payload)
             page = BeautifulSoup(payload, 'html.parser')
             row = dict(url=url, utc=datetime.now(UTC).isoformat(), status='original-captured',
                 transport=transport,

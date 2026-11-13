@@ -3,6 +3,7 @@
 V1 is retained unchanged as rejected-trial source authority. A generic CB is
 not evidence for changing an existing right-centre role to left-centre.
 """
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_exact_fifa_role_delta_v1 as prior
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_package_v2 as packages
@@ -62,7 +63,7 @@ def reconstruction(previous,release_id):
     if bind(pipeline.read_json_file(base.package_path),plan) != package:
         raise ValueError('conservative role SOURCE would discard recipe edits')
     artifact=next(a for a in package['artifacts'] if a['id']==prior.PREFIX+plan['transaction_id'])
-    if path.resolve() != (previous.package_path.parent/filename(plan)).resolve() or registry.sha256_file(path)!=artifact['sha256']:
+    if storage_io.resolve(path) != storage_io.resolve(previous.package_path.parent / filename(plan)) or registry.sha256_file(path)!=artifact['sha256']:
         raise ValueError('conservative role SOURCE artifact differs')
     for r in (base,previous):pipeline.assert_tree_matches_inventory(r.game_path,pipeline.read_json_file(r.inventory_path))
     descriptor=previous.package_path.parent/'role-delta-input.json'

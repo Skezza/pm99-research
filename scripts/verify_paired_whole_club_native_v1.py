@@ -5,6 +5,7 @@ from pathlib import Path
 import sys
 
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import prepare_duplicate_whole_club_native_v1 as native
 from scripts import prepare_paired_whole_club_dispositions_v1 as paired
 from scripts import season_pipeline_v2 as pipeline
@@ -13,15 +14,15 @@ from app.editor_actions import _read_native_dd6360_fields
 
 
 def verify(candidate, output):
-    if output.exists():raise ValueError('paired independent proof is immutable')
-    receipt=json.loads((candidate/'candidate-receipt.json').read_text())
-    pair=json.loads(native.original(receipt['source_pair']).read_text())
-    proposals=[json.loads(native.original(b).read_text()) for b in pair['proposals']]
+    if storage_io.exists(output):raise ValueError('paired independent proof is immutable')
+    receipt=json.loads(storage_io.read_text(candidate / 'candidate-receipt.json'))
+    pair=json.loads(storage_io.read_text(native.original(receipt['source_pair'])))
+    proposals=[json.loads(storage_io.read_text(native.original(b))) for b in pair['proposals']]
     if paired.source_guard(pair,proposals)!=pair['source_guard']:raise ValueError('coupled source guard changed')
     base=registry.load_registered_release(pair['season'],pair['release_id'])
-    package=json.loads((candidate/'season-package.json').read_text())
+    package=json.loads(storage_io.read_text(candidate / 'season-package.json'))
     native.package_v2.validate_package(package)
-    data={n:(candidate/'game/DBDAT'/n).read_bytes() for n in receipt['native_hashes']}
+    data={n:storage_io.read_bytes(candidate / 'game/DBDAT' / n) for n in receipt['native_hashes']}
     if any(registry.sha256_file(candidate/'game/DBDAT'/n)!=sha for n,sha in receipt['native_hashes'].items()):
         raise ValueError('paired native candidate hashes changed')
     jug=data['JUG98030.FDI'];eq=data['EQ98030.FDI'];ent=data['ENT98030.FDI']
@@ -69,7 +70,7 @@ def verify(candidate, output):
     allowed={'JUG98030.FDI':{r['carrier_id'] for p in proposals for r in p['allocation']},
         'EQ98030.FDI':{p['before_club']['carrier_id'] for p in proposals},
         'ENT98030.FDI':{m['manager_carrier_id'] for m in receipt['managers']}}
-    for name,carriers in allowed.items():native.preserve_other_records((base.game_path/'DBDAT'/name).read_bytes(),data[name],carriers)
+    for name,carriers in allowed.items():native.preserve_other_records(storage_io.read_bytes(base.game_path / 'DBDAT' / name),data[name],carriers)
     proof={'schema_version':'pm99-independent-paired-native-readback-v1','season':pair['season'],
         'candidate':registry.relative_workspace_path(candidate),'candidate_receipt_sha256':registry.sha256_file(candidate/'candidate-receipt.json'),
         'players':rows,'clubs':club_rows,'all_unselected_native_records_identical':True,

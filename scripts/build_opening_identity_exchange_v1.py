@@ -7,6 +7,7 @@ import argparse
 import re
 import shutil
 from pathlib import Path
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_opening_identity_exchange_v1 as source
 from scripts import season_duplicate_ownership_delta_v1 as delta
@@ -33,11 +34,11 @@ def deliver(request_path, release_id, replay_id, evidence_dir, *, minimum_free_b
         raise ValueError('output IDs must not collide with the immutable source release')
     if request.get('orders'):
         raise ValueError('this reserve-only orchestration preserves all startup orders')
-    if (registry.locator_path(request['season'], replay_id).exists()
-            and not (evidence_dir / 'complete-SOURCE-replay.json').exists()):
+    if (storage_io.exists(registry.locator_path(request['season'], replay_id))
+            and not storage_io.exists(evidence_dir / 'complete-SOURCE-replay.json')):
         raise ValueError('unreceipted replay exists; inspect before any new publisher writes')
     existing_receipt = evidence_dir / 'complete-SOURCE-replay.json'
-    if existing_receipt.exists():
+    if storage_io.exists(existing_receipt):
         receipt = pipeline.read_json_file(existing_receipt)
         if (receipt.get('season') != request['season'] or receipt.get('release_id') != replay_id
                 or receipt.get('complete_game_inventory_identical') is not True
@@ -52,15 +53,15 @@ def deliver(request_path, release_id, replay_id, evidence_dir, *, minimum_free_b
     retained(inert, dict(season=base.season, release_id=base.release_id,
         package_sha256=registry.sha256_file(base.package_path),
         jug_sha256=registry.sha256_file(base.game_path / 'DBDAT/JUG98030.FDI'), updates=[], unresolved=[]))
-    if not registry.locator_path(base.season, release_id).exists():
+    if not storage_io.exists(registry.locator_path(base.season, release_id)):
         reserve_space(minimum_free_bytes)
         publisher.publish(base.season, inert, release_id=release_id, source_release_id=base.release_id,
                           profile_assignment_plan_path=plan_path, minimum_free_bytes=minimum_free_bytes)
     child = registry.load_registered_release(base.season, release_id)
-    before = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
-    after = (child.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    after_eq = (child.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    before = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
+    after = storage_io.read_bytes(child.game_path / 'DBDAT/JUG98030.FDI')
+    after_eq = storage_io.read_bytes(child.game_path / 'DBDAT/EQ98030.FDI')
     if source.apply(before, eq, plan) != (after, after_eq) or source.apply(after, after_eq, plan) != (after, after_eq):
         raise ValueError('actual native correction or idempotence differs')
     selected = source.selected_carriers(plan)
@@ -93,11 +94,11 @@ def deliver(request_path, release_id, replay_id, evidence_dir, *, minimum_free_b
                                                else native_facts(before, carrier)['startup_order'])):
             raise ValueError('actual selected identity or preserved order differs')
         observed.append(dict(carrier_id=carrier, **facts))
-    expected_photos, _ = delta.no_photo_archive((base.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes(), selected)
-    if expected_photos != (child.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes():
+    expected_photos, _ = delta.no_photo_archive(storage_io.read_bytes(base.game_path / 'DBDAT/MINIFOTO.PKF'), selected)
+    if expected_photos != storage_io.read_bytes(child.game_path / 'DBDAT/MINIFOTO.PKF'):
         raise ValueError('portrait archive differs beyond selected identities')
     loose = {f'DBDAT/MINIFOTO/J96{c:05d}.BMP' for c in selected}
-    if any((child.game_path / name).exists() for name in loose):
+    if any(storage_io.exists(child.game_path / name) for name in loose):
         raise ValueError('displaced loose portrait remains')
     left = {f['path']: f['sha256'] for f in pipeline.read_json_file(base.inventory_path)['files']}
     right = {f['path']: f['sha256'] for f in pipeline.read_json_file(child.inventory_path)['files']}
@@ -119,8 +120,8 @@ def deliver(request_path, release_id, replay_id, evidence_dir, *, minimum_free_b
             all_original_startup_orders_preserved=False, explicit_original_XI_orders=complete)
     retained(evidence_dir / 'native-and-unchanged-proof.json', proof)
     replay_path = evidence_dir / 'complete-SOURCE-replay.json'
-    if not replay_path.exists():
-        if registry.locator_path(base.season, replay_id).exists():
+    if not storage_io.exists(replay_path):
+        if storage_io.exists(registry.locator_path(base.season, replay_id)):
             raise ValueError('unreceipted replay exists; inspect without regeneration')
         reserve_space(minimum_free_bytes)
         retained(replay_path, source.reconstruction(child, replay_id, minimum_free_bytes=minimum_free_bytes))
@@ -132,7 +133,7 @@ def deliver(request_path, release_id, replay_id, evidence_dir, *, minimum_free_b
             raise ValueError('existing SOURCE proof binds another replay')
         replay = registry.load_registered_release(base.season, replay_id)
         pipeline.assert_tree_matches_inventory(replay.game_path, pipeline.read_json_file(child.inventory_path))
-        if replay.package_path.read_bytes() != child.package_path.read_bytes():
+        if storage_io.read_bytes(replay.package_path) != storage_io.read_bytes(child.package_path):
             raise ValueError('existing SOURCE recipe replay differs')
     return dict(season=base.season, release_id=release_id, built=True, SOURCE_replay_verified=True,
                 preferred=registry.load_preferred_release(base.season).release_id == release_id,

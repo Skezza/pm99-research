@@ -8,6 +8,14 @@ regenerable when its historical recipe/provenance was not retained.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -17,7 +25,7 @@ from pathlib import Path
 from typing import Any
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = storage_io.resolve(Path(__file__)).parents[1]
 SCHEMA_PATH = ROOT / "schemas" / "pm99-asset-store-import-v1.schema.json"
 SCHEMA_VERSION = "pm99-asset-store-import-v1"
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -34,7 +42,7 @@ def sha256_bytes(payload: bytes) -> str:
 
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
@@ -48,7 +56,7 @@ def canonical_json_bytes(value: Any) -> bytes:
 
 def _load_json(path: Path) -> Any:
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return json.loads(storage_io.read_text(path, encoding='utf-8'))
     except (OSError, json.JSONDecodeError) as exc:
         raise AssetStoreError(f"cannot read {path}: {exc}") from exc
 
@@ -62,25 +70,25 @@ def _safe_blob_path(store_root: Path, digest: str) -> Path:
 def _put_bytes(store_root: Path, payload: bytes) -> dict[str, str]:
     digest = sha256_bytes(payload)
     destination = _safe_blob_path(store_root, digest)
-    if destination.exists():
+    if storage_io.exists(destination):
         if sha256_file(destination) != digest:
             raise AssetStoreError(f"existing blob is corrupt: {destination}")
     else:
         destination.parent.mkdir(parents=True, exist_ok=True)
         temporary = destination.with_name(destination.name + ".tmp")
-        temporary.write_bytes(payload)
-        temporary.replace(destination)
+        storage_io.write_bytes(temporary, payload)
+        storage_io.move(temporary, destination, replace=True)
     return {"sha256": digest, "blob": f"blobs/{digest[:2]}/{digest}"}
 
 
 def _put_file(store_root: Path, path: Path) -> dict[str, str]:
-    if not path.is_file():
+    if not storage_io.is_file(path):
         raise AssetStoreError(f"expected retained asset is missing: {path}")
-    return _put_bytes(store_root, path.read_bytes())
+    return _put_bytes(store_root, storage_io.read_bytes(path))
 
 
 def _receipt(path: Path, identity: str) -> dict[str, str]:
-    if not path.is_file():
+    if not storage_io.is_file(path):
         raise AssetStoreError(f"missing receipt: {path}")
     return {"id": identity, "sha256": sha256_file(path)}
 
@@ -121,9 +129,9 @@ def _portrait_index(
     store_root: Path,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, int]]:
     archive = game_root / "DBDAT" / "MINIFOTO.PKF"
-    if not archive.is_file():
+    if not storage_io.is_file(archive):
         raise AssetStoreError(f"missing MINIFOTO.PKF: {archive}")
-    archive_bytes = archive.read_bytes()
+    archive_bytes = storage_io.read_bytes(archive)
     after_hash = _require_sha(receipt.get("minifoto_sha256_after"), "face receipt after hash")
     if sha256_bytes(archive_bytes) != after_hash:
         raise AssetStoreError("MINIFOTO.PKF does not match face receipt minifoto_sha256_after")
@@ -165,11 +173,11 @@ def _portrait_index(
         }
         source_path = Path(row["source_image_path"]) if isinstance(row.get("source_image_path"), str) else None
         preview_path = Path(row["preview_path"]) if isinstance(row.get("preview_path"), str) else None
-        if source_path is not None and source_path.is_file():
+        if source_path is not None and storage_io.is_file(source_path):
             entry["source"] = _put_file(store_root, source_path)
         else:
             counts["missing_source"] += 1
-        if preview_path is not None and preview_path.is_file():
+        if preview_path is not None and storage_io.is_file(preview_path):
             entry["preview"] = _put_file(store_root, preview_path)
         else:
             counts["missing_preview"] += 1
@@ -193,7 +201,7 @@ def _portrait_index(
         elif storage == "loose-DBDAT/MINIFOTO":
             expected = f"J96{record_id:05d}.BMP"
             loose_path = loose_dir / expected
-            if not loose_path.is_file():
+            if not storage_io.is_file(loose_path):
                 raise AssetStoreError(f"portrait {record_id}: expected loose output missing: {loose_path}")
             referenced_loose_names.add(expected)
             entry["output"] = {
@@ -209,7 +217,7 @@ def _portrait_index(
     unlinked_loose: list[dict[str, Any]] = []
     if loose_dir.is_dir():
         for path in sorted(loose_dir.iterdir(), key=lambda item: item.name):
-            if path.is_file() and LOOSE_NAME_RE.fullmatch(path.name) and path.name not in referenced_loose_names:
+            if storage_io.is_file(path) and LOOSE_NAME_RE.fullmatch(path.name) and path.name not in referenced_loose_names:
                 unlinked_loose.append({"filename": path.name, "blob": _put_file(store_root, path)})
     return portraits, unlinked_loose, counts
 
@@ -231,9 +239,9 @@ def _kit_index(
     kits: list[dict[str, Any]] = []
     for archive_name, patches in sorted(grouped.items()):
         archive_path = game_root / "DBDAT" / archive_name
-        if not archive_path.is_file():
+        if not storage_io.is_file(archive_path):
             raise AssetStoreError(f"missing kit archive: {archive_path}")
-        archive_bytes = archive_path.read_bytes()
+        archive_bytes = storage_io.read_bytes(archive_path)
         before_hashes = {str(row.get("archive_sha256_before")) for row in patches}
         after_hashes = {str(row.get("archive_sha256_after")) for row in patches}
         if len(before_hashes) != 1 or len(after_hashes) != 1:
@@ -320,13 +328,13 @@ def build_2015_index(*, face_receipt_path: Path, kit_receipt_path: Path, game_ro
 
 def write_index(store_root: Path, index: dict[str, Any]) -> Path:
     path = store_root / "index.json"
-    path.write_bytes(canonical_json_bytes(index))
+    storage_io.write_bytes(path, canonical_json_bytes(index))
     return path
 
 
 def read_index(store_root: Path) -> dict[str, Any]:
     path = store_root / "index.json"
-    raw = path.read_bytes()
+    raw = storage_io.read_bytes(path)
     try:
         value = json.loads(raw.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
@@ -390,7 +398,7 @@ def validate_index(store_root: Path, *, verify_blobs: bool = False) -> dict[str,
     if verify_blobs:
         for digest, relative in unique.items():
             blob_path = store_root / relative
-            if not blob_path.is_file() or sha256_file(blob_path) != digest:
+            if not storage_io.is_file(blob_path) or sha256_file(blob_path) != digest:
                 errors.append(f"blob is missing or corrupt: {relative}")
     if errors:
         raise AssetStoreError("Asset store validation failed:\n- " + "\n- ".join(errors))

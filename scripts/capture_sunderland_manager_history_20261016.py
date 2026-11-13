@@ -6,6 +6,7 @@ native/recipe writes, retries, access-control bypass or unaffected regeneration.
 from datetime import UTC, date, datetime
 from urllib.request import Request, urlopen
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_cached_manager_repairs_20261016 as original
 from scripts import audit_deferred_manager_tenures_20261016 as histories
@@ -30,11 +31,11 @@ def main():
     url = schedule[:-len(suffix)] + '/mitarbeiterhistorie/verein/289'
     ROOT.mkdir(parents=True, exist_ok=True)
     outcome = ROOT / 'capture-result.json'
-    if outcome.exists():
+    if storage_io.exists(outcome):
         print(pipeline.read_json_file(outcome), flush=True)
         return
     path = ROOT / '289.html'; receipt_path = ROOT / '289.html.source.json'
-    if path.exists() or receipt_path.exists():
+    if storage_io.exists(path) or storage_io.exists(receipt_path):
         raise ValueError('partial original source capture; inspect before retry')
     binding = dict(original_report=registry.relative_workspace_path(report_path),
         original_report_sha256=registry.sha256_file(report_path), original_club_row=row)
@@ -48,7 +49,7 @@ def main():
         claims = [histories.tenure(raw, 289, date(year, 8, 1)) for year in (2020,)]
         # Save only an actual historical source, never an HTTP challenge page.
         # The canonical/numeric club and dated coach parser above must succeed.
-        path.write_bytes(raw)
+        storage_io.write_bytes(path, raw)
         retained(receipt_path, dict(url=url, final_url=final_url, sha256=registry.sha256_file(path),
             retrieved_utc=datetime.now(UTC).isoformat(), bytes=len(raw), **binding))
         result = dict(status='original-numeric-club-history-captured-and-reparsed', claims=claims,

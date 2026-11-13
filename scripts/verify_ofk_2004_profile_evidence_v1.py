@@ -1,4 +1,5 @@
 """Bind the inspected private OFK profile to its actual uploaded game inputs."""
+from scripts import json_storage_io_v1 as storage_io
 from scripts import prepare_ofk_2004_source_allocation_v1 as source
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_kit_render_bindings_v1 as renderer
@@ -6,7 +7,7 @@ from scripts.verify_paired_profile_runtime_v1 import compare
 
 
 def verify(candidate, evidence, output, *, screenshot_sha256):
-    if output.exists(): raise ValueError('OFK runtime evidence is immutable')
+    if storage_io.exists(output): raise ValueError('OFK runtime evidence is immutable')
     receipt_path = candidate / 'candidate-receipt.json'
     receipt = pipeline.read_json_file(receipt_path)
     if registry.sha256_file(receipt_path) != registry.sha256_file(evidence / 'input-provenance.json'):
@@ -18,7 +19,7 @@ def verify(candidate, evidence, output, *, screenshot_sha256):
     if registry.sha256_file(frame) != screenshot_sha256:
         raise ValueError('OFK visual review does not bind the inspected original frame')
     uploaded = {line.split()[1]: line.split()[0] for line in
-        (evidence / 'dbdat_override.sha256').read_text().splitlines() if line and not line.startswith('#')}
+        storage_io.read_text(evidence / 'dbdat_override.sha256').splitlines() if line and not line.startswith('#')}
     for relative, digest in receipt['game_hashes'].items():
         if registry.sha256_file(candidate / 'game' / relative) != digest:
             raise ValueError('OFK local candidate input differs')

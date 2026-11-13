@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry  # noqa: E402
 from scripts import season_pipeline_v2 as pipeline  # noqa: E402
 REQUIRED = registry.REQUIRED_GAME_FILES
@@ -24,7 +25,7 @@ ORIGINAL_RELEASE = "legacy-world-2015-16"
 
 
 def load_original_release():
-    retained = json.loads((ROOT / 'data/retained-season-releases-v1.json').read_text())
+    retained = json.loads(storage_io.read_text(ROOT / 'data/retained-season-releases-v1.json'))
     rows = [row for row in retained['releases']
             if (row['season'], row['release_id']) == ('2015-16', ORIGINAL_RELEASE)]
     if len(rows) != 1:
@@ -44,7 +45,7 @@ def original_session_game(release):
     """Use a normal copy, never mutable hardlinks into the original backup."""
     from scripts.season_playtest_variant_v1 import _copy_game_tree
     target = ROOT / '.local/season-play-sessions-v1/2015-16-original/game'
-    if not target.exists():
+    if not storage_io.exists(target):
         inventory = pipeline.read_json_file(release.inventory_path)
         pipeline.assert_tree_matches_inventory(release.game_path, inventory)
         _copy_game_tree(release.game_path, target)
@@ -53,9 +54,9 @@ def original_session_game(release):
         raise ValueError('original play session is not a safe directory')
     for name, digest in release.locator['required_file_hashes'].items():
         path = target / name
-        if not path.is_file() or registry.sha256_file(path) != digest:
+        if not storage_io.is_file(path) or registry.sha256_file(path) != digest:
             raise ValueError('original play session database/assets changed: ' + name)
-        if path.stat().st_ino == (release.game_path / name).stat().st_ino:
+        if storage_io.stat_result(path).st_ino == storage_io.stat_result(release.game_path / name).st_ino:
             raise ValueError('original play session must not share writable backup inodes')
     return target
 
@@ -151,11 +152,11 @@ def main() -> int:
         print(shlex.join([str(ROOT / 'pm99-season'), 'play', args.season, '--original']))
         return 0
     if args.original:
-        game = original_session_game(release).resolve()
+        game = storage_io.resolve(original_session_game(release))
     elif args.release_id:
-        game = registry.load_registered_release(args.season, args.release_id).game_path.resolve()
+        game = storage_io.resolve(registry.load_registered_release(args.season, args.release_id).game_path)
     else:
-        game = game_path(args.season).resolve()
+        game = storage_io.resolve(game_path(args.season))
     command = ["wine", "./MANAGPRE.EXE"]
     if args.print_command:
         print(f"cd {shlex.quote(str(game))} && {shlex.join(command)}")

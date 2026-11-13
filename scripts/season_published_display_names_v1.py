@@ -5,6 +5,7 @@ to truncate arbitrary strings to fit a native carrier.
 """
 import copy
 import json
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_published_person_identity_v1 as people
 from scripts import season_release_registry_v1 as registry
 
@@ -18,10 +19,10 @@ def read_batch(batch):
     path = registry.ROOT / batch['raw_path']
     if registry.sha256_file(path) != batch['raw_sha256']:
         raise ValueError('display alias original response changed')
-    if json.loads((registry.ROOT / batch['source_receipt_path']).read_text()) != {
+    if json.loads(storage_io.read_text(registry.ROOT / batch['source_receipt_path'])) != {
             'url': batch['source_url'], 'sha256': batch['raw_sha256']}:
         raise ValueError('display alias original response URL/SHA differs')
-    original = json.loads(path.read_text())
+    original = json.loads(storage_io.read_text(path))
     confirmed, _ = people.parse(original, batch['requested_ids'])
     ids = {p['source_player_id']: p for p in confirmed}
     return {int(p['id']): p for p in original['data'] if int(p['id']) in ids}, ids
@@ -37,7 +38,7 @@ def explicit_names(raw):
 
 
 def claims(path):
-    document = json.loads(path.read_text())
+    document = json.loads(storage_io.read_text(path))
     people.merge({}, document)
     result = {}
     for batch in document['batches']:

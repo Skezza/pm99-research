@@ -7,6 +7,7 @@ No contemporary namesake ID or date may fill the unresolved Gomez identity.
 import copy
 import hashlib
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
 from scripts import season_august_source_fallback_v1 as fallback
@@ -75,7 +76,7 @@ def replay(review_path):
     receipt=pipeline.read_json_file(pdf.with_suffix('.source.json'))
     if receipt.get('url')!=URL or receipt.get('sha256')!=PDF_SHA:
         raise ValueError('original magazine capture receipt differs')
-    return verify_review(pdf.read_bytes(),page.read_bytes(),pipeline.read_json_file(review_path))
+    return verify_review(storage_io.read_bytes(pdf),storage_io.read_bytes(page),pipeline.read_json_file(review_path))
 
 
 def unresolved_gomez():

@@ -28,6 +28,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import transfermarkt_calendar_year_policy_v1 as calendar_year_policy  # noqa: E402
 
 from scripts.capture_transfermarkt_opening_lineups_v1 import (  # noqa: E402
@@ -77,7 +78,7 @@ def sha256_bytes(value: bytes) -> str:
 
 
 def load_scope(path: Path) -> tuple[list[dict[str, str]], str]:
-    raw = path.read_bytes()
+    raw = storage_io.read_bytes(path)
     try:
         document = json.loads(raw.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
@@ -389,8 +390,8 @@ def main(argv: list[str] | None = None) -> int:
         parser.error(str(exc))
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.gaps_output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_bytes(capture))
-    args.gaps_output.write_bytes(canonical_bytes(gaps))
+    storage_io.write_bytes(args.output, canonical_bytes(capture))
+    storage_io.write_bytes(args.gaps_output, canonical_bytes(gaps))
     print(json.dumps({**capture["summary"], **gaps["summary"]}, sort_keys=True))
     return 0
 

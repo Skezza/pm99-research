@@ -11,6 +11,7 @@ from bs4 import BeautifulSoup
 
 from app.fdi_indexed import IndexedFDIFile
 from app.indexed_jug_roles import read_indexed_native_roles
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_opening_identity_exchange_v1 as exchange
 from scripts import season_opening_order_repair_v1 as ownership
 from scripts import season_package_v2 as packages
@@ -34,7 +35,7 @@ def published_role(selection, published):
     requested = selection['published_compatible_role']
     if not isinstance(requested, str) or not requested.strip() or requested != requested.strip():
         raise ValueError('explicit literal published alternative role required')
-    page = BeautifulSoup(exchange.original(selection['profile']).read_bytes(), 'lxml')
+    page = BeautifulSoup(storage_io.read_bytes(exchange.original(selection['profile'])), 'lxml')
     sections = [dl for dl in page.select('.detail-position dl')
                 if dl.find('dt', recursive=False) is not None
                 and dl.find('dt', recursive=False).get_text(' ', strip=True) == 'Other position:']
@@ -71,7 +72,7 @@ def historical_provider_id(base, package, actor, historical_witness=None):
         if not artifact['id'].startswith('source-backed-player-changes-'):
             continue
         path = base.package_path.parent / artifact['relative_path']
-        if (not path.resolve().is_relative_to(base.package_path.parent.resolve())
+        if (not storage_io.resolve(path).is_relative_to(storage_io.resolve(base.package_path.parent))
                 or registry.sha256_file(path) != artifact['sha256']):
             raise ValueError('biography/native identity parent evidence hash differs')
         plan = pipeline.read_json_file(path)
@@ -100,8 +101,8 @@ def prepare(base, path, request):
     package = pipeline.read_json_file(base.package_path)
     players = {p['carrier_id']: p for p in package['players']}
     clubs = {c['id']: c for c in package['clubs']}
-    jug = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(jug).entries}
     owners = ownership.native_owners(eq)
     updates, seen = [], set()

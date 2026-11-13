@@ -23,6 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_carrier_allocation_v1 as allocation_v1  # noqa: E402
 from scripts import season_editorial_ratings_v1 as ratings_v1  # noqa: E402
 from scripts import season_package_v2 as package_v2  # noqa: E402
@@ -249,7 +250,7 @@ def build_input(
 
 
 def _read(path: Path) -> dict[str, Any]:
-    value = json.loads(path.read_text(encoding="utf-8"))
+    value = json.loads(storage_io.read_text(path, encoding='utf-8'))
     if not isinstance(value, dict):
         raise RatingInputBuildError(f"input must be an object: {path}")
     return value
@@ -272,7 +273,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         output = ratings_v1.build_rating_output(payload)
         for path, value in ((args.output_input, payload), (args.output_ratings, output), (args.output_audit, audit)):
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_bytes(_bytes(value))
+            storage_io.write_bytes(path, _bytes(value))
     except (OSError, ValueError, json.JSONDecodeError, package_v2.PackageValidationError) as exc:
         parser.error(str(exc))
     print(json.dumps(audit["coverage"], sort_keys=True))

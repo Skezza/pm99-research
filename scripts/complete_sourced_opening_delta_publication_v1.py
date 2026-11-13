@@ -7,6 +7,7 @@ Independent verification remains mandatory before promotion.
 import json
 import re
 from pathlib import Path
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_tff_sourced_opening_xi_v1 as source
@@ -20,18 +21,18 @@ def complete(season, release_id):
         raise ValueError('unsupported pilot season or unsafe recovery release ID')
     locator_path = registry.locator_path(season,release_id)
     destination = locator_path.parent
-    if locator_path.exists() or (destination/'metadata').exists():
+    if storage_io.exists(locator_path) or storage_io.exists(destination / 'metadata'):
         raise ValueError('completed metadata is immutable; recovery cannot overwrite it')
     workspace = registry.ROOT/'.local/historical-role-deltas-v1'/season/release_id
     game = workspace/'game'; package_path = workspace/'season-package.json'
     receipt_path = workspace/'role-delta-compiler.json'; saved = workspace/source.FILENAME
-    receipt = json.loads(receipt_path.read_text()); plan = json.loads(saved.read_text())
+    receipt = json.loads(storage_io.read_text(receipt_path)); plan = json.loads(storage_io.read_text(saved))
     base = registry.load_preferred_release(season)
     if base.release_id!=plan['source_release_id'] or receipt['compilation_mode']!='known-good-baseline-original-TFF-full-mode1-XI-delta':
         raise ValueError('publication recovery does not extend current exact source baseline')
     source.verify(base,plan)
-    package = json.loads(package_path.read_text())
-    if package!=source.updated_package(json.loads(base.package_path.read_text()),plan):
+    package = json.loads(storage_io.read_text(package_path))
+    if package!=source.updated_package(json.loads(storage_io.read_text(base.package_path)),plan):
         raise ValueError('completed recipe differs from original source plan')
     before,_ = source_inventory(base); after=pipeline.build_tree_inventory(game)
     if (receipt['source_game_inventory_fingerprint']!=before['files_fingerprint']
@@ -44,10 +45,10 @@ def complete(season, release_id):
     for row in receipt['outputs']:
         if registry.sha256_file(game/row['path'])!=row['sha256']:
             raise ValueError('completed native output changed')
-    verifier.verify_players((base.game_path/'DBDAT/JUG98030.FDI').read_bytes(),
-        (game/'DBDAT/JUG98030.FDI').read_bytes(),package,plan,
+    verifier.verify_players(storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI'),
+        storage_io.read_bytes(game / 'DBDAT/JUG98030.FDI'),package,plan,
         _extract_country_codes_from_textos(game/'DBDAT/TEXTOS.PKF'))
-    chain_path=destination/'build-chain.json';chain=json.loads(chain_path.read_text())
+    chain_path=destination/'build-chain.json';chain=json.loads(storage_io.read_text(chain_path))
     if chain['stages'][0]['receipt_sha256']!=registry.sha256_file(receipt_path):
         raise ValueError('interrupted build-chain receipt changed')
     manifest=pipeline.read_json_file(base.release_manifest_path)

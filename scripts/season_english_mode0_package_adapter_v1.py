@@ -28,6 +28,7 @@ for candidate in (ROOT, EDITOR):
 
 from app.eq_team_manager_links import parse_indexed_eq_manager_links
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_compiler_v2 as compiler
 from scripts import season_package_v2 as package_v2
 from scripts.season_authoring_layer_integrator_v1 import _tactics_positions
@@ -49,7 +50,7 @@ def _digest(value: Mapping[str, Any]) -> str:
 
 
 def _read_json(path: Path, *, canonical: bool = False) -> dict[str, Any]:
-    raw = path.read_bytes()
+    raw = storage_io.read_bytes(path)
     try:
         value = json.loads(raw.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
@@ -368,13 +369,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     dbdat = args.base_tree / "DBDAT"
     package, receipt = build_package(
         compiler_input=english, foreign_package=foreign,
-        jug_data=(dbdat / "JUG98030.FDI").read_bytes(), eq_data=(dbdat / "EQ98030.FDI").read_bytes(),
-        ent_data=(dbdat / "ENT98030.FDI").read_bytes(), package_id=args.package_id,
+        jug_data=storage_io.read_bytes(dbdat / 'JUG98030.FDI'), eq_data=storage_io.read_bytes(dbdat / 'EQ98030.FDI'),
+        ent_data=storage_io.read_bytes(dbdat / 'ENT98030.FDI'), package_id=args.package_id,
         allow_provisional_duplicates=args.allow_provisional_duplicates,
     )
     package_v2.write_canonical_package(args.output_package, package)
     args.output_receipt.parent.mkdir(parents=True, exist_ok=True)
-    args.output_receipt.write_bytes(package_v2.canonical_json_bytes(receipt))
+    storage_io.write_bytes(args.output_receipt, package_v2.canonical_json_bytes(receipt))
     print(json.dumps({"clubs": receipt["clubs"], "players": receipt["players"], "appended": len(receipt["appended_player_carriers"])}, sort_keys=True))
     return 0
 

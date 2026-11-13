@@ -15,6 +15,14 @@ not permission to rewrite the game's untraced draw topology.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import json
 import sys
@@ -23,7 +31,7 @@ from pathlib import Path
 from typing import Any
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR_ROOT = REPO_ROOT / "upstream" / "pm99-skezmod-db-editor"
 if str(EDITOR_ROOT) not in sys.path:
     sys.path.insert(0, str(EDITOR_ROOT))
@@ -55,7 +63,7 @@ def _all_offsets(data: bytes, pattern: bytes) -> list[int]:
 
 def _payload_occurrences(path: Path, record_id: int) -> tuple[IndexedFDIFile, list[Occurrence], list[Occurrence]]:
     """Return raw and decoded occurrences without changing a byte on disk."""
-    file_bytes = path.read_bytes()
+    file_bytes = storage_io.read_bytes(path)
     indexed = IndexedFDIFile.from_bytes(file_bytes)
     pattern = int(record_id).to_bytes(2, "little")
     raw_occurrences: list[Occurrence] = []
@@ -77,8 +85,8 @@ def collect(dbdat: Path, record_id: int) -> dict[str, Any]:
     """Collect the fixed-carrier result, failing if the supplied data is incomplete."""
     if not 1 <= int(record_id) <= 65535:
         raise ValueError("record id must be from 1 through 65535")
-    dbdat = dbdat.resolve()
-    missing = [name for name in FDI_NAMES if not (dbdat / name).is_file()]
+    dbdat = storage_io.resolve(dbdat)
+    missing = [name for name in FDI_NAMES if not storage_io.is_file(dbdat / name)]
     if missing:
         raise FileNotFoundError(f"Missing indexed FDI files under {dbdat}: {', '.join(missing)}")
 
@@ -151,7 +159,7 @@ def main() -> int:
     rendered = json.dumps(report, indent=2, sort_keys=True) + "\n"
     if args.output is not None:
         args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(rendered, encoding="utf-8")
+        storage_io.write_text(args.output, rendered, encoding='utf-8')
     print(rendered, end="")
     return 0
 

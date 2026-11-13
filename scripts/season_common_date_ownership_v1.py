@@ -5,6 +5,7 @@ deliberately unavailable when clubs' opening dates differ, either original
 report lacks an independently published date, or source evidence conflicts.
 """
 import json
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_historical_transfer_review_v1 as transfer
 
 BASIS = 'unique-positive-first-xi-at-common-independently-published-date'
@@ -79,11 +80,11 @@ def verify_plan_claims(release, plan):
         clubs.update({c['id']: c for c in package['clubs']})
         players.extend(package['players'])
     by_carrier = {c['carrier_id']: c for c in clubs.values()}
-    opening = json.loads((registry.ROOT / plan['bindings']['opening_path']).read_text())
+    opening = json.loads(storage_io.read_text(registry.ROOT / plan['bindings']['opening_path']))
     originals = [(row, opening) for row in opening['clubs']]
     extra = plan['bindings'].get('supplemental_opening')
     if extra:
-        extra_document = json.loads((registry.ROOT / extra['path']).read_text())
+        extra_document = json.loads(storage_io.read_text(registry.ROOT / extra['path']))
         originals += [(row, extra_document) for row in extra_document['clubs']]
     evidence = {}
     for row, original_review in originals:
@@ -99,7 +100,7 @@ def verify_plan_claims(release, plan):
         captures, bindings = roster.load_sources(plan['season'])
         if bindings != plan['bindings']['captures']:
             raise ValueError('opening identity source captures differ from bound inputs')
-        previous = json.loads((registry.ROOT / plan['bindings']['review_path']).read_text())
+        previous = json.loads(storage_io.read_text(registry.ROOT / plan['bindings']['review_path']))
         verifier = roster.SourceVerifier(plan['season'], previous, bindings)
         people, _ = supplement.extend(people, list(clubs.values()), evidence, captures, verifier)
     if plan['bindings'].get('soccerbase_opening_sources') is not None:

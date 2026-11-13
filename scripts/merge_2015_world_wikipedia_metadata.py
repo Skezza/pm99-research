@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 ROOT=Path(__file__).resolve().parents[1]
 if str(ROOT) not in __import__('sys').path:__import__('sys').path.insert(0,str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts.capture_2015_world_wikipedia_season_metadata import canonical_json_bytes,SCHEMA as WIKI_SCHEMA
 
 IDENTITY_SCHEMA = "pm99-world-2015-transfermarkt-footballsquads-identity-reconciliation-v1"
@@ -77,10 +78,10 @@ def merge(candidate:dict[str,Any],wiki:dict[str,Any], *, identity: dict[str, Any
     output['coverage']['wikipedia_exact_metadata_carrier_count']=sum('wikipedia_season_metadata' in c for c in output['carrier_drafts'])
     output['coverage']['blocker_counts']=dict(sorted(counts.items()));return output
 def main()->int:
- p=argparse.ArgumentParser(description=__doc__);p.add_argument('--candidate',required=True,type=Path);p.add_argument('--wikipedia-receipt',required=True,type=Path);p.add_argument('--identity-reconciliation',type=Path);p.add_argument('--transfermarkt-fixtures',type=Path);p.add_argument('--output',required=True,type=Path);a=p.parse_args();c=json.loads(a.candidate.read_text());w=json.loads(a.wikipedia_receipt.read_text())
+ p=argparse.ArgumentParser(description=__doc__);p.add_argument('--candidate',required=True,type=Path);p.add_argument('--wikipedia-receipt',required=True,type=Path);p.add_argument('--identity-reconciliation',type=Path);p.add_argument('--transfermarkt-fixtures',type=Path);p.add_argument('--output',required=True,type=Path);a=p.parse_args();c=json.loads(storage_io.read_text(a.candidate));w=json.loads(storage_io.read_text(a.wikipedia_receipt))
  if bool(a.identity_reconciliation) != bool(a.transfermarkt_fixtures): p.error('--identity-reconciliation and --transfermarkt-fixtures must be supplied together')
- identity=json.loads(a.identity_reconciliation.read_text()) if a.identity_reconciliation else None; fixtures=json.loads(a.transfermarkt_fixtures.read_text()) if a.transfermarkt_fixtures else None
+ identity=json.loads(storage_io.read_text(a.identity_reconciliation)) if a.identity_reconciliation else None; fixtures=json.loads(storage_io.read_text(a.transfermarkt_fixtures)) if a.transfermarkt_fixtures else None
  try:o=merge(c,w,identity=identity,fixtures=fixtures)
  except MergeError as e:p.error(str(e))
- a.output.parent.mkdir(parents=True,exist_ok=True);a.output.write_bytes(canonical_json_bytes(o));print(json.dumps({'applied':o['coverage']['wikipedia_exact_metadata_carrier_count'],'blockers':o['coverage']['blocker_counts']},sort_keys=True));return 0
+ a.output.parent.mkdir(parents=True,exist_ok=True);storage_io.write_bytes(a.output, canonical_json_bytes(o));print(json.dumps({'applied':o['coverage']['wikipedia_exact_metadata_carrier_count'],'blockers':o['coverage']['blocker_counts']},sort_keys=True));return 0
 if __name__=='__main__':raise SystemExit(main())

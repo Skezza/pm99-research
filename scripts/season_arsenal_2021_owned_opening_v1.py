@@ -13,6 +13,7 @@ from app.fdi_indexed import IndexedFDIFile
 from app.indexed_jug_birth_date import rewrite_indexed_native_birth_dates
 from app.player_initial_order import read_initial_order
 from app.xor import xor_decode
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import season_package_v2 as packages,season_duplicate_ownership_delta_v1 as delta
 from scripts import prepare_arsenal_native_assignment_20261016 as assignment
@@ -139,8 +140,8 @@ def prepare(base):
     original=pipeline.read_json_file(assignment.source.arsenal.ROOT/'native-assignment-preparation.json')
     if prepared!=original:raise ValueError('original fitted assignment changed')
     package=pipeline.read_json_file(base.package_path)
-    jug=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    jug=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     decisions,bindings=rating_and_role_decisions(base,package,prepared,jug)
     return dict(schema=SCHEMA,season=base.season,release_id=base.release_id,
         package_sha256=registry.sha256_file(base.package_path),jug_sha256=digest(jug),eq_sha256=digest(eq),
@@ -155,7 +156,7 @@ def verify(base,plan):
 
 def native_display_names(base,players,carriers):
     """Predict exact native casing through the writer, not string heuristics."""
-    jug=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    jug=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
     entries={e.record_id:e for e in IndexedFDIFile.from_bytes(jug).entries}
     result={}
     for carrier in carriers:
@@ -188,7 +189,7 @@ def bind(package,plan):
         starting_xi_player_ids=[by[c]['id'] for c in ordered[:11]],
         substitute_player_ids=[by[c]['id'] for c in ordered[11:20]],proof=dict(artifact_id=aid,grade='source-receipt'),
         tactics_positions=[list(anchor[1:]) for anchor in rollout.formation_template('4-2-3-1')])
-    offsets=rollout.movement_offsets((registry.ROOT/'.local/visual-qa-20261003/native-source/EQ98030.FDI').read_bytes())
+    offsets=rollout.movement_offsets(storage_io.read_bytes(registry.ROOT / '.local/visual-qa-20261003/native-source/EQ98030.FDI'))
     context=rollout.build_context(club,{p['id']:p for p in result['players']},
         [(c,native_names[c]) for c in ordered[:11]],offsets)
     opening.update(tactics_context=context,tactics_positions=tactics.summary_positions(context))
@@ -214,8 +215,8 @@ def bind(package,plan):
 
 def apply(jug,eq,plan):
     base=registry.load_registered_release(plan['season'],plan['release_id'])
-    original=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    original_eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    original=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    original_eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     if (digest(original),digest(original_eq))!=(plan['jug_sha256'],plan['eq_sha256']):raise ValueError('Arsenal immutable native baseline differs')
     package=bind(pipeline.read_json_file(base.package_path),plan)
     by={p['carrier_id']:p for p in package['players']}
@@ -273,7 +274,7 @@ def reconstruction(previous,release_id):
     base=registry.load_registered_release(previous.season,plan['release_id']);verify(base,plan)
     package=pipeline.read_json_file(previous.package_path)
     artifact=next(a for a in package['artifacts'] if a['id']==PREFIX+previous.season)
-    if path.resolve()!=(previous.package_path.parent/FILENAME).resolve() or registry.sha256_file(path)!=artifact['sha256']:
+    if storage_io.resolve(path)!=storage_io.resolve(previous.package_path.parent / FILENAME) or registry.sha256_file(path)!=artifact['sha256']:
         raise ValueError('Arsenal source artifact changed')
     if bind(pipeline.read_json_file(base.package_path),plan)!=package:raise ValueError('edited Arsenal recipe cannot be silently reconstructed')
     descriptor=previous.package_path.parent/'role-delta-input.json'

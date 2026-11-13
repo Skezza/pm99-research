@@ -13,6 +13,7 @@ from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_published_transfer_history_v1 as original
 from scripts import season_public_identity_and_history_inputs_v1 as public
 from scripts import season_published_person_identity_v1 as people_source
@@ -37,7 +38,7 @@ def confirm_claims(claims, people):
 
 
 def capture(claims, people_path, cache, output):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('reserve history ledger is immutable')
     binding = public.binding(people_path, people_source.POLICY)
     people, _, _ = public.merge_bound({}, {}, {'published_person_supplement': binding})
@@ -47,9 +48,9 @@ def capture(claims, people_path, cache, output):
         path = cache / 'history' / f'{id}.json'
         receipt = path.with_suffix('.source.json')
         try:
-            if path.exists():
-                raw = path.read_bytes()
-                if json.loads(receipt.read_text()) != {'url': url,
+            if storage_io.exists(path):
+                raw = storage_io.read_bytes(path)
+                if json.loads(storage_io.read_text(receipt)) != {'url': url,
                         'sha256': hashlib.sha256(raw).hexdigest()}:
                     raise ValueError('cached reserve history URL/SHA differs')
             else:
@@ -73,7 +74,7 @@ def capture(claims, people_path, cache, output):
         except (ValueError, OSError) as exc:
             row = {'player_id': id, 'status': 'source-history-gap',
                 'source_url': url, 'reason': str(exc)}
-            if not path.exists():
+            if not storage_io.exists(path):
                 time.sleep(1)
         results.append(row)
         print(json.dumps({'player_id': id, 'status': row['status']}), flush=True)

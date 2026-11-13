@@ -1,5 +1,6 @@
 """Prove the one fully resolved frozen pair; Aldred's remaining pair stays open."""
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry,season_pipeline_v2 as pipeline
 from scripts import season_historical_opening_review_v1 as opening
 from scripts import season_opening_order_repair_v1 as owners
@@ -12,7 +13,7 @@ from scripts.build_savio_bobb_alias_reserve_20261011 import retained
 
 def verify():
     output=ROOT/'Eastleigh2014-native-delivery-v1/independent-frozen-case-proof.json'
-    if output.exists():raise ValueError('completed frozen-case proof must not repeat')
+    if storage_io.exists(output):raise ValueError('completed frozen-case proof must not repeat')
     proposal=pipeline.read_json_file(ROOT/'Eastleigh2014-current-source-v1/3322-eastleigh-current-proposal.json')
     base=registry.load_registered_release(SEASON,proposal['release_id'])
     actual=registry.load_registered_release(SEASON,RELEASE)
@@ -33,11 +34,11 @@ def verify():
     represented=[p['carrier_id'] for p in after['players'] if roster.person_identity_key(p)==('lukesimpson','1994-09-23')]
     if represented!=[9574] or old[9574]!=new[9574] or new[9574]['club_id']!=club['id']:
         raise ValueError('retained whole recipe identity or exclusive representation differs')
-    jug=(actual.game_path/'DBDAT/JUG98030.FDI').read_bytes();original=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    jug=storage_io.read_bytes(actual.game_path / 'DBDAT/JUG98030.FDI');original=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
     old_entry=next(e for e in IndexedFDIFile.from_bytes(original).entries if e.record_id==9574)
     new_entry=next(e for e in IndexedFDIFile.from_bytes(jug).entries if e.record_id==9574)
     if old_entry.decode_payload(original)!=new_entry.decode_payload(jug):raise ValueError('retained keeper native record changed')
-    ownership=owners.native_owners((actual.game_path/'DBDAT/EQ98030.FDI').read_bytes())
+    ownership=owners.native_owners(storage_io.read_bytes(actual.game_path / 'DBDAT/EQ98030.FDI'))
     if ownership.get(9574)!={324} or ownership.get(11157)!={3322}:raise ValueError('exact native club owners differ')
     if facts.native_facts(jug,9574)['birth_date']!='1994-09-23' or new[11157]['source_name']!='Ross Flitney':
         raise ValueError('native original keeper identity or sourced replacement differs')

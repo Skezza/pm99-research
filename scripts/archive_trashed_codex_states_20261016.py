@@ -13,6 +13,7 @@ import shutil
 import subprocess
 from datetime import UTC,datetime
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry,season_pipeline_v2 as pipeline
 from scripts.archive_rejected_rating_recovery_to_pi_20261011 import ssh,HOST,UUID
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
@@ -30,22 +31,22 @@ def inventory(root):
             path=Path(directory)/name;relative=path.relative_to(root).as_posix()
             if path.is_symlink():row=dict(path=relative,type='symlink',target=os.readlink(path))
             elif path.is_dir():row=dict(path=relative,type='directory')
-            elif path.is_file():
-                with path.open('rb') as stream:digest=hashlib.file_digest(stream,'sha256').hexdigest()
-                row=dict(path=relative,type='file',size=path.stat().st_size,sha256=digest)
+            elif storage_io.is_file(path):
+                with storage_io.open_file(path, 'rb') as stream:digest=hashlib.file_digest(stream,'sha256').hexdigest()
+                row=dict(path=relative,type='file',size=storage_io.size(path),sha256=digest)
             else:raise ValueError('special file prevents archive')
             rows.append(row)
     return sorted(rows,key=lambda row:row['path'])
 
 
 def guard(path):
-    if path not in SOURCES or path.is_symlink() or path.resolve()!=path or not path.is_dir():
+    if path not in SOURCES or path.is_symlink() or storage_io.resolve(path)!=path or not path.is_dir():
         raise ValueError('exact already-trashed leaf required')
     if str(path) in subprocess.check_output(['ps','-eo','args'],text=True):
         raise ValueError('trashed application state appears active')
     for proc in Path('/proc').iterdir():
         if not proc.name.isdigit():continue
-        try:cwd=(proc/'cwd').resolve(strict=True)
+        try:cwd=storage_io.resolve(proc / 'cwd', strict=True)
         except (OSError,RuntimeError):continue
         if cwd==path or path in cwd.parents:raise ValueError('process still uses trashed directory')
         try:descriptors=list((proc/'fd').iterdir())
@@ -62,8 +63,8 @@ def main():
     ROOT.mkdir(parents=True,exist_ok=True)
     for path in SOURCES:
         label=path.name.lstrip('.');receipt=ROOT/(label+'-completed.json')
-        if receipt.exists():
-            if path.exists():raise ValueError('previously archived Trash state was recreated')
+        if storage_io.exists(receipt):
+            if storage_io.exists(path):raise ValueError('previously archived Trash state was recreated')
             print(dict(archive=label,already_complete=True),flush=True);continue
         guard(path);rows=inventory(path);retained(ROOT/(label+'-inventory.json'),rows)
         remote=REMOTE+'/'+label

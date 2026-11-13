@@ -9,6 +9,7 @@ from pathlib import Path
 
 from app.fdi_indexed import IndexedFDIFile
 from app.indexed_jug_roles import read_indexed_native_roles, rewrite_indexed_native_roles
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2 as packages
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
@@ -33,7 +34,7 @@ EXPECTED = {2027: [4, 1, 2], 32232: [10]}
 
 
 def _sha(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def filename(plan):
@@ -52,7 +53,7 @@ def _source_check(plan):
         if actual != expected or _sha(registry.ROOT / relative) != expected_sha:
             raise ValueError('Maccabi raw source binding changed: ' + source_id)
     csv_path = registry.ROOT / SOURCE_BINDINGS['sofifa_legacy'][0]
-    with csv_path.open(encoding='utf-8-sig', newline='') as stream:
+    with storage_io.open_file(csv_path, encoding='utf-8-sig', newline='') as stream:
         rows = list(csv.DictReader(stream))
     wanted = {
         ('141001', '15'): ('Tal Ben Haim', '1982-03-31', '2014-09-18', 'CB, RB, LB'),
@@ -65,13 +66,13 @@ def _source_check(plan):
         row = matches[0]
         if tuple(row[k] for k in ('long_name', 'dob', 'fifa_update_date', 'player_positions')) != values:
             raise ValueError('Maccabi exact FIFA corroboration row changed')
-    archive = (registry.ROOT / SOURCE_BINDINGS['official_maccabi_archive'][0]).read_bytes()
+    archive = storage_io.read_bytes(registry.ROOT / SOURCE_BINDINGS['official_maccabi_archive'][0])
     text = ' '.join(audit.BeautifulSoup(archive, 'lxml').get_text(' ', strip=True).split())
     if ('The central defender was an integral part' not in text or
             'On June 3, 2015 Ben Haim signed a two year contract with Maccabi Tel Aviv' not in text or
             'The talented winger added four more league goals' not in text):
         raise ValueError('dated official Maccabi identity/role text changed')
-    match = (registry.ROOT / SOURCE_BINDINGS['official_plzen_match'][0]).read_bytes()
+    match = storage_io.read_bytes(registry.ROOT / SOURCE_BINDINGS['official_plzen_match'][0])
     if b'Ben Haim I' not in match or b'Ben Haim II' not in match:
         raise ValueError('dated Plzen lineup no longer distinguishes namesakes')
     names = pipeline.read_json_file(registry.ROOT / SOURCE_BINDINGS['name_case'][0])
@@ -105,9 +106,9 @@ def verify(base, plan):
     package = pipeline.read_json_file(base.package_path)
     people = {p['carrier_id']: p for p in package['players']}
     clubs = {c['id']: c for c in package['clubs']}
-    eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     owners = ownership.native_owners(eq)
-    raw = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    raw = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
     entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(raw).entries}
     rows = {r['carrier_id']: r for r in plan['updates']}
     from scripts import season_exact_fifa_role_delta_v1 as role_compatibility
@@ -148,8 +149,8 @@ def bind(package, plan):
 def apply(jug, eq, plan):
     base = registry.load_registered_release('2015-16', RELEASE_ID)
     verify(base, plan)
-    original = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    original_eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    original = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    original_eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     if jug not in (original, rewrite_indexed_native_roles(original, EXPECTED)[0]) or eq != original_eq:
         raise ValueError('Maccabi SOURCE accepts only exact JUG pre/postimage and unchanged EQ')
     patched, _ = rewrite_indexed_native_roles(original, EXPECTED)
@@ -201,7 +202,7 @@ def reconstruction(previous, release_id):
     if bind(pipeline.read_json_file(base.package_path), plan) != package:
         raise ValueError('Maccabi role SOURCE would lose unrelated recipe edits')
     artifact = next((a for a in package['artifacts'] if a['id'] == 'historical-role-plan-2015-16'), None)
-    if (artifact is None or path.resolve() != (previous.package_path.parent / filename(plan)).resolve()
+    if (artifact is None or storage_io.resolve(path) != storage_io.resolve(previous.package_path.parent / filename(plan))
             or hashlib.sha256(pipeline.canonical_json_bytes(plan)).hexdigest() != artifact['sha256']):
         raise ValueError('Maccabi role source artifact path/hash differs')
     for release in (base, previous):

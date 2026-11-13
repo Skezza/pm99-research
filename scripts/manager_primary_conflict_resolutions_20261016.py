@@ -9,6 +9,7 @@ from datetime import date
 import json
 import re
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import capture_deferred_manager_originals_20261016 as captures
 from scripts import capture_manager_conflict_articles_20261016 as articles
@@ -52,7 +53,7 @@ def original_article(key, *, published=None, anchors=()):
     raw_path = registry.ROOT / receipt['raw_path']
     if registry.sha256_file(raw_path) != receipt['raw_sha256']:
         raise ValueError('primary manager article original bytes changed')
-    page = BeautifulSoup(raw_path.read_bytes(), 'html.parser')
+    page = BeautifulSoup(storage_io.read_bytes(raw_path), 'html.parser')
     # Read structured publication dates before removing scripts from body text.
     dates = published_dates(page)
     for tag in page.select('script,style'):
@@ -78,7 +79,7 @@ def resolve():
         raw = registry.ROOT / download['raw_path']; receipt = registry.ROOT / download['receipt_path']
         if registry.sha256_file(raw) != download['raw_sha256'] or registry.sha256_file(receipt) != download['receipt_sha256']:
             raise ValueError('conflicting original provider page/receipt changed')
-        page = BeautifulSoup(raw.read_bytes(), 'html.parser')
+        page = BeautifulSoup(storage_io.read_bytes(raw), 'html.parser')
         canonicals = {str(a.get('href', '')) for a in page.select('link[rel="canonical"]')}
         if len(canonicals) != 1 or (match := captures.old.URL.fullmatch(next(iter(canonicals)))) is None or int(match[1]) != club_id:
             raise ValueError('original conflicting history numeric club identity differs')

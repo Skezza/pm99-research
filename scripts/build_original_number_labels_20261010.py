@@ -1,4 +1,5 @@
 """Resume new bounded name/year candidates; never regenerate existing stages."""
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_number_label_names_v2 as names
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import publish_historical_role_delta_v1 as publisher
@@ -14,7 +15,7 @@ def main():
     for year in range(2018, 2026):
         season = f'{year}-{str(year+1)[-2:]}'
         plan_path = ROOT / (season + '-plan.json')
-        if plan_path.exists():
+        if storage_io.exists(plan_path):
             plan = pipeline.read_json_file(plan_path)
             base = registry.load_registered_release(season, plan['release_id'])
             if plan['release_id'] != base.release_id or plan['package_sha256'] != registry.sha256_file(base.package_path):
@@ -33,17 +34,17 @@ def main():
         expected = dict(season=season, release_id=base.release_id,
             package_sha256=registry.sha256_file(base.package_path),
             jug_sha256=registry.sha256_file(base.game_path / 'DBDAT/JUG98030.FDI'), updates=[], unresolved=[])
-        if control.exists():
+        if storage_io.exists(control):
             if pipeline.read_json_file(control) != expected:
                 raise ValueError('retained descriptor differs')
         else:
             pipeline.write_canonical_json(control, expected)
-        if not registry.locator_path(season, RELEASE).exists():
+        if not storage_io.exists(registry.locator_path(season, RELEASE)):
             publisher.publish(season, control, release_id=RELEASE,
                 name_only_plan_path=plan_path, source_release_id=base.release_id)
         release = registry.load_registered_release(season, RELEASE)
         proof_path = ROOT / (season + '-independent-proof.json')
-        if not proof_path.exists():
+        if not storage_io.exists(proof_path):
             proof = verify(season, RELEASE, plan_path, proof_path)
         else:
             proof = pipeline.read_json_file(proof_path)
@@ -51,8 +52,8 @@ def main():
                 raise ValueError('retained independent proof belongs to another recipe')
             pipeline.assert_tree_matches_inventory(release.game_path, pipeline.read_json_file(release.inventory_path))
         replay_path = ROOT / (season + '-complete-replay-proof.json')
-        if not replay_path.exists():
-            if registry.locator_path(season, REPLAY).exists():
+        if not storage_io.exists(replay_path):
+            if storage_io.exists(registry.locator_path(season, REPLAY)):
                 raise ValueError('unreceipted completed replay exists; inspect instead of rerun')
             pipeline.write_canonical_json(replay_path, names.reconstruction(release, REPLAY))
         else:

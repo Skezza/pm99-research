@@ -15,6 +15,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_historical_player_facts_audit_v1 as facts
 from scripts import season_historical_roster_audit_v1 as roster
 from scripts import season_release_registry_v1 as registry
@@ -45,11 +46,11 @@ def refreshed_checks(player, previous, extra, nationality_amendment=None):
 
 
 def supplement(season, original_path, capture_path, destination, allow_known_nationality_delta=False):
-    old = json.loads(original_path.read_text())
+    old = json.loads(storage_io.read_text(original_path))
     if (old['schema_version'], old['season']) != ('pm99-historical-player-facts-audit-v1', season):
         raise ValueError('wrong original facts audit')
     release = registry.load_preferred_release(season)
-    package = json.loads(release.package_path.read_text())
+    package = json.loads(storage_io.read_text(release.package_path))
     amendments = {}
     amendment_binding = None
     if allow_known_nationality_delta:
@@ -57,11 +58,11 @@ def supplement(season, original_path, capture_path, destination, allow_known_nat
         if descriptor is None or descriptor['relative_path'] != 'nationality-plan.json':
             raise ValueError('current recipe has no known nationality delta')
         amendment_path = release.package_path.parent / descriptor['relative_path']
-        amendment = json.loads(amendment_path.read_text())
+        amendment = json.loads(storage_io.read_text(amendment_path))
         if (hashlib.sha256(pipeline.canonical_json_bytes(amendment)).hexdigest() != descriptor['sha256'] or
                 amendment['season'] != season or amendment['package_sha256'] != old['bindings']['package_sha256']):
             raise ValueError('known nationality delta does not bind previous factual audit')
-        receipt = json.loads(release.compiler_receipt_path.read_text())
+        receipt = json.loads(storage_io.read_text(release.compiler_receipt_path))
         if receipt['nationality_plan_sha256'] != registry.sha256_file(amendment_path):
             raise ValueError('native nationality receipt does not bind amendment bytes')
         amendments = {r['player_id']: r for r in amendment['updates']}
@@ -70,7 +71,7 @@ def supplement(season, original_path, capture_path, destination, allow_known_nat
     by_id = {p['id']: p for p in players}
     if len(by_id) != len(old['players']) or set(by_id) != {p['player_id'] for p in old['players']}:
         raise ValueError('factual audit roster changed')
-    rows = ntf.verified_rows(season, capture_path) if capture_path and capture_path.exists() else []
+    rows = ntf.verified_rows(season, capture_path) if capture_path and storage_io.exists(capture_path) else []
     by_identity = collections.defaultdict(list)
     for row in rows:
         for name in ntf.person_names(row['facts']['name']):
@@ -102,7 +103,7 @@ def supplement(season, original_path, capture_path, destination, allow_known_nat
     result['bindings']['previous_factual_audit'] = {'path': registry.relative_workspace_path(original_path),
         'sha256': registry.sha256_file(original_path), 'scope': 'Unchanged previously compared facts; no repeat scrape'}
     result['bindings']['ntf_review_capture'] = {'path': registry.relative_workspace_path(capture_path),
-        'sha256': registry.sha256_file(capture_path)} if capture_path and capture_path.exists() else None
+        'sha256': registry.sha256_file(capture_path)} if capture_path and storage_io.exists(capture_path) else None
     result['bindings']['known_nationality_delta'] = amendment_binding
     result['summary'] = {'clubs': len(clubs), 'players': len(players), **dict(counts)}
     destination.parent.mkdir(parents=True, exist_ok=True)

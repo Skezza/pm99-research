@@ -12,6 +12,7 @@ from pathlib import Path
 from app.fdi_indexed import IndexedFDIFile
 from app.eq_jug_linked import parse_eq_external_team_roster_payload
 from app.player_initial_order import read_initial_order
+from scripts import json_storage_io_v1 as storage_io
 from scripts import capture_soccerbase_august_squads_v1 as profile_parser
 from scripts import season_complete_mode1_opening_v1 as complete
 from scripts import season_opening_identity_exchange_v1 as exchange
@@ -61,7 +62,7 @@ def _read_source(binding):
     receipt=pipeline.read_json_file(receipt_path)
     if receipt != {'url':binding['url'],'sha256':binding['sha256']}:
         raise ValueError('bound SoccerBase URL/body receipt differs')
-    return body.read_bytes()
+    return storage_io.read_bytes(body)
 
 def _exact_request(request):
     expected_keys={'schema','proposal_kind','season','release_id','expected_package_sha256','expected_jug_sha256','expected_eq_sha256','target','fixture','source_order_policy','reserve_tail_policy','scope','excluded','source_bindings','empty_transactions','complete_mode1_opening'}
@@ -115,8 +116,8 @@ def _source_and_xi(request):
 def prepare(base,input_path,request_doc=None):
     path=Path(input_path)
     if not path.is_absolute(): path=ROOT/path
-    path=path.resolve()
-    if not path.is_file() or not path.is_relative_to(ROOT.resolve()): raise ValueError('order request must be a retained workspace file')
+    path=storage_io.resolve(path)
+    if not storage_io.is_file(path) or not path.is_relative_to(storage_io.resolve(ROOT)): raise ValueError('order request must be a retained workspace file')
     request=pipeline.read_json_file(path) if request_doc is None else request_doc
     if request!=pipeline.read_json_file(path): raise ValueError('supplied request differs from retained request file')
     _exact_request(request)
@@ -124,7 +125,7 @@ def prepare(base,input_path,request_doc=None):
         or registry.sha256_file(base.package_path)!=request.get('expected_package_sha256')):
         raise ValueError('exact explicit parent season/release/package pin differs')
     jug_path=base.game_path/'DBDAT/JUG98030.FDI'; eq_path=base.game_path/'DBDAT/EQ98030.FDI'
-    jug=jug_path.read_bytes(); eq=eq_path.read_bytes()
+    jug=storage_io.read_bytes(jug_path); eq=storage_io.read_bytes(eq_path)
     if registry.sha256_file(jug_path)!=request.get('expected_jug_sha256') or registry.sha256_file(eq_path)!=request.get('expected_eq_sha256'):
         raise ValueError('exact explicit native JUG/EQ parent pins differ')
     fixture,source_xi,profile_bindings=_source_and_xi(request)

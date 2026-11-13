@@ -13,6 +13,14 @@ shape is therefore an error rather than a reason to insert a generic 4-4-2.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import json
 import re
@@ -28,7 +36,7 @@ from urllib.request import Request, urlopen
 from bs4 import BeautifulSoup
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = storage_io.resolve(Path(__file__)).parents[1]
 BASE_URL = "https://www.transfermarkt.co.uk"
 USER_AGENT = "PM99 historical database research (local source capture)"
 DIVISION_COMPETITIONS = {
@@ -78,15 +86,15 @@ def _club_key(value: str) -> str:
 
 def _get(url: str, cache_dir: Path, key: str, *, delay: float) -> bytes:
     cache_path = cache_dir / key
-    if cache_path.is_file():
-        return cache_path.read_bytes()
+    if storage_io.is_file(cache_path):
+        return storage_io.read_bytes(cache_path)
     request = Request(url, headers={"User-Agent": USER_AGENT, "Accept-Language": "en-GB,en;q=0.9"})
     with urlopen(request, timeout=30) as response:  # nosec B310: fixed public source host
         payload = response.read()
     if len(payload) < 1_000:
         raise RuntimeError(f"Source response is implausibly small for {url}")
     cache_path.parent.mkdir(parents=True, exist_ok=True)
-    cache_path.write_bytes(payload)
+    storage_io.write_bytes(cache_path, payload)
     if delay:
         time.sleep(delay)
     return payload
@@ -252,7 +260,7 @@ def main() -> int:
     args = _args()
     if args.delay < 0 or args.delay > 5:
         raise SystemExit("--delay must be between 0 and 5 seconds")
-    source = json.loads(args.source_ledger.read_text(encoding="utf-8"))
+    source = json.loads(storage_io.read_text(args.source_ledger, encoding='utf-8'))
     clubs = list(source.get("clubs") or [])
     if len(clubs) != 92:
         raise SystemExit("source ledger must contain exactly 92 clubs")
@@ -277,7 +285,7 @@ def main() -> int:
         "clubs": rows,
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(output, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    storage_io.write_text(args.output, json.dumps(output, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
     return 0
 
 

@@ -9,6 +9,7 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_compiler_v2
 from scripts import season_release_registry_v1 as registry
 from scripts import season_duplicate_ownership_plan_v1 as planner
@@ -36,11 +37,11 @@ def native_rows(data, carrier):
 
 
 def prepare(release, *, factory_path, pilot_path):
-    eq = (release.game_path/'DBDAT/EQ98030.FDI').read_bytes()
-    factory = factory_path.read_bytes()
+    eq = storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
+    factory = storage_io.read_bytes(factory_path)
     if hashlib.sha256(factory).hexdigest() != 'e095cb47ffdb6c8edf384983545124eb514d044fa4f0ce7d924b6bfe13252a5c':
         raise ValueError('visibility correction requires the exact clean English factory')
-    if not pilot_path.is_file() or registry.sha256_file(pilot_path) != PILOT_IMAGE_SHA:
+    if not storage_io.is_file(pilot_path) or registry.sha256_file(pilot_path) != PILOT_IMAGE_SHA:
         raise ValueError('exact visually reviewed actual-game exclusion evidence is missing or changed')
     clubs = []
     bindings = []
@@ -149,7 +150,7 @@ def replay(eq_data, package, package_path):
         path = package_path.parent/rel
         if registry.sha256_file(path) != artifact['sha256']:
             raise ValueError('visibility artifact hash changed')
-        layer = json.loads(path.read_text())
+        layer = json.loads(storage_io.read_text(path))
         if layer['season'] != f"{package['season']['start_year']}-{str(package['season']['end_year'])[-2:]}":
             raise ValueError('visibility layer belongs to another season')
         eq_data, written = apply(eq_data, layer)

@@ -9,6 +9,7 @@ import subprocess
 import time
 
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import capture_stock_replacement_sources_20261010 as old
 from scripts.season_art_transaction_v1 import atomic_bytes
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
@@ -56,7 +57,7 @@ def main():
     ]
     for key, url in requests:
         path, receipt = old.ROOT / (key + '.html'), old.ROOT / (key + '.source.json')
-        if receipt.exists():
+        if storage_io.exists(receipt):
             prior = old.pipeline.read_json_file(receipt)
             if prior['url'] != url or prior.get('sha256') and old.registry.sha256_file(path) != prior['sha256']:
                 raise ValueError('existing original biography capture changed')

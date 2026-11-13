@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline  # noqa: E402
 from scripts import season_release_registry_v1 as registry  # noqa: E402
 
@@ -26,7 +27,7 @@ class RuntimeAttestationError(ValueError):
 
 def _read_object(path: Path, *, label: str) -> dict[str, Any]:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(storage_io.read_text(path, encoding='utf-8'))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise RuntimeAttestationError(f"cannot read {label}: {path}") from exc
     if not isinstance(value, dict):
@@ -45,10 +46,10 @@ def _atomic_replace_json(path: Path, value: Mapping[str, Any]) -> None:
             handle.write(encoded)
             handle.flush()
             os.fsync(handle.fileno())
-        os.replace(temporary, path)
+        storage_io.replace_file(temporary, path)
     finally:
-        if temporary.exists():
-            temporary.unlink()
+        if storage_io.exists(temporary):
+            storage_io.unlink(temporary)
 
 
 def attest(*, season: str, evidence_dir: Path) -> dict[str, Any]:
@@ -57,7 +58,7 @@ def attest(*, season: str, evidence_dir: Path) -> dict[str, Any]:
         raise RuntimeAttestationError("registered release has no canonical manifest")
     manifest = pipeline.read_json_file(release.release_manifest_path)
     inventory = pipeline.verify_release_output(manifest=manifest, output_tree=release.game_path)
-    evidence_dir = evidence_dir.resolve()
+    evidence_dir = storage_io.resolve(evidence_dir)
     try:
         evidence_relative = registry.relative_workspace_path(evidence_dir)
     except registry.RegistryError as exc:
@@ -79,7 +80,7 @@ def attest(*, season: str, evidence_dir: Path) -> dict[str, Any]:
         and team_identity.get("matched") is True
         and "stoke" in str(team_identity.get("observed_normalized") or "").split()
     )
-    screenshots = sorted((evidence_dir / "screens").glob("*line_up_inspect*.png"))
+    screenshots = sorted(storage_io.glob(evidence_dir / 'screens', '*line_up_inspect*.png'))
     checks["one_lineup_screenshot"] = len(screenshots) == 1
     failed = [name for name, passed in checks.items() if not passed]
     if failed:
@@ -107,7 +108,7 @@ def attest(*, season: str, evidence_dir: Path) -> dict[str, Any]:
         runtime_receipts=[receipt],
     )
     attestation_path = release.release_manifest_path.parent / "attestation.json"
-    if attestation_path.exists():
+    if storage_io.exists(attestation_path):
         existing = _read_object(attestation_path, label="existing runtime attestation")
         if (
             existing.get("release_manifest_sha256") != attestation["release_manifest_sha256"]

@@ -13,6 +13,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import archive_retired_season_tests_20261004 as archive
 from scripts import season_release_registry_v1 as registry
 
@@ -29,29 +30,29 @@ REMOTE_RECEIPTS = '/srv/hdd/pm99-archive/receipts/old-crash-probe-assets-2026100
 
 def guard_probe(name):
     source = PROBES / name
-    if name not in NAMES or source.is_symlink() or source.resolve().parent != PROBES.resolve():
+    if name not in NAMES or source.is_symlink() or storage_io.resolve(source).parent != storage_io.resolve(PROBES):
         raise ValueError('not an exact old crash-probe installation')
     game_source = source / 'ingress/game' if name in NESTED_GAMES else source
     if name in NESTED_GAMES and (
             (source / 'ingress').is_symlink() or game_source.is_symlink()
             or not game_source.is_dir()
-            or game_source.resolve() != source.resolve() / 'ingress/game'):
+            or storage_io.resolve(game_source) != storage_io.resolve(source) / 'ingress/game'):
         raise ValueError('nested probe game must be an exact non-symlink directory')
     if archive._active_game(source) or (game_source != source and archive._active_game(game_source)):
         raise ValueError('old probe is currently running')
-    for path in (registry.LOCAL_ROOT / 'releases').glob('*/*/locator.json'):
-        value = json.loads(path.read_text()).get('game_path')
+    for path in storage_io.glob(registry.LOCAL_ROOT / 'releases', '*/*/locator.json'):
+        value = json.loads(storage_io.read_text(path)).get('game_path')
         if value:
-            game = (ROOT / value).resolve()
-            if game == source.resolve() or game.is_relative_to(source.resolve()):
+            game = storage_io.resolve(ROOT / value)
+            if game == storage_io.resolve(source) or game.is_relative_to(storage_io.resolve(source)):
                 raise ValueError('registered historical game must not lose its assets')
     for season in registry.supported_seasons():
         release = registry.load_preferred_release(season)
-        if release.game_path.resolve().is_relative_to(source.resolve()):
+        if storage_io.resolve(release.game_path).is_relative_to(storage_io.resolve(source)):
             raise ValueError('probe contains a current game')
         for path in (release.package_path, release.release_manifest_path,
                      release.compiler_receipt_path, release.build_chain_path):
-            text = path.read_text()
+            text = storage_io.read_text(path)
             if any(str((game_source / asset).relative_to(ROOT)) in text for asset in ASSETS):
                 raise ValueError('current recipe or build chain directly depends on old probe assets')
     return game_source
@@ -69,7 +70,7 @@ def run(delete=False):
         for asset in ASSETS:
             if delete and name != NAMES[0] and (source / asset).is_dir():
                 first_receipt = RECEIPTS / NAMES[0] / asset / 'receipt.json'
-                first = json.loads(first_receipt.read_text())
+                first = json.loads(storage_io.read_text(first_receipt))
                 if not first.get('archive_verified') or not first.get('local_removed'):
                     raise ValueError('verified immutable common-asset archive is missing')
                 if archive.remote('findmnt -n -o UUID --target /srv/hdd').strip() != archive.DISK_UUID:

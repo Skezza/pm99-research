@@ -1,6 +1,7 @@
 """Deliver two compact year repairs without moving frozen case denominators."""
 import copy
 from datetime import UTC, datetime
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_original_secondary_facts_v1 as layer
 from scripts import build_registered_quality_release_v1 as builder
@@ -34,7 +35,7 @@ def validate_representative(target_raw, representative_raw, person, season, age,
 def run():
     prior = ROOT.parent / 'release-delivery-checklist-v25.json'
     output = ROOT.parent / 'release-delivery-checklist-v26.json'
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('completed compact-year checkpoint must not repeat')
     result = copy.deepcopy(pipeline.read_json_file(prior))
     old = {r['season']: r for r in result['current_release_bindings']}
@@ -78,7 +79,7 @@ def run():
         # NPC was itself opened. Require its actual native family and modern DOB
         # to equal the tested profile family/date, independent of a display guess.
         from app.fdi_indexed import IndexedFDIFile
-        raw_jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+        raw_jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
         entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(raw_jug).entries}
         target_raw = entries[10958].decode_payload(raw_jug)
         representative_raw = entries[representative_carrier].decode_payload(raw_jug)
@@ -110,7 +111,7 @@ def run():
         tag = 'original_secondary_' + season.replace('-', '_') + '_' + case['release'].split('-')[-1] + '_20261010'
         path = ROOT / (season + '-final-attestation.json')
         attestation = runtime.attest(season=season, evidence_dir=registry.ROOT / '.local/runlogs/pm99_runner' / tag)
-        if path.exists():
+        if storage_io.exists(path):
             if pipeline.read_json_file(path) != attestation:
                 raise ValueError('retained compact final attestation differs')
         else:
@@ -133,7 +134,7 @@ def run():
         next_batch='7 real-club duplicates and10 literal DOB disagreements remain OPEN; roles/ratings/source/asset checklist queues unchanged and not approved by year repair.')
     result['delivered_evidence'].extend(evidence + [binding(readback)])
     failed_search = ROOT / 'shade-profile-transport.json'
-    if failed_search.exists():
+    if storage_io.exists(failed_search):
         result['delivered_evidence'].append(binding(failed_search))
         failed_tag = 'original_secondary_2024_25_r81a_20261010_shade'
         failure_frame = ROOT / 'runtime' / failed_tag / failed_tag / 'screens/44_profile_only_shade_done.png'
@@ -142,7 +143,7 @@ def run():
         corrected_dates='Independent literal original-source/native readback of both10958 targets.',
         profiles='Actual same-release/same-native-family modern-age representatives Tezgel10744 andMubama10341.',
         direct_target_profile_approved=False,
-        failed_shade_search_retained=failed_search.exists(),
+        failed_shade_search_retained=storage_io.exists(failed_search),
         limitation='Shade was not returned by transfer search. No direct NPC-profile or NPC-searchability approval is claimed.')
     pipeline.write_canonical_json(output, result)
     print(dict(checklist=binding(output), new_birthdays_delivered=2, birthdays_delivered=237,

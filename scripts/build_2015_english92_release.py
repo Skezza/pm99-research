@@ -70,6 +70,7 @@ from app.eq_initial_tactics import patch_initial_tactics  # noqa: E402
 from app.fdi_indexed import IndexedFDIFile  # noqa: E402
 from app.models import PlayerRecord  # noqa: E402
 from app.xor import xor_decode, xor_encode  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts.english92_editorial_ratings import (  # noqa: E402
     EditorialRatingBook,
     audit_editorial_distribution,
@@ -153,11 +154,11 @@ def _club_key(value: str) -> str:
 
 
 def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def _json_dump(path: Path, payload: Any) -> None:
-    path.write_text(json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(path, json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True) + '\n', encoding='utf-8')
 
 
 def _read_u16_xor(payload: bytes, offset: int) -> int:
@@ -792,7 +793,7 @@ def _load_fifa(path: Path) -> FifaIndex:
     surname: dict[str, list[dict[str, str]]] = defaultdict(list)
     birth_date: dict[str, list[dict[str, str]]] = defaultdict(list)
     club: dict[str, list[dict[str, str]]] = defaultdict(list)
-    with path.open(encoding="utf-8-sig", newline="") as handle:
+    with storage_io.open_file(path, encoding='utf-8-sig', newline='') as handle:
         for row in csv.DictReader(handle):
             name = str(row.get("name", "")).strip()
             if name:
@@ -841,7 +842,7 @@ def _load_fifa17_backfill(path: Path, edition: int) -> FifaIndex:
         "gk_kicking": "goalkeeping_kicking",
         "gk_reflexes": "goalkeeping_reflexes",
     }
-    with path.open(encoding="utf-8-sig", newline="") as handle:
+    with storage_io.open_file(path, encoding='utf-8-sig', newline='') as handle:
         for raw in csv.DictReader(handle):
             player_id = str(raw.get("sofifa_id") or "").strip()
             dob = str(raw.get("dob") or "").strip()
@@ -887,7 +888,7 @@ def _name_tokens(value: str) -> list[str]:
 
 
 def _load_fifa_meta(path: Path) -> FifaMetaIndex:
-    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload = json.loads(storage_io.read_text(path, encoding='utf-8'))
     rows = list(payload.get("players") or [])
     if len(rows) < 10_000:
         raise ValueError("FIFA 16 player metadata is unexpectedly incomplete")
@@ -1289,7 +1290,7 @@ def _patch_dd6361_visible_handling(
     biography streams whose length changes make an external cross-entry scan
     unsuitable after a variable-length name rewrite.
     """
-    data = jug_path.read_bytes()
+    data = storage_io.read_bytes(jug_path)
     index = IndexedFDIFile.from_bytes(data)
     entries = {entry.record_id: entry for entry in index.entries}
     replacements: dict[int, bytes] = {}
@@ -1328,9 +1329,9 @@ def _patch_dd6361_visible_handling(
         })
     if not replacements:
         raise RuntimeError("No dd6361 players were available for visible Handling synchronisation")
-    jug_path.write_bytes(_rebuild_indexed(data, index, replacements))
+    storage_io.write_bytes(jug_path, _rebuild_indexed(data, index, replacements))
 
-    verify_data = jug_path.read_bytes()
+    verify_data = storage_io.read_bytes(jug_path)
     verify_index = IndexedFDIFile.from_bytes(verify_data)
     verify_entries = {entry.record_id: entry for entry in verify_index.entries}
     for change in changes:
@@ -1383,7 +1384,7 @@ def _patch_ent_name(payload: bytes, record_id: int, name: str, *, native_names: 
 
 
 def _read_manager_candidates(ent_file: Path) -> list[tuple[int, bytes]]:
-    data = ent_file.read_bytes(); indexed = IndexedFDIFile.from_bytes(data)
+    data = storage_io.read_bytes(ent_file); indexed = IndexedFDIFile.from_bytes(data)
     rows = []
     for entry in indexed.entries:
         payload = entry.decode_payload(data)
@@ -1406,7 +1407,7 @@ def _load_squad_reference(path: Path, clubs: list[dict[str, Any]]) -> dict[str, 
     skills, so a ratings refactor cannot silently invalidate established
     squad, face, roster or opening-order evidence.
     """
-    rows = list(json.loads(path.read_text(encoding="utf-8")) or [])
+    rows = list(json.loads(storage_io.read_text(path, encoding='utf-8')) or [])
     by_club: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in rows:
         by_club[str(row.get("club") or "")].append(dict(row))
@@ -1481,8 +1482,8 @@ def _args() -> BuildPaths:
     parser.add_argument("--output", required=True, type=Path, help="new release directory")
     values = parser.parse_args()
     return BuildPaths(
-        values.source_game.expanduser().resolve(), values.source_ledger.resolve(), values.opening_lineup_ledger.resolve(),
-        values.manager_ledger.resolve(), values.fifa16.resolve(), values.fifa15_backfill.resolve(), values.fifa17_backfill.resolve(), values.fifa18_backfill.resolve(), values.fifa19_backfill.resolve(), values.fifa16_meta.resolve(), values.editorial_ratings.resolve(), values.squad_reference.resolve(), values.output.expanduser().resolve(),
+        storage_io.resolve(values.source_game.expanduser()), storage_io.resolve(values.source_ledger), storage_io.resolve(values.opening_lineup_ledger),
+        storage_io.resolve(values.manager_ledger), storage_io.resolve(values.fifa16), storage_io.resolve(values.fifa15_backfill), storage_io.resolve(values.fifa17_backfill), storage_io.resolve(values.fifa18_backfill), storage_io.resolve(values.fifa19_backfill), storage_io.resolve(values.fifa16_meta), storage_io.resolve(values.editorial_ratings), storage_io.resolve(values.squad_reference), storage_io.resolve(values.output.expanduser()),
     )
 
 
@@ -1490,16 +1491,16 @@ def main() -> int:
     paths = _args()
     required = [paths.source_game / "DBDAT" / name for name in ("JUG98030.FDI", "EQ98030.FDI", "ENT98030.FDI", "TEXTOS.PKF")]
     required.extend((paths.ledger, paths.opening_lineup_ledger, paths.manager_ledger, paths.fifa, paths.fifa15, paths.fifa17, paths.fifa18, paths.fifa19, paths.fifa_meta, paths.editorial_ratings, paths.squad_reference))
-    missing = [str(path) for path in required if not path.is_file()]
+    missing = [str(path) for path in required if not storage_io.is_file(path)]
     if missing:
         raise SystemExit("Missing required input(s): " + ", ".join(missing))
-    if paths.output.exists():
+    if storage_io.exists(paths.output):
         raise SystemExit(f"Output already exists: {paths.output}")
     paths.output.mkdir(parents=True)
     game = paths.output / "game"
     shutil.copytree(paths.source_game, game, symlinks=True, ignore=shutil.ignore_patterns("SAVE", "output", "wineprefix", "*.png", "*.log"))
 
-    ledger = json.loads(paths.ledger.read_text(encoding="utf-8"))
+    ledger = json.loads(storage_io.read_text(paths.ledger, encoding='utf-8'))
     clubs = list(ledger.get("clubs") or [])
     club_count = len(clubs)
     release_profile = "english-80-core" if club_count == 80 else "english-92-native"
@@ -1526,7 +1527,7 @@ def main() -> int:
             raise SystemExit("The Core80 ledger has duplicate or incomplete native selector slots")
     carrier_ids = set(club_ids)
     squad_reference = _load_squad_reference(paths.squad_reference, clubs)
-    opening_lineups = json.loads(paths.opening_lineup_ledger.read_text(encoding="utf-8"))
+    opening_lineups = json.loads(storage_io.read_text(paths.opening_lineup_ledger, encoding='utf-8'))
     if opening_lineups.get("schema_version") != "pm99-2015-16-opening-lineup-reconciliation-v1":
         raise SystemExit("Opening lineup ledger has an unexpected schema")
     opening_by_club = {str(row.get("club")): row for row in opening_lineups.get("clubs") or []}
@@ -1535,7 +1536,7 @@ def main() -> int:
         raise SystemExit("Opening lineup ledger is missing one or more selected source-ledger clubs")
     if opening_lineups.get("failures") or any(not opening_by_club[club].get("reconciled") for club in selected_club_names):
         raise SystemExit("Opening lineup ledger is not certified; resolve every selected dated-match identity before compiling")
-    manager_ledger = json.loads(paths.manager_ledger.read_text(encoding="utf-8"))
+    manager_ledger = json.loads(storage_io.read_text(paths.manager_ledger, encoding='utf-8'))
     manager_rows = list(manager_ledger.get("rows") or [])
     managers_by_club = {str(row.get("club")): row for row in manager_rows}
     if not selected_club_names <= set(managers_by_club):
@@ -1557,7 +1558,7 @@ def main() -> int:
     country_codes = _extract_country_codes(game)
 
     jug_path, eq_path, ent_path = (game / "DBDAT" / name for name in ("JUG98030.FDI", "EQ98030.FDI", "ENT98030.FDI"))
-    jug_data = jug_path.read_bytes(); jug_index = IndexedFDIFile.from_bytes(jug_data)
+    jug_data = storage_io.read_bytes(jug_path); jug_index = IndexedFDIFile.from_bytes(jug_data)
     dd6361 = [entry for entry in jug_index.entries if entry.decode_payload(jug_data)[2:5] == b"\xdd\x63\x61" and entry.payload_length >= 80]
     dd6360 = [entry for entry in jug_index.entries if entry.decode_payload(jug_data)[2:5] == b"\xdd\x63\x60" and entry.payload_length >= 60]
     # A JUG team-id is not enough to prove exclusive ownership: the live EQ
@@ -1565,7 +1566,7 @@ def main() -> int:
     # every existing owner is a selected mode-0 English carrier that this
     # build rewrites.  This permits the two harmless baseline mode-0
     # duplicates but excludes every foreign/mode-1 relationship.
-    source_eq_data = eq_path.read_bytes(); source_eq_index = IndexedFDIFile.from_bytes(source_eq_data)
+    source_eq_data = storage_io.read_bytes(eq_path); source_eq_index = IndexedFDIFile.from_bytes(source_eq_data)
     owner_ids: dict[int, list[int]] = defaultdict(list)
     source_modes: dict[int, int] = {}
     for team_entry in source_eq_index.entries:
@@ -1791,7 +1792,7 @@ def main() -> int:
         from scripts.season_package_compiler_v2 import _append_indexed_fdi_records
 
         built_jug = _append_indexed_fdi_records(original=built_jug, records=appended_jug_records)
-    jug_path.write_bytes(built_jug)
+    storage_io.write_bytes(jug_path, built_jug)
     visible_skills_receipt = _patch_dd6361_visible_handling(jug_path, player_ledger)
     non_dd6361_goalkeepers = [
         row for row in player_ledger
@@ -1803,7 +1804,7 @@ def main() -> int:
             f"uncovered records: {[row['record_id'] for row in non_dd6361_goalkeepers]}"
         )
 
-    eq_data = eq_path.read_bytes(); eq_index = IndexedFDIFile.from_bytes(eq_data)
+    eq_data = storage_io.read_bytes(eq_path); eq_index = IndexedFDIFile.from_bytes(eq_data)
     eq_replacements: dict[int, bytes] = {}
     for plan in team_plans:
         entry = next(item for item in eq_index.entries if item.record_id == plan["record_id"])
@@ -1845,19 +1846,19 @@ def main() -> int:
         raw = _rewrite_roster_tail(raw, retained)
         eq_replacements[donor_id] = xor_decode(raw)
     built_eq = _rebuild_indexed(eq_data, eq_index, eq_replacements)
-    eq_path.write_bytes(built_eq)
+    storage_io.write_bytes(eq_path, built_eq)
 
-    ent_data = ent_path.read_bytes(); ent_index = IndexedFDIFile.from_bytes(ent_data)
+    ent_data = storage_io.read_bytes(ent_path); ent_index = IndexedFDIFile.from_bytes(ent_data)
     ent_replacements = {}
     for plan in team_plans:
         entry = next(item for item in ent_index.entries if item.record_id == plan["manager_record_id"])
         ent_replacements[entry.record_id] = _patch_ent_name(entry.decode_payload(ent_data), entry.record_id, plan["manager_name"])
-    ent_path.write_bytes(_rebuild_indexed(ent_data, ent_index, ent_replacements))
+    storage_io.write_bytes(ent_path, _rebuild_indexed(ent_data, ent_index, ent_replacements))
 
     # Structural post-build audit: every English carrier must resolve its
     # declared 24/25-player JUG roster and every one must parse as a player.
-    built_jug_data = jug_path.read_bytes(); built_jug_index = IndexedFDIFile.from_bytes(built_jug_data)
-    built_eq_data = eq_path.read_bytes(); built_eq_index = IndexedFDIFile.from_bytes(built_eq_data)
+    built_jug_data = storage_io.read_bytes(jug_path); built_jug_index = IndexedFDIFile.from_bytes(built_jug_data)
+    built_eq_data = storage_io.read_bytes(eq_path); built_eq_index = IndexedFDIFile.from_bytes(built_eq_data)
     jug_entries = {entry.record_id: entry for entry in built_jug_index.entries}
     audit = []
     for plan in team_plans:

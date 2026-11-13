@@ -1,5 +1,6 @@
 """Fresh r112 ordinary startup and actual Arsenal shirt-number lineup."""
 import os
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry,season_pipeline_v2 as pipeline
 from scripts import capture_registered_season_runtime_v1 as capture
 from scripts.capture_arsenal_owned_opening_20261016 import bound_capture
@@ -10,7 +11,7 @@ TAG='arsenal_shirts_2021_22_r112a_20261016'
 
 
 def main():
-    if not all((ROOT/name).exists() for name in ('native-byte-proof.json','complete-SOURCE-replay.json')):
+    if not all(storage_io.exists(ROOT / name) for name in ('native-byte-proof.json','complete-SOURCE-replay.json')):
         raise ValueError('actual shirt native and full SOURCE proofs required before runner')
     release=registry.load_registered_release(SEASON,RELEASE)
     package=pipeline.read_json_file(release.package_path)

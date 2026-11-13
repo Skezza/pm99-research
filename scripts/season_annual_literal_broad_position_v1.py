@@ -14,6 +14,7 @@ from pathlib import Path
 from app.fdi_indexed import IndexedFDIFile
 from app.indexed_jug_roles import read_indexed_native_roles
 from app.xor import xor_encode
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_exact_primary_position_delta_v2 as writer
 from scripts import season_historical_roster_audit_v1 as roster
 from scripts import season_opening_order_repair_v1 as ownership
@@ -60,15 +61,15 @@ def _root_file(binding: dict) -> Path:
         if cursor.is_symlink():
             raise ValueError('annual source binding may not traverse symlinks')
     path = registry.ROOT / relative
-    if (relative.is_absolute() or path.is_symlink() or not path.is_file()
-            or not path.resolve().is_relative_to(registry.ROOT.resolve())
+    if (relative.is_absolute() or path.is_symlink() or not storage_io.is_file(path)
+            or not storage_io.resolve(path).is_relative_to(storage_io.resolve(registry.ROOT))
             or _sha(path) != binding['sha256']):
         raise ValueError('annual source binding is absent, symlinked, escaping, or changed')
     return path
 
 
 def _read_input(path: Path) -> dict:
-    if path.is_symlink() or not path.is_file() or not path.resolve().is_relative_to(registry.ROOT.resolve()):
+    if path.is_symlink() or not storage_io.is_file(path) or not storage_io.resolve(path).is_relative_to(storage_io.resolve(registry.ROOT)):
         raise ValueError('annual position request must be a retained in-workspace file')
     request = pipeline.read_json_file(path)
     if (request.get('schema') != 'pm99-annual-literal-broad-position-input-v1'
@@ -132,7 +133,7 @@ def prepare(base, input_path) -> dict:
             or _sha(base.package_path) != case['package_sha256']):
         raise ValueError('registered release or exact recipe pin differs')
     jug_path, eq_path = base.game_path / 'DBDAT/JUG98030.FDI', base.game_path / 'DBDAT/EQ98030.FDI'
-    jug, eq = jug_path.read_bytes(), eq_path.read_bytes()
+    jug, eq = storage_io.read_bytes(jug_path), storage_io.read_bytes(eq_path)
     if _sha(jug_path) != case['jug_sha256'] or _sha(eq_path) != case['eq_sha256']:
         raise ValueError('native parent JUG/EQ pin differs')
     annual_row, raw_row = _parse_annual(case)
@@ -272,7 +273,7 @@ def apply(jug, eq, plan):
     base = registry.load_registered_release(plan['season'], plan['release_id'])
     verify(base, plan)
     after, after_eq = writer.apply(jug, eq, plan['writer_plan'])
-    before = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    before = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
     changed = [index for index, (old, new) in enumerate(zip(before, after)) if old != new]
     expected = [plan['native_masks'][0]['file_offset']]
     adjacent = plan['adjacent_byte']['file_offset']
@@ -301,7 +302,7 @@ def reconstruction(previous, release_id, *, minimum_free_bytes=disk_budget.DEFAU
     verify(base, plan)
     receipt = pipeline.read_json_file(previous.compiler_receipt_path)
     if (receipt.get('compilation_mode') != common.MODE
-            or plan_path.resolve() != (previous.package_path.parent / filename(plan)).resolve()
+            or storage_io.resolve(plan_path) != storage_io.resolve(previous.package_path.parent / filename(plan))
             or _sha(plan_path) != receipt.get('original_profile_assignment_plan_sha256')):
         raise ValueError('annual broad-position SOURCE receipt/plan binding differs')
     if bind(pipeline.read_json_file(base.package_path), plan) != pipeline.read_json_file(previous.package_path):
@@ -318,7 +319,7 @@ def reconstruction(previous, release_id, *, minimum_free_bytes=disk_budget.DEFAU
         minimum_free_bytes=minimum_free_bytes)
     rebuilt = registry.load_registered_release(previous.season, release_id)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path, pipeline.read_json_file(previous.inventory_path))
-    if rebuilt.package_path.read_bytes() != previous.package_path.read_bytes():
+    if storage_io.read_bytes(rebuilt.package_path) != storage_io.read_bytes(previous.package_path):
         raise ValueError('annual broad-position SOURCE full recipe differs')
     return {'season': previous.season, 'complete_game_inventory_identical': True,
         'complete_recipe_identical': True}

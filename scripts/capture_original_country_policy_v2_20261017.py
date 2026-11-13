@@ -1,5 +1,6 @@
 """Capture one SOURCE-complete versioned country-policy game on the shared lane."""
 import argparse
+from scripts import json_storage_io_v1 as storage_io
 from scripts import build_original_country_policy_v2_20261017 as build
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts.capture_shinnie_country_20261017 import main as capture
@@ -12,7 +13,7 @@ def tag(season):
 
 def main(season):
     folder=build.ROOT/season
-    if not (folder/'complete-SOURCE-replay.json').exists():
+    if not storage_io.exists(folder / 'complete-SOURCE-replay.json'):
         raise ValueError('versioned country policy whole SOURCE proof required before capture')
     actual=registry.load_registered_release(season,build.RELEASE)
     plan=pipeline.read_json_file(folder/'country-plan.json')

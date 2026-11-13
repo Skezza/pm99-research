@@ -23,6 +23,7 @@ for candidate in (ROOT, EDITOR):
         sys.path.insert(0, str(candidate))
 
 from app.minifoto_bitmap_archive import iter_obfuscated_bmp_records, validate_minifoto_bitmap  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts.pm99_kit_palette_v1 import runtime_kit_palette  # noqa: E402
 
 
@@ -31,7 +32,7 @@ ARCHIVE = "MINIESC.PKF"
 
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
@@ -90,7 +91,7 @@ def compare(*, entries: list[tuple[str, Path]], carriers: list[int], output: Pat
             )
     output.parent.mkdir(parents=True, exist_ok=True)
     sheet.save(output)
-    return {"result": "comparison-ready", "archive": ARCHIVE, "entries": checks, "preview": str(output.resolve())}
+    return {"result": "comparison-ready", "archive": ARCHIVE, "entries": checks, "preview": str(storage_io.resolve(output))}
 
 
 def main() -> int:
@@ -112,7 +113,7 @@ def main() -> int:
         parser.error(str(exc))
     args.receipt.parent.mkdir(parents=True, exist_ok=True)
     import json
-    args.receipt.write_text(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(args.receipt, json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8')
     print(result["preview"])
     return 0
 

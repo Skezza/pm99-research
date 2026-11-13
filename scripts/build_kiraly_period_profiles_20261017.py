@@ -2,6 +2,7 @@
 import argparse
 from concurrent.futures import ProcessPoolExecutor,as_completed
 import shutil
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_kiraly_period_profile_v1 as source
 from scripts import publish_historical_role_delta_v1 as publisher
 from scripts.build_public_fixture_batches_20261017 import share_verified
@@ -14,8 +15,8 @@ REPLAY='replayed-kiraly-period-profiles-20261017-r141b'
 
 def verify_native(base,actual,plan):
     source.verify(base,plan)
-    before=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes();after=(actual.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    before=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI');after=storage_io.read_bytes(actual.game_path / 'DBDAT/JUG98030.FDI')
+    eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     if source.apply(before,eq,plan)!=(after,eq) or source.apply(after,eq,plan)!=(after,eq):
         raise ValueError('actual Kiraly country/keeper bytes or idempotence differ')
     entry=next(e for e in source.IndexedFDIFile.from_bytes(after).entries if e.record_id==plan['carrier_id'])
@@ -37,21 +38,21 @@ def verify_native(base,actual,plan):
 
 def build_one(season,resume_pre_native=False,source_release=None):
     folder=ROOT/season;path=folder/'profile-plan.json';descriptor=folder/'inert.json'
-    if source.registry.locator_path(season,RELEASE).exists():raise ValueError('existing Kiraly game needs inspection, not regeneration')
+    if storage_io.exists(source.registry.locator_path(season, RELEASE)):raise ValueError('existing Kiraly game needs inspection, not regeneration')
     base=(source.registry.load_registered_release(season,source_release) if source_release
           else source.registry.load_preferred_release(season))
     if source_release:
         source.pipeline.assert_tree_matches_inventory(base.game_path,source.pipeline.read_json_file(base.inventory_path))
     if resume_pre_native:
         workspace=source.registry.ROOT/'.local/historical-role-deltas-v1'/season/RELEASE
-        if workspace.exists() or not path.is_file() or not descriptor.is_file() or not (folder/'pre-native-disk-stop.json').is_file():
+        if storage_io.exists(workspace) or not storage_io.is_file(path) or not storage_io.is_file(descriptor) or not storage_io.is_file(folder / 'pre-native-disk-stop.json'):
             raise ValueError('only exact saved pre-native disk stop can resume')
         stop=source.pipeline.read_json_file(folder/'pre-native-disk-stop.json')
         if stop.get('native_build_started') is not False or stop.get('source_plan_sha256')!=source.registry.sha256_file(path):
             raise ValueError('saved pre-native country stop does not bind exact source plan')
         plan=source.pipeline.read_json_file(path);source.verify(base,plan)
     else:
-        if path.exists():raise ValueError('saved country plan requires inspection before explicit pre-native resume')
+        if storage_io.exists(path):raise ValueError('saved country plan requires inspection before explicit pre-native resume')
         plan=source.prepare(base);folder.mkdir(parents=True,exist_ok=True);retained(path,plan)
         retained(descriptor,dict(season=season,release_id=base.release_id,package_sha256=plan['package_sha256'],
             jug_sha256=plan['jug_sha256'],updates=[],unresolved=[]))

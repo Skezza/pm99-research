@@ -25,6 +25,7 @@ for candidate in (ROOT, EDITOR):
         sys.path.insert(0, str(candidate))
 
 from app.minifoto_bitmap_archive import iter_obfuscated_bmp_records, validate_minifoto_bitmap  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts.pm99_kit_palette_v1 import runtime_kit_palette  # noqa: E402
 
 
@@ -35,7 +36,7 @@ SCHEMA = "pm99-2015-world-kit-visual-receipt-v2"
 
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
@@ -74,7 +75,7 @@ def _asset(row: Mapping[str, Any], label: str) -> tuple[Path, str]:
         raise ValueError(f"{label} has no {ARCHIVE} asset")
     asset = assets[ARCHIVE]
     path, digest = Path(str(asset.get("path") or "")), str(asset.get("sha256") or "")
-    if not path.is_file() or sha256_file(path) != digest:
+    if not storage_io.is_file(path) or sha256_file(path) != digest:
         raise ValueError(f"{label} {ARCHIVE} asset is missing or hash-mismatched")
     return path, digest
 
@@ -99,7 +100,7 @@ def preview(
         old_path, old_hash = _asset(old_row, f"legacy {name}")
         new_path, new_hash = _asset(new_row, f"candidate {name}")
         record = records[carrier]
-        old_payload, new_payload = old_path.read_bytes(), new_path.read_bytes()
+        old_payload, new_payload = storage_io.read_bytes(old_path), storage_io.read_bytes(new_path)
         for payload, label in ((old_payload, "legacy"), (new_payload, "candidate")):
             shape = validate_minifoto_bitmap(payload)
             if (shape.width, shape.height, shape.bits_per_pixel) != (record.width, record.height, 8):
@@ -135,7 +136,7 @@ def preview(
         "archive": ARCHIVE,
         "clubs": receipt_rows,
         "palette": {**palette_source, "sha256": sha256_file(Path(str(palette_source["path"])))},
-        "preview": str(output.resolve()),
+        "preview": str(storage_io.resolve(output)),
     }
 
 
@@ -150,8 +151,8 @@ def main() -> int:
     args = parser.parse_args()
     try:
         result = preview(
-            source=json.loads(args.source_materialisation.read_text(encoding="utf-8")),
-            candidate=json.loads(args.candidate_materialisation.read_text(encoding="utf-8")),
+            source=json.loads(storage_io.read_text(args.source_materialisation, encoding='utf-8')),
+            candidate=json.loads(storage_io.read_text(args.candidate_materialisation, encoding='utf-8')),
             dbdat=args.clean_dbdat,
             clubs=tuple(args.clubs or DEFAULT_CLUBS),
             output=args.output,
@@ -159,7 +160,7 @@ def main() -> int:
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         parser.error(str(exc))
     args.receipt.parent.mkdir(parents=True, exist_ok=True)
-    args.receipt.write_text(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(args.receipt, json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8')
     print(json.dumps({"result": result["result"], "preview": result["preview"], "club_count": len(result["clubs"])}, sort_keys=True))
     return 0
 

@@ -11,6 +11,14 @@ Transfermarkt profile.  It does not modify the source roster or a PM99 file.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import json
 import re
@@ -36,7 +44,7 @@ POSITION_BY_LABEL = {
 
 
 def _load(path: Path) -> Any:
-    return json.loads(path.read_text(encoding="utf-8"))
+    return json.loads(storage_io.read_text(path, encoding='utf-8'))
 
 
 def _profile_label(page: BeautifulSoup, label: str) -> str:
@@ -157,7 +165,7 @@ def main() -> int:
         "summary": {"addition_count": len(additions), "club_count": len({row['club'] for row in additions})},
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(args.output, json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True) + '\n', encoding='utf-8')
     print(json.dumps(payload["summary"], sort_keys=True))
     return 0
 

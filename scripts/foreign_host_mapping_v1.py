@@ -16,6 +16,14 @@ reorder EQ records or write country/division/competition bytes.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -25,7 +33,7 @@ from pathlib import Path
 from typing import Any
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR_ROOT = REPO_ROOT / "upstream" / "pm99-skezmod-db-editor"
 if str(EDITOR_ROOT) not in sys.path:
     sys.path.insert(0, str(EDITOR_ROOT))
@@ -38,7 +46,7 @@ REPORT_SCHEMA = "pm99-foreign-host-mapping-report-v1"
 
 
 def sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def normalise(value: Any) -> str:
@@ -66,7 +74,7 @@ class TileVerdict:
 
 
 def load_capture(path: Path) -> dict[str, Any]:
-    payload = _require(json.loads(path.read_text(encoding="utf-8")), "capture", dict)
+    payload = _require(json.loads(storage_io.read_text(path, encoding='utf-8')), "capture", dict)
     if payload.get("schema") != SCHEMA:
         raise ValueError(f"Unsupported capture schema {payload.get('schema')!r}; expected {SCHEMA}")
     _require(payload.get("country"), "country", dict)
@@ -79,7 +87,7 @@ def load_capture(path: Path) -> dict[str, Any]:
 def _eq_short_names(dbdat: Path) -> dict[int, str]:
     eq_file = dbdat / "EQ98030.FDI"
     jug_file = dbdat / "JUG98030.FDI"
-    if not eq_file.is_file() or not jug_file.is_file():
+    if not storage_io.is_file(eq_file) or not storage_io.is_file(jug_file):
         raise FileNotFoundError("dbdat must contain EQ98030.FDI and JUG98030.FDI")
     result: dict[int, str] = {}
     for roster in load_eq_linked_team_rosters(team_file=str(eq_file), player_file=str(jug_file)):
@@ -138,7 +146,7 @@ def verify_capture(*, capture: dict[str, Any], dbdat: Path, capture_root: Path) 
         if len(reviewed_hash) != 64 or any(character not in "0123456789abcdef" for character in reviewed_hash):
             raise ValueError("tile.reviewed_frame_sha256 must be a lowercase SHA-256 digest")
         decoded = expected.get(record_id)
-        screenshot_hash = sha256(path) if path.is_file() else None
+        screenshot_hash = sha256(path) if storage_io.is_file(path) else None
         reason: str | None = None
         status = "accepted"
         if screenshot_hash is None:
@@ -184,7 +192,7 @@ def verify_capture(*, capture: dict[str, Any], dbdat: Path, capture_root: Path) 
             "meaning": "existing PM99 preseason-picker host country; not a writable competition field",
         },
         "base": {
-            "dbdat": str(dbdat.resolve()),
+            "dbdat": str(storage_io.resolve(dbdat)),
             "eq98030_sha256": sha256(dbdat / "EQ98030.FDI"),
         },
         "counts": {"captured": len(verdicts), "accepted": len(accepted), "unresolved": len(unresolved)},
@@ -228,14 +236,14 @@ def main() -> int:
     try:
         report = verify_capture(
             capture=load_capture(args.capture),
-            dbdat=args.dbdat.resolve(),
-            capture_root=args.capture_root.resolve(),
+            dbdat=storage_io.resolve(args.dbdat),
+            capture_root=storage_io.resolve(args.capture_root),
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         print(f"FAIL: {exc}", file=sys.stderr)
         return 1
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(report, indent=2, sort_keys=True, ensure_ascii=False) + "\n", encoding="utf-8")
+    storage_io.write_text(args.output, json.dumps(report, indent=2, sort_keys=True, ensure_ascii=False) + '\n', encoding='utf-8')
     print(json.dumps(report["counts"], sort_keys=True))
     return 0
 

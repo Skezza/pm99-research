@@ -20,6 +20,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT), str(ROOT / 'upstream/pm99-skezmod-db-editor'), str(ROOT / 'upstream/pm99-skezmod-patcher')]
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline  # noqa: E402
 from scripts import season_release_registry_v1 as registry  # noqa: E402
 from scripts import season_disk_budget_v1 as disk_budget  # noqa: E402
@@ -51,7 +52,7 @@ def default_working_path(season, seasons_root=DEFAULT_SEASONS_ROOT):
 def load_document(season, *, amendments_path=None, receipt_path=None, seasons_root=DEFAULT_SEASONS_ROOT):
     """Return (document, origin). A receipt is accepted only with the exact document it hashes."""
     path = Path(amendments_path) if amendments_path else default_working_path(season, seasons_root)
-    if not path.is_file():
+    if not storage_io.is_file(path):
         raise AmendmentBuildError(f'no staged amendments for {season}: {path} does not exist')
     try:
         document = amendments.load_or_empty(path, season=season)
@@ -59,7 +60,7 @@ def load_document(season, *, amendments_path=None, receipt_path=None, seasons_ro
         raise AmendmentBuildError(f'amendment document is not usable: {exc}') from exc
     origin = 'workbook-staged-working-json'
     if receipt_path:
-        receipt = json.loads(Path(receipt_path).read_text(encoding='utf-8'))
+        receipt = json.loads(storage_io.read_text(Path(receipt_path), encoding='utf-8'))
         if receipt.get('schema_version') != amendments.RECEIPT_SCHEMA or receipt.get('season') != season:
             raise AmendmentBuildError('materialisation receipt has the wrong schema or season')
         if receipt.get('amendment_sha256') != amendments.sha256_bytes(amendments.canonical_json_bytes(document)):
@@ -97,9 +98,9 @@ def default_release_id(season, plan):
 def disk_estimate(parent, plan, minimum_free_bytes):
     """Mirror the publisher's own planned-bytes formula so a blocked build is reported exactly."""
     game = parent.game_path / 'DBDAT'
-    planned = (sum((game / n).stat().st_size for n in ('JUG98030.FDI', 'EQ98030.FDI')) + parent.package_path.stat().st_size
+    planned = (sum(storage_io.size(game / n) for n in ('JUG98030.FDI', 'EQ98030.FDI')) + storage_io.size(parent.package_path)
                + len(pipeline.canonical_json_bytes(plan)) + 32 * 1024 ** 2
-               + ((game / 'ENT98030.FDI').stat().st_size if plan['manager_updates'] else 0))
+               + (storage_io.size(game / 'ENT98030.FDI') if plan['manager_updates'] else 0))
     free = shutil.disk_usage(parent.game_path).free
     return dict(free_bytes=free, planned_bytes=planned, minimum_free_bytes=minimum_free_bytes,
                 shortfall_bytes=max(0, minimum_free_bytes - (free - planned)), enough=free - planned >= minimum_free_bytes)
@@ -238,14 +239,14 @@ def _proof_passes(result):
 
 def _verification_proofs(evidence):
     legacy = evidence / 'build-report.json'
-    if not (evidence / 'verifications').is_dir() and legacy.is_file():
+    if not (evidence / 'verifications').is_dir() and storage_io.is_file(legacy):
         # Reports written before proofs were stored separately: keep their passing proof as history (not re-claimed).
-        earlier = json.loads(legacy.read_text()).get('source_reconstruction')
+        earlier = json.loads(storage_io.read_text(legacy)).get('source_reconstruction')
         if _proof_passes(earlier) and not earlier.get('carried_forward_from'):
             _store_proof(evidence, dict(earlier, imported_from='earlier build-report.json'))
     rows = []
-    for path in sorted((evidence / 'verifications').glob('*.json')) if (evidence / 'verifications').is_dir() else []:
-        rows.append(dict(json.loads(path.read_text()), _file=path.name))
+    for path in sorted(storage_io.glob(evidence / 'verifications', '*.json')) if (evidence / 'verifications').is_dir() else []:
+        rows.append(dict(json.loads(storage_io.read_text(path)), _file=path.name))
     return rows
 
 
@@ -255,9 +256,9 @@ def _store_proof(evidence, proof):
     raw = pipeline.canonical_json_bytes(proof) + b'\n'
     name = f'{hashlib.sha256(raw).hexdigest()[:24]}.json'
     path = evidence / 'verifications' / name
-    if not path.exists():
+    if not storage_io.exists(path):
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(raw)
+        storage_io.write_bytes(path, raw)
     return name
 
 
@@ -265,12 +266,12 @@ def _save_report(evidence, report):
     """Write build-report.json; an earlier different report is archived by content hash, never lost."""
     import hashlib
     path = evidence / 'build-report.json'
-    if path.is_file():
-        old = path.read_bytes()
+    if storage_io.is_file(path):
+        old = storage_io.read_bytes(path)
         archive = evidence / 'history' / f'build-report-{hashlib.sha256(old).hexdigest()[:24]}.json'
-        if not archive.exists():
+        if not storage_io.exists(archive):
             archive.parent.mkdir(parents=True, exist_ok=True)
-            archive.write_bytes(old)
+            storage_io.write_bytes(archive, old)
     _write_json(path, report)
     try:
         report['evidence'] = registry.relative_workspace_path(path)

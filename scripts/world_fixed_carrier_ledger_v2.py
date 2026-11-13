@@ -13,6 +13,14 @@ world source ledger must not grow one by implication.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -23,7 +31,7 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR = ROOT / "upstream" / "pm99-skezmod-db-editor"
 for candidate in (ROOT, EDITOR):
     if str(candidate) not in sys.path:
@@ -78,7 +86,7 @@ def canonical_json_bytes(value: Any) -> bytes:
 
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
@@ -86,12 +94,12 @@ def sha256_file(path: Path) -> str:
 
 def write_canonical_json(path: Path, value: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(canonical_json_bytes(dict(value)))
+    storage_io.write_bytes(path, canonical_json_bytes(dict(value)))
 
 
 def read_canonical_json(path: Path, *, label: str) -> tuple[dict[str, Any], str]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise WorldLedgerError(f"cannot read {label}: {path}") from exc
@@ -148,14 +156,14 @@ def build_registry_from_dbdat(*, dbdat: Path, registry_id: str) -> dict[str, Any
     """
 
     _require_id(registry_id, "registry_id")
-    dbdat = dbdat.expanduser().resolve()
+    dbdat = storage_io.resolve(dbdat.expanduser())
     required = {name: dbdat / name for name in ("EQ98030.FDI", "JUG98030.FDI", "ENT98030.FDI")}
-    missing = [str(path) for path in required.values() if not path.is_file() or path.is_symlink()]
+    missing = [str(path) for path in required.values() if not storage_io.is_file(path) or path.is_symlink()]
     if missing:
         raise WorldLedgerError("missing safe source database file(s): " + ", ".join(missing))
 
-    eq_data = required["EQ98030.FDI"].read_bytes()
-    jug_data = required["JUG98030.FDI"].read_bytes()
+    eq_data = storage_io.read_bytes(required['EQ98030.FDI'])
+    jug_data = storage_io.read_bytes(required['JUG98030.FDI'])
     eq_index = IndexedFDIFile.from_bytes(eq_data)
     jug_index = IndexedFDIFile.from_bytes(jug_data)
     jug_entries = {entry.record_id: entry for entry in jug_index.entries}
@@ -227,7 +235,7 @@ def build_registry_from_dbdat(*, dbdat: Path, registry_id: str) -> dict[str, Any
         if len(occurrences) > 1
     ]
     files = {
-        name: {"relative_path": f"DBDAT/{name}", "sha256": sha256_file(path), "size": path.stat().st_size}
+        name: {"relative_path": f"DBDAT/{name}", "sha256": sha256_file(path), "size": storage_io.size(path)}
         for name, path in sorted(required.items())
     }
     return {

@@ -1,6 +1,7 @@
 """Actual identity/ten-skill spot checks across eras and both native families."""
 import os
 import time
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts.capture_city_opening_exchange_20261011 import captured
 from scripts.build_all_rating_calibrations_20261011 import ROOT,release_id
@@ -14,7 +15,7 @@ def main():
     env=dict(os.environ,PM99_RUNNER_ARCHIVE_COLD_RUNS='0',PM99_RUNNER_RUN_ROOT_BUDGET_ENFORCE='0')
     for season,carrier,label,token in PROFILES:
         root=ROOT/season;deadline=time.monotonic()+7200
-        while not (root/'complete-SOURCE-replay.json').exists():
+        while not storage_io.exists(root / 'complete-SOURCE-replay.json'):
             if time.monotonic()>deadline:raise ValueError('bounded profile wait expired for '+season)
             time.sleep(10)
         release=registry.load_registered_release(season,release_id(season))

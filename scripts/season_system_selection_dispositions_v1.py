@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_italian_opening_layer_v1 as native
 from scripts.season_carrier_allocation_v1 import SYSTEM_SELECTION_IDS
@@ -54,8 +55,8 @@ def prepare(root):
         path = DEFAULT_BASE / 'DBDAT' / name
         if registry.sha256_file(path) != sha:
             raise ValueError('original factory evidence changed')
-        base[name] = path.read_bytes()
-    original = json.loads((root / 'within-club-adjudication.json').read_text())
+        base[name] = storage_io.read_bytes(path)
+    original = json.loads(storage_io.read_text(root / 'within-club-adjudication.json'))
     cases = [r for r in original['rows'] if r['club_id'] == 'club-8801']
     if len(cases) != 26 or {r['season'] for r in cases} != set(registry.supported_seasons()):
         raise ValueError('expected the fixed 26 selection cases, not a new denominator')
@@ -69,11 +70,11 @@ def prepare(root):
         if sorted(p['carrier_id'] for p in case['players']) != [19403, 19410]:
             raise ValueError('selection candidate identities changed')
         release = registry.load_preferred_release(case['season'])
-        package = json.loads(release.package_path.read_text())
+        package = json.loads(storage_io.read_text(release.package_path))
         club = next(c for c in package['clubs'] if c['id'] == case['club_id'])
         players = {p['carrier_id']: p for p in package['players'] if p['id'] in club['roster_player_ids']}
         jug_path, eq_path = (release.game_path / 'DBDAT' / n for n in ('JUG98030.FDI', 'EQ98030.FDI'))
-        jug, eq = jug_path.read_bytes(), eq_path.read_bytes()
+        jug, eq = storage_io.read_bytes(jug_path), storage_io.read_bytes(eq_path)
         current_players = {id: record(jug, id) for id in base_players}
         verify_club(club, players, base_eq, record(eq, 8801), base_players, current_players)
         rows.append({'candidate_id': case['id'], 'season': case['season'],

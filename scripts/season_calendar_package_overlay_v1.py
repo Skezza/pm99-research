@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2 as package_v2  # noqa: E402
 
 SCHEMA = "pm99-season-calendar-package-overlay-v1"
@@ -90,17 +91,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--output-audit", required=True, type=Path)
     args = parser.parse_args(argv)
     try:
-        package = json.loads(args.package.read_text(encoding="utf-8"))
-        receipt_bytes = args.receipt.read_bytes()
+        package = json.loads(storage_io.read_text(args.package, encoding='utf-8'))
+        receipt_bytes = storage_io.read_bytes(args.receipt)
         receipt = json.loads(receipt_bytes.decode("utf-8"))
-        exe_hash = hashlib.sha256(args.executable.read_bytes()).hexdigest()
+        exe_hash = hashlib.sha256(storage_io.read_bytes(args.executable)).hexdigest()
         output, audit = bind_calendar(package=package, receipt=receipt,
                                       receipt_relative_path=args.receipt_relative_path,
                                       receipt_sha256=hashlib.sha256(receipt_bytes).hexdigest(),
                                       executable_sha256=exe_hash)
         for path, value in ((args.output_package, output), (args.output_audit, audit)):
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_bytes(_bytes(value))
+            storage_io.write_bytes(path, _bytes(value))
     except (OSError, ValueError, json.JSONDecodeError, package_v2.PackageValidationError) as exc:
         parser.error(str(exc))
     print(json.dumps(audit, sort_keys=True))

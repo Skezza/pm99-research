@@ -14,6 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_portrait_pipeline_v1 as portrait
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
@@ -43,7 +44,7 @@ def run(manifest_path, output_root):
     cv2.setNumThreads(1)
     manifest = portrait._read_json(manifest_path)
     release = registry.load_preferred_release(manifest['season'])
-    package = json.loads(release.package_path.read_text())
+    package = json.loads(storage_io.read_text(release.package_path))
     if manifest['inputs']['package_canonical_sha256'] != registry.canonical_document_sha256(release.package_path):
         raise ValueError('portrait pilot targets another recipe')
     plan_path = Path(manifest['inputs']['plan_path'])
@@ -67,19 +68,19 @@ def run(manifest_path, output_root):
         if row['status'] == 'applied':
             issues = source_issues(row, players.get(int(row['carrier_id'])), edition.get(int(row['sofifa_id'])))
             _, cache_path = portrait._cache_paths(portrait.DEFAULT_CACHE, row['source_image_url'])
-            if not cache_path.is_file() or registry.sha256_file(cache_path) != row.get('source_sha256'):
+            if not storage_io.is_file(cache_path) or registry.sha256_file(cache_path) != row.get('source_sha256'):
                 issues.append('original-source-bytes-not-bound')
             else:
-                found = faces(detector, decode(cache_path.read_bytes()))
+                found = faces(detector, decode(storage_io.read_bytes(cache_path)))
                 face_detail = {'face_count': len(found), 'largest_face_pixels':
                                round(float(max(min(f[2], f[3]) for f in found)), 1) if len(found) else 0}
                 if len(found) != 1 or face_detail['largest_face_pixels'] < 40:
                     issues.append('source-face-framing-uncertain')
             bitmap = Path(row['converted_path'])
-            if not bitmap.is_file() or registry.sha256_file(bitmap) != row.get('converted_sha256'):
+            if not storage_io.is_file(bitmap) or registry.sha256_file(bitmap) != row.get('converted_sha256'):
                 issues.append('converted-bitmap-not-bound')
             else:
-                portrait.validate_minifoto_bitmap(bitmap.read_bytes())
+                portrait.validate_minifoto_bitmap(storage_io.read_bytes(bitmap))
         updated = dict(row)
         if issues:
             updated.update(status='native-no-photo', reason='qa-quarantine:' + ','.join(issues))

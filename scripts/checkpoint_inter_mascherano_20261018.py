@@ -1,6 +1,7 @@
 """Publish two narrowly corrected games only after genuine exact-player proof."""
 import copy
 from datetime import UTC, datetime
+from scripts import json_storage_io_v1 as storage_io
 from scripts.checkpoint_larsson_holt_kroos_20261018 import (
     AUDIT, fields, exchange, source_step, startup_review, binding, retained,
     profiles, digits, runtime, publisher, registry, pipeline, bindings,
@@ -23,7 +24,7 @@ TARGETS = {
 def run():
     previous = AUDIT / 'release-delivery-checklist-v122.json'
     output = AUDIT / 'release-delivery-checklist-v123.json'
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('completed checkpoint must not repeat')
     original = pipeline.read_json_file(previous)
     old = {row['season']: row for row in original['current_release_bindings']}
@@ -50,7 +51,7 @@ def run():
     for season, item in TARGETS.items():
         publisher.register_completed_delta(season, item['release'])
         final = item['root'] / 'final-attestation.json'
-        if final.exists():
+        if storage_io.exists(final):
             if registry._validate_runtime_attestation(registry.load_preferred_release(season)):
                 raise ValueError('existing runtime attestation no longer validates')
         else:

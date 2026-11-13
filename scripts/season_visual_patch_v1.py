@@ -20,6 +20,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_portrait_pipeline_v1 as portraits
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
@@ -43,14 +44,14 @@ def save(path, value):
 def build_plan(season, audit_root=DEFAULT_AUDITS):
     release = registry.load_preferred_release(season)
     audit_path = audit_root / season / "player-photo-audit.json"
-    audit = json.loads(audit_path.read_text())
+    audit = json.loads(storage_io.read_text(audit_path))
     if audit["season"] != season or audit["minifoto_sha256"] != sha(release.game_path / "DBDAT/MINIFOTO.PKF"):
         raise ValueError("roster audit is stale or belongs to another season")
     if audit["package_sha256"] != sha(release.package_path):
         raise ValueError("roster audit targets another recipe")
     override_path = ROOT / "data/season-portrait-overrides-v1" / (season + ".json")
-    overrides = json.loads(override_path.read_text())["players"] if override_path.exists() else []
-    package = json.loads(release.package_path.read_text())
+    overrides = json.loads(storage_io.read_text(override_path))["players"] if storage_io.exists(override_path) else []
+    package = json.loads(storage_io.read_text(release.package_path))
     players = {int(p["carrier_id"]): p for p in package["players"]}
     seen = set()
     replacements = []
@@ -79,8 +80,8 @@ def build_plan(season, audit_root=DEFAULT_AUDITS):
     if season == "2015-16":
         source_path = audit_root / "foreign-source-verification/report.json"
         resolution_path = audit_root / "foreign-biography-review/report.json"
-        review = json.loads(source_path.read_text())
-        resolution = json.loads(resolution_path.read_text())
+        review = json.loads(storage_io.read_text(source_path))
+        resolution = json.loads(storage_io.read_text(resolution_path))
         if resolution["input_report_sha256"] != sha(source_path) or resolution["package_sha256"] != sha(release.package_path):
             raise ValueError("portrait source resolutions are stale")
         unresolved = {int(row["carrier_id"]): row for row in resolution["players"] if row["remaining_issues"]}
@@ -95,7 +96,7 @@ def build_plan(season, audit_root=DEFAULT_AUDITS):
         "inputs": {"release_id": release.release_id, "game": str(release.game_path),
                    "package_sha256": sha(release.package_path), "audit_sha256": sha(audit_path),
                    "minifoto_sha256": audit["minifoto_sha256"],
-                   "overrides_sha256": sha(override_path) if override_path.exists() else None,
+                   "overrides_sha256": sha(override_path) if storage_io.exists(override_path) else None,
                    "review_binding": review_binding},
         "no_photo": no_photo, "replacements": replacements}
 
@@ -117,8 +118,8 @@ def patched_archive(original, no_photo):
 def build_english_review_plan(report_path, resolutions_path):
     """Quarantine unresolved legacy English portraits, never foreign carriers."""
     release = registry.load_preferred_release('2015-16')
-    report = json.loads(report_path.read_text())
-    resolutions = json.loads(resolutions_path.read_text())
+    report = json.loads(storage_io.read_text(report_path))
+    resolutions = json.loads(storage_io.read_text(resolutions_path))
     if report.get('schema_version') != 'pm99-english-portrait-source-review-v1' or resolutions.get(
             'schema_version') != 'pm99-english-portrait-biography-review-v1':
         raise ValueError('unsupported English source review')
@@ -129,9 +130,9 @@ def build_english_review_plan(report_path, resolutions_path):
                 or doc['minifoto_sha256'] != sha(release.game_path / 'DBDAT/MINIFOTO.PKF')):
             raise ValueError('English portrait review is stale')
     from scripts import audit_registered_visual_assets_v1 as audit
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     entries = {int(e.record_id): e for e in audit.IndexedFDIFile.from_bytes(jug).entries}
-    owners, _, modes = audit._source_roster_owners((release.game_path / 'DBDAT/EQ98030.FDI').read_bytes())
+    owners, _, modes = audit._source_roster_owners(storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI'))
     rows = []
     seen = set()
     originals = {int(r['carrier_id']): r for r in report['players']}
@@ -166,7 +167,7 @@ def build_english_review_plan(report_path, resolutions_path):
 
 
 def materialise(plan_path, output, *, source_release=None):
-    plan = json.loads(plan_path.read_text())
+    plan = json.loads(storage_io.read_text(plan_path))
     if plan.get("schema_version") != SCHEMA:
         raise ValueError("unsupported visual patch plan")
     release = source_release if source_release is not None else registry.load_preferred_release(plan["season"])
@@ -177,8 +178,8 @@ def materialise(plan_path, output, *, source_release=None):
     archive_path = release.game_path / "DBDAT/MINIFOTO.PKF"
     if sha(archive_path) != plan["inputs"]["minifoto_sha256"]:
         raise ValueError("portrait archive changed since planning")
-    if output.exists():
-        receipt = json.loads((output / "receipt.json").read_text())
+    if storage_io.exists(output):
+        receipt = json.loads(storage_io.read_text(output / 'receipt.json'))
         if receipt["plan_sha256"] != sha(plan_path):
             raise ValueError("output exists for another plan")
         for name, digest in receipt["outputs"].items():
@@ -187,19 +188,19 @@ def materialise(plan_path, output, *, source_release=None):
         return receipt
     output.mkdir(parents=True)
     ids = [int(p["carrier_id"]) for p in plan["no_photo"]]
-    original = archive_path.read_bytes()
+    original = storage_io.read_bytes(archive_path)
     original_records = {r.player_record_id: r for r in iter_minifoto_records_from_bytes("MINIFOTO.PKF", original)}
     for row in plan["no_photo"]:
         carrier = int(row["carrier_id"])
         loose = release.game_path / "DBDAT/MINIFOTO" / f"J96{carrier:05d}.BMP"
-        actual = sha(loose) if loose.is_file() else hashlib.sha256(original_records[carrier].raw_bitmap).hexdigest()
+        actual = sha(loose) if storage_io.is_file(loose) else hashlib.sha256(original_records[carrier].raw_bitmap).hexdigest()
         if actual != row["bitmap_sha256_before"]:
             raise ValueError("audited inherited bitmap no longer matches")
     # Loose-only portraits have no active archive directory entry to disable.
     patched, offsets = patched_archive(original, [carrier for carrier in ids if carrier in original_records])
     dbdat = output / "DBDAT"
     dbdat.mkdir()
-    (dbdat / "MINIFOTO.PKF").write_bytes(patched)
+    storage_io.write_bytes(dbdat / 'MINIFOTO.PKF', patched)
     replacements = []
     if plan["replacements"]:
         fifa_plan = {"schema_version": portraits.PLAN_SCHEMA, "season": plan["season"],
@@ -215,13 +216,13 @@ def materialise(plan_path, output, *, source_release=None):
             carrier = int(row["carrier_id"])
             if row["status"] != "applied":
                 raise ValueError(f"replacement could not be materialised: {row['name']}")
-            payload = Path(row["converted_path"]).read_bytes()
+            payload = storage_io.read_bytes(Path(row['converted_path']))
             validate_minifoto_bitmap(payload)
             loose = dbdat / "MINIFOTO" / f"J96{carrier:05d}.BMP"
             loose.parent.mkdir(exist_ok=True)
-            loose.write_bytes(payload)
+            storage_io.write_bytes(loose, payload)
             replacements.append(row)
-    outputs = {str(p.relative_to(output)): sha(p) for p in sorted(dbdat.rglob("*")) if p.is_file()}
+    outputs = {str(p.relative_to(output)): sha(p) for p in sorted(storage_io.glob(dbdat, '*', recursive=True)) if storage_io.is_file(p)}
     receipt = {"schema_version": "pm99-season-visual-patch-materialisation-v1", "season": plan["season"],
                "plan_sha256": sha(plan_path), "archive_before_sha256": sha(archive_path),
                "no_photo_count": len(ids), "no_photo_offsets": offsets,
@@ -253,8 +254,8 @@ def source_inventory(release):
 
 
 def apply(plan_path, materialisation_root, output_game, *, source_release=None):
-    plan = json.loads(plan_path.read_text())
-    receipt = json.loads((materialisation_root / "receipt.json").read_text())
+    plan = json.loads(storage_io.read_text(plan_path))
+    receipt = json.loads(storage_io.read_text(materialisation_root / 'receipt.json'))
     if receipt["plan_sha256"] != sha(plan_path):
         raise ValueError("materialisation belongs to another plan")
     release = source_release if source_release is not None else registry.load_preferred_release(plan["season"])
@@ -273,19 +274,19 @@ def apply(plan_path, materialisation_root, output_game, *, source_release=None):
     copy_proof = portraits.copy_game_with_factory_media_links(release.game_path, output_game)
     for name in receipt["outputs"]:
         (output_game / name).parent.mkdir(parents=True, exist_ok=True)
-        (output_game / name).write_bytes((materialisation_root / name).read_bytes())
+        storage_io.write_bytes(output_game / name, storage_io.read_bytes(materialisation_root / name))
     removals = []
     for row in plan["no_photo"]:
         loose = output_game / "DBDAT/MINIFOTO" / f"J96{int(row['carrier_id']):05d}.BMP"
-        if loose.exists():
+        if storage_io.exists(loose):
             removals.append(str(loose.relative_to(output_game)))
-            loose.unlink()
+            storage_io.unlink(loose)
     after = pipeline.build_tree_inventory(output_game)
     diff = assert_artwork_only_difference(before, after, [*receipt["outputs"], *removals])
     pipeline.assert_tree_matches_inventory(release.game_path, before)
     result = {"schema_version": "pm99-season-visual-patch-application-v1", "season": plan["season"],
-              "plan_path": str(plan_path.resolve()),
-              "materialisation_path": str((materialisation_root / 'receipt.json').resolve()),
+              "plan_path": str(storage_io.resolve(plan_path)),
+              "materialisation_path": str(storage_io.resolve(materialisation_root / 'receipt.json')),
               "plan_sha256": sha(plan_path), "materialisation_sha256": sha(materialisation_root / "receipt.json"),
               "base_inventory_fingerprint": before["files_fingerprint"], "output_inventory": after,
               "copy_strategy": "shared-immutable-factory-media-independent-mutable-files-v1",
@@ -311,10 +312,10 @@ def publish(season, output_game, release_id, register=False, application_path=No
     if source_release is not None and (release.season != season or register):
         raise ValueError('explicit visual replay baseline must match season and cannot promote')
     destination = registry.locator_path(season, release_id).parent
-    if destination.exists():
+    if storage_io.exists(destination):
         raise ValueError("release ID already exists")
     application_path = application_path or output_game.parent / "visual-patch-application.json"
-    application = json.loads(application_path.read_text())
+    application = json.loads(storage_io.read_text(application_path))
     registered_base = application.get("registered_base_inventory_fingerprint", application["base_inventory_fingerprint"])
     if application["season"] != season or registered_base != release.locator["game_inventory_fingerprint"]:
         raise ValueError("application is not based on the current release")
@@ -373,7 +374,7 @@ def publish(season, output_game, release_id, register=False, application_path=No
         "portrait_patch_application_path": registry.relative_workspace_path(application_path)})
     if application.get('plan_path'):
         plan_path = Path(application['plan_path'])
-        plan_path.resolve().relative_to(ROOT.resolve())
+        storage_io.resolve(plan_path).relative_to(storage_io.resolve(ROOT))
         if sha(plan_path) != application['plan_sha256']:
             raise ValueError('visual patch plan changed before publication')
         locator['visual_patch_plan_path'] = registry.relative_workspace_path(plan_path)
@@ -389,7 +390,7 @@ def publish(season, output_game, release_id, register=False, application_path=No
         locator['required_visual_file_hashes'].pop(removed, None)
     previous_application = release.locator.get("portrait_patch_application_path")
     if previous_application:
-        previous = json.loads((ROOT / previous_application).read_text())
+        previous = json.loads(storage_io.read_text(ROOT / previous_application))
         # Older publishers stored kit applications under the portrait key.
         # Keep that kit proof reachable when a later portrait-only stage is
         # appended; do not let the latest face update hide prior kit evidence.
@@ -402,7 +403,7 @@ def publish(season, output_game, release_id, register=False, application_path=No
     locator['superseded_visual_patch_plan_sha256s'] = sorted(set(
         locator.get('superseded_visual_patch_plan_sha256s', []) + application.get('included_visual_patch_plan_sha256s', [])))
     save(work / "locator.json", locator)
-    work.rename(destination)
+    storage_io.move(work, destination)
     manifest_path = destination / "metadata/season-manifest.json"
     if register:
         from scripts.attest_registered_season_runtime_v1 import _atomic_replace_json
@@ -422,9 +423,9 @@ def extend_kit(season, source_root, probe_root, output_root, *, source_release=N
         raise ValueError('kit patch source belongs to another season')
     plan_path = source_root / season / 'plan.json'
     patch_root = source_root / season / 'patch'
-    plan = json.loads(plan_path.read_text())
-    receipt = json.loads((patch_root / 'receipt.json').read_text())
-    probe = json.loads((probe_root / 'receipt.json').read_text())
+    plan = json.loads(storage_io.read_text(plan_path))
+    receipt = json.loads(storage_io.read_text(patch_root / 'receipt.json'))
+    probe = json.loads(storage_io.read_text(probe_root / 'receipt.json'))
     if plan['season'] != season or probe['season'] != season or receipt['plan_sha256'] != sha(plan_path):
         raise ValueError('kit and portrait patches do not share a season')
     if release.release_id != plan['inputs']['release_id']:
@@ -439,7 +440,7 @@ def extend_kit(season, source_root, probe_root, output_root, *, source_release=N
         if sha(release.game_path / name) != change['archive_before_sha256'] or sha(probe_root / 'game' / name) != change['archive_after_sha256']:
             raise ValueError('kit probe archive hashes changed')
     destination = output_root / season
-    if destination.exists():
+    if storage_io.exists(destination):
         raise ValueError('refusing to overwrite combined patch')
     destination.mkdir(parents=True)
     for name, digest in receipt['outputs'].items():
@@ -455,7 +456,7 @@ def extend_kit(season, source_root, probe_root, output_root, *, source_release=N
     receipt['kit_before_sha256s'] = {}
     for change in probe['changes']:
         name = 'DBDAT/' + change['archive']
-        shutil.copyfile(probe_root / 'game' / name, destination / 'patch' / name)
+        storage_io.copy_file(probe_root / 'game' / name, destination / 'patch' / name)
         receipt['outputs'][name] = change['archive_after_sha256']
         receipt['kit_before_sha256s'][name] = change['archive_before_sha256']
     receipt['kit_probe_receipt_sha256'] = plan['kit_probe_receipt_sha256']
@@ -472,21 +473,21 @@ def ensure_playable_patch(season):
     root = DEFAULT_OUTPUT / season
     plan_path = root / "plan.json"
     materialisation = root / "patch"
-    if not plan_path.is_file() or not (materialisation / "receipt.json").is_file():
+    if not storage_io.is_file(plan_path) or not storage_io.is_file(materialisation / 'receipt.json'):
         return None
     release = registry.load_preferred_release(season)
     applied_path = release.locator.get("portrait_patch_application_path")
     if applied_path:
-        applied = json.loads((ROOT / applied_path).read_text())
+        applied = json.loads(storage_io.read_text(ROOT / applied_path))
         if applied.get("plan_sha256") == sha(plan_path):
             return {"season": season, "status": "already-applied"}
         if sha(plan_path) in release.locator.get("superseded_visual_patch_plan_sha256s", []):
             return {"season": season, "status": "already-applied"}
-    plan = json.loads(plan_path.read_text())
+    plan = json.loads(storage_io.read_text(plan_path))
     if plan["inputs"]["release_id"] != release.release_id:
         raise ValueError("retained visual patch targets another release; refusing to guess")
     game = root / "playable/game"
-    if not game.exists():
+    if not storage_io.exists(game):
         apply(plan_path, materialisation, game)
     return publish(season, game, "visual-reviewed-20261003-r2", register=True)
 
@@ -521,7 +522,7 @@ def main():
         if args.command == "plan":
             result = build_plan(season)
             root.mkdir(parents=True, exist_ok=True)
-            if plan_path.exists() and json.loads(plan_path.read_text()) != result:
+            if storage_io.exists(plan_path) and json.loads(storage_io.read_text(plan_path)) != result:
                 raise ValueError("retained plan changed; use a new output root")
             save(plan_path, result)
             results.append({"season": season, "no_photo": len(result["no_photo"]), "replacements": len(result["replacements"])})

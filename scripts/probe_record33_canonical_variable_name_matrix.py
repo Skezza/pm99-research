@@ -9,6 +9,14 @@ isolated game roots for runtime validation.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import json
 import shutil
@@ -19,9 +27,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR_ROOT = REPO_ROOT / "upstream" / "pm99-skezmod-db-editor"
-SCRIPT_DIR = Path(__file__).resolve().parent
+SCRIPT_DIR = storage_io.resolve(Path(__file__)).parent
 if str(EDITOR_ROOT) not in sys.path:
     sys.path.insert(0, str(EDITOR_ROOT))
 if str(SCRIPT_DIR) not in sys.path:
@@ -209,7 +217,7 @@ def _patch_payload(decoded: bytes, variant: Variant) -> tuple[bytes, dict[str, A
 def _build_variant(base_game: Path, out_game: Path, variant: Variant) -> dict[str, Any]:
     shutil.copytree(base_game, out_game, symlinks=True)
     player_file = out_game / "DBDAT" / "JUG98030.FDI"
-    file_data = player_file.read_bytes()
+    file_data = storage_io.read_bytes(player_file)
     indexed = IndexedFDIFile.from_bytes(file_data)
     entries_by_id = {int(entry.record_id): entry for entry in indexed.entries}
     entry = entries_by_id.get(TARGET_RECORD_ID)
@@ -233,9 +241,9 @@ def _build_variant(base_game: Path, out_game: Path, variant: Variant) -> dict[st
         create_backup_before_write=False,
     )
 
-    reparsed_indexed = IndexedFDIFile.from_bytes(player_file.read_bytes())
+    reparsed_indexed = IndexedFDIFile.from_bytes(storage_io.read_bytes(player_file))
     reparsed_entry = next(item for item in reparsed_indexed.entries if int(item.record_id) == TARGET_RECORD_ID)
-    reparsed_payload = reparsed_entry.decode_payload(player_file.read_bytes())
+    reparsed_payload = reparsed_entry.decode_payload(storage_io.read_bytes(player_file))
     reparsed = PlayerRecord.from_bytes(reparsed_payload, 0)
     readback_name = " ".join(_player_display_name(reparsed).split())
     summary = {
@@ -252,15 +260,15 @@ def _build_variant(base_game: Path, out_game: Path, variant: Variant) -> dict[st
     }
     artifact_dir = out_game / "artifacts" / "record33_canonical_variable"
     artifact_dir.mkdir(parents=True, exist_ok=True)
-    (artifact_dir / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    storage_io.write_text(artifact_dir / 'summary.json', json.dumps(summary, indent=2), encoding='utf-8')
     return summary
 
 
 def main() -> int:
     args = _parse_args()
-    base_game = Path(args.base_game).expanduser().resolve()
-    out_root = Path(args.out_root).expanduser().resolve()
-    if out_root.exists():
+    base_game = storage_io.resolve(Path(args.base_game).expanduser())
+    out_root = storage_io.resolve(Path(args.out_root).expanduser())
+    if storage_io.exists(out_root):
         if not args.force:
             raise SystemExit(f"Output root exists: {out_root}")
         shutil.rmtree(out_root)
@@ -289,7 +297,7 @@ def main() -> int:
         "summaries": summaries,
     }
     manifest_path = out_root / "matrix_manifest.json"
-    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    storage_io.write_text(manifest_path, json.dumps(manifest, indent=2), encoding='utf-8')
     print(json.dumps({"ok": not failures, "manifest": str(manifest_path), "built_count": len(summaries)}, indent=2))
     return 0 if not failures else 1
 

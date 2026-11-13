@@ -1,4 +1,5 @@
 """Bind acquired independent country witnesses and inventory held CGO proposals."""
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_cgo_disambiguation_v1 as country
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts.capture_stock_replacement_sources_20261010 import ROOT as CACHE
@@ -8,7 +9,7 @@ ROOT=country.CATALOG.parent
 
 
 def main():
-    if country.CATALOG.exists():raise ValueError('existing independent Congo catalogue must not be overwritten')
+    if storage_io.exists(country.CATALOG):raise ValueError('existing independent Congo catalogue must not be overwritten')
     ROOT.mkdir(parents=True,exist_ok=True)
     people=[]
     for id,name,born,slug,key in (
@@ -26,7 +27,7 @@ def main():
     rows=[]
     for folder in sorted((ROOT.parent/'country-policy-v2-cohort-20261017').iterdir()):
         plan_path=folder/'country-plan.json'
-        if not plan_path.is_file():continue
+        if not storage_io.is_file(plan_path):continue
         plan=pipeline.read_json_file(plan_path)
         for actor in plan['updates']:
             if actor['nationality']!='CGO':continue
@@ -40,7 +41,7 @@ def main():
     # The SAME vendor token has a dated Republic-of-Congo witness for Samba,
     # but a dated DR-Congo witness for Imbula in2019. It is not an ISO guarantee.
     imbula=next(p for p in people if p['source_player_id']==130756)
-    independent=country.parse((registry.ROOT/imbula['source']['path']).read_bytes(),imbula['name'],imbula['birth_date'],'2019-20')
+    independent=country.parse(storage_io.read_bytes(registry.ROOT / imbula['source']['path']),imbula['name'],imbula['birth_date'],'2019-20')
     if independent['country']!='COD':raise ValueError('independent vendor ambiguity counterexample changed')
     retained(ROOT/'pending-country-admission.json',dict(rows=rows,native_writes=0,preferred_writes=0,
         CGO_not_a_provider_safe_ISO_token=True,Imbula2019_independent_country=independent,

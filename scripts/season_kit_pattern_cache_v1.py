@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_kit_render_bindings_v1 as renderer
 
 
@@ -41,8 +42,8 @@ def main() -> int:
         parser.error("workers must be between 1 and 4")
     requested = set()
     catalogues = []
-    for path in sorted(args.catalogue_root.glob("*/kit-catalogue-v1.json")):
-        document = json.loads(path.read_text(encoding="utf-8"))
+    for path in sorted(storage_io.glob(args.catalogue_root, '*/kit-catalogue-v1.json')):
+        document = json.loads(storage_io.read_text(path, encoding='utf-8'))
         catalogues.append({"path": str(path), "sha256": renderer.sha256_file(path)})
         requested.update(requested_layers(document))
     rows = []
@@ -68,7 +69,7 @@ def main() -> int:
         "rows": rows,
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(renderer.canonical_json_bytes(receipt))
+    storage_io.write_bytes(args.output, renderer.canonical_json_bytes(receipt))
     print(json.dumps(receipt["coverage"], indent=2, sort_keys=True))
     return 0
 

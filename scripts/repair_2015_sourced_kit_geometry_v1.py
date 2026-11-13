@@ -15,6 +15,7 @@ from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_visual_patch_v1 as visual
 from scripts import season_kit_render_bindings_v1 as renderer
@@ -39,18 +40,18 @@ def source_canvas(image):
 
 
 def prepare(output):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('use a new output directory')
     release = registry.load_preferred_release('2015-16')
     source_path = ROOT / '.local/season-pipeline-v2/world-2015-combined-kit-materialisation-factory-template-v5-native-tone-transfer.json'
     findings_path = ROOT / '.local/visual-quality-v1/2015-16/kits-source-audit/visual-findings.json'
-    source = json.loads(source_path.read_text())
-    findings = json.loads(findings_path.read_text())
+    source = json.loads(storage_io.read_text(source_path))
+    findings = json.loads(storage_io.read_text(findings_path))
     targets = {int(r['carrier_id']) for r in findings['findings']} | {203}
     sources = {int(r['carrier_id']): r for r in source['rows']}
-    clubs = {int(c['carrier_id']): c for c in json.loads(release.package_path.read_text())['clubs']}
+    clubs = {int(c['carrier_id']): c for c in json.loads(storage_io.read_text(release.package_path))['clubs']}
     palette, _ = renderer._palette(release.game_path / 'DBDAT')
-    original = {n: (release.game_path / 'DBDAT' / n).read_bytes() for n in renderer.ARCHIVES}
+    original = {n: storage_io.read_bytes(release.game_path / 'DBDAT' / n) for n in renderer.ARCHIVES}
     changed = {n: bytearray(v) for n, v in original.items()}
     records = {n: renderer._record_index(release.game_path / 'DBDAT' / n) for n in renderer.ARCHIVES}
     templates = {n: renderer._record_index(ROOT / '.local/season-pipeline-v2/pm99-base-clean/DBDAT' / n)[4]
@@ -100,7 +101,7 @@ def prepare(output):
                 not any(a <= i < b for a, b in lanes) for i, (a, b) in enumerate(zip(original[name], changed[name])) if a != b):
             raise ValueError('non-pixel kit bytes changed')
         path = output / 'patch/DBDAT' / name
-        path.parent.mkdir(parents=True, exist_ok=True); path.write_bytes(changed[name])
+        path.parent.mkdir(parents=True, exist_ok=True); storage_io.write_bytes(path, changed[name])
         hashes['DBDAT/' + name] = visual.sha(path)
         index = renderer._record_index(path)
         for event in (e for e in events if e['archive'] == name):

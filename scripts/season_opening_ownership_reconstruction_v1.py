@@ -1,4 +1,5 @@
 """Replay a latest, exact, source-bound ownership transaction without a seed rebuild."""
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
 
@@ -25,7 +26,7 @@ def reconstruction(previous, release_id, *, minimum_free_bytes=8 * 1024**3):
     plan = pipeline.read_json_file(path)
     if plan.get('schema_version') != planner.SCHEMA:
         raise ValueError('unsupported generic ownership SOURCE schema')
-    if (path.resolve() != (folder / delta.plan_filename(plan)).resolve()
+    if (storage_io.resolve(path) != storage_io.resolve(folder / delta.plan_filename(plan))
             or registry.sha256_file(path) != receipt.get('ownership_plan_sha256')):
         raise ValueError('ownership SOURCE plan binding changed')
     descriptor_path = folder / 'role-delta-input.json'
@@ -45,7 +46,7 @@ def reconstruction(previous, release_id, *, minimum_free_bytes=8 * 1024**3):
     if any(receipt.get(key) != value for key, value in expected.items()):
         raise ValueError('ownership SOURCE parent provenance changed')
     delta.verify_plan(base, plan)
-    original = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    original = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
     source_main = publisher.updated_package(pipeline.read_json_file(base.package_path), descriptor)
     expected_main, _, _, _ = layered.prepare(base, plan, original, source_main)
     package = pipeline.read_json_file(previous.package_path)
@@ -60,7 +61,7 @@ def reconstruction(previous, release_id, *, minimum_free_bytes=8 * 1024**3):
     rebuilt = registry.load_registered_release(previous.season, release_id)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path,
         pipeline.read_json_file(previous.inventory_path))
-    if rebuilt.package_path.read_bytes() != previous.package_path.read_bytes():
+    if storage_io.read_bytes(rebuilt.package_path) != storage_io.read_bytes(previous.package_path):
         raise ValueError('ownership SOURCE complete recipe bytes differ')
     return dict(season=previous.season, release_id=release_id,
         previous_release_id=previous.release_id, source_release_id=base.release_id,

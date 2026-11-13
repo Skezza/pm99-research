@@ -40,6 +40,7 @@ from app.ent_manager_profiles import parse_indexed_ent_manager_profile  # noqa: 
 from app.eq_jug_linked import parse_eq_external_team_roster_payload  # noqa: E402
 from app.fdi_indexed import IndexedFDIFile  # noqa: E402
 from app.models import PlayerRecord  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2 as package_v2  # noqa: E402
 from scripts import world_fixed_carrier_ledger_v2 as ledger  # noqa: E402
 
@@ -86,7 +87,7 @@ def _read_canonical(path: Path, *, label: str) -> dict[str, Any]:
 
 
 def _manager_surnames(ent_path: Path) -> dict[int, str]:
-    data = ent_path.read_bytes()
+    data = storage_io.read_bytes(ent_path)
     indexed = IndexedFDIFile.from_bytes(data)
     result: dict[int, str] = {}
     for entry in indexed.entries:
@@ -103,7 +104,7 @@ def _manager_surnames(ent_path: Path) -> dict[int, str]:
 
 
 def _base_player_fields(jug_path: Path) -> dict[int, dict[str, Any]]:
-    data = jug_path.read_bytes()
+    data = storage_io.read_bytes(jug_path)
     indexed = IndexedFDIFile.from_bytes(data)
     result: dict[int, dict[str, Any]] = {}
     for entry in indexed.entries:
@@ -144,7 +145,7 @@ def _assert_fixed_mode1_rosters_match_registry(*, eq_path: Path, registry: Mappi
     compiler transaction.
     """
 
-    data = eq_path.read_bytes()
+    data = storage_io.read_bytes(eq_path)
     indexed = IndexedFDIFile.from_bytes(data)
     entries = {int(entry.record_id): entry for entry in indexed.entries}
     changed: list[int] = []
@@ -281,7 +282,7 @@ def build_core_package(
 
     ledger.validate_registry(registry)
     ledger.validate_ledger(registry=registry, ledger=blocked_ledger)
-    base_tree = base_tree.resolve()
+    base_tree = storage_io.resolve(base_tree)
     dbdat = base_tree / "DBDAT"
     required = {
         "jug": dbdat / "JUG98030.FDI",
@@ -291,7 +292,7 @@ def build_core_package(
         "miniesc": dbdat / "MINIESC.PKF",
         "managpre": base_tree / "MANAGPRE.EXE",
     }
-    missing = [str(path) for path in required.values() if not path.is_file() or path.is_symlink()]
+    missing = [str(path) for path in required.values() if not storage_io.is_file(path) or path.is_symlink()]
     if missing:
         raise WorldCorePackageError("missing safe base-tree files: " + ", ".join(missing))
     _assert_fixed_mode1_rosters_match_registry(eq_path=required["eq"], registry=registry)
@@ -549,7 +550,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     package_v2.write_canonical_package(args.output_package, package)
     args.output_report.parent.mkdir(parents=True, exist_ok=True)
-    args.output_report.write_bytes(canonical_json_bytes(report))
+    storage_io.write_bytes(args.output_report, canonical_json_bytes(report))
     print(json.dumps({"package": str(args.output_package), "report": str(args.output_report), **report["coverage"]}, sort_keys=True))
     return 0
 

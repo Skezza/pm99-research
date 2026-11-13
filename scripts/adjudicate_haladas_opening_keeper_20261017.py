@@ -4,6 +4,7 @@ Source decision only: it does not authorize a reserve-policy starter bypass,
 claim the whole Haladas roster is historical, or count a native fix delivered.
 """
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry,season_pipeline_v2 as pipeline
 from scripts import season_within_club_reserve_repair_v1 as native
 from scripts import season_historical_roster_audit_v1 as roster
@@ -19,7 +20,7 @@ def page(key,url):
     receipt=pipeline.read_json_file(registry.ROOT/binding['source_receipt_path'])
     if binding['url']!=url or receipt.get('sha256')!=binding['sha256']:
         raise ValueError('original keeper source URL/content receipt differs')
-    return BeautifulSoup((registry.ROOT/binding['path']).read_bytes(),'html.parser'),binding
+    return BeautifulSoup(storage_io.read_bytes(registry.ROOT / binding['path']),'html.parser'),binding
 
 
 def decision(base):
@@ -43,7 +44,7 @@ def decision(base):
             or 'Goalkeeper' not in rows[0].get_text(' ',strip=True)
             or not rows[0].find('img',attrs={'title':'Hungary','alt':'Hungary'})):
         raise ValueError('original explicit keeper full-name/date/nationality row differs')
-    jug=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes();eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    jug=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI');eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     pkg=pipeline.read_json_file(base.package_path);actors={p['carrier_id']:p for p in pkg['players']}
     clubs={c['id']:c for c in pkg['clubs']};owners=ownership.native_owners(eq)
     facts={carrier:native.native_facts(jug,carrier) for carrier in (2211,8507)}
@@ -87,6 +88,6 @@ def decision(base):
 
 if __name__=='__main__':
     path=ROOT/'positive-opening-keeper-and-frozen-pair.json'
-    if path.exists():raise ValueError('completed positive source decision must not be regenerated')
+    if storage_io.exists(path):raise ValueError('completed positive source decision must not be regenerated')
     result=decision(registry.load_preferred_release('2000-01'));ROOT.mkdir(parents=True,exist_ok=True)
     retained(path,result);print(dict(opening_keeper='Kornél Kurucsai',nationality='HUN',native_writes=0,delivered=False),flush=True)

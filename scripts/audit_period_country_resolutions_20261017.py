@@ -3,6 +3,7 @@
 Not game delivery or blanket source approval. A future native transaction must
 also rederive each original typed annual plan and check the actual preimage.
 """
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_period_country_resolution_v3 as resolver
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
 
@@ -10,13 +11,13 @@ from scripts.build_savio_bobb_alias_reserve_20261011 import retained
 def main():
     root = resolver.cgo.CATALOG.parent
     output = root / 'prepared-country-resolutions-v3.json'
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('completed original country resolution audit must not repeat')
     sha = resolver.fifa.registry.sha256_file(resolver.fifa.fifa.identity.old.FIFA)
     index = resolver.fifa.load(sha)
     rows = []
     for directory in ('original-country-default-delivery-20261017-v1', 'country-policy-v2-cohort-20261017'):
-        for path in sorted((root.parent / directory).glob('*/country-plan.json')):
+        for path in sorted(storage_io.glob(root.parent / directory, '*/country-plan.json')):
             plan = resolver.cgo.pipeline.read_json_file(path)
             for row in plan['updates']:
                 try:

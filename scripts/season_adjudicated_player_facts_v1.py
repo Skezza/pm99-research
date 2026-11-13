@@ -10,6 +10,7 @@ from urllib.parse import urlsplit
 
 from bs4 import BeautifulSoup
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_package_v2 as packages, season_package_compiler_v2 as compiler
 from scripts import season_opening_identity_exchange_v1 as exchange
@@ -61,7 +62,7 @@ def verify_historical_identity(witness):
     participants = [p for p in xi + bench if str(p['source_player_id']) == str(historical['provider_player_id'])]
     if len(participants) != 1:
         raise ValueError('historical provider person absent or ambiguous in exact club')
-    page = BeautifulSoup(checked(match).read_bytes(), 'lxml')
+    page = BeautifulSoup(storage_io.read_bytes(checked(match)), 'lxml')
     links = [a for a in page.select('a[href]')
              if re.search(r'/spieler/' + re.escape(str(historical['provider_player_id'])) + r'(?:/|$)', a['href'])]
     full_names = {a.get('title') for a in links if a.get('title')}
@@ -117,7 +118,7 @@ def _adjudicate_official_sources(witness):
             raise ValueError('official source original URL/SHA receipt differs')
         if source.get('provider') == 'premier-league-sdp-player-api':
             from scripts.season_premier_league_profile_facts_v1 import parse_player_json
-            identity = parse_player_json(body.read_bytes(), url=source['url'],
+            identity = parse_player_json(storage_io.read_bytes(body), url=source['url'],
                 provider_player_id=source['provider_player_id'], full_name=witness['full_name'])
             if source['birth_date'] != {'label': 'dates.birth', 'literal': identity['birth_date'], 'format': '%Y-%m-%d'}:
                 raise ValueError('Premier League JSON birthday claim differs from its bound record')
@@ -130,7 +131,7 @@ def _adjudicate_official_sources(witness):
         parsed = urlsplit(source['url'])
         if parsed.scheme != 'https' or not parsed.hostname:
             raise ValueError('official source needs an explicit HTTPS origin')
-        text = ' '.join(BeautifulSoup(body.read_bytes(), 'lxml').get_text(' ', strip=True).split())
+        text = ' '.join(BeautifulSoup(storage_io.read_bytes(body), 'lxml').get_text(' ', strip=True).split())
         if witness['full_name'] not in text:
             raise ValueError('official biography does not name the historical person')
         claim = source['birth_date']
@@ -201,10 +202,10 @@ def adjudicate_independent_sources(witness):
         parsed = urlsplit(source['url'])
         if parsed.scheme != 'https' or not parsed.hostname:
             raise ValueError('independent source needs explicit HTTPS origin')
-        text = ' '.join(BeautifulSoup(body.read_bytes(), 'lxml').get_text(' ', strip=True).split())
+        text = ' '.join(BeautifulSoup(storage_io.read_bytes(body), 'lxml').get_text(' ', strip=True).split())
         if witness['full_name'] not in text:
             raise ValueError('independent source does not name the historical person')
-        page = BeautifulSoup(body.read_bytes(), 'lxml')
+        page = BeautifulSoup(storage_io.read_bytes(body), 'lxml')
         headings = [h.get_text(' ', strip=True) for h in page.select('title,h1,h2,h3')]
         if not any(re.search(r'(?<!\w)' + re.escape(witness['full_name']) + r'(?!\w)', h) for h in headings):
             raise ValueError('independent biography subject heading does not identify the full person')
@@ -259,8 +260,8 @@ def prepare(base, path, request):
     package = pipeline.read_json_file(base.package_path)
     actors = {p['carrier_id']: p for p in package['players']}
     clubs = {c['id']: c for c in package['clubs']}
-    jug = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     codes = compiler._extract_country_codes_from_textos(base.game_path / 'DBDAT/TEXTOS.PKF')
     entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(jug).entries}
     owners = ownership.native_owners(eq)

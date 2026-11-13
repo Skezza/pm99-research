@@ -1,4 +1,5 @@
 """Record the two Mfuyi source decisions, explicitly not a native delivery."""
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_cgo_redirect_country_witness_v1 as witness
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
 
@@ -6,7 +7,7 @@ from scripts.build_savio_bobb_alias_reserve_20261011 import retained
 def main():
     root=witness.old.CATALOG.parent
     path=root/'mfuyi-original-country-link-review.json'
-    if path.exists():raise ValueError('completed original country redirect review must not repeat')
+    if storage_io.exists(path):raise ValueError('completed original country redirect review must not repeat')
     rows=[]
     for season,carrier in [('2011-12',12506),('2012-13',8023)]:
         plan_path=root.parent/'country-policy-v2-cohort-20261017'/season/'country-plan.json'

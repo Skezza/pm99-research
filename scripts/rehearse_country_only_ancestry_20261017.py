@@ -1,5 +1,6 @@
 """Read-only real two-edge rehearsal; never publish or regenerate a game."""
 import hashlib
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import verify_country_only_ancestry_v1 as ancestry
 from scripts.checkpoint_original_country_batch_v1 import check_country_code
@@ -9,10 +10,10 @@ from scripts.build_savio_bobb_alias_reserve_20261011 import retained
 def main():
     root=registry.ROOT/'.local/consolidated-audit-20261009'
     output=root/'country-only-ancestry-20261017/real-two-edge-rehearsal.json'
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('completed read-only ancestry rehearsal must not repeat')
     output.parent.mkdir(parents=True,exist_ok=True)
-    before=registry.CATALOG_PATH.read_bytes()
+    before=storage_io.read_bytes(registry.CATALOG_PATH)
     base=registry.load_registered_release('2009-10','sourced-remaining-manager-tenures-20261016-r116a')
     actual=registry.load_registered_release('2009-10','sourced-original-country-policy-v2-20261017-r128a')
     edges=[ancestry.Edge('sourced-original-period-country-defaults-20261017-r127a',
@@ -25,7 +26,7 @@ def main():
     proof['final_semantic_countries']=[dict(carrier_id=row['carrier_id'],
         nationality=row['nationality'],native_label=check_country_code(row,codes),
         source_plan=origins[row['carrier_id']]) for row in updates]
-    after=registry.CATALOG_PATH.read_bytes()
+    after=storage_io.read_bytes(registry.CATALOG_PATH)
     # This rehearsal uses explicitly retained releases, not mutable defaults.
     # A separate season's successful publication must not discard its proof.
     # The ACTUAL publication gate still requires all26 bindings unchanged.

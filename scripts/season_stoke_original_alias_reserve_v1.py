@@ -7,6 +7,7 @@ sources, a dated Stoke spell, exact native owners and an unused dated reserve.
 import copy
 from pathlib import Path
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_historical_roster_audit_v1 as roster
 from scripts import season_duplicate_ownership_plan_v1 as planner
@@ -51,7 +52,7 @@ def prepare(base):
     club = next(c for c in package['clubs'] if c['id'] == before['club_id'])
     jug_path = base.game_path / 'DBDAT/JUG98030.FDI'
     eq_path = base.game_path / 'DBDAT/EQ98030.FDI'
-    jug, eq = jug_path.read_bytes(), eq_path.read_bytes()
+    jug, eq = storage_io.read_bytes(jug_path), storage_io.read_bytes(eq_path)
     first, second = facts.native_facts(jug, 27013), facts.native_facts(jug, 27002)
     starting, _ = starters.native_starters(base, club)
     pair_guard(base.season, club, before, keep, first, second, ownership.native_owners(eq), starting)
@@ -112,9 +113,9 @@ def reconstruction(previous, release_id):
     from scripts.build_savio_bobb_alias_reserve_20261011 import retained
     base = registry.load_registered_release(plan['season'], plan['release_id'])
     verify_plan(base, plan)
-    if path.resolve() != (previous.package_path.parent / delta.plan_filename(plan)).resolve():
+    if storage_io.resolve(path) != storage_io.resolve(previous.package_path.parent / delta.plan_filename(plan)):
         raise ValueError('original alias SOURCE input is not the release-local exact plan')
-    expected, english, _, _ = layered.prepare(base, plan, (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes())
+    expected, english, _, _ = layered.prepare(base, plan, storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI'))
     if english is not None or expected != pipeline.read_json_file(previous.package_path):
         raise ValueError('edited original alias recipe cannot discard changes during SOURCE replay')
     descriptor = path.with_name('original-alias-SOURCE-inert.json')

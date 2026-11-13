@@ -24,6 +24,7 @@ from app.eq_jug_linked import parse_eq_external_team_roster_payload
 from app.fdi_indexed import IndexedFDIFile
 from app.player_initial_order import OrderReplacement, patch_initial_orders, read_initial_order
 from app import indexed_jug_roles
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_duplicate_ownership_delta_v1 as delta
 from scripts import season_editorial_ratings_v1 as ratings
 from scripts import season_historical_roster_audit_v1 as roster_reader
@@ -32,7 +33,7 @@ from scripts import season_package_v2 as package_v2
 from scripts import season_release_registry_v1 as registry
 
 
-HERE = Path(__file__).resolve().parent
+HERE = storage_io.resolve(Path(__file__)).parent
 INPUT_PATH = (registry.ROOT / ".local/consolidated-audit-20261009/parallel-rc-20261023/"
               "resume-qa/altrincham-2001-adapter-v2/altrincham-2001-02-opening-18-input-v2.json")
 INPUT_SHA256 = "24c57d6cd17047a14a2da6ed5dd13b3729e7cf3a9bd847441cd7fb980ce93a02"
@@ -82,10 +83,10 @@ def _verify_source_identity_keys(data: dict) -> None:
 
 
 def _read_input() -> dict:
-    raw = INPUT_PATH.read_bytes()
+    raw = storage_io.read_bytes(INPUT_PATH)
     if _sha(raw) != INPUT_SHA256:
         raise ValueError("Altrincham 2001 typed input bytes changed")
-    receipt_raw = RECEIPT_PATH.read_bytes()
+    receipt_raw = storage_io.read_bytes(RECEIPT_PATH)
     if _sha(receipt_raw) != RECEIPT_SHA256:
         raise ValueError("Altrincham 2001 source receipt bytes changed")
     data, receipt = json.loads(raw), json.loads(receipt_raw)
@@ -112,7 +113,7 @@ def _source_body(data: dict, source_id: str) -> bytes:
         raise ValueError(f"source {source_id} is not a retained raw body")
     path = registry.ROOT / row["path"]
     registry.relative_workspace_path(path)
-    body = path.read_bytes()
+    body = storage_io.read_bytes(path)
     if _sha(body) != row.get("sha256"):
         raise ValueError(f"source body hash changed for {source_id}")
     return body
@@ -232,13 +233,13 @@ def _parent(base) -> tuple[dict, dict[str, bytes]]:
     if base.season != SEASON:
         raise ValueError("Altrincham 2001 source plan is season-bound to 2001-02")
     registered = registry.load_registered_release(SEASON, base.release_id)
-    if (Path(registered.package_path).resolve() != Path(base.package_path).resolve()
-            or Path(registered.game_path).resolve() != Path(base.game_path).resolve()):
+    if (storage_io.resolve(Path(registered.package_path)) != storage_io.resolve(Path(base.package_path))
+            or storage_io.resolve(Path(registered.game_path)) != storage_io.resolve(Path(base.game_path))):
         raise ValueError("passed parent is not the exact registered release tree")
-    package_raw = base.package_path.read_bytes()
+    package_raw = storage_io.read_bytes(base.package_path)
     package = json.loads(package_raw)
     paths = {name: base.game_path / "DBDAT" / name for name in REQUIRED_NATIVE + READ_ONLY_NATIVE}
-    native = {name: path.read_bytes() for name, path in paths.items()}
+    native = {name: storage_io.read_bytes(path) for name, path in paths.items()}
     return {"season": SEASON, "release_id": base.release_id,
         "package_path": registry.relative_workspace_path(base.package_path),
         "package_sha256": _sha(package_raw),
@@ -459,7 +460,7 @@ def _build_package(base, package: dict, target: dict, allocations: list[dict], s
 def _compile_native(base, package: dict, source_proof: dict, target: dict, slots: list[dict],
                     jentries: dict, eentries: dict, owners: dict, roster, crosswalk: list[dict],
                     desired: list[dict], data: dict) -> dict:
-    files = {name: (base.game_path / "DBDAT" / name).read_bytes() for name in REQUIRED_NATIVE + READ_ONLY_NATIVE}
+    files = {name: storage_io.read_bytes(base.game_path / 'DBDAT' / name) for name in REQUIRED_NATIVE + READ_ONLY_NATIVE}
     allocation = _HELPER.typed._assign_carriers(slots, files["JUG98030.FDI"], jentries, desired)
     if [x["replacement"]["source_person"]["name"] for x in allocation] != _EXPECTED_NAMES:
         raise ValueError("native carrier matching changed source row order")
@@ -538,11 +539,11 @@ def _compile_native(base, package: dict, source_proof: dict, target: dict, slots
     with tempfile.TemporaryDirectory(prefix="alty2001-flag-") as tmp:
         temp = Path(tmp)
         eq_path, jug_path = temp / "EQ98030.FDI", temp / "JUG98030.FDI"
-        eq_path.write_bytes(files["EQ98030.FDI"])
-        jug_path.write_bytes(files["JUG98030.FDI"])
+        storage_io.write_bytes(eq_path, files['EQ98030.FDI'])
+        storage_io.write_bytes(jug_path, files['JUG98030.FDI'])
         edit_team_roster_eq_jug_linked(team_file=str(eq_path), player_file=str(jug_path),
             eq_record_id=3310, slot_number=9, flag=0, write_changes=True)
-        eq_cleared = eq_path.read_bytes()
+        eq_cleared = storage_io.read_bytes(eq_path)
     old_eq = files["EQ98030.FDI"]
     old_team = eentries[3310]
     changed_offsets = [i for i, (a, b) in enumerate(zip(old_eq, eq_cleared)) if a != b]
@@ -635,7 +636,7 @@ def _compile_native(base, package: dict, source_proof: dict, target: dict, slots
         raise ValueError("native club label/ground readback differs")
     with tempfile.TemporaryDirectory(prefix="alty2001-manager-readback-") as tmp:
         eqp, entp = Path(tmp) / "EQ98030.FDI", Path(tmp) / "ENT98030.FDI"
-        eqp.write_bytes(eq); entp.write_bytes(ent)
+        storage_io.write_bytes(eqp, eq); storage_io.write_bytes(entp, ent)
         holders, manager_names = _HELPER.whole._manager_graph(eq_path=eqp, ent_path=entp)
     if manager_names.get(807) != "Taylor" or [c["carrier_id"] for c in holders.get(807, [])] != [3310]:
         raise ValueError("native manager807 Taylor/owner readback differs")
@@ -655,14 +656,14 @@ def _compile_native(base, package: dict, source_proof: dict, target: dict, slots
 
 
 def _implementation_bindings() -> list[dict[str, str]]:
-    paths = {"adapter": Path(__file__).resolve(), "altrincham_2000_helpers": _HELPER_PATH,
+    paths = {"adapter": storage_io.resolve(Path(__file__)), "altrincham_2000_helpers": _HELPER_PATH,
         "altrincham_2000_typed_source_reader": registry.ROOT / "scripts/season_altrincham_source_reader_v1.py",
         "ownership_delta_native_compiler": Path(delta.__file__),
         "package_schema": Path(package_v2.__file__), "release_registry": Path(registry.__file__),
         "ratings_model": Path(ratings.__file__), "manager_display_policy": Path(manager_display.__file__),
-        "fdi_indexed": Path(IndexedFDIFile.__module__.replace('.', '/')) if False else Path(__file__).resolve(),
-        "eq_jug_codec": Path(parse_eq_external_team_roster_payload.__module__.replace('.', '/')) if False else Path(__file__).resolve(),
-        "editor_actions": Path(edit_team_roster_eq_jug_linked.__module__.replace('.', '/')) if False else Path(__file__).resolve(),
+        "fdi_indexed": Path(IndexedFDIFile.__module__.replace('.', '/')) if False else storage_io.resolve(Path(__file__)),
+        "eq_jug_codec": Path(parse_eq_external_team_roster_payload.__module__.replace('.', '/')) if False else storage_io.resolve(Path(__file__)),
+        "editor_actions": Path(edit_team_roster_eq_jug_linked.__module__.replace('.', '/')) if False else storage_io.resolve(Path(__file__)),
         "order_writer": registry.ROOT / "upstream/pm99-skezmod-db-editor/app/player_initial_order.py",
         "indexed_role_writer": Path(indexed_jug_roles.__file__)}
     # Resolve the Python modules through module objects so plan paths are
@@ -695,7 +696,7 @@ def _compile(base, *, expected_plan: dict | None = None) -> dict:
     key = _binding_key(parent, sources, implementations)
     cached = _CACHE.get(key)
     if cached is None:
-        package = json.loads(base.package_path.read_text())
+        package = json.loads(storage_io.read_text(base.package_path))
         target, slots, jentries, eentries, owners, roster, crosswalk = _package_target(base, package, native)
         desired = _desired(data)
         result = _compile_native(base, package, source_proof, target, slots, jentries,
@@ -722,7 +723,7 @@ def _compile(base, *, expected_plan: dict | None = None) -> dict:
         plan["transaction_id"] = _sha(package_v2.canonical_json_bytes(plan))[:24]
         cached = {"plan": plan, "result": result, "parent": parent,
             "native_before": {name: native[name] for name in REQUIRED_NATIVE},
-            "package_before": json.loads(base.package_path.read_text())}
+            "package_before": json.loads(storage_io.read_text(base.package_path))}
         _CACHE[key] = cached
     if cached["parent"] != parent:
         raise ValueError("source adapter cache parent mismatch")
@@ -847,11 +848,11 @@ def reconstruction(previous, release_id: str):
     relative = previous.locator.get("sourced_profile_assignment_plan_path")
     if not relative:
         raise ValueError("Altrincham SOURCE lacks its exact source exchange plan path")
-    plan_path = (registry.ROOT / relative).resolve()
+    plan_path = storage_io.resolve(registry.ROOT / relative)
     plan = pipeline.read_json_file(plan_path)
     parent = registry.load_registered_release(SEASON, plan.get("parent", {}).get("release_id", ""))
     verify(parent, plan)
-    if (plan_path != (previous.package_path.parent / filename(plan)).resolve()
+    if (plan_path != storage_io.resolve(previous.package_path.parent / filename(plan))
             or _file_sha(plan_path) != receipt.get("original_profile_assignment_plan_sha256")):
         raise ValueError("Altrincham SOURCE outer plan path/hash differs")
     inner = source_artifact(plan)
@@ -859,7 +860,7 @@ def reconstruction(previous, release_id: str):
     if _file_sha(artifact_path) != inner["sha256"]:
         raise ValueError("Altrincham retained inner source artifact differs")
     expected_package = bind(pipeline.read_json_file(parent.package_path), plan)
-    previous_package_bytes = previous.package_path.read_bytes()
+    previous_package_bytes = storage_io.read_bytes(previous.package_path)
     if (pipeline.read_json_file(previous.package_path) != expected_package
             or previous_package_bytes != package_v2.canonical_json_bytes(expected_package)):
         raise ValueError("Altrincham SOURCE package differs from exact canonical source-bound postimage")
@@ -877,7 +878,7 @@ def reconstruction(previous, release_id: str):
     rebuilt = registry.load_registered_release(SEASON, release_id)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path, previous_inventory)
     if (pipeline.read_json_file(rebuilt.package_path) != expected_package
-            or rebuilt.package_path.read_bytes() != previous_package_bytes):
+            or storage_io.read_bytes(rebuilt.package_path) != previous_package_bytes):
         raise ValueError("Altrincham complete SOURCE replay recipe bytes differ")
     return {"season": SEASON, "release_id": release_id, "complete_game_inventory_identical": True,
         "complete_recipe_identical": True, "compilation_mode": MODE}

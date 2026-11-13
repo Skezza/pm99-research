@@ -1,6 +1,7 @@
 """Build one original annual-cohort label repair without changing its people."""
 import json
 import shutil
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_period_squad_carrier_label_v2 as source
 from scripts import publish_historical_role_delta_v1 as publisher
 from scripts import build_registered_quality_release_v1 as reconstruction
@@ -26,7 +27,7 @@ def inputs():
 
 def verify_native(base,actual,plan):
     source.verify(base,plan)
-    before=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes();after=(actual.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    before=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI');after=storage_io.read_bytes(actual.game_path / 'DBDAT/EQ98030.FDI')
     expected,changes=source.prior.labels.rewrite_club_labels(before,plan['updates'])
     if expected!=after or len(changes)!=1:raise ValueError('actual Hertha labels differ from exact typed plan')
     old={e.record_id:e for e in source.prior.IndexedFDIFile.from_bytes(before).entries}
@@ -54,7 +55,7 @@ def verify_native(base,actual,plan):
 
 def main():
     ROOT.mkdir(exist_ok=True)
-    if (ROOT/'club-plan.json').exists() or source.registry.locator_path(SEASON,RELEASE).exists():
+    if storage_io.exists(ROOT / 'club-plan.json') or storage_io.exists(source.registry.locator_path(SEASON, RELEASE)):
         raise ValueError('existing Hertha transaction must be inspected, not regenerated')
     base=source.registry.load_preferred_release(SEASON)
     if base.release_id!=BASE:raise ValueError('Hertha parent advanced; preserve intervening changes')

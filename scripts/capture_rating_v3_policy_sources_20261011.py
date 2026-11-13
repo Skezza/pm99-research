@@ -1,5 +1,6 @@
 """Pin original small biography/dated achievement pages, never image downloads."""
 import requests
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_rating_calibration_v3 as policy
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
 
@@ -12,11 +13,11 @@ def main():
     root=policy.ROOT/'sources';root.mkdir(parents=True,exist_ok=True);rows=[]
     for label,url,token in SOURCES:
         path=root/(label+'.html')
-        if not path.exists():
+        if not storage_io.exists(path):
             response=requests.get(url,headers={'User-Agent':'PM99 historical recipe research source receipt/1.0'},timeout=45)
             response.raise_for_status()
             if token not in response.text:raise ValueError('wrong/blocked policy source page')
-            path.write_bytes(response.content)
+            storage_io.write_bytes(path, response.content)
         rows.append(dict(label=label,url=url,path=policy.registry.relative_workspace_path(path),sha256=policy.registry.sha256_file(path),
             purpose='identity/dated achievements; NOT numerical rating authority'))
     retained(policy.ROOT/'dated-policy-sources.json',dict(sources=rows))

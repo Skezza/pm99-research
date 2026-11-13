@@ -2,6 +2,7 @@
 import copy
 from datetime import UTC, datetime
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_original_secondary_facts_v1 as layer
 from scripts import build_registered_quality_release_v1 as builder
@@ -32,7 +33,7 @@ def run(*, root=ROOT, cases=CASES, profiles=None, prior_version=24, next_version
         close_ferran_finding=True, count_frozen_native_year_repairs=False):
     prior = root.parent / ('release-delivery-checklist-v' + str(prior_version) + '.json')
     output = root.parent / ('release-delivery-checklist-v' + str(next_version) + '.json')
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('completed secondary-fact checkpoint must not repeat')
     result = copy.deepcopy(pipeline.read_json_file(prior))
     old = {row['season']: row for row in result['current_release_bindings']}
@@ -112,7 +113,7 @@ def run(*, root=ROOT, cases=CASES, profiles=None, prior_version=24, next_version
         path = root / (season + '-final-attestation.json')
         attestation = runtime.attest(season=season,
             evidence_dir=registry.ROOT / '.local/runlogs/pm99_runner' / tag)
-        if path.exists():
+        if storage_io.exists(path):
             if pipeline.read_json_file(path) != attestation:
                 raise ValueError('retained secondary-fact attestation differs')
         else:

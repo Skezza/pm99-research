@@ -25,6 +25,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_editorial_timeline_v1 as editorial
 from scripts import season_package_compiler_v2 as binary_compiler
 from scripts import season_package_v2 as package_v2
@@ -53,7 +54,7 @@ def _canonical_bytes(value: Any) -> bytes:
 
 def _read_canonical(path: Path, *, label: str) -> dict[str, Any]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise WorkspaceError(f"cannot read {label}: {path}: {exc}") from exc
@@ -67,7 +68,7 @@ def _schema_errors(value: dict[str, Any]) -> list[str]:
         import jsonschema  # type: ignore[import-not-found]
     except ImportError:
         return []
-    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    schema = json.loads(storage_io.read_text(SCHEMA_PATH, encoding='utf-8'))
     errors = sorted(
         jsonschema.Draft202012Validator(schema).iter_errors(value),
         key=lambda error: list(error.absolute_path),
@@ -83,8 +84,8 @@ def _resolve_file(workspace_path: Path, descriptor: dict[str, Any], *, label: st
     digest = descriptor.get("sha256")
     if not isinstance(relative, str) or not isinstance(digest, str):
         raise WorkspaceError(f"{label} has no relative_path/sha256")
-    path = (workspace_path.parent / relative).resolve()
-    if not path.is_file() or path.is_symlink():
+    path = storage_io.resolve(workspace_path.parent / relative)
+    if not storage_io.is_file(path) or path.is_symlink():
         raise WorkspaceError(f"{label} is not a regular file: {path}")
     actual = package_v2.sha256_file(path)
     if actual != digest:
@@ -218,7 +219,7 @@ def build_missing_portrait_report(
 
 def _write(path: Path, value: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(_canonical_bytes(value))
+    storage_io.write_bytes(path, _canonical_bytes(value))
 
 
 def prepare_workspace(*, workspace_path: Path, output_dir: Path) -> dict[str, Any]:
@@ -262,7 +263,7 @@ def prepare_workspace(*, workspace_path: Path, output_dir: Path) -> dict[str, An
         "season": workspace["season"],
         "effective_package_sha256": package_v2.sha256_file(outputs["effective_package"]),
         "editorial_patch_count": len(overlay["data_patches"]),
-        "missing_portrait_count": json.loads(outputs["missing_portraits"].read_text())["missing_count"],
+        "missing_portrait_count": json.loads(storage_io.read_text(outputs['missing_portraits']))["missing_count"],
         "outputs": {key: str(value) for key, value in outputs.items()},
     }
 
@@ -272,20 +273,20 @@ def materialise_base_tree(
 ) -> None:
     """Copy a base while never hard-linking files touched by season stages."""
 
-    if materialisation_tree.exists():
+    if storage_io.exists(materialisation_tree):
         raise WorkspaceError(f"refusing to replace materialisation tree: {materialisation_tree}")
-    base_tree = base_tree.resolve()
+    base_tree = storage_io.resolve(base_tree)
 
     def copy_file(source: str, destination: str) -> str:
-        source_path = Path(source).resolve()
+        source_path = storage_io.resolve(Path(source))
         relative = source_path.relative_to(base_tree)
         writable = (
             relative.parts[0].casefold() == "dbdat"
             or relative.name.casefold() == "managpre.exe"
         )
         if writable or not link_unchanged:
-            return shutil.copy2(source, destination)
-        os.link(source, destination)
+            return storage_io.copy_file(source, destination, metadata=True)
+        storage_io.link(source, destination)
         return destination
 
     shutil.copytree(
@@ -349,19 +350,19 @@ def _parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
-        workspace_path = args.workspace.resolve()
+        workspace_path = storage_io.resolve(args.workspace)
         if args.command == "check":
             workspace = _read_canonical(workspace_path, label="season workspace")
             paths = validate_workspace(workspace, workspace_path=workspace_path)
             result = {"ok": True, "workspace_id": workspace["workspace_id"], "season": workspace["season"], "inputs": {key: str(value) for key, value in paths.items()}}
         elif args.command == "prepare":
-            result = prepare_workspace(workspace_path=workspace_path, output_dir=args.output_dir.resolve())
+            result = prepare_workspace(workspace_path=workspace_path, output_dir=storage_io.resolve(args.output_dir))
         else:
             result = compile_workspace(
                 workspace_path=workspace_path,
-                base_tree=args.base_tree.resolve(),
-                materialisation_tree=args.materialisation_tree.resolve(),
-                output_dir=args.output_dir.resolve(),
+                base_tree=storage_io.resolve(args.base_tree),
+                materialisation_tree=storage_io.resolve(args.materialisation_tree),
+                output_dir=storage_io.resolve(args.output_dir),
                 copy_base=args.copy_base,
                 link_unchanged=args.link_unchanged,
             )

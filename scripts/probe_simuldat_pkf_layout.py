@@ -7,6 +7,14 @@ type guesses, and hashes without extracting proprietary payloads.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 from collections import Counter
 from dataclasses import asdict, dataclass
@@ -170,14 +178,14 @@ def display_path(path: Path) -> str:
 def iter_pkf_files(roots: Iterable[Path]) -> list[Path]:
     files: list[Path] = []
     for root in roots:
-        if not root.exists():
+        if not storage_io.exists(root):
             print(f"warning: missing root: {root}", file=sys.stderr)
             continue
-        if root.is_file():
+        if storage_io.is_file(root):
             if root.suffix.lower() == ".pkf":
                 files.append(root)
             continue
-        files.extend(path for path in root.rglob("*") if path.is_file() and path.suffix.lower() == ".pkf")
+        files.extend(path for path in storage_io.glob(root, '*', recursive=True) if storage_io.is_file(path) and path.suffix.lower() == ".pkf")
     return sorted(dict.fromkeys(files))
 
 
@@ -547,7 +555,7 @@ def scan_file(
     max_loose_hits: int,
     max_orphans: int,
 ) -> dict[str, object]:
-    data = path.read_bytes()
+    data = storage_io.read_bytes(path)
     candidates = find_candidate_fields(data)
     runs = select_table_runs(
         candidates,
@@ -686,7 +694,7 @@ def main() -> int:
     print(json.dumps(summary, indent=2, sort_keys=True))
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
+        storage_io.write_text(args.output, json.dumps(report, indent=2, sort_keys=True), encoding='utf-8')
         print(f"\nwrote {args.output}")
     return 0 if not failures else 1
 

@@ -12,6 +12,7 @@ import re
 import shutil
 import tempfile
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import prepare_ofk_2004_source_allocation_v1 as source
 from scripts import prepare_ofk_2004_private_native_v1 as native
 from scripts import prepare_ofk_2004_private_kits_v1 as kits
@@ -388,12 +389,12 @@ def compose(plan, render_dir):
     artifact_paths = {}
     changes = []
     for archive in render.ARCHIVES:
-        raw = (baseline.game_path / 'DBDAT' / archive).read_bytes()
+        raw = storage_io.read_bytes(baseline.game_path / 'DBDAT' / archive)
         record = render._record_index(baseline.game_path / 'DBDAT' / archive)[plan['native_club_carrier_id']]
         artifact = next(a for a in bindings['clubs'][0]['artifacts'] if a['id'].endswith('-' + archive[:-4].lower()))
         path = render_dir / artifact['relative_path']
         if registry.sha256_file(path) != artifact['sha256']: raise ValueError('foreign render differs from its binding')
-        payload = pixel_payload(record, path.read_bytes())
+        payload = pixel_payload(record, storage_io.read_bytes(path))
         patched = bytearray(raw)
         patched[record.bitmap_offset:record.bitmap_offset + record.bitmap_length] = payload
         intervals = [(record.bitmap_offset + lo, record.bitmap_offset + hi)
@@ -455,7 +456,7 @@ def preserve_inherited_plan(recipe, baseline_dir, paths):
 
 
 def materialise(plan, output):
-    if output.exists(): raise ValueError('foreign exact-replay workspace is immutable')
+    if storage_io.exists(output): raise ValueError('foreign exact-replay workspace is immutable')
     output.mkdir(parents=True)
     baseline, recipe, composition, before, files, detail, paths, bindings, rendered, changes = compose(plan, output / 'renders')
     if shutil.disk_usage(baseline.game_path).free < 8 * 1024**3 + sum(len(b) for b in files.values()):
@@ -465,7 +466,7 @@ def materialise(plan, output):
     corrected=detail.get('corrected_native_carriers',detail['ordered_native_carriers'])
     for id in corrected:
         path = output / 'game/DBDAT/MINIFOTO' / f'J96{id:05d}.BMP'
-        if path.exists(): path.unlink()  # Private hardlink only, not the known-good baseline.
+        if storage_io.exists(path): storage_io.unlink(path)  # Private hardlink only, not the known-good baseline.
     compositions=composition if isinstance(composition,list) else [composition]
     new_tachira=plan['source_adapter']==TACHIRA_2015_ADAPTER
     kit_relative=kit_source_artifact(plan['season'],plan['kit_source_catalogue'],
@@ -520,7 +521,7 @@ def materialise(plan, output):
             original = paths.get(relative, baseline.package_path.parent / rel)
             verify_recipe_artifact(original, artifact['sha256'])
             target.parent.mkdir(parents=True, exist_ok=True)
-            os.link(original, target)
+            storage_io.link(original, target)
         verify_recipe_artifact(target, artifact['sha256'])
     pipeline.write_canonical_json(output / 'season-package.json', recipe)
     pipeline.write_canonical_json(output / 'render-bindings.json', bindings)
@@ -530,7 +531,7 @@ def materialise(plan, output):
     inventory = pipeline.build_tree_inventory(output / 'game')
     pipeline.write_canonical_json(output / 'inventory.json', inventory)
     for name, payload in before.items():
-        if (baseline.game_path / 'DBDAT' / name).read_bytes() != payload:
+        if storage_io.read_bytes(baseline.game_path / 'DBDAT' / name) != payload:
             raise ValueError('foreign known-good baseline changed during replay')
     receipt = dict(schema_version=SCHEMA, season=plan['season'], baseline_release_id=baseline.release_id,
         plan_sha256=registry.sha256_file(output / FILENAME),
@@ -618,8 +619,8 @@ def publish(candidate, native_proof, identity_proof, release_id):
     if any(registry.sha256_file(candidate / 'game/DBDAT' / name) != sha for name, sha in receipt['native_hashes'].items()):
         raise ValueError('foreign proved output changed')
     destination = registry.locator_path(plan['season'], release_id).parent
-    if destination.exists(): raise ValueError('foreign release metadata is immutable')
-    outputs = [dict(path='DBDAT/' + name, sha256=sha, size=(candidate / 'game/DBDAT' / name).stat().st_size)
+    if storage_io.exists(destination): raise ValueError('foreign release metadata is immutable')
+    outputs = [dict(path='DBDAT/' + name, sha256=sha, size=storage_io.size(candidate / 'game/DBDAT' / name))
         for name, sha in sorted(receipt['native_hashes'].items())]
     compiler = dict(schema=SCHEMA, season=plan['season'], compilation_mode=MODE,
         season_package_sha256=registry.canonical_document_sha256(candidate / 'season-package.json'),

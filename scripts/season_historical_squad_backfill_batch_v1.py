@@ -23,6 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import capture_transfermarkt_historical_squads_v1 as capture_lib  # noqa: E402
 from scripts import compose_season_source_captures_v1 as compose_lib  # noqa: E402
 from scripts import season_carrier_allocation_v1 as allocation_lib  # noqa: E402
@@ -36,7 +37,7 @@ CURRENT_SCHEMA = "pm99-historical-squad-backfill-current-v1"
 
 
 def _read(path: Path) -> dict[str, Any]:
-    raw = path.read_bytes()
+    raw = storage_io.read_bytes(path)
     value = json.loads(raw.decode("utf-8"))
     if not isinstance(value, dict) or raw != capture_lib.canonical_bytes(value):
         raise ValueError(f"not canonical JSON: {path}")
@@ -44,7 +45,7 @@ def _read(path: Path) -> dict[str, Any]:
 
 
 def _sha(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def _document_sha(value: Mapping[str, Any]) -> str:
@@ -55,11 +56,11 @@ def _write_immutable(path: Path, value: Mapping[str, Any]) -> str:
     payload = capture_lib.canonical_bytes(value)
     digest = hashlib.sha256(payload).hexdigest()
     path.parent.mkdir(parents=True, exist_ok=True)
-    if path.exists():
-        if path.read_bytes() != payload:
+    if storage_io.exists(path):
+        if storage_io.read_bytes(path) != payload:
             raise ValueError(f"immutable revision artifact conflict: {path}")
     else:
-        path.write_bytes(payload)
+        storage_io.write_bytes(path, payload)
     return digest
 
 
@@ -91,13 +92,13 @@ def _publish_revision(*, local: Path, season: str, artifacts: Mapping[str, Mappi
     with tempfile.NamedTemporaryFile(prefix=".current-", suffix=".json", dir=local, delete=False) as handle:
         handle.write(payload)
         temporary = Path(handle.name)
-    os.replace(temporary, local / "current.json")
+    storage_io.replace_file(temporary, local / "current.json")
     return revision_id, manifest
 
 
 def discover_base(season_dir: Path) -> Path:
     candidates: list[tuple[int, str, Path]] = []
-    for path in (season_dir / "sources").glob("*footballsquads*.json"):
+    for path in storage_io.glob(season_dir / 'sources', '*footballsquads*.json'):
         try:
             value = _read(path)
         except (OSError, ValueError, json.JSONDecodeError):
@@ -190,7 +191,7 @@ def run_season(*, season: str, scope_paths: list[Path], output_root: Path, offli
         artifacts.update({"ntf": ntf, "ntf_gaps": ntf_gaps})
     revision_id, current = _publish_revision(local=local, season=season, artifacts=artifacts)
     old_path = ROOT / ".local" / "season-batch-v1" / season / "carrier-allocation.json"
-    old_count = int(_read(old_path).get("coverage", {}).get("assignment_count", 0)) if old_path.is_file() else 0
+    old_count = int(_read(old_path).get("coverage", {}).get("assignment_count", 0)) if storage_io.is_file(old_path) else 0
     return {
         "season": season, "status": "captured" if selected_scope else "base-materialised-no-missing-scoped-country",
         "base_club_count": len(base["clubs"]), "supplemental_club_count": len(supplemental["clubs"]),
@@ -220,7 +221,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     matrix = {"schema_version": SCHEMA, "scopes": [{"path": str(path), "sha256": _sha(path)} for path in args.scope], "seasons": rows}
     matrix_path = args.matrix_output or args.output_root / "matrix.json"
     matrix_path.parent.mkdir(parents=True, exist_ok=True)
-    matrix_path.write_bytes(capture_lib.canonical_bytes(matrix))
+    storage_io.write_bytes(matrix_path, capture_lib.canonical_bytes(matrix))
     print(json.dumps(rows, sort_keys=True))
     return 0
 

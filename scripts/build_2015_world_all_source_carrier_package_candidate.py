@@ -22,6 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in __import__("sys").path:
     __import__("sys").path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts.apply_2015_world_editorial_fallback_ratings import build_editorial_fallback_receipt, canonical_json_bytes
 from scripts.audit_world_2015_source_coverage import strict_club_key
 
@@ -43,7 +44,7 @@ class AllCarrierCandidateError(ValueError):
 
 def _read(path: Path, label: str, *, canonical: bool = True) -> tuple[dict[str, Any], str]:
     try:
-        raw = path.read_bytes(); value = json.loads(raw.decode("utf-8"))
+        raw = storage_io.read_bytes(path); value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise AllCarrierCandidateError(f"cannot read {label}: {path}") from exc
     if not isinstance(value, dict) or (canonical and raw != canonical_json_bytes(value)):
@@ -229,7 +230,7 @@ def main(argv: list[str] | None = None) -> int:
         result = build_candidate(source_draft=draft, reconciliation=recon, opening_join=join, assets=assets, recycle=recycle, recycle_allocation=allocation, source_hashes={"source_draft_sha256": draft_sha, "strict_player_reconciliation_sha256": recon_sha, "opening_fixture_source_join_sha256": join_sha, "asset_dispositions_sha256": assets_sha, "recycle_role_audit_sha256": recycle_sha, **({"mode1_recycle_allocation_sha256": allocation_sha} if allocation_sha else {})})
     except AllCarrierCandidateError as exc:
         parser.error(str(exc))
-    args.output.parent.mkdir(parents=True, exist_ok=True); args.output.write_bytes(canonical_json_bytes(result)); print(json.dumps(result["coverage"], sort_keys=True)); return 0
+    args.output.parent.mkdir(parents=True, exist_ok=True); storage_io.write_bytes(args.output, canonical_json_bytes(result)); print(json.dumps(result["coverage"], sort_keys=True)); return 0
 
 
 if __name__ == "__main__": raise SystemExit(main())

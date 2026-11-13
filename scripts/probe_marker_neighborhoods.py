@@ -24,6 +24,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from app.models import PlayerRecord  # type: ignore
+from scripts import json_storage_io_v1 as storage_io
 from scripts import probe_bio_trailer_stats as trailer_probe  # type: ignore
 
 
@@ -355,7 +356,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 def main(argv: list[str]) -> int:
     args = parse_args(argv)
     player_file = Path(args.player_file)
-    if not player_file.exists():
+    if not storage_io.exists(player_file):
         print(json.dumps({"error": f"Player file not found: {player_file}"}, indent=2))
         return 2
 
@@ -434,7 +435,7 @@ def main(argv: list[str]) -> int:
     if args.json_output:
         out_path = Path(args.json_output)
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(text + "\n", encoding="utf-8")
+        storage_io.write_text(out_path, text + '\n', encoding='utf-8')
     print(text)
     return 0
 

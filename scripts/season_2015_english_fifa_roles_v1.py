@@ -1,5 +1,6 @@
 """Source-bound six-role updates for the separate2015 English recipe layer."""
 import copy
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_exact_fifa_role_delta_v2 as roles
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_package_v2 as packages
@@ -23,7 +24,7 @@ def compatible(primary,role):
 
 def prepare(base):
     document,path=overlay(base)
-    raw=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    raw=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
     entries={e.record_id:e for e in IndexedFDIFile.from_bytes(raw).entries}
     source=prior.index(registry.sha256_file(prior.identity.old.FIFA))
     updates=[];skipped=0;protected=0
@@ -103,7 +104,7 @@ def reconstruction(previous,release_id):
     if (bind(pipeline.read_json_file(base.package_path),plan)!=pipeline.read_json_file(previous.package_path)
             or updated_english(plan)!=overlay(previous)[0]):raise ValueError('English role SOURCE would discard edits')
     artifact=next(a for a in pipeline.read_json_file(previous.package_path)['artifacts'] if a['id']==evidence(plan)['id'])
-    if path.resolve()!=(previous.package_path.parent/filename(plan)).resolve() or registry.sha256_file(path)!=artifact['sha256']:
+    if storage_io.resolve(path)!=storage_io.resolve(previous.package_path.parent / filename(plan)) or registry.sha256_file(path)!=artifact['sha256']:
         raise ValueError('English role SOURCE artifact differs')
     descriptor=previous.package_path.parent/'role-delta-input.json'
     if pipeline.read_json_file(descriptor)!=dict(season=base.season,release_id=base.release_id,

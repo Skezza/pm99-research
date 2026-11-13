@@ -4,6 +4,7 @@ import copy, hashlib, json
 from pathlib import Path
 from bs4 import BeautifulSoup
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_opening_identity_exchange_v1 as exchange
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
@@ -46,13 +47,13 @@ def strict_11v11_carter_person_id(person):
     return 'person-11v11-949'
 
 def _raw(path,sha):
-    p=(ROOT/path).resolve(strict=True)
-    if not p.is_relative_to(ROOT.resolve()) or registry.sha256_file(p)!=sha: raise ValueError('Walsall source body hash/path mismatch')
-    return p.read_bytes()
+    p=storage_io.resolve(ROOT / path, strict=True)
+    if not p.is_relative_to(storage_io.resolve(ROOT)) or registry.sha256_file(p)!=sha: raise ValueError('Walsall source body hash/path mismatch')
+    return storage_io.read_bytes(p)
 def _receipt(bodypath,bodysha,receiptsha,url):
     rp=ROOT/(bodypath.removesuffix('.html')+'.source.json')
     if registry.sha256_file(rp)!=receiptsha: raise ValueError('Siggi source receipt hash mismatch')
-    d=json.loads(rp.read_text())
+    d=json.loads(storage_io.read_text(rp))
     if d.get('schema_version')!='pm99-original-source-body-receipt-v1' or d.get('path')!=bodypath or d.get('sha256')!=bodysha or d.get('url')!=url: raise ValueError('Siggi receipt/body binding differs')
 def _text(path,sha): return ' '.join(BeautifulSoup(_raw(path,sha),'lxml').get_text(' ',strip=True).split())
 def prepare(base,input_path):
@@ -62,7 +63,7 @@ def prepare(base,input_path):
     if (registry.sha256_file(base.package_path),registry.sha256_file(base.game_path/'DBDAT/JUG98030.FDI'),registry.sha256_file(base.game_path/'DBDAT/EQ98030.FDI'))!=(PACKAGE_SHA,JUG_SHA,EQ_SHA): raise ValueError('Walsall native parent differs')
     package=pipeline.read_json_file(base.package_path); players={p['carrier_id']:p for p in package['players']}; club=next(c for c in package['clubs'] if c['carrier_id']==364)
     if (club['name'],len(club['roster_player_ids']))!=('Walsall',25): raise ValueError('Walsall roster count/preimage differs')
-    jug=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes(); eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    jug=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI'); eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     owners=native_owners(eq)
     from app.eq_jug_linked import parse_eq_external_team_roster_payload
     ix=IndexedFDIFile.from_bytes(eq); eqentry=next((e for e in ix.entries if e.record_id==364),None)
@@ -81,7 +82,7 @@ def prepare(base,input_path):
     annualpath='.local/consolidated-audit-20261009/parallel-rc-20261023/horne/source/cache-v1/blobs/67/670ca39197af1e31d087597663ecb76bb266b17f37176d527625e172790d3cb4'
     annualsha='670ca39197af1e31d087597663ecb76bb266b17f37176d527625e172790d3cb4'
     annual=_text(annualpath,annualsha)
-    annual_path=(ROOT/annualpath); annual_page=BeautifulSoup(annual_path.read_bytes(),'lxml')
+    annual_path=(ROOT/annualpath); annual_page=BeautifulSoup(storage_io.read_bytes(annual_path),'lxml')
     annual_rows=[' '.join(tr.get_text(' ',strip=True).split()) for tr in annual_page.find_all('tr')]
     if sum("16 Siggi Eyjolfsson M 6'02\" 12 09 01-12-73 Reykjavik RC Harelebeke" in x for x in annual_rows)!=1 or sum("23 Alfonso Carter M 5'10\" 10 05 30-09-80 Birmingham" in x for x in annual_rows)!=1: raise ValueError('exact target-year annual source rows unavailable')
     from scripts.capture_footballsquads_season import _weight_kg
@@ -205,15 +206,15 @@ def bind_bench(result,plan):
 
 def bind(package,plan,exchange_impl=None):
     base=registry.load_registered_release('2000-01',PARENT)
-    jug=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes(); eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    jug=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI'); eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     validate_plan_bench(plan,package,jug,eq)
     result=(exchange_impl or exchange.bind)(package,plan)
     return bind_bench(result,plan)
 
 def apply_bench(candidate,eq,plan):
     validate_plan_bench(plan,pipeline.read_json_file(registry.ROOT/registry.load_registered_release('2000-01',PARENT).package_path),
-                    (registry.load_registered_release('2000-01',PARENT).game_path/'DBDAT/JUG98030.FDI').read_bytes(),
-                    (registry.load_registered_release('2000-01',PARENT).game_path/'DBDAT/EQ98030.FDI').read_bytes())
+                    storage_io.read_bytes(registry.load_registered_release('2000-01', PARENT).game_path / 'DBDAT/JUG98030.FDI'),
+                    storage_io.read_bytes(registry.load_registered_release('2000-01', PARENT).game_path / 'DBDAT/EQ98030.FDI'))
     from scripts import season_opening_order_repair_v1 as ordering
     from app.fdi_indexed import IndexedFDIFile
     from app.player_initial_order import read_initial_order

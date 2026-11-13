@@ -17,6 +17,7 @@ for candidate in (ROOT, EDITOR):
         sys.path.insert(0, str(candidate))
 
 from app.minifoto_bitmap_archive import iter_obfuscated_bmp_records  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts.materialise_2015_world_fifaindex_kits import identity_key  # noqa: E402
 from scripts.materialise_2015_world_kits import ARCHIVES, _nearest_palette, _write_content_addressed, canonical_json_bytes, sha256_bytes, sha256_file  # noqa: E402
 from scripts import pm99_compact_kit_template_v1 as compact_template  # noqa: E402
@@ -94,7 +95,7 @@ def supplement(*, materialisation: Mapping[str, Any], ledger: Mapping[str, Any],
                 raise ReviewedKitError(f"missing archive record: {archive} carrier {carrier}")
             payload = render_geometry(record, str(reviewed["design"]), list(reviewed["colors"]), palette)
             path, digest = _write_content_addressed(payload, output_dir / archive.removesuffix(".PKF"), ".bmp")
-            assets[archive] = {"path": str(path.resolve()), "sha256": digest, "bitmap_length": len(payload)}
+            assets[archive] = {"path": str(storage_io.resolve(path)), "sha256": digest, "bitmap_length": len(payload)}
         row.update({"status": REVIEWED_STATUS, "action": "write-candidate-only", "assets": assets, "reviewed_source": dict(reviewed), "binding": {"status": "identity-bound", "method": "carrier-and-source-name-reviewed-season-catalogue", "source_team_name": reviewed["source_team_name"]}})
         applied += 1
     counts = collections.Counter(row.get("status") for row in rows)
@@ -117,11 +118,11 @@ def main() -> int:
     parser.add_argument("--receipt", type=Path, required=True)
     args = parser.parse_args()
     try:
-        result = supplement(materialisation=json.loads(args.materialisation.read_text()), ledger=json.loads(args.ledger.read_text()), dbdat=args.dbdat, output_dir=args.output_dir)
+        result = supplement(materialisation=json.loads(storage_io.read_text(args.materialisation)), ledger=json.loads(storage_io.read_text(args.ledger)), dbdat=args.dbdat, output_dir=args.output_dir)
     except (OSError, json.JSONDecodeError, ReviewedKitError) as exc:
         parser.error(str(exc))
     args.receipt.parent.mkdir(parents=True, exist_ok=True)
-    args.receipt.write_text(json.dumps(result, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+    storage_io.write_text(args.receipt, json.dumps(result, ensure_ascii=False, sort_keys=True, separators=(',', ':')) + '\n', encoding='utf-8')
     print(json.dumps(result["coverage"], sort_keys=True))
     return 0
 

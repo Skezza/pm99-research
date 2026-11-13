@@ -12,6 +12,7 @@ from pathlib import Path
 from bs4 import BeautifulSoup
 from app.fdi_indexed import IndexedFDIFile
 from app.player_initial_order import OrderReplacement,patch_owned_mode1_complete_orders,read_initial_order
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import season_package_v2 as packages,season_duplicate_ownership_delta_v1 as delta
 from scripts import prepare_duplicate_club_disposition_v1 as allocation
@@ -116,7 +117,7 @@ def prepare(base):
         if len(matching)!=1:raise ValueError('resident is not one exact original Woking annual identity')
         if matching[0]['birth_date'] and p['facts']['birth_date']!=matching[0]['birth_date']:
             raise ValueError('resident original annual birthday changed')
-    jug=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes();eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    jug=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI');eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     from scripts import season_opening_order_repair_v1 as ownership
     owners=ownership.native_owners(eq)
     if any(owners.get(p['carrier_id'])!={3321} for p in slots):raise ValueError('resident is shared with another native club')
@@ -207,7 +208,7 @@ def bind(package,plan):
 
 def apply(jug,eq,plan):
     base=registry.load_registered_release(plan['season'],plan['release_id'])
-    original=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes();original_eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    original=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI');original_eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     if (digest(original),digest(original_eq))!=(plan['jug_sha256'],plan['eq_sha256']):raise ValueError('Woking immutable native source changed')
     prepared=original
     for row in plan['proposal']['allocation']:
@@ -238,7 +239,7 @@ def apply(jug,eq,plan):
 
 def apply_ent(ent,plan):
     base=registry.load_registered_release(plan['season'],plan['release_id'])
-    original=(base.game_path/'DBDAT/ENT98030.FDI').read_bytes()
+    original=storage_io.read_bytes(base.game_path / 'DBDAT/ENT98030.FDI')
     if digest(original)!=plan['ent_sha256']:raise ValueError('Woking original manager file changed')
     index=IndexedFDIFile.from_bytes(original);entry=next(e for e in index.entries if e.record_id==818)
     payload=delta.compiler._patch_ent_name(entry.decode_payload(original),818,'Glenn Cockerill',native_names=plan['coach']['native_names'])
@@ -261,7 +262,7 @@ def reconstruction(previous,release_id):
     base=registry.load_registered_release(previous.season,plan['release_id']);verify(base,plan)
     package=pipeline.read_json_file(previous.package_path)
     a=[a for a in package['artifacts'] if a['id']==PREFIX+previous.season]
-    if len(a)!=1 or path.resolve()!=(previous.package_path.parent/FILENAME).resolve() or registry.sha256_file(path)!=a[0]['sha256']:
+    if len(a)!=1 or storage_io.resolve(path)!=storage_io.resolve(previous.package_path.parent / FILENAME) or registry.sha256_file(path)!=a[0]['sha256']:
         raise ValueError('Woking exact layer artifact differs')
     if bind(pipeline.read_json_file(base.package_path),plan)!=package:raise ValueError('edited Woking recipe cannot silently discard edits')
     descriptor=previous.package_path.parent/'role-delta-input.json'

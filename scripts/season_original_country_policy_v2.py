@@ -12,6 +12,7 @@ from pathlib import Path
 
 from app.fdi_indexed import IndexedFDIFile
 from app.indexed_jug_nationality import rewrite_indexed_native_nationalities
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_original_secondary_facts_v1 as prior
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import season_package_v2 as packages
@@ -58,8 +59,8 @@ def prepare(base,person_document_path,targets):
             raise ValueError('original person query input changed')
     package=pipeline.read_json_file(base.package_path)
     people={p['carrier_id']:p for p in package['players']};clubs={c['id']:c for c in package['clubs']}
-    jug=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    jug=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     entries={e.record_id:e for e in IndexedFDIFile.from_bytes(jug).entries}
     owners=original.order.native_owners(eq)
     codes=compiler._extract_country_codes_from_textos(base.game_path/'DBDAT/TEXTOS.PKF')
@@ -149,7 +150,7 @@ def apply(jug,eq,plan):
     if plan.get('schema')!=SCHEMA or not plan.get('updates') or digest(eq)!=plan['eq_sha256']:
         raise ValueError('nonempty country-only schema and exact EQ required')
     base=registry.load_registered_release(plan['season'],plan['release_id'])
-    before=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    before=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
     if digest(before)!=plan['jug_sha256']:
         raise ValueError('country policy immutable native baseline changed')
     countries={r['carrier_id']:r['native_country_code'] for r in plan['updates']}
@@ -175,7 +176,7 @@ def reconstruction(previous,release_id):
         return None
     receipt=pipeline.read_json_file(previous.compiler_receipt_path)
     if (receipt.get('compilation_mode')!=MODE
-            or path.resolve()!=(previous.package_path.parent/filename(plan)).resolve()
+            or storage_io.resolve(path)!=storage_io.resolve(previous.package_path.parent / filename(plan))
             or registry.sha256_file(path)!=receipt['original_profile_assignment_plan_sha256']):
         raise ValueError('country policy original source artifact binding differs')
     base=registry.load_registered_release(previous.season,plan['release_id']);verify(base,plan)
@@ -190,6 +191,6 @@ def reconstruction(previous,release_id):
         profile_assignment_plan_path=path)
     rebuilt=registry.load_registered_release(previous.season,release_id)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path,pipeline.read_json_file(previous.inventory_path))
-    if rebuilt.package_path.read_bytes()!=previous.package_path.read_bytes():
+    if storage_io.read_bytes(rebuilt.package_path)!=storage_io.read_bytes(previous.package_path):
         raise ValueError('country policy whole SOURCE recipe differs')
     return dict(season=previous.season,complete_game_inventory_identical=True,complete_recipe_identical=True)

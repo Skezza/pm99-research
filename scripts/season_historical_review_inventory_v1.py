@@ -9,6 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
 
@@ -27,8 +28,8 @@ def unresolved(row):
 
 def export(season, roster_path, facts_path, destination):
     release = registry.load_preferred_release(season)
-    roster = json.loads(roster_path.read_text())
-    facts = json.loads(facts_path.read_text())
+    roster = json.loads(storage_io.read_text(roster_path))
+    facts = json.loads(storage_io.read_text(facts_path))
     package_hash = registry.sha256_file(release.package_path)
     for document in (roster, facts):
         if document['season'] != season or document['bindings']['package_sha256'] != package_hash:
@@ -36,7 +37,7 @@ def export(season, roster_path, facts_path, destination):
     if roster['bindings']['jug_sha256'] != registry.sha256_file(release.game_path / 'DBDAT/JUG98030.FDI'):
         raise ValueError('review inventory native roster audit is stale')
     destination.mkdir(parents=True, exist_ok=True)
-    if (destination / 'players.csv').exists() or (destination / 'clubs.csv').exists():
+    if storage_io.exists(destination / 'players.csv') or storage_io.exists(destination / 'clubs.csv'):
         raise ValueError('review export already exists')
     native = collections.defaultdict(list)
     for row in roster['players']:
@@ -48,7 +49,7 @@ def export(season, roster_path, facts_path, destination):
     fields += [field + suffix for field in ('nationality', 'height_cm', 'weight_kg', 'shirt_number')
                for suffix in ('_recipe', '_sources', '_status')]
     counts = collections.Counter()
-    with (destination / 'players.csv').open('w', newline='') as handle:
+    with storage_io.open_file(destination / 'players.csv', 'w', newline='') as handle:
         writer = csv.DictWriter(handle, fieldnames=fields); writer.writeheader()
         for player in facts['players']:
             originals = native.get(player['player_id'], [])
@@ -87,7 +88,7 @@ def export(season, roster_path, facts_path, destination):
             'display_role_contradictions': sum(w for _, _, w, _ in members),
             'players_with_unresolved_checks': sum(bool(gaps) for _, _, _, gaps in members),
             'historical_verification_complete': False})
-    with (destination / 'clubs.csv').open('w', newline='') as handle:
+    with storage_io.open_file(destination / 'clubs.csv', 'w', newline='') as handle:
         writer = csv.DictWriter(handle, fieldnames=list(club_rows[0])); writer.writeheader(); writer.writerows(club_rows)
     summary = {'season': season, 'release_id': release.release_id, 'clubs': len(club_rows),
         'playable_clubs': sum(c['playable'] for c in club_rows),

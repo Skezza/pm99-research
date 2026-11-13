@@ -15,6 +15,7 @@ import subprocess
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
 from scripts import season_rating_calibration_v1 as ratings
@@ -36,8 +37,8 @@ def _published_alias_matches(published, full_name):
 
 
 def _source(value):
-    path = (registry.ROOT / value['path']).resolve(strict=True)
-    if (not path.is_relative_to(registry.ROOT.resolve()) or not path.is_file()
+    path = storage_io.resolve(registry.ROOT / value['path'], strict=True)
+    if (not path.is_relative_to(storage_io.resolve(registry.ROOT)) or not storage_io.is_file(path)
             or registry.sha256_file(path) != value['sha256']):
         raise ValueError('dated FIFA admission source path/hash changed')
     return path
@@ -46,7 +47,7 @@ def _source(value):
 @lru_cache(maxsize=4)
 def _edition_rows(path_string, source_sha, edition):
     # The caller rehashes the file before every use, including cache hits.
-    with Path(path_string).open(newline='') as stream:
+    with storage_io.open_file(Path(path_string), newline='') as stream:
         return tuple(dict(row) for row in csv.DictReader(stream)
                      if row['fifa_version'] == str(edition))
 
@@ -96,7 +97,7 @@ def roster_membership(selection, evidence, season, club):
             or not origin.path.startswith(expected) or not origin.path.lower().endswith('.pdf')
             or origin.query or origin.fragment):
         raise ValueError('official roster URL does not bind the requested publisher and date')
-    if not path.read_bytes().lstrip(b' \t\r\n').startswith(b'%PDF-'):
+    if not storage_io.read_bytes(path).lstrip(b' \t\r\n').startswith(b'%PDF-'):
         raise ValueError('official roster body is not a PDF')
     text = subprocess.run(['pdftotext', '-layout', str(path), '-'], check=True,
                           capture_output=True, text=True).stdout

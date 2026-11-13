@@ -20,6 +20,7 @@ from urllib.request import Request, urlopen
 from bs4 import BeautifulSoup
 from app.fdi_indexed import IndexedFDIFile
 from app.player_initial_order import OrderReplacement, patch_owned_mode1_complete_orders, read_initial_order
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_historical_roster_audit_v1 as annual, season_package_compiler_v2 as compiler
 from scripts import season_football_data_opening_dates_v1 as dates
@@ -46,11 +47,11 @@ def capture(url, cache):
     cache.mkdir(parents=True, exist_ok=True)
     key = hashlib.sha256(url.encode()).hexdigest()
     path, receipt = cache / (key + '.html'), cache / (key + '.source.json')
-    if path.exists():
-        if json.loads(receipt.read_text()) != {'url': url, 'sha256': registry.sha256_file(path)}:
+    if storage_io.exists(path):
+        if json.loads(storage_io.read_text(receipt)) != {'url': url, 'sha256': registry.sha256_file(path)}:
             raise ValueError('original TFF receipt changed')
     else:
-        if receipt.exists():
+        if storage_io.exists(receipt):
             raise ValueError('TFF original missing beneath receipt')
         with urlopen(Request(url, headers={'User-Agent': 'PM99 historical football research'}), timeout=30) as response:
             if response.geturl() != url:
@@ -69,7 +70,7 @@ def original(binding):
     registry.relative_workspace_path(path)
     if registry.sha256_file(path) != binding['sha256']:
         raise ValueError('TFF opening original source bytes changed')
-    return path.read_bytes()
+    return storage_io.read_bytes(path)
 
 
 def require_tff_binding(binding, page, key, identity):
@@ -172,7 +173,7 @@ def annual_rows(raw, season, club):
 
 
 def prepare(release, bindings, *, club_carrier_id=1006, mistaken_carrier=14506, retained_carrier=14497):
-    package = json.loads(release.package_path.read_text())
+    package = json.loads(storage_io.read_text(release.package_path))
     club = next(c for c in package['clubs'] if c['carrier_id'] == club_carrier_id)
     if club['name'] != 'Gaziantepspor' or release.season != '2009-10':
         raise ValueError('initial TFF repair policy is pinned to the verified 2009 Gaziantepspor pilot')
@@ -194,8 +195,8 @@ def prepare(release, bindings, *, club_carrier_id=1006, mistaken_carrier=14506, 
         raise ValueError('incomplete results require independent original federation first-round proof')
     xi = sheet(original(bindings['match']), '2009-08-09', 'GAZİANTEPSPOR', 'GALATASARAY A.Ş.')
     sources = annual_rows(original(bindings['annual']), release.season, club['name'])
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (release.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
     by_id = {p['carrier_id']: p for p in package['players'] if p['id'] in club['roster_player_ids']}
     members = {p['carrier_id']: roster.native_facts(jug, p['carrier_id']) for p in by_id.values()}
     before, kept = members[mistaken_carrier], members[retained_carrier]
@@ -348,12 +349,12 @@ def conservative_role(position,role):
 
 def prepare_broad_roles(release):
     opening_path = registry.ROOT/release.locator['sourced_mode1_opening_plan_path']
-    opening = json.loads(opening_path.read_text())
+    opening = json.loads(storage_io.read_text(opening_path))
     verify(registry.load_registered_release(release.season,opening['source_release_id']),opening)
-    package=json.loads(release.package_path.read_text())
+    package=json.loads(storage_io.read_text(release.package_path))
     people={p['carrier_id']:p for p in package['players']}
-    jug=(release.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    eq=(release.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    jug=storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
+    eq=storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
     countries=compiler._extract_country_codes_from_textos(release.game_path/'DBDAT/TEXTOS.PKF')
     if apply(jug,eq,package,countries,opening)!=jug:
         raise ValueError('source XI is not installed before broad-role correction')
@@ -393,12 +394,12 @@ def replay(jug, eq, package, package_path, countries):
         if relative.is_absolute() or '..' in relative.parts: raise ValueError('unsafe full-XI artifact')
         path = package_path.parent / relative
         if registry.sha256_file(path) != artifact['sha256']: raise ValueError('full-XI source plan hash changed')
-        plan = json.loads(path.read_text())
+        plan = json.loads(storage_io.read_text(path))
         if plan['season'] != f"{package['season']['start_year']}-{str(package['season']['end_year'])[-2:]}":
             raise ValueError('full-XI source plan belongs to another season')
         verify(registry.load_registered_release(plan['season'], plan['source_release_id']), plan)
         # Check durable current facts/proof, not a copied order plan alone.
-        original_package = json.loads(registry.load_registered_release(plan['season'], plan['source_release_id']).package_path.read_text())
+        original_package = json.loads(storage_io.read_text(registry.load_registered_release(plan['season'], plan['source_release_id']).package_path))
         wanted = updated_package(original_package, plan)
         ids = {r['carrier_id'] for r in plan['replacements']}
         def identity_without_roles(p):

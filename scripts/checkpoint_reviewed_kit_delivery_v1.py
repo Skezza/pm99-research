@@ -3,6 +3,7 @@ import copy
 from datetime import UTC, datetime
 from PIL import Image
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_kit_render_bindings_v1 as kits
 from scripts import build_registered_quality_release_v1 as builder
@@ -20,7 +21,7 @@ from scripts.probe_sourced_factory_kit_v1 import kit_image
 
 def run(*, root, season, parent_id, release_id, replay_id, prior, output,
         followup_id, profiles, historical_scope):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('completed kit checkpoint must not repeat')
     previous = pipeline.read_json_file(prior)
     if bindings() != previous['current_release_bindings']:
@@ -42,7 +43,7 @@ def run(*, root, season, parent_id, release_id, replay_id, prior, output,
         raise ValueError('kit child has a different baseline')
     for release in (actual, replay):
         pipeline.assert_tree_matches_inventory(release.game_path, pipeline.read_json_file(actual.inventory_path))
-        if release.package_path.read_bytes() != parent.package_path.read_bytes():
+        if storage_io.read_bytes(release.package_path) != storage_io.read_bytes(parent.package_path):
             raise ValueError('kit-only child or SOURCE changed recipe')
     left = {r['path']: r['sha256'] for r in pipeline.read_json_file(parent.inventory_path)['files']}
     right = {r['path']: r['sha256'] for r in pipeline.read_json_file(actual.inventory_path)['files']}

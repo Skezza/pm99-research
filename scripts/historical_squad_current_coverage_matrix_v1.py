@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts.capture_transfermarkt_historical_squads_v1 import canonical_bytes
 from scripts.season_historical_squad_backfill_batch_v1 import CURRENT_SCHEMA
 from scripts.season_carrier_allocation_v1 import SYSTEM_SELECTION_IDS
@@ -26,21 +27,21 @@ def _sha(payload: bytes) -> str:
 
 
 def audit(season: str, season_root: Path) -> dict[str, Any]:
-    local = (season_root / season).resolve()
-    manifest_raw = (local / "current.json").read_bytes()
+    local = storage_io.resolve(season_root / season)
+    manifest_raw = storage_io.read_bytes(local / 'current.json')
     manifest = json.loads(manifest_raw)
     if manifest.get("schema_version") != CURRENT_SCHEMA or manifest.get("season") != season:
         raise ValueError(f"{season}: invalid current manifest")
     documents: dict[str, dict[str, Any]] = {}
     for name, row in manifest["artifacts"].items():
-        path = (local / row["path"]).resolve()
+        path = storage_io.resolve(local / row['path'])
         path.relative_to(local)
-        payload = path.read_bytes()
+        payload = storage_io.read_bytes(path)
         if _sha(payload) != row["sha256"]:
             raise ValueError(f"{season}: {name} hash mismatch")
         documents[name] = json.loads(payload)
     allocation = documents["allocation"]
-    registry = json.loads((ROOT / "seasons" / season / "fixed-carrier-registry.json").read_text())
+    registry = json.loads(storage_io.read_text(ROOT / 'seasons' / season / 'fixed-carrier-registry.json'))
     real_ids = {int(row["carrier_id"]) for row in registry["carriers"]} - SYSTEM_SELECTION_IDS
     assigned_ids = {int(row["carrier_id"]) for row in allocation["assignments"]}
     if not assigned_ids <= real_ids:
@@ -72,8 +73,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     result = {"schema_version": SCHEMA, "seasons": [audit(s, args.season_root) for s in args.season]}
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_bytes(result))
-    print(json.dumps({"output": str(args.output), "season_count": len(result["seasons"]), "sha256": _sha(args.output.read_bytes())}, sort_keys=True))
+    storage_io.write_bytes(args.output, canonical_bytes(result))
+    print(json.dumps({"output": str(args.output), "season_count": len(result["seasons"]), "sha256": _sha(storage_io.read_bytes(args.output))}, sort_keys=True))
     return 0
 
 

@@ -8,6 +8,7 @@ from collections import Counter, defaultdict
 from datetime import date
 from pathlib import Path
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_cached_manager_repairs_20261016 as old
 from scripts import audit_deferred_manager_tenures_20261016 as histories
@@ -92,7 +93,7 @@ def prepare(base):
                 raw = registry.ROOT / claim['path']
                 if registry.sha256_file(raw) != claim['sha256']:
                     raise ValueError('original tenure raw bytes changed')
-                parsed = histories.tenure(raw.read_bytes(), case['source_club_id'], at)
+                parsed = histories.tenure(storage_io.read_bytes(raw), case['source_club_id'], at)
                 if any(parsed[k] != claim[k] for k in ('manager', 'source_manager_id', 'source_url', 'date')):
                     raise ValueError('original tenure does not reparse to saved identity/date')
                 identities.add((parsed['manager'], parsed['source_manager_id']))

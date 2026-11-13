@@ -9,6 +9,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_duplicate_ownership_plan_v1 as planner
 from scripts import season_duplicate_ownership_delta_v1 as delta
 from scripts import season_release_registry_v1 as registry
@@ -39,11 +40,11 @@ def merge_slots(prior, plans):
 
 
 def run(prior_path, roots, output):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('cumulative evidence is immutable')
-    prior = json.loads(prior_path.read_text())
-    plans = [(path, json.loads(path.read_text())) for root in roots
-             for path in sorted(root.glob('*/ownership-plan.json'))]
+    prior = json.loads(storage_io.read_text(prior_path))
+    plans = [(path, json.loads(storage_io.read_text(path))) for root in roots
+             for path in sorted(storage_io.glob(root, '*/ownership-plan.json'))]
     slots = merge_slots(prior, plans)
     return verify_slots(prior_path, slots, output)
 
@@ -78,20 +79,20 @@ def merge_chained_slots(prior, season, allocation, binding):
 
 
 def run_chained(prior_path, candidate, identity_path, output):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('cumulative evidence is immutable')
     from scripts import prepare_duplicate_whole_club_native_v1 as native
     receipt_path = candidate / 'candidate-receipt.json'
-    receipt = json.loads(receipt_path.read_text())
-    proof = json.loads(identity_path.read_text())
+    receipt = json.loads(storage_io.read_text(receipt_path))
+    proof = json.loads(storage_io.read_text(identity_path))
     if (proof.get('candidate_receipt_sha256') != registry.sha256_file(receipt_path)
             or proof.get('introduced_candidate_groups') != 0
             or proof.get('replacement_cross_club_candidates') != 0
             or proof.get('stale_portraits_cleared') is not True):
         raise ValueError('chained disposition lacks the exact independent identity proof')
-    pair = json.loads(native.original(receipt['source_pair']).read_text())
+    pair = json.loads(storage_io.read_text(native.original(receipt['source_pair'])))
     allocations = [row for item in pair['proposals']
-        for row in json.loads(native.original(item).read_text())['allocation']]
+        for row in json.loads(storage_io.read_text(native.original(item)))['allocation']]
     if set(proof['corrected_slots']) != {r['carrier_id'] for r in allocations}:
         raise ValueError('chained identity proof covers different slots')
     current = registry.load_preferred_release(pair['season'])
@@ -105,7 +106,7 @@ def run_chained(prior_path, candidate, identity_path, output):
             'sha256': registry.sha256_file(receipt_path)},
         'identity_proof': {'path': registry.relative_workspace_path(identity_path),
             'sha256': registry.sha256_file(identity_path)}}
-    prior = json.loads(prior_path.read_text())
+    prior = json.loads(storage_io.read_text(prior_path))
     slots = merge_chained_slots(prior, pair['season'], allocations, binding)
     return verify_slots(prior_path, slots, output)
 
@@ -123,7 +124,7 @@ def verify_slots(prior_path, slots, output):
             players.update({p['carrier_id']: p for p in package['players']})
             clubs.update({c['id']: c for c in package['clubs']})
         active = delta._active_offsets_for_players(
-            bytearray((release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()),
+            bytearray(storage_io.read_bytes(release.game_path / 'DBDAT/MINIFOTO.PKF')),
             [s['carrier_id'] for s in corrections])
         package_sha = registry.sha256_file(release.package_path)
         for slot in corrections:
@@ -133,8 +134,8 @@ def verify_slots(prior_path, slots, output):
                 raise ValueError('corrected source identity is not installed in current recipe')
             bmp = release.game_path / f'DBDAT/MINIFOTO/J96{slot["carrier_id"]:05d}.BMP'
             rows.append(dict(slot, release_id=release.release_id, package_sha256=package_sha,
-                club=clubs[player['club_id']]['name'], loose_bitmap_present=bmp.is_file(),
-                bitmap_sha256=registry.sha256_file(bmp) if bmp.is_file() else None,
+                club=clubs[player['club_id']]['name'], loose_bitmap_present=storage_io.is_file(bmp),
+                bitmap_sha256=registry.sha256_file(bmp) if storage_io.is_file(bmp) else None,
                 active_archive_entries=len(active.get(slot['carrier_id'], []))))
     present = sum(r['loose_bitmap_present'] or bool(r['active_archive_entries']) for r in rows)
     result = {'schema_version': 'pm99-cumulative-ownership-repair-and-portrait-ledger-v2',

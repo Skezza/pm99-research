@@ -3,6 +3,7 @@ import fcntl
 import shutil
 from datetime import UTC, datetime
 from pathlib import Path
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
 
@@ -33,17 +34,17 @@ def main(*, targets=TARGETS, receipt=RECEIPT):
     if not targets or not set(targets) <= allowed:
         raise ValueError('cleanup accepts only the explicitly reviewed old executable versions')
     TARGETS, RECEIPT = tuple(targets), receipt
-    if RECEIPT.exists():
+    if storage_io.exists(RECEIPT):
         raise ValueError('completed executable-cache cleanup must not repeat')
-    with (ROOT / 'install.lock').open('a') as lock:
+    with storage_io.open_file(ROOT / 'install.lock', 'a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        current = (ROOT / 'current').resolve()
+        current = storage_io.resolve(ROOT / 'current')
         rollback = ROOT / 'releases/0.162.1-x86_64-unknown-linux-musl'
         if not current.is_dir() or not rollback.is_dir():
             raise ValueError('current and rollback versions must remain available')
         targets = [ROOT / 'releases' / name for name in TARGETS]
         for path in targets:
-            if (not path.is_dir() or path.is_symlink() or path.resolve() != path
+            if (not path.is_dir() or path.is_symlink() or storage_io.resolve(path) != path
                     or current.is_relative_to(path) or rollback.is_relative_to(path)
                     or any(executable.is_relative_to(path) for executable in running())):
                 raise ValueError('selected old executable version is unsafe or active')

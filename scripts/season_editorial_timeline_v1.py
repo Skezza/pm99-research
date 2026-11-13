@@ -23,6 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2 as package_v2
 from scripts import season_review_v2 as review_v2
 
@@ -47,7 +48,7 @@ def _hash(value: Any) -> str:
 
 def _read(path: Path, *, label: str) -> dict[str, Any]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise TimelineError(f"cannot read {label}: {path}: {exc}") from exc
@@ -87,7 +88,7 @@ def _schema_errors(value: dict[str, Any]) -> list[str]:
         import jsonschema  # type: ignore[import-not-found]
     except ImportError:
         return []
-    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    schema = json.loads(storage_io.read_text(schema_path, encoding='utf-8'))
     errors = sorted(jsonschema.Draft202012Validator(schema).iter_errors(value), key=lambda item: list(item.absolute_path))
     return [f"{'.'.join(str(part) for part in error.absolute_path) or '<root>'}: {error.message}" for error in errors]
 

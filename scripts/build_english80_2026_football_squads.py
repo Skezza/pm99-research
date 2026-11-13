@@ -9,6 +9,14 @@ position, nationality, DOB, height, weight and transparent derived attributes.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import csv
 import html
@@ -25,7 +33,7 @@ from typing import Any
 from urllib.parse import urljoin
 from urllib.request import Request, urlopen
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR_ROOT = REPO_ROOT / "upstream" / "pm99-skezmod-db-editor"
 if str(EDITOR_ROOT) not in sys.path:
     sys.path.insert(0, str(EDITOR_ROOT))
@@ -273,13 +281,13 @@ class ClubSource:
 
 def _json_dump(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False) + "\n", encoding="utf-8")
+    storage_io.write_text(path, json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False) + '\n', encoding='utf-8')
 
 
 def _make_tree_user_writable(path: Path) -> None:
-    for item in [path, *path.rglob("*")]:
+    for item in [path, *storage_io.glob(path, '*', recursive=True)]:
         try:
-            mode = item.stat().st_mode
+            mode = storage_io.stat_result(item).st_mode
         except FileNotFoundError:
             continue
         if item.is_dir():
@@ -834,12 +842,12 @@ def apply_semantic_patch(game_root: Path, sources: list[ClubSource], output_dir:
     textos_file = game_root / "DBDAT" / "TEXTOS.PKF"
     manifest_path = game_root / "repointed_roster_manifest.json"
     for path in (player_file, team_file, coach_file, textos_file, manifest_path):
-        if not path.is_file():
+        if not storage_io.is_file(path):
             raise RuntimeError(f"Missing required file: {path}")
 
     source_rows = {(source.club_key, int(player["slot"])): {**player, "club_key": source.club_key, "club_name": source.display_name} for source in sources for player in source.players}
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    file_bytes = player_file.read_bytes()
+    manifest = json.loads(storage_io.read_text(manifest_path, encoding='utf-8'))
+    file_bytes = storage_io.read_bytes(player_file)
     indexed = IndexedFDIFile.from_bytes(file_bytes)
     entries_by_id = {int(entry.record_id): entry for entry in indexed.entries}
     patched_file = bytearray(file_bytes)
@@ -915,8 +923,8 @@ def apply_semantic_patch(game_root: Path, sources: list[ClubSource], output_dir:
         )
 
     backup_path = player_file.with_suffix(player_file.suffix + f".english80_semantic_backup_{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}")
-    shutil.copy2(player_file, backup_path)
-    player_file.write_bytes(bytes(patched_file))
+    storage_io.copy_file(player_file, backup_path, metadata=True)
+    storage_io.write_bytes(player_file, bytes(patched_file))
     reparsed_index = IndexedFDIFile.from_path(player_file)
     if len(reparsed_index.entries) != len(indexed.entries):
         raise RuntimeError("Indexed JUG entry count changed after semantic patch")
@@ -952,7 +960,7 @@ def apply_semantic_patch(game_root: Path, sources: list[ClubSource], output_dir:
         "readback_ok",
     ]
     _json_dump(source_json, ledger_rows)
-    with source_csv.open("w", newline="", encoding="utf-8") as handle:
+    with storage_io.open_file(source_csv, 'w', newline='', encoding='utf-8') as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()
         for row in ledger_rows:
@@ -983,13 +991,13 @@ def apply_semantic_patch(game_root: Path, sources: list[ClubSource], output_dir:
 
 def cap_target_rosters_to_twenty(game_root: Path, assignment_path: Path, output_dir: Path) -> dict[str, Any]:
     team_file = game_root / "DBDAT" / "EQ98030.FDI"
-    assignment = json.loads(assignment_path.read_text(encoding="utf-8"))
+    assignment = json.loads(storage_io.read_text(assignment_path, encoding='utf-8'))
     target_eq = {
         int(item["carrier_eq_record_id"]): str(item.get("target_club_key") or item.get("club_key") or "")
         for item in assignment.get("assignments", [])
         if int(item.get("carrier_eq_record_id") or 0) > 0
     }
-    team_data = team_file.read_bytes()
+    team_data = storage_io.read_bytes(team_file)
     indexed = IndexedFDIFile.from_bytes(team_data)
     entries_by_id = {int(entry.record_id): entry for entry in indexed.entries}
     raw_payload_by_offset: dict[int, bytes] = {}
@@ -1034,19 +1042,19 @@ def cap_target_rosters_to_twenty(game_root: Path, assignment_path: Path, output_
 
 def build_candidate(args: argparse.Namespace) -> dict[str, Any]:
     timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-    output_dir = Path(args.output_dir).expanduser().resolve() if args.output_dir else (Path(args.output_root).expanduser().resolve() / f"english80_2026_football_squads_{timestamp}")
-    if output_dir.exists():
+    output_dir = storage_io.resolve(Path(args.output_dir).expanduser()) if args.output_dir else (storage_io.resolve(Path(args.output_root).expanduser()) / f"english80_2026_football_squads_{timestamp}")
+    if storage_io.exists(output_dir):
         if not args.force:
             raise FileExistsError(f"Output directory already exists: {output_dir}")
         shutil.rmtree(output_dir)
     output_dir.mkdir(parents=True)
     game_root = output_dir / "game"
 
-    base_assignment_path = Path(args.base_assignment).expanduser().resolve()
-    base_world_path = Path(args.base_world).expanduser().resolve()
-    base_game = Path(args.base_game).expanduser().resolve()
-    base_assignment = json.loads(base_assignment_path.read_text(encoding="utf-8"))
-    base_world = json.loads(base_world_path.read_text(encoding="utf-8"))
+    base_assignment_path = storage_io.resolve(Path(args.base_assignment).expanduser())
+    base_world_path = storage_io.resolve(Path(args.base_world).expanduser())
+    base_game = storage_io.resolve(Path(args.base_game).expanduser())
+    base_assignment = json.loads(storage_io.read_text(base_assignment_path, encoding='utf-8'))
+    base_world = json.loads(storage_io.read_text(base_world_path, encoding='utf-8'))
     country_codes = _extract_nationality_codes(base_game / "DBDAT" / "TEXTOS.PKF")
 
     sources, league_links = scrape_sources(country_codes, base_assignment=base_assignment)

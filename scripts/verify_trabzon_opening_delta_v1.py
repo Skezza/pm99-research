@@ -6,6 +6,7 @@ from app.eq_jug_linked import parse_eq_external_team_roster_payload
 from app.fdi_indexed import IndexedFDIFile
 from app.player_initial_order import read_initial_order
 from app.indexed_jug_roles import read_indexed_native_roles
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
 
@@ -14,8 +15,8 @@ def verify(baseline, candidate, plan):
     if (baseline.season, baseline.release_id, registry.sha256_file(baseline.package_path)) != (
             plan['season'], plan['release_id'], plan['package_sha256']):
         raise ValueError('independent Trabzon verification baseline changed')
-    old_jug = (baseline.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    new_jug = (candidate.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    old_jug = storage_io.read_bytes(baseline.game_path / 'DBDAT/JUG98030.FDI')
+    new_jug = storage_io.read_bytes(candidate.game_path / 'DBDAT/JUG98030.FDI')
     old_index, new_index = IndexedFDIFile.from_bytes(old_jug), IndexedFDIFile.from_bytes(new_jug)
     if len(old_jug) != len(new_jug) or old_jug[:old_index.index_end_offset] != new_jug[:new_index.index_end_offset]:
         raise ValueError('Trabzon changed player container/directory bytes')
@@ -49,8 +50,8 @@ def verify(baseline, candidate, plan):
             allowed.add(e.payload_offset+end+2)
     if changed - allowed:
         raise ValueError('Trabzon changed player facts/skills/roles or unrelated bytes')
-    old_eq = (baseline.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
-    new_eq = (candidate.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    old_eq = storage_io.read_bytes(baseline.game_path / 'DBDAT/EQ98030.FDI')
+    new_eq = storage_io.read_bytes(candidate.game_path / 'DBDAT/EQ98030.FDI')
     old_entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(old_eq).entries}
     new_entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(new_eq).entries}
     if set(old_entries) != set(new_entries):

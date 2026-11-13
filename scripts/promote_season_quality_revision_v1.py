@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts.pm99_season_play_v1 import REVISIONS, ROOT, game_path
 from scripts.season_package_v2 import canonical_json_bytes
 
@@ -30,7 +31,7 @@ KIT_FILES = ("DBDAT/MINIESC.PKF", "DBDAT/NANOESC.PKF", "DBDAT/RIDIESC.PKF")
 
 def sha256(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
@@ -45,16 +46,16 @@ def quality_root(season: str) -> Path:
 def checked_source(season: str) -> tuple[Path, dict[str, str]]:
     root = quality_root(season)
     receipt_path = root / "compiler-receipt.json"
-    if not receipt_path.is_file():
+    if not storage_io.is_file(receipt_path):
         raise ValueError(f"missing compiler receipt: {receipt_path}")
-    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    receipt = json.loads(storage_io.read_text(receipt_path, encoding='utf-8'))
     outputs = {str(row.get("path")): str(row.get("sha256")) for row in receipt.get("outputs", []) if isinstance(row, dict)}
     expected = {name: outputs.get(name, "") for name in DATABASE_FILES}
     if any(len(value) != 64 for value in expected.values()):
         raise ValueError(f"compiler receipt does not declare all FDI outputs for {season}")
     for name, expected_hash in expected.items():
         source = root / "game" / name
-        if not source.is_file() or sha256(source) != expected_hash:
+        if not storage_io.is_file(source) or sha256(source) != expected_hash:
             raise ValueError(f"quality source receipt mismatch: {source}")
     return root, expected
 
@@ -82,7 +83,7 @@ def apply(row: dict[str, Any], archive_root: Path) -> dict[str, Any]:
     target = ROOT / str(row["target_runtime"])
     source = ROOT / str(row["quality_root"]) / "game"
     archive = archive_root / season / "DBDAT"
-    if archive.exists():
+    if storage_io.exists(archive):
         raise ValueError(f"refusing existing rollback archive: {archive}")
     archive.mkdir(parents=True)
     for name, expected in row["database_before"].items():
@@ -90,20 +91,20 @@ def apply(row: dict[str, Any], archive_root: Path) -> dict[str, Any]:
         backup = archive / Path(name).name
         # GVFS/SMB does not support POSIX metadata preservation.  The rollback
         # contract is byte identity, so copy content only and verify its hash.
-        shutil.copyfile(original, backup)
+        storage_io.copy_file(original, backup)
         if sha256(backup) != expected:
             raise ValueError(f"rollback copy mismatch: {backup}")
     for name, expected in row["database_after"].items():
         original = target / name
         replacement = source / name
         temporary = original.with_name(original.name + ".quality-promotion.tmp")
-        if temporary.exists():
+        if storage_io.exists(temporary):
             raise ValueError(f"stale promotion temporary exists: {temporary}")
-        shutil.copyfile(replacement, temporary)
+        storage_io.copy_file(replacement, temporary)
         if sha256(temporary) != expected:
-            temporary.unlink()
+            storage_io.unlink(temporary)
             raise ValueError(f"promotion temporary mismatch: {temporary}")
-        temporary.replace(original)
+        storage_io.move(temporary, original, replace=True)
         if sha256(original) != expected:
             raise ValueError(f"promoted output mismatch: {original}")
     after_kits = {name: sha256(target / name) for name in KIT_FILES}
@@ -125,11 +126,11 @@ def main() -> int:
     if args.apply:
         if args.archive_root is None:
             parser.error("--archive-root is required with --apply")
-        if receipt.exists():
+        if storage_io.exists(receipt):
             parser.error(f"refusing existing promotion receipt: {receipt}")
         row = apply(row, args.archive_root)
         receipt.parent.mkdir(parents=True, exist_ok=True)
-        receipt.write_bytes(canonical_json_bytes(row))
+        storage_io.write_bytes(receipt, canonical_json_bytes(row))
         row["receipt"] = str(receipt.relative_to(ROOT))
     else:
         row["result"] = "planned"

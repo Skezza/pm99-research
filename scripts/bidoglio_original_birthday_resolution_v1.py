@@ -2,6 +2,7 @@
 from datetime import date
 import re
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_published_person_identity_v1 as identities
 from scripts.capture_tachira_2014_original_people_v1 import source_rows
@@ -67,7 +68,7 @@ if __name__ == '__main__':
         path=registry.relative_workspace_path(person_path), sha256=registry.sha256_file(person_path))],
         closed_duplicate_cases=0, publication_authorised=False)
     output = root / 'bidoglio-original-birthday-resolution-v1.json'
-    if output.exists():
+    if storage_io.exists(output):
         if pipeline.read_json_file(output) != result:
             raise ValueError('immutable birthday resolution differs')
     else:

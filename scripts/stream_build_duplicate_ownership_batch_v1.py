@@ -9,6 +9,7 @@ import time
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import closeout_duplicate_ownership_batch_v1 as batch
 from scripts import season_release_registry_v1 as registry
 
@@ -28,8 +29,8 @@ def run(plan_root,release_id,jobs,priority=()):
             for season in ordered_seasons(pending,priority):
                 if len(active)>=jobs:break
                 path=plan_root/season/'ownership-plan.json'
-                if not path.is_file():continue
-                try:plan=json.loads(path.read_text())
+                if not storage_io.is_file(path):continue
+                try:plan=json.loads(storage_io.read_text(path))
                 except json.JSONDecodeError:continue
                 if plan['season']!=season:raise ValueError('streamed ownership plan belongs to another season')
                 if not plan['updates']:

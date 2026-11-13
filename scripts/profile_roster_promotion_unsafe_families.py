@@ -8,6 +8,14 @@ before/after deltas when a previous snapshot is supplied.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import json
 import re
@@ -18,7 +26,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
-_REPO_ROOT = Path(__file__).resolve().parents[1]
+_REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
@@ -161,7 +169,7 @@ def _run_snapshot(
     if team_limit is not None and team_limit > 0:
         rosters = rosters[:team_limit]
 
-    player_bytes = Path(player_file).read_bytes()
+    player_bytes = storage_io.read_bytes(Path(player_file))
     indexed = IndexedFDIFile.from_bytes(player_bytes)
     entry_by_id = {int(entry.record_id): entry for entry in list(getattr(indexed, "entries", []) or [])}
 
@@ -490,7 +498,7 @@ def main() -> None:
     payload: dict[str, Any]
     if args.before_json:
         before_path = Path(str(args.before_json))
-        before_raw = json.loads(before_path.read_text(encoding="utf-8"))
+        before_raw = json.loads(storage_io.read_text(before_path, encoding='utf-8'))
         before_snapshot = _extract_snapshot_payload(before_raw)
         payload = {
             "before": before_snapshot,
@@ -501,7 +509,7 @@ def main() -> None:
         payload = {"after": after_snapshot}
 
     if args.output_json:
-        Path(str(args.output_json)).write_text(json.dumps(_jsonable(payload), indent=2) + "\n", encoding="utf-8")
+        storage_io.write_text(Path(str(args.output_json)), json.dumps(_jsonable(payload), indent=2) + '\n', encoding='utf-8')
 
     top_n = max(0, int(args.print_top or 0))
     top_shape_n = max(0, int(args.print_shape_top or 0))

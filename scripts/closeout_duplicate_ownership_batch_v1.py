@@ -16,6 +16,7 @@ from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_duplicate_ownership_delta_v1 as delta
 from scripts import season_duplicate_ownership_plan_v1 as planner
 from scripts import season_historical_transfer_review_v1 as transfer
@@ -33,7 +34,7 @@ def rebase_completed_plans(input_root, output_root, *, seasons=None):
         raise ValueError('completed plan continuation requires supported seasons')
     for season in selected:
         source_path = input_root / season / 'ownership-plan.json'
-        source = json.loads(source_path.read_text())
+        source = json.loads(storage_io.read_text(source_path))
         old = registry.load_registered_release(season, source['release_id'])
         current = registry.load_preferred_release(season)
         if (registry.sha256_file(old.package_path), registry.sha256_file(old.game_path / 'DBDAT/JUG98030.FDI')) != (
@@ -49,7 +50,7 @@ def rebase_completed_plans(input_root, output_root, *, seasons=None):
                     raise ValueError('completed continuation has ambiguous cross-layer player IDs')
                 rows[player['id']] = player
         saved_path = current.locator.get('ownership_plan_path')
-        saved = json.loads((ROOT / saved_path).read_text()) if saved_path else {'updates': []}
+        saved = json.loads(storage_io.read_text(ROOT / saved_path)) if saved_path else {'updates': []}
         saved_rows = {row['player_id']: row for row in saved['updates']}
         result = copy.deepcopy(source)
         result['updates'] = []
@@ -74,7 +75,7 @@ def rebase_completed_plans(input_root, output_root, *, seasons=None):
             'candidate_group_count_scope': 'prior proposal cohort; current inventory requires separate identity audit'}
         result['summary']['replacement_slots'] = len(result['updates'])
         path = output_root / season / 'ownership-plan.json'
-        if path.exists():
+        if storage_io.exists(path):
             raise ValueError('rebased evidence already exists; use another output root')
         path.parent.mkdir(parents=True, exist_ok=True)
         pipeline.write_canonical_json(path, result)
@@ -93,13 +94,13 @@ def reusable_quality(report, package_sha256, current_runtime):
 def resume_quality(input_root, output_root, jobs):
     """Retain completed exact-recipe audits; retry failed checker executions only."""
     from scripts import pm99_season_qa_v1 as qa
-    if output_root.exists():
+    if storage_io.exists(output_root):
         raise ValueError('quality evidence is immutable; use a new output root')
     pending = []
     retained = []
     for season in registry.supported_seasons():
         path = input_root / season / 'qa-report.json'
-        report = json.loads(path.read_text()) if path.is_file() else {}
+        report = json.loads(storage_io.read_text(path)) if storage_io.is_file(path) else {}
         release = registry.load_preferred_release(season)
         complete = reusable_quality(report, registry.sha256_file(release.package_path), qa.audit_runtime(season))
         if complete:
@@ -124,10 +125,10 @@ def resume_quality(input_root, output_root, jobs):
 def closeout(plan_root, output_root, qa_root, supplemental_plan=None,
              native_readback=None, native_reproduction=None, identity_audit=None):
     """Freeze current proofs and the remaining queue; never label failed QA a pass."""
-    if output_root.exists():
+    if storage_io.exists(output_root):
         raise ValueError('closeout evidence is immutable; use a new output root')
     if supplemental_plan is not None:
-        supplemental = json.loads(supplemental_plan.read_text())
+        supplemental = json.loads(storage_io.read_text(supplemental_plan))
     else:
         supplemental = None
     seasons = registry.supported_seasons()
@@ -136,7 +137,7 @@ def closeout(plan_root, output_root, qa_root, supplemental_plan=None,
         path = plan_root / season / 'ownership-plan.json'
         if supplemental is not None and supplemental['season'] == season:
             path = supplemental_plan
-        plans[season] = (path, json.loads(path.read_text()))
+        plans[season] = (path, json.loads(storage_io.read_text(path)))
     checks = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
         futures = {pool.submit(registry.validate_preferred_release, season, level='release'): season
@@ -155,18 +156,18 @@ def closeout(plan_root, output_root, qa_root, supplemental_plan=None,
         release = registry.load_preferred_release(season)
         path, plan = plans[season]
         report_path = qa_root / season / 'qa-report.json'
-        report = json.loads(report_path.read_text())
+        report = json.loads(storage_io.read_text(report_path))
         if report.get('inputs', {}).get('package_sha256') != registry.sha256_file(release.package_path):
             raise ValueError(f'QA is not bound to current recipe: {season}')
         if plan['updates']:
-            compiled_plan = json.loads((ROOT / release.locator['ownership_plan_path']).read_text())
+            compiled_plan = json.loads(storage_io.read_text(ROOT / release.locator['ownership_plan_path']))
             actual_rows = {row['player_id']: row for row in compiled_plan['updates']}
             fields = ('before', 'replacement', 'retained_owner_player_id', 'owner_evidence', 'replacement_opening_evidence')
             if (set(actual_rows) != {row['player_id'] for row in plan['updates']} or
                     any(any(actual_rows[row['player_id']][key] != row[key] for key in fields)
                         for row in plan['updates'])):
                 raise ValueError(f'current compiled ownership plan differs: {season}')
-        attestation = json.loads(release.attestation_path.read_text())
+        attestation = json.loads(storage_io.read_text(release.attestation_path))
         receipt = attestation['runtime_receipts'][0]
         # A historical ownership blocker remains a real failure, not technical approval.
         blockers = [row['code'] for row in report['blockers']]
@@ -195,8 +196,8 @@ def closeout(plan_root, output_root, qa_root, supplemental_plan=None,
         unresolved.extend(dict(row, season=season) for row in plan['unresolved'])
     if native_readback is None or native_reproduction is None:
         raise ValueError('closeout requires frozen native readback and reproduction proofs')
-    readback = json.loads(native_readback.read_text())
-    reproduction = json.loads(native_reproduction.read_text())
+    readback = json.loads(storage_io.read_text(native_readback))
+    reproduction = json.loads(storage_io.read_text(native_reproduction))
     changed = {row['season']: row for row in releases if row['changed_slots']}
     readback_rows = {row['season']: row for row in readback['seasons']}
     reproduction_rows = {row['season']: row for row in reproduction['seasons']}
@@ -216,7 +217,7 @@ def closeout(plan_root, output_root, qa_root, supplemental_plan=None,
             raise ValueError(f'native preservation/reproduction proof differs: {season}')
     identity_binding = None
     if identity_audit is not None:
-        identities = json.loads(identity_audit.read_text())
+        identities = json.loads(storage_io.read_text(identity_audit))
         current_rows = {row['season']: row for row in releases}
         if (len(identities['seasons']) != len(seasons) or
                 {row['season'] for row in identities['seasons']} != set(seasons) or
@@ -244,7 +245,7 @@ def closeout(plan_root, output_root, qa_root, supplemental_plan=None,
     pipeline.write_canonical_json(output_root / 'summary.json', result)
     pipeline.write_canonical_json(output_root / 'full-release-validation.json', checks)
     pipeline.write_canonical_json(output_root / 'unresolved.json', unresolved)
-    with (output_root / 'replacements.csv').open('w', newline='', encoding='utf-8') as handle:
+    with storage_io.open_file(output_root / 'replacements.csv', 'w', newline='', encoding='utf-8') as handle:
         writer = csv.DictWriter(handle, fieldnames=list(replacements[0]) if replacements else ['season'])
         writer.writeheader()
         writer.writerows(replacements)
@@ -260,7 +261,7 @@ def safe_plans(input_root, output_root):
     summaries = []
     for season in registry.supported_seasons():
         source_path = input_root / season / 'ownership-plan.json'
-        source = json.loads(source_path.read_text())
+        source = json.loads(storage_io.read_text(source_path))
         if source['bindings']['snapshot'] != snapshot:
             raise ValueError('completed ownership plan uses another source snapshot')
         old = registry.load_registered_release(season, source['release_id'])
@@ -269,7 +270,7 @@ def safe_plans(input_root, output_root):
             raise ValueError('previous ownership baseline changed')
         result = copy.deepcopy(source)
         result['updates'] = []
-        jug = (old.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+        jug = storage_io.read_bytes(old.game_path / 'DBDAT/JUG98030.FDI')
         for row in source['updates']:
             row = copy.deepcopy(row)
             person = transfer.unique_person(row['before'], people)
@@ -304,8 +305,8 @@ def safe_plans(input_root, output_root):
             'input_sha256': registry.sha256_file(source_path),
             'policy': 'protect-positive-matchday-members-preserve-broad-roles-and-published-surnames'}
         path = output_root / season / 'ownership-plan.json'
-        if path.exists():
-            if json.loads(path.read_text()) != result:
+        if storage_io.exists(path):
+            if json.loads(storage_io.read_text(path)) != result:
                 raise ValueError('completed safe plan differs; use another output root')
         else:
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -317,16 +318,16 @@ def safe_plans(input_root, output_root):
 
 def build_one(season, plan_root, release_id):
     plan_path = plan_root / season / 'ownership-plan.json'
-    plan = json.loads(plan_path.read_text())
+    plan = json.loads(storage_io.read_text(plan_path))
     if not plan['updates']:
         return {'season': season, 'status': 'unchanged-existing-game-preserved'}
     existing = registry.locator_path(season, release_id)
-    if existing.exists():
+    if storage_io.exists(existing):
         check = registry.validate_preferred_release(season, level='playable', release_id=release_id)
         if not check['valid']:
             raise ValueError('completed ownership delta no longer validates')
         completed = registry.load_registered_release(season, release_id)
-        saved = json.loads((ROOT / completed.locator['ownership_plan_path']).read_text())
+        saved = json.loads(storage_io.read_text(ROOT / completed.locator['ownership_plan_path']))
         projection = lambda document: [{k: row[k] for k in ('player_id', 'before', 'replacement',
             'retained_owner_player_id', 'owner_evidence', 'replacement_opening_evidence')}
             for row in document['updates']]
@@ -338,8 +339,8 @@ def build_one(season, plan_root, release_id):
         'package_sha256': registry.sha256_file(release.package_path),
         'jug_sha256': registry.sha256_file(release.game_path / 'DBDAT/JUG98030.FDI'), 'updates': [], 'unresolved': []}
     role_path = plan_root / season / 'role-plan.json'
-    if role_path.exists():
-        if json.loads(role_path.read_text()) != role:
+    if storage_io.exists(role_path):
+        if json.loads(storage_io.read_text(role_path)) != role:
             raise ValueError('partial-compile input changed')
     else:
         pipeline.write_canonical_json(role_path, role)
@@ -358,11 +359,11 @@ def freeze_implementations(implementations, hashes, destination):
             raise ValueError('verification implementation changed before freezing')
         target = destination / key.removesuffix('_path') / source.name
         target.parent.mkdir(parents=True, exist_ok=True)
-        if target.exists():
+        if storage_io.exists(target):
             if registry.sha256_file(target) != hashes[key]:
                 raise ValueError('frozen implementation differs; never overwrite')
         else:
-            shutil.copy2(source, target)
+            storage_io.copy_file(source, target, metadata=True)
         if registry.sha256_file(target) != hashes[key]:
             raise ValueError('frozen implementation copy failed hash verification')
         frozen[key] = target
@@ -371,7 +372,7 @@ def freeze_implementations(implementations, hashes, destination):
 
 def verify_native_batch(plan_root, release_id, output, *, seasons=None):
     """Reproduce a bounded delta in memory, without generating another game."""
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('native verification evidence is immutable')
     implementations = {'compiler_path': Path(delta.__file__),
         'cross_club_reserve_checker_path': ROOT / 'scripts/season_cross_club_reserve_repair_v1.py',
@@ -419,20 +420,20 @@ def verify_native_batch(plan_root, release_id, output, *, seasons=None):
         raise ValueError('native verification selection must contain supported seasons')
     rows = []
     for season in selected:
-        proposed = json.loads((plan_root / season / 'ownership-plan.json').read_text())
+        proposed = json.loads(storage_io.read_text(plan_root / season / 'ownership-plan.json'))
         if not proposed['updates']:
             continue
         release = registry.load_registered_release(season, release_id)
         saved_path = ROOT / release.locator['ownership_plan_path']
-        plan = json.loads(saved_path.read_text())
+        plan = json.loads(storage_io.read_text(saved_path))
         if plan != proposed:
             raise ValueError('native verification plan differs from compiled plan')
         base = registry.load_registered_release(season, plan['release_id'])
         delta.verify_plan(base, plan)
-        original = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+        original = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
         from scripts import season_duplicate_layered_packages_v1 as layered
         expected, expected_english, expected_view, aliases = layered.prepare(base, plan, original)
-        actual = json.loads(release.package_path.read_text())
+        actual = json.loads(storage_io.read_text(release.package_path))
         if (expected['players'] != actual['players'] or
                 any(expected[key] != actual[key] for key in ('clubs', 'managers', 'assets'))):
             raise ValueError('compiled player/club/manager/asset declarations differ')
@@ -443,17 +444,17 @@ def verify_native_batch(plan_root, release_id, output, *, seasons=None):
         changed = {row['player_id'] for row in plan['updates']}
         countries = delta.compiler._extract_country_codes_from_textos(base.game_path / 'DBDAT/TEXTOS.PKF')
         reproduced = delta.compile_planned_players(original, expected_view, changed, countries,plan)
-        installed = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+        installed = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
         if reproduced != installed or delta.compile_players(installed, expected_view, changed, countries) != installed:
             raise ValueError('native delta reproduction or idempotence failed')
         for name in ('EQ98030.FDI', 'ENT98030.FDI'):
             if registry.sha256_file(base.game_path / 'DBDAT' / name) != registry.sha256_file(release.game_path / 'DBDAT' / name):
                 raise ValueError('unrelated club/tactic/manager bytes changed')
         carriers = {row['carrier_id'] for row in plan['updates']}
-        archive, _ = delta.no_photo_archive((base.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes(), carriers)
-        if archive != (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes():
+        archive, _ = delta.no_photo_archive(storage_io.read_bytes(base.game_path / 'DBDAT/MINIFOTO.PKF'), carriers)
+        if archive != storage_io.read_bytes(release.game_path / 'DBDAT/MINIFOTO.PKF'):
             raise ValueError('native portrait directory delta differs')
-        if any((release.game_path / f'DBDAT/MINIFOTO/J96{carrier:05d}.BMP').exists() for carrier in carriers):
+        if any(storage_io.exists(release.game_path / f'DBDAT/MINIFOTO/J96{carrier:05d}.BMP') for carrier in carriers):
             raise ValueError('displaced identity retains a loose portrait')
         rows.append({'season': season, 'release_id': release_id,
             'package_sha256': registry.sha256_file(release.package_path),
@@ -484,11 +485,11 @@ def verify_native_batch(plan_root, release_id, output, *, seasons=None):
 
 def audit_current_identities(output, previous_path=None):
     """Count full-source-name/DOB candidates, including the current English overlay."""
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('identity evidence is immutable')
     previous = {}
     if previous_path is not None:
-        document = json.loads(previous_path.read_text())
+        document = json.loads(storage_io.read_text(previous_path))
         if document['schema_version'] != 'pm99-country-independent-player-identity-candidate-audit-v1':
             raise ValueError('previous identity evidence uses another policy')
         previous = {row['season']: row for row in document['seasons']}
@@ -593,7 +594,7 @@ def main():
             season = futures[future]
             try:
                 result = future.result()
-                if args.action == 'build' and registry.locator_path(season, args.release_id).exists():
+                if args.action == 'build' and storage_io.exists(registry.locator_path(season, args.release_id)):
                     # Catalog promotions are serial; never race JSON writes.
                     publisher.register_completed_delta(season, args.release_id)
                 print(json.dumps(result), flush=True)

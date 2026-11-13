@@ -28,6 +28,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import transfermarkt_calendar_year_policy_v1 as calendar_year_policy  # noqa: E402
 PLAN_SCHEMA = "pm99-transfermarkt-opening-lineup-batch-plan-v1"
 SELECTOR_SCHEMA = "pm99-transfermarkt-opening-lineup-selector-capture-v1"
@@ -124,7 +125,7 @@ def reviewed_competition_codes() -> dict[tuple[str, str], str]:
 
 
 def _load_source_intake(path: Path) -> tuple[dict[str, Any], str]:
-    raw = path.read_bytes()
+    raw = storage_io.read_bytes(path)
     document = json.loads(raw.decode("utf-8"))
     if not isinstance(document, dict) or not isinstance(document.get("source_clubs"), list):
         raise ValueError(f"{path}: source intake needs a source_clubs list")
@@ -235,8 +236,8 @@ def plan_season(
         selector_capture["selection_evidence"] = dict(selection_evidence)
     map_bytes = _canonical_bytes(competition_map)
     selector_bytes = _canonical_bytes(selector_capture)
-    map_path.write_bytes(map_bytes)
-    selector_path.write_bytes(selector_bytes)
+    storage_io.write_bytes(map_path, map_bytes)
+    storage_io.write_bytes(selector_path, selector_bytes)
 
     argv = [
         "python3", "scripts/capture_transfermarkt_opening_lineups_v1.py",
@@ -272,13 +273,13 @@ def plan_season(
             "audit": audit_binding, "policy_schema": calendar_year_policy.POLICY_SCHEMA,
             "routed_competitions": routed_pairs, "quarantined_competitions": quarantined,
         }
-    plan_path.write_bytes(_canonical_bytes(plan))
+    storage_io.write_bytes(plan_path, _canonical_bytes(plan))
     return plan
 
 
 def discover_source_intakes(seasons_root: Path, seasons: Iterable[str] | None = None) -> list[Path]:
     wanted = set(seasons or ())
-    paths = sorted(seasons_root.glob("*/source-intake.json"))
+    paths = sorted(storage_io.glob(seasons_root, '*/source-intake.json'))
     if wanted:
         paths = [path for path in paths if path.parent.name in wanted]
         missing = wanted - {path.parent.name for path in paths}
@@ -294,18 +295,18 @@ def discover_current_source_intakes(
 
     wanted = set(seasons or ())
     results: list[tuple[str, Path]] = []
-    for pointer_path in sorted(current_root.glob("*/current.json")):
+    for pointer_path in sorted(storage_io.glob(current_root, '*/current.json')):
         season_id = pointer_path.parent.name
         if wanted and season_id not in wanted:
             continue
-        pointer = json.loads(pointer_path.read_text(encoding="utf-8"))
+        pointer = json.loads(storage_io.read_text(pointer_path, encoding='utf-8'))
         if pointer.get("schema_version") != "pm99-historical-squad-backfill-current-v1":
             raise ValueError(f"{pointer_path}: unsupported historical-current schema")
         intake = (pointer.get("artifacts") or {}).get("intake") or {}
         relative = str(intake.get("path") or "")
         expected_sha = str(intake.get("sha256") or "")
         path = pointer_path.parent / relative
-        if not relative or not path.is_file() or _sha256(path.read_bytes()) != expected_sha:
+        if not relative or not storage_io.is_file(path) or _sha256(storage_io.read_bytes(path)) != expected_sha:
             raise ValueError(f"{pointer_path}: immutable intake path/hash does not verify")
         results.append((season_id, path))
     if wanted:
@@ -319,10 +320,10 @@ def current_opening_selection(current_directory: Path) -> tuple[set[tuple[str, s
     """Select fixed foreign allocations plus every English mode-0 source club."""
 
     pointer_path = current_directory / "current.json"
-    pointer = json.loads(pointer_path.read_text(encoding="utf-8"))
+    pointer = json.loads(storage_io.read_text(pointer_path, encoding='utf-8'))
     allocation_ref = (pointer.get("artifacts") or {}).get("allocation") or {}
     allocation_path = current_directory / str(allocation_ref.get("path") or "")
-    payload = allocation_path.read_bytes()
+    payload = storage_io.read_bytes(allocation_path)
     digest = _sha256(payload)
     if digest != allocation_ref.get("sha256"):
         raise ValueError(f"{pointer_path}: immutable allocation path/hash does not verify")
@@ -334,7 +335,7 @@ def current_opening_selection(current_directory: Path) -> tuple[set[tuple[str, s
             selected.add((str(source.get("country_catalog") or ""), str(source.get("competition_catalog") or ""),
                           str(row.get("club_name") or "")))
     intake_ref = pointer["artifacts"]["intake"]
-    intake = json.loads((current_directory / intake_ref["path"]).read_text(encoding="utf-8"))
+    intake = json.loads(storage_io.read_text(current_directory / intake_ref['path'], encoding='utf-8'))
     for club in intake.get("source_clubs") or []:
         source = club.get("selector") or {}
         if source.get("country_catalog") == "eng" and source.get("competition_catalog") in ENGLISH_MODE0_CATALOGS:

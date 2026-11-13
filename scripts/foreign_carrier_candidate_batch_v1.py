@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import foreign_carrier_assignment_v1 as assignment_lib  # noqa: E402
 from scripts import foreign_carrier_candidate_queue_v1 as queue_lib  # noqa: E402
 
@@ -117,7 +118,7 @@ def main(argv: list[str] | None = None) -> int:
             for path in args.queue:
                 queue, digest = _read_queue(path)
                 try:
-                    source_file = str(path.resolve().relative_to(ROOT))
+                    source_file = str(storage_io.resolve(path).relative_to(ROOT))
                 except ValueError as exc:
                     raise CandidateBatchError("queue must be inside the PM99RE workspace") from exc
                 queue_rows.append((source_file, queue, digest))

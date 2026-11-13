@@ -19,6 +19,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_historical_roster_audit_v1 as roster
 from scripts import season_historical_transfer_review_v1 as transfer
 from scripts import season_pipeline_v2 as pipeline
@@ -32,14 +33,14 @@ POLICY = 'dated-transfer-brackets-or-positive-common-date-xi-and-opening-reserve
 
 def package_layers(release):
     """Read the current English overlay, not a superseded legacy manifest."""
-    package = json.loads(release.package_path.read_text())
+    package = json.loads(storage_io.read_text(release.package_path))
     layers = [('main', package, release.package_path)]
     for artifact in package['artifacts']:
         if artifact['id'] == 'english-contextual-package-2015-16':
             path = release.package_path.parent / artifact['relative_path']
             if registry.sha256_file(path) != artifact['sha256']:
                 raise ValueError('current English overlay hash changed')
-            layers.append(('english', json.loads(path.read_text()), path))
+            layers.append(('english', json.loads(storage_io.read_text(path)), path))
     return layers
 
 
@@ -195,12 +196,12 @@ def plan(season, people, events, snapshot_binding, source_root, output, suppleme
         for player in package['players']:
             carrier_layers[player['carrier_id']].add(label)
     opening_path = source_root / 'opening' / season / 'opening-review.json'
-    opening = json.loads(opening_path.read_text())
+    opening = json.loads(storage_io.read_text(opening_path))
     transfer.verify_opening_sources(opening)
     evidence = {}
     opening_rows = [(row, opening) for row in opening['clubs']]
     if supplemental_opening_path is not None:
-        extra = json.loads(supplemental_opening_path.read_text())
+        extra = json.loads(storage_io.read_text(supplemental_opening_path))
         if extra['season'] != season:
             raise ValueError('supplemental opening review belongs to another season')
         transfer.verify_opening_sources(extra)
@@ -218,9 +219,9 @@ def plan(season, people, events, snapshot_binding, source_root, output, suppleme
             evidence[club['id']] = source_evidence(row, original_review)
     captures, capture_bindings = roster.load_sources(season)
     report_path = source_root / 'reviews' / season / 'report.json'
-    if not report_path.exists() and season == '2015-16':
+    if not storage_io.exists(report_path) and season == '2015-16':
         report_path = source_root / 'reviews' / season / 'roster-audit.json'
-    previous = json.loads(report_path.read_text())
+    previous = json.loads(storage_io.read_text(report_path))
     verifier = roster.SourceVerifier(season, previous, capture_bindings)
     identity_supplement = None
     resolution_policy = POLICY
@@ -258,8 +259,8 @@ def plan(season, people, events, snapshot_binding, source_root, output, suppleme
         evidence, soccerbase_source_gaps = soccerbase.attach(source_bindings, season, clubs, captures,
             people, events, evidence, raw_identity_people=raw_identity_people)
     path = output / season / 'ownership-plan.json'
-    if path.exists():
-        completed = json.loads(path.read_text())
+    if storage_io.exists(path):
+        completed = json.loads(storage_io.read_text(path))
         expected = (release.release_id, registry.sha256_file(release.package_path),
                     registry.sha256_file(release.game_path / 'DBDAT/JUG98030.FDI'),
                     registry.sha256_file(opening_path), registry.sha256_file(report_path), snapshot_binding, capture_bindings)
@@ -360,7 +361,7 @@ def plan(season, people, events, snapshot_binding, source_root, output, suppleme
             # A small carrier cannot accept every surname. Try all sourced,
             # role-compatible reserves before declaring that club blocked.
             from scripts import season_duplicate_ownership_delta_v1 as delta
-            original = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+            original = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
             replacement = None
             selected_display_claim = None
             for option in eligible:
@@ -445,7 +446,7 @@ def plan(season, people, events, snapshot_binding, source_root, output, suppleme
         document['bindings']['supplemental_opening'] = {'path': registry.relative_workspace_path(supplemental_opening_path),
             'sha256': registry.sha256_file(supplemental_opening_path),
             'limit': 'Earliest fixture present in pinned source, not a claim that all loans or every fixture are represented.'}
-    if path.exists():
+    if storage_io.exists(path):
         raise ValueError('never overwrite a completed ownership plan')
     path.parent.mkdir(parents=True, exist_ok=True)
     pipeline.write_canonical_json(path, document)
@@ -474,7 +475,7 @@ def main():
     people, events, _, binding = transfer.load_snapshot(
         ROOT / '.local/external-sources/transfermarkt-datasets/transfermarkt-datasets.duckdb',
         ROOT / '.local/season-pipeline-v2/world-2015-transfermarkt-opening-fixtures-20260831.json')
-    extra_season = json.loads(args.supplemental_opening.read_text())['season'] if args.supplemental_opening else None
+    extra_season = json.loads(storage_io.read_text(args.supplemental_opening))['season'] if args.supplemental_opening else None
     for season in registry.supported_seasons() if args.season == 'all' else [args.season]:
         extra = args.supplemental_opening if extra_season == season else None
         print(json.dumps(plan(season, people, events, binding, args.source_root, args.output, extra,

@@ -2,6 +2,7 @@
 import copy
 from datetime import UTC, datetime
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import prepare_ofk_2004_source_allocation_v1 as source
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts.publish_historical_role_delta_v1 import register_completed_delta
@@ -18,7 +19,7 @@ def run():
     root = source.AUDIT.parent
     prior = root / 'release-delivery-checklist-v16.json'
     output = root / 'release-delivery-checklist-v17.json'
-    if output.exists(): raise ValueError('completed checkpoint must not be repeated')
+    if storage_io.exists(output): raise ValueError('completed checkpoint must not be repeated')
     result = copy.deepcopy(pipeline.read_json_file(prior))
     release = registry.load_registered_release('2004-05', RELEASE)
     candidate = release.package_path.parent
@@ -51,7 +52,7 @@ def run():
     register_completed_delta('2004-05', RELEASE)
     attestation = runtime.attest(season='2004-05', evidence_dir=evidence_dir)
     attest_path = source.AUDIT / 'ofk-2004-final-attestation-v1.json'
-    if attest_path.exists():
+    if storage_io.exists(attest_path):
         if pipeline.read_json_file(attest_path) != attestation: raise ValueError('retained OFK attestation changed')
     else: pipeline.write_canonical_json(attest_path, attestation)
     case = next(c for c in result['within_club_cases'] if c['id'] == CASE)

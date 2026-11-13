@@ -8,6 +8,7 @@ an explicitly authorised starting-player transaction, not the bench-only path.
 """
 from datetime import UTC, datetime
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_historical_opening_review_v1 as opening
 from scripts import season_historical_roster_audit_v1 as roster
@@ -60,10 +61,10 @@ def prepare():
     _, bio = original(folder, 'khomukha-biography', BIO)
     page, squad = original(folder, 'Shinnik2002-registered-squad', SQUAD)
     _, fixture_binding = original(folder, 'Shinnik2002-opening-report', FIXTURE)
-    person, owner = wiki.read((registry.ROOT/bio['path']).read_bytes(), 'Dmitri_Khomukha', BIO,
+    person, owner = wiki.read(storage_io.read_bytes(registry.ROOT / bio['path']), 'Dmitri_Khomukha', BIO,
         '2002-08-01', 'Shinnik Yaroslavl', 'russia', expected_name='Dmitri Khomukha')
     facts = registration(page)
-    fixture = opening.match_team((registry.ROOT/fixture_binding['path']).read_bytes(), 2374, '2002-03-12')
+    fixture = opening.match_team(storage_io.read_bytes(registry.ROOT / fixture_binding['path']), 2374, '2002-03-12')
     if (facts['birth_date'] != person['birth_date'] or facts['birth_date'] != '1969-08-23'
             or facts['first_registered_year'] != 2001
             or fixture['starting_xi'].get('24143') != 'Dmitriy Khomukha'):
@@ -73,7 +74,7 @@ def prepare():
     if any(roster.normalise(p.get('source_name') or p['name']) in ('dmitrikhomukha','dmitriykhomukha')
             for p in package['players']):
         raise ValueError('positive actor already represented; cannot create another duplicate')
-    data = (base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    data = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
     wrong = native.native_facts(data,7972)
     if wrong != dict(name='Shtanyuk',birth_date='1900-01-01',position='D',startup_order=8):
         raise ValueError('wrong-owner preimage changed; inspect before source admission')
@@ -92,7 +93,7 @@ def prepare():
 
 def main():
     path=ROOT/'Shinnik2002-positive-Khomukha-admission.json'
-    if path.exists():
+    if storage_io.exists(path):
         raise ValueError('completed original actor admission must not repeat')
     retained(path,dict(utc=datetime.now(UTC).isoformat(),**prepare()))
     print(dict(positive2002_actor='Dmitri Khomukha',native_wrong_actor_is_starter=True,

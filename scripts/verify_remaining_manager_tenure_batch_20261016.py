@@ -1,5 +1,6 @@
 """Independently read exact manager games after original runner review."""
 import argparse
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_remaining_manager_tenures_20261016 as source
 from scripts import checkpoint_remaining_manager_tenures_20261016 as checkpoint
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
@@ -10,7 +11,7 @@ def main(seasons):
     for season in seasons:
         root = source.ROOT / season
         path = root / 'independent-delivery-readback.json'
-        if path.exists():
+        if storage_io.exists(path):
             saved = pipeline.read_json_file(path)
             actual = registry.load_registered_release(season, checkpoint.batch.RELEASE)
             if (saved['manifest_sha256'] != actual.manifest_sha256

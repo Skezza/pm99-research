@@ -13,6 +13,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import archive_retired_season_tests_20261004 as transport
 from scripts import season_release_registry_v1 as registry
 
@@ -27,7 +28,7 @@ def guard(path):
         if not proc.name.isdigit():
             continue
         try:
-            cmd = (proc / 'cmdline').read_bytes().split(b'\0')
+            cmd = storage_io.read_bytes(proc / 'cmdline').split(b'\0')
             executable = Path(cmd[0].decode()).name.lower() if cmd and cmd[0] else ''
             if executable.startswith(('wine', 'wineserver')):
                 raise ValueError('a Wine process is running; keep every local prefix')
@@ -35,10 +36,10 @@ def guard(path):
             pass
     for season in registry.supported_seasons():
         release = registry.load_preferred_release(season)
-        if release.game_path.resolve().is_relative_to(PREFIX.resolve()):
+        if storage_io.resolve(release.game_path).is_relative_to(storage_io.resolve(PREFIX)):
             raise ValueError('current game uses the retired test prefix')
         documents = [json.dumps(release.locator)]
-        documents += [p.read_text() for p in (release.package_path, release.release_manifest_path,
+        documents += [storage_io.read_text(p) for p in (release.package_path, release.release_manifest_path,
             release.compiler_receipt_path, release.build_chain_path)]
         if any('wineprefix-enhanced' in text for text in documents):
             raise ValueError('current recipe or rebuild input references the test prefix')

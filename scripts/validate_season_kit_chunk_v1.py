@@ -22,6 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts.season_kit_catalogue_v1 import canonical_json_bytes
 
 
@@ -46,9 +47,9 @@ def _sha(payload: bytes) -> str:
 
 def _doc(path: Path, label: str, schema: str | None = None) -> tuple[Path, dict[str, Any], str]:
     try:
-        if path.is_symlink() or not stat.S_ISREG(path.stat().st_mode):
+        if path.is_symlink() or not stat.S_ISREG(storage_io.stat_result(path).st_mode):
             raise ChunkValidationError(f"{label} must be a regular non-symlink file: {path}")
-        payload = path.read_bytes()
+        payload = storage_io.read_bytes(path)
         value = json.loads(payload.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise ChunkValidationError(f"{label} is not canonical JSON: {exc}") from exc
@@ -56,7 +57,7 @@ def _doc(path: Path, label: str, schema: str | None = None) -> tuple[Path, dict[
         raise ChunkValidationError(f"{label} must be a canonical JSON object")
     if schema is not None and value.get("schema_version") != schema:
         raise ChunkValidationError(f"{label} must use {schema}")
-    return path.resolve(), value, _sha(payload)
+    return storage_io.resolve(path), value, _sha(payload)
 
 
 def _ids(rows: Any, label: str) -> list[int]:
@@ -87,7 +88,7 @@ def validate(*, plan_path: Path, subset_path: Path, capture_path: Path, request_
         raise ChunkValidationError("chunk plan selection differs from subset allocation")
     full_path = Path(str(full.get("path") or ""))
     try:
-        if full_path.is_symlink() or not full_path.is_file() or _sha(full_path.read_bytes()) != full.get("sha256"):
+        if full_path.is_symlink() or not storage_io.is_file(full_path) or _sha(storage_io.read_bytes(full_path)) != full.get("sha256"):
             raise ChunkValidationError("full allocation is unavailable or hash-stale")
     except OSError as exc:
         raise ChunkValidationError(f"full allocation is unavailable: {exc}") from exc
@@ -141,7 +142,7 @@ def validate(*, plan_path: Path, subset_path: Path, capture_path: Path, request_
         raise ChunkValidationError("archive stage has no archive hashes")
     for archive in ARCHIVES:
         output = archive_stage / "archives" / archive
-        if not output.is_file() or archive_rows.get(archive, {}).get("sha256_after") != _sha(output.read_bytes()):
+        if not storage_io.is_file(output) or archive_rows.get(archive, {}).get("sha256_after") != _sha(storage_io.read_bytes(output)):
             raise ChunkValidationError(f"archive stage hash is stale for {archive}")
 
     gap_rows = [{"carrier_id": row["carrier_id"], "club_name": row["club_name"], "capture_status": row.get("status")} for row in capture_rows if row["carrier_id"] not in ready_ids]
@@ -179,14 +180,14 @@ def main() -> int:
     parser.add_argument("--archive-stage", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True, help="new validation receipt path")
     args = parser.parse_args()
-    if args.output.exists() or args.output.is_symlink():
+    if storage_io.exists(args.output) or args.output.is_symlink():
         parser.error(f"refusing to replace validation receipt: {args.output}")
     try:
         result = validate(plan_path=args.plan, subset_path=args.subset_allocation, capture_path=args.capture, request_path=args.catalogue_request, catalogue_path=args.catalogue, bindings_path=args.bindings, render_receipt_path=args.render_receipt, archive_stage=args.archive_stage)
     except ChunkValidationError as exc:
         parser.error(str(exc))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_json_bytes(result))
+    storage_io.write_bytes(args.output, canonical_json_bytes(result))
     print(json.dumps({"result": result["result"], "coverage": result["coverage"]}, sort_keys=True))
     return 0
 

@@ -4,6 +4,7 @@ import hashlib
 from pathlib import Path
 
 from app.indexed_jug_birth_date import rewrite_indexed_native_birth_dates
+from scripts import json_storage_io_v1 as storage_io
 from scripts import midson_odubade_birthday_admission_v1 as admission
 from scripts import season_package_v2 as packages
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
@@ -68,7 +69,7 @@ def bind(package, plan):
 
 def apply(jug, eq, plan):
     base = registry.load_registered_release(plan['season'], plan['release_id'])
-    original = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    original = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
     if plan.get('schema') != SCHEMA or digest(original) != plan['jug_sha256'] or digest(eq) != plan['eq_sha256']:
         raise ValueError('birthday immutable native baseline differs')
     updates = {r['carrier_id']: r for r in plan['updates']}
@@ -89,7 +90,7 @@ def reconstruction(previous, release_id):
     plan = pipeline.read_json_file(path)
     base = registry.load_registered_release(previous.season, plan['release_id'])
     verify(base, plan)
-    if path.resolve() != (previous.package_path.parent / FILENAME).resolve():
+    if storage_io.resolve(path) != storage_io.resolve(previous.package_path.parent / FILENAME):
         raise ValueError('birthday original plan locator differs')
     if bind(pipeline.read_json_file(base.package_path), plan) != pipeline.read_json_file(previous.package_path):
         raise ValueError('edited birthday recipe cannot be silently replayed')
@@ -103,7 +104,7 @@ def reconstruction(previous, release_id):
         profile_assignment_plan_path=path)
     rebuilt = registry.load_registered_release(previous.season, release_id)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path, pipeline.read_json_file(previous.inventory_path))
-    if rebuilt.package_path.read_bytes() != previous.package_path.read_bytes():
+    if storage_io.read_bytes(rebuilt.package_path) != storage_io.read_bytes(previous.package_path):
         raise ValueError('complete birthday SOURCE recipe differs')
     return dict(season=previous.season, release_id=release_id, complete_game_inventory_identical=True,
         complete_recipe_identical=True, reused=False, compilation_mode=MODE)

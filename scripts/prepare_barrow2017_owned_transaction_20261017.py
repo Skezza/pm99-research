@@ -1,4 +1,5 @@
 """Bind this reviewed batch to the reusable atomic owned-roster transaction."""
+from scripts import json_storage_io_v1 as storage_io
 from scripts.prepare_barrow2017_opening_source_20261017 import ROOT,FOLDER,source,retained
 from scripts import season_verified_owned_roster_transaction_v1 as transaction
 
@@ -23,8 +24,8 @@ def main():
     transaction.verify(base,plan)
     retained(FOLDER/transaction.filename(plan),plan)
     package=transaction.bind(transaction.pipeline.read_json_file(base.package_path),plan)
-    before=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    before=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     after,after_eq=transaction.apply(before,eq,plan)
     if transaction.apply(after,after_eq,plan)!=(after,after_eq):raise ValueError('native transaction not idempotent')
     retained(FOLDER/'in-memory-native-proof.json',dict(transaction_id=plan['transaction_id'],

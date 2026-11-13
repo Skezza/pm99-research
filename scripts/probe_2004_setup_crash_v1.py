@@ -15,6 +15,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT), str(ROOT / "upstream/pm99-skezmod-db-editor")]
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts.season_package_compiler_v2 import _append_indexed_fdi_records, _rebuild_indexed, _source_roster_owners
 
 
@@ -28,8 +29,8 @@ def main() -> None:
     parser.add_argument("--club-mode", type=int, choices=(0, 1))
     parser.add_argument("--added-player-ids", nargs="*", type=int)
     args = parser.parse_args()
-    out = args.output.resolve()
-    if out.exists():
+    out = storage_io.resolve(args.output)
+    if storage_io.exists(out):
         parser.error("output must not already exist")
     if not out.is_relative_to(ROOT / ".local/crash04-diagnostics-v1"):
         parser.error("output must be within the local crash diagnostic directory")
@@ -37,10 +38,10 @@ def main() -> None:
              for s in ("2003-04", "2004-05")}
     receipt = {"diagnostic_only": True, "mode": args.mode, "output": str(out)}
     if args.mode in ("clubs03", "clubs-subset03"):
-        previous_eq = (roots["2003-04"] / "DBDAT/EQ98030.FDI").read_bytes()
+        previous_eq = storage_io.read_bytes(roots['2003-04'] / 'DBDAT/EQ98030.FDI')
         eq = previous_eq
         if args.mode == "clubs-subset03":
-            eq = (roots["2004-05"] / "DBDAT/EQ98030.FDI").read_bytes()
+            eq = storage_io.read_bytes(roots['2004-05'] / 'DBDAT/EQ98030.FDI')
             indexed = IndexedFDIFile.from_bytes(eq)
             old_eq_entries = {entry.record_id: entry for entry in IndexedFDIFile.from_bytes(previous_eq).entries}
             _, _, modes = _source_roster_owners(eq)
@@ -49,8 +50,8 @@ def main() -> None:
             ids = ids[args.first:args.last]
             eq = _rebuild_indexed(eq, indexed, {pid: old_eq_entries[pid].decode_payload(previous_eq) for pid in ids})
             receipt["replaced_club_ids"] = ids
-        jug = (roots["2004-05"] / "DBDAT/JUG98030.FDI").read_bytes()
-        previous = (roots["2003-04"] / "DBDAT/JUG98030.FDI").read_bytes()
+        jug = storage_io.read_bytes(roots['2004-05'] / 'DBDAT/JUG98030.FDI')
+        previous = storage_io.read_bytes(roots['2003-04'] / 'DBDAT/JUG98030.FDI')
         old_entries = {entry.record_id: entry for entry in IndexedFDIFile.from_bytes(previous).entries}
         ids = {entry.record_id for entry in IndexedFDIFile.from_bytes(jug).entries}
         # Include the complete small missing-ID set so every subsequent subset
@@ -68,20 +69,20 @@ def main() -> None:
         for name in ("ENT98030.FDI", "MINIFOTO.PKF", "BIGCAMP.PKF", "BIGESC.PKF",
                      "MINIESC.PKF", "NANOESC.PKF", "RIDIESC.PKF"):
             (out / name).hardlink_to(roots["2004-05"] / "DBDAT" / name)
-        (out / "EQ98030.FDI").write_bytes(eq)
-        (out / "JUG98030.FDI").write_bytes(jug)
+        storage_io.write_bytes(out / 'EQ98030.FDI', eq)
+        storage_io.write_bytes(out / 'JUG98030.FDI', jug)
         candidate = eq
         receipt["added_missing_player_ids"] = missing
         receipt["player_file_sha256"] = hashlib.sha256(jug).hexdigest()
     elif args.mode == "players03":
-        current = (roots["2004-05"] / "DBDAT/JUG98030.FDI").read_bytes()
-        previous = (roots["2003-04"] / "DBDAT/JUG98030.FDI").read_bytes()
+        current = storage_io.read_bytes(roots['2004-05'] / 'DBDAT/JUG98030.FDI')
+        previous = storage_io.read_bytes(roots['2003-04'] / 'DBDAT/JUG98030.FDI')
         old_entries = {entry.record_id: entry for entry in IndexedFDIFile.from_bytes(previous).entries}
         indexed = IndexedFDIFile.from_bytes(current)
         replacements = {entry.record_id: old_entries[entry.record_id].decode_payload(previous)
                         for entry in indexed.entries if entry.record_id in old_entries}
         candidate = _rebuild_indexed(current, indexed, replacements)
-        owners, _, _ = _source_roster_owners((roots["2004-05"] / "DBDAT/EQ98030.FDI").read_bytes())
+        owners, _, _ = _source_roster_owners(storage_io.read_bytes(roots['2004-05'] / 'DBDAT/EQ98030.FDI'))
         ids = {entry.record_id for entry in IndexedFDIFile.from_bytes(candidate).entries}
         if set(owners) - ids:
             raise ValueError("control loses an active roster player")
@@ -89,16 +90,16 @@ def main() -> None:
         for name in ("EQ98030.FDI", "ENT98030.FDI", "MINIFOTO.PKF", "BIGCAMP.PKF",
                      "BIGESC.PKF", "MINIESC.PKF", "NANOESC.PKF", "RIDIESC.PKF"):
             (out / name).hardlink_to(roots["2004-05"] / "DBDAT" / name)
-        (out / "JUG98030.FDI").write_bytes(candidate)
+        storage_io.write_bytes(out / 'JUG98030.FDI', candidate)
         receipt["replaced_player_count"] = len(replacements)
     elif args.mode == "calendar-half":
         receipt_path = ROOT / ".local/calendar-v1/2004-05/calendar-receipt.json"
-        patches = json.loads(receipt_path.read_text())["patches"]
+        patches = json.loads(storage_io.read_text(receipt_path))["patches"]
         if not 0 <= args.first < args.last <= len(patches):
             raise ValueError("invalid calendar operand range")
-        candidate = bytearray((roots["2003-04"] / "MANAGPRE.EXE").read_bytes())
+        candidate = bytearray(storage_io.read_bytes(roots['2003-04'] / 'MANAGPRE.EXE'))
         good = bytes(candidate)
-        bad = (roots["2004-05"] / "MANAGPRE.EXE").read_bytes()
+        bad = storage_io.read_bytes(roots['2004-05'] / 'MANAGPRE.EXE')
         for patch in patches[args.first:args.last]:
             offset = int(patch["file_offset"], 16)
             count = len(bytes.fromhex(patch["after"]))
@@ -107,24 +108,24 @@ def main() -> None:
                 candidate[offset + 7] = bad[offset + 7]
         out.mkdir(parents=True)
         candidate = bytes(candidate)
-        (out / "MANAGPRE.EXE").write_bytes(candidate)
+        storage_io.write_bytes(out / 'MANAGPRE.EXE', candidate)
         receipt.update(first=args.first, last=args.last, total=len(patches),
                        changed_byte_count=sum(a != b for a, b in zip(good, candidate)))
     elif args.mode == "revert-day-override":
-        patches = json.loads((ROOT / ".local/calendar-v1/2004-05/calendar-receipt.json").read_text())["patches"]
+        patches = json.loads(storage_io.read_text(ROOT / '.local/calendar-v1/2004-05/calendar-receipt.json'))["patches"]
         patch = next(row for row in patches if row["instruction_va"] == "0x004EFE73")
-        candidate = bytearray((roots["2004-05"] / "MANAGPRE.EXE").read_bytes())
+        candidate = bytearray(storage_io.read_bytes(roots['2004-05'] / 'MANAGPRE.EXE'))
         offset = int(patch["file_offset"], 16)
         if candidate[offset:offset + 8] != bytes.fromhex("d5 07 00 00 6a 05 6a 07"):
             raise ValueError("unexpected single-day calendar correction")
         candidate[offset + 7] = 8
         out.mkdir(parents=True)
         candidate = bytes(candidate)
-        (out / "MANAGPRE.EXE").write_bytes(candidate)
+        storage_io.write_bytes(out / 'MANAGPRE.EXE', candidate)
         receipt["restored_day_literal_va"] = "0x004EFE7A"
     elif args.mode == "fixture-weekdays":
-        patches = json.loads((ROOT / ".local/calendar-v1/2004-05/calendar-receipt.json").read_text())["patches"]
-        candidate = bytearray((roots["2004-05"] / "MANAGPRE.EXE").read_bytes())
+        patches = json.loads(storage_io.read_text(ROOT / '.local/calendar-v1/2004-05/calendar-receipt.json'))["patches"]
+        candidate = bytearray(storage_io.read_bytes(roots['2004-05'] / 'MANAGPRE.EXE'))
         changes = []
         for patch in patches:
             offset = int(patch["file_offset"], 16)
@@ -152,11 +153,11 @@ def main() -> None:
                 changes.append({"va": patch["instruction_va"], "month": month, "before": day, "after": after_day})
         out.mkdir(parents=True)
         candidate = bytes(candidate)
-        (out / "MANAGPRE.EXE").write_bytes(candidate)
+        storage_io.write_bytes(out / 'MANAGPRE.EXE', candidate)
         receipt["fixture_weekday_changes"] = changes
     else:
-        patches = json.loads((ROOT / ".local/calendar-v1/2004-05/calendar-receipt.json").read_text())["patches"]
-        candidate = bytearray((roots["2004-05"] / "MANAGPRE.EXE").read_bytes())
+        patches = json.loads(storage_io.read_text(ROOT / '.local/calendar-v1/2004-05/calendar-receipt.json'))["patches"]
+        candidate = bytearray(storage_io.read_bytes(roots['2004-05'] / 'MANAGPRE.EXE'))
         changes = []
         for patch in patches:
             if args.addresses is not None and patch["instruction_va"] not in args.addresses:
@@ -171,10 +172,10 @@ def main() -> None:
             raise ValueError("no date changes")
         out.mkdir(parents=True)
         candidate = bytes(candidate)
-        (out / "MANAGPRE.EXE").write_bytes(candidate)
+        storage_io.write_bytes(out / 'MANAGPRE.EXE', candidate)
         receipt["day_literal_changes"] = changes
     receipt["candidate_sha256"] = hashlib.sha256(candidate).hexdigest()
-    (out / "diagnostic.json").write_text(json.dumps(receipt, indent=2) + "\n")
+    storage_io.write_text(out / 'diagnostic.json', json.dumps(receipt, indent=2) + '\n')
     print(json.dumps(receipt))
 
 

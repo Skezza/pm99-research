@@ -22,6 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts.supplement_2015_ntf_with_transfermarkt import _get, parse_squad
 
 SCHEMA = "pm99-footballsquads-season-capture-v1"
@@ -72,8 +73,8 @@ def acquire(*, draft: dict[str, Any], cache_root: Path, fetch: Callable[[str], b
         url = f"https://www.transfermarkt.com/{target['slug']}/kader/verein/{target['club_id']}/saison_id/2015"
         source_path = Path(f"transfermarkt-tail-closeout/{target['country']}/{carrier_id}-{target['club_id']}.html")
         destination = cache_root / source_path
-        if destination.is_file():
-            payload = destination.read_bytes()
+        if storage_io.is_file(destination):
+            payload = storage_io.read_bytes(destination)
         else:
             failure: Exception | None = None
             for attempt in range(3):
@@ -98,7 +99,7 @@ def acquire(*, draft: dict[str, Any], cache_root: Path, fetch: Callable[[str], b
                 continue
             raise ValueError(f"pinned 2015 squad is short: {carrier_id} {len(players)}/{capacity}")
         destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_bytes(payload)
+        storage_io.write_bytes(destination, payload)
         clubs.append({
             "candidate_carrier_id": carrier_id,
             "candidate_baseline_name": proposal.get("baseline_name"),
@@ -130,9 +131,9 @@ def main() -> int:
     parser.add_argument("--cache-root", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
-    result = acquire(draft=json.loads(args.draft.read_text(encoding="utf-8")), cache_root=args.cache_root, continue_on_error=True)
+    result = acquire(draft=json.loads(storage_io.read_text(args.draft, encoding='utf-8')), cache_root=args.cache_root, continue_on_error=True)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_bytes(result))
+    storage_io.write_bytes(args.output, canonical_bytes(result))
     print(json.dumps(result["summary"], sort_keys=True))
     return 0
 

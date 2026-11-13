@@ -2,6 +2,7 @@
 import copy
 from datetime import UTC,datetime
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry,season_pipeline_v2 as pipeline
 from scripts import season_frozen_fixture_reserve_v1 as source
 from scripts import season_duplicate_layered_packages_v1 as layered
@@ -30,13 +31,13 @@ def next_count(previous,proofs):
 
 
 def run(root,season,release_id,replay_id,previous_path,output,tag,profiles):
-    if output.exists():raise ValueError('completed fixture batch publication must not repeat')
+    if storage_io.exists(output):raise ValueError('completed fixture batch publication must not repeat')
     previous=pipeline.read_json_file(previous_path);release=registry.load_registered_release(season,release_id)
     plan_path=registry.ROOT/release.locator['ownership_plan_path'];plan=pipeline.read_json_file(plan_path)
     base=registry.load_registered_release(season,plan['release_id']);delta.verify_plan(base,plan)
     proofs=plan['bindings']['positive_pairs'];remaining=next_count(previous,proofs)
     old=pipeline.read_json_file(base.package_path);actual=pipeline.read_json_file(release.package_path)
-    original=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes();jug=(release.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    original=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI');jug=storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     expected,english,view,_=layered.prepare(base,plan,original)
     if english is not None or expected!=actual:raise ValueError('whole current recipe differs from original source replay')
     selected={r['carrier_id'] for r in plan['updates']};selected_ids={r['player_id'] for r in plan['updates']}
@@ -50,7 +51,7 @@ def run(root,season,release_id,replay_id,previous_path,output,tag,profiles):
         if registry.sha256_file(base.game_path/'DBDAT'/name)!=registry.sha256_file(release.game_path/'DBDAT'/name):
             raise ValueError('fixture reserve batch changed club/manager/kit context')
     new_actors={p['carrier_id']:p for p in actual['players']};old_actors={p['carrier_id']:p for p in old['players']}
-    ownership=owners.native_owners((release.game_path/'DBDAT/EQ98030.FDI').read_bytes())
+    ownership=owners.native_owners(storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI'))
     for proof in proofs:
         keep=proof['retained_carrier'];retired=proof['displaced_carrier']
         if new_actors[keep]!=old_actors[keep]:raise ValueError('retained original owner actor changed')
@@ -65,7 +66,7 @@ def run(root,season,release_id,replay_id,previous_path,output,tag,profiles):
         raise ValueError('complete SOURCE proof missing')
     rebuilt=registry.load_registered_release(season,replay_id)
     for game in (release,rebuilt):pipeline.assert_tree_matches_inventory(game.game_path,pipeline.read_json_file(release.inventory_path))
-    if rebuilt.package_path.read_bytes()!=release.package_path.read_bytes():raise ValueError('whole SOURCE recipe bytes differ')
+    if storage_io.read_bytes(rebuilt.package_path)!=storage_io.read_bytes(release.package_path):raise ValueError('whole SOURCE recipe bytes differ')
     evidence=registry.ROOT/'.local/runlogs/pm99_runner'/tag
     visual=pipeline.read_json_file(root/'startup-visual-review.json');check_visual(visual)
     transport=pipeline.read_json_file(root/'startup-transport.json');summary=pipeline.read_json_file(evidence/'summary.json')

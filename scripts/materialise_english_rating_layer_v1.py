@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_editorial_ratings_v1 as model  # noqa: E402
 from scripts.season_english_fixed_carrier_authoring_v1 import COMPETITION_DIVISION
 
@@ -401,9 +402,9 @@ def main() -> int:
     parser.add_argument("--output-ratings", type=Path, required=True)
     parser.add_argument("--output-audit", type=Path, required=True)
     args = parser.parse_args()
-    raw = args.preallocation.read_bytes()
+    raw = storage_io.read_bytes(args.preallocation)
     preallocation = json.loads(raw.decode("utf-8"))
-    standings_raw = args.preseason_standings.read_bytes() if args.preseason_standings else None
+    standings_raw = storage_io.read_bytes(args.preseason_standings) if args.preseason_standings else None
     standings = json.loads(standings_raw.decode("utf-8")) if standings_raw is not None else None
     layer, audit = materialise(
         preallocation=preallocation, preallocation_sha256=hashlib.sha256(raw).hexdigest(),
@@ -413,7 +414,7 @@ def main() -> int:
     )
     for path, value in ((args.output_ratings, layer), (args.output_audit, audit)):
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(canonical_json_bytes(value))
+        storage_io.write_bytes(path, canonical_json_bytes(value))
     print(json.dumps(audit["coverage"], sort_keys=True))
     return 0
 

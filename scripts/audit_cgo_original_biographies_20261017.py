@@ -1,4 +1,5 @@
 """Reparse independent Congo biographies against every retained country plan."""
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_cgo_disambiguation_v2 as country
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
 
@@ -6,10 +7,10 @@ from scripts.build_savio_bobb_alias_reserve_20261011 import retained
 def main():
     root = country.CATALOG.parent
     output = root / 'independent-prior-country-association-v2.json'
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('retained independent biography audit must not repeat')
     rows = []
-    for path in sorted((root.parent / 'country-policy-v2-cohort-20261017').glob('*/country-plan.json')):
+    for path in sorted(storage_io.glob(root.parent / 'country-policy-v2-cohort-20261017', '*/country-plan.json')):
         plan = country.pipeline.read_json_file(path)
         for row in plan['updates']:
             if row['nationality'] != 'CGO':

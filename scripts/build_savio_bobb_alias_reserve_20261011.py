@@ -1,4 +1,5 @@
 """Replace only the positively proved unused Savinho copy with Oscar Bobb."""
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import season_within_club_reserve_repair_v1 as source
 from scripts import publish_historical_role_delta_v1 as publisher
@@ -12,7 +13,7 @@ SEASON='2024-25'
 
 
 def retained(path,data):
-    if path.exists():
+    if storage_io.exists(path):
         if pipeline.read_json_file(path)!=data:raise ValueError('immutable alias reserve stage differs')
     else:pipeline.write_canonical_json(path,data)
 
@@ -27,13 +28,13 @@ def main():
     descriptor=folder/'inert.json'
     retained(descriptor,dict(season=SEASON,release_id=BASE,
         package_sha256=registry.sha256_file(base.package_path),jug_sha256=registry.sha256_file(base.game_path/'DBDAT/JUG98030.FDI'),updates=[],unresolved=[]))
-    if not registry.locator_path(SEASON,RELEASE).exists():
+    if not storage_io.exists(registry.locator_path(SEASON, RELEASE)):
         publisher.publish(SEASON,descriptor,release_id=RELEASE,source_release_id=BASE,ownership_plan_path=path)
     proof=ROOT/'native-byte-proof.json'
-    if not proof.exists():verify_native_batch(ROOT,RELEASE,proof,seasons=[SEASON])
+    if not storage_io.exists(proof):verify_native_batch(ROOT,RELEASE,proof,seasons=[SEASON])
     replay_proof=ROOT/'complete-SOURCE-replay.json'
-    if not replay_proof.exists():
-        if registry.locator_path(SEASON,REPLAY).exists():raise ValueError('unreceipted alias replay needs inspection')
+    if not storage_io.exists(replay_proof):
+        if storage_io.exists(registry.locator_path(SEASON, REPLAY)):raise ValueError('unreceipted alias replay needs inspection')
         publisher.publish(SEASON,descriptor,release_id=REPLAY,source_release_id=BASE,ownership_plan_path=path)
         release=registry.load_registered_release(SEASON,RELEASE)
         rebuilt=registry.load_registered_release(SEASON,REPLAY)

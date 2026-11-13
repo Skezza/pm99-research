@@ -9,6 +9,7 @@ import re
 from pathlib import Path
 
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_italian_opening_layer_v1 as native
 from scripts import season_within_club_reserve_repair_v1 as facts
@@ -78,14 +79,14 @@ def prepare(release=None):
         if registry.sha256_file(path) != sha:
             raise ValueError('original official source bytes changed')
         bindings.append({'url': url, 'path': registry.relative_workspace_path(path), 'sha256': sha})
-    witness = source_witness(*( (SOURCE_ROOT / row[0]).read_bytes() for row in SOURCES))
+    witness = source_witness(*( storage_io.read_bytes(SOURCE_ROOT / row[0]) for row in SOURCES))
     release = release or registry.load_preferred_release('2015-16')
     if release.season != '2015-16':
         raise ValueError('official paired appearance belongs only to 2015-16')
-    package = json.loads(release.package_path.read_text())
+    package = json.loads(storage_io.read_text(release.package_path))
     club = next(c for c in package['clubs'] if c['id'] == 'club-2101')
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (release.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
     _, _, roster = native.roster_rows(eq, 2101)
     players = []
     for id, position, birth in ((2027, 'D', '1982-03-31'), (32232, 'M', '1989-08-05')):

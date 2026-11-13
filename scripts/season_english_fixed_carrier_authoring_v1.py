@@ -16,6 +16,14 @@ mechanism; this file makes its season inputs deterministic and reviewable.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -465,7 +473,7 @@ def build_authoring(
 
 
 def _read(path: Path) -> dict[str, Any]:
-    value = json.loads(path.read_text(encoding="utf-8"))
+    value = json.loads(storage_io.read_text(path, encoding='utf-8'))
     if not isinstance(value, dict):
         raise EnglishAuthoringError(f"input must be a JSON object: {path}")
     return value
@@ -488,12 +496,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         managers=_read(args.managers), kits=_read(args.kits), ratings=_read(args.ratings), squad_limit=args.squad_limit,
     )
     args.output_audit.parent.mkdir(parents=True, exist_ok=True)
-    args.output_audit.write_bytes(canonical_json_bytes(audit))
+    storage_io.write_bytes(args.output_audit, canonical_json_bytes(audit))
     if args.output_compiler_input is not None:
         if compiler_input is None:
             raise SystemExit("authoring is blocked; compiler input was not written")
         args.output_compiler_input.parent.mkdir(parents=True, exist_ok=True)
-        args.output_compiler_input.write_bytes(canonical_json_bytes(compiler_input))
+        storage_io.write_bytes(args.output_compiler_input, canonical_json_bytes(compiler_input))
     print(json.dumps(audit["coverage"], sort_keys=True))
     return 0
 

@@ -3,6 +3,7 @@ import copy
 from datetime import UTC, datetime
 from app.fdi_indexed import IndexedFDIFile
 from app.indexed_jug_roles import read_indexed_native_roles
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_donor_keeper_role_delta_v1 as source
 from scripts import attest_registered_season_runtime_v1 as runtime
@@ -23,7 +24,7 @@ def run():
     season='2000-01';root=ROOT/season
     previous=ROOT.parent/'release-delivery-checklist-v46.json'
     output=ROOT.parent/'release-delivery-checklist-v47.json'
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('completed first donor-role checkpoint must not repeat')
     result=copy.deepcopy(pipeline.read_json_file(previous))
     original={r['season']:r for r in result['current_release_bindings']}
@@ -31,9 +32,9 @@ def run():
     base=registry.load_registered_release(season,PARENT)
     release=registry.load_registered_release(season,RELEASE)
     plan=pipeline.read_json_file(root/'role-plan.json');source.verify(base,plan)
-    left=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    right=(release.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    left=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    right=storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
+    eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     if source.apply(left,eq,plan)!=(right,eq) or source.apply(right,eq,plan)!=(right,eq):
         raise ValueError('fresh native exact application or idempotence failed')
     if source.bind(pipeline.read_json_file(base.package_path),plan)!=pipeline.read_json_file(release.package_path):

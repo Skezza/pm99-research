@@ -30,6 +30,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import capture_opening_manager_history_supplements_v1 as history  # noqa: E402
 from scripts import capture_transfermarkt_opening_lineups_v1 as opening  # noqa: E402
 
@@ -57,7 +58,7 @@ def canonical_json_bytes(value: Any) -> bytes:
 
 def _load(path: Path, label: str) -> tuple[dict[str, Any], str]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise SnapshotManagerError(f"cannot read {label}: {path}") from exc
@@ -153,7 +154,7 @@ def _unresolved_scope(
 
 
 def _pinned_squad_file(cache_root: Path, country: str, carrier_id: int) -> Path | None:
-    matches = sorted((cache_root / country).glob(f"{carrier_id}-*.html"))
+    matches = sorted(storage_io.glob(cache_root / country, f'{carrier_id}-*.html'))
     if len(matches) > 1:
         raise SnapshotManagerError(
             f"pinned squad cache has multiple files for {country}/{carrier_id}"
@@ -198,7 +199,7 @@ def capture(
             continue
         pinned_candidate_count += 1
         try:
-            squad_payload = path.read_bytes()
+            squad_payload = storage_io.read_bytes(path)
             slug, club_id, squad_url = _pinned_identity(squad_payload)
             squad_sha = hashlib.sha256(squad_payload).hexdigest()
             pinned_used.append({
@@ -286,7 +287,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--strict", action="store_true")
     args = parser.parse_args(argv)
     try:
-        if args.output.exists():
+        if storage_io.exists(args.output):
             raise SnapshotManagerError(f"refusing to overwrite source receipt: {args.output}")
         candidate, candidate_sha = _load(args.source_candidate, "source candidate")
         wikipedia, wikipedia_sha = _load(args.multilingual_wikipedia_history, "multilingual Wikipedia history")
@@ -303,7 +304,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (OSError, SnapshotManagerError, opening.CaptureError) as exc:
         parser.error(str(exc))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_json_bytes(result))
+    storage_io.write_bytes(args.output, canonical_json_bytes(result))
     print(json.dumps(result["coverage"], sort_keys=True))
     return 1 if args.strict and result["gaps"] else 0
 

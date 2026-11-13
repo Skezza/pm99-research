@@ -14,6 +14,7 @@ from urllib.parse import urlsplit
 
 from bs4 import BeautifulSoup
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_soccerbase_secondary_facts_v2 as soccerbase
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
@@ -227,8 +228,8 @@ def parse_soccerbase_country_with_bridge(raw: bytes, source: dict, *, actor_name
     from scripts.season_source_verified_player_changes_v1 import original_path
     body_path = original_path(bridge_ref["path"])
     receipt_path = original_path(bridge_ref["receipt_path"])
-    bridge_raw = body_path.read_bytes()
-    receipt_raw = receipt_path.read_bytes()
+    bridge_raw = storage_io.read_bytes(body_path)
+    receipt_raw = storage_io.read_bytes(receipt_path)
     if sha256(bridge_raw) != bridge_ref["sha256"] or sha256(receipt_raw) != bridge_ref["receipt_sha256"]:
         raise ValueError("Wikidata bridge source or receipt-file hash differs")
     try:
@@ -345,8 +346,8 @@ def prepare(base, input_path, request=None) -> dict:
     path = Path(input_path)
     if not path.is_absolute():
         path = registry.ROOT / path
-    path = path.resolve()
-    if not path.is_relative_to(registry.ROOT.resolve()) or not path.is_file():
+    path = storage_io.resolve(path)
+    if not path.is_relative_to(storage_io.resolve(registry.ROOT)) or not storage_io.is_file(path):
         raise ValueError("known-wrong input must be a retained workspace file")
     if request is None:
         request = pipeline.read_json_file(path)
@@ -358,8 +359,8 @@ def prepare(base, input_path, request=None) -> dict:
     package = pipeline.read_json_file(base.package_path)
     actors = {p["carrier_id"]: p for p in package["players"]}
     clubs = {c["id"]: c for c in package["clubs"]}
-    jug = (base.game_path / "DBDAT/JUG98030.FDI").read_bytes()
-    eq = (base.game_path / "DBDAT/EQ98030.FDI").read_bytes()
+    jug = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(jug).entries}
     owners = ownership.native_owners(eq)
     codes = compiler._extract_country_codes_from_textos(base.game_path / "DBDAT/TEXTOS.PKF")
@@ -375,7 +376,7 @@ def prepare(base, input_path, request=None) -> dict:
         original = selection["source"]
         from scripts.season_source_verified_player_changes_v1 import original_path
         body_path = original_path(original["path"])
-        body = body_path.read_bytes()
+        body = storage_io.read_bytes(body_path)
         receipt_path, receipt = profile_receipt(body_path, original)
         if (original.get("sha256") != sha256(body)
                 or receipt.get("url") != original.get("url")
@@ -424,7 +425,7 @@ def prepare(base, input_path, request=None) -> dict:
         updates.append(row)
     result = dict(schema="pm99-explicit-source-backed-player-field-changes-v1",
         season=base.season, release_id=base.release_id, kind=KIND,
-        source_input=dict(path=registry.relative_workspace_path(path), sha256=sha256(path.read_bytes())),
+        source_input=dict(path=registry.relative_workspace_path(path), sha256=sha256(storage_io.read_bytes(path))),
         package_sha256=registry.sha256_file(base.package_path), jug_sha256=native.digest(jug),
         eq_sha256=native.digest(eq), textos_sha256=registry.sha256_file(base.game_path / "DBDAT/TEXTOS.PKF"),
         updates=updates,

@@ -1,4 +1,5 @@
 """Turn the reviewed research batch into data for the reusable source reader."""
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_verified_opening_roster_sources_v1 as reader
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
@@ -8,7 +9,7 @@ FOLDER=ROOT/'Barrow2017-owned-roster-delivery-v1'
 
 
 def retained(path,value):
-    if path.exists():
+    if storage_io.exists(path):
         if pipeline.read_json_file(path)!=value:raise ValueError('retained source evidence differs')
     else:pipeline.write_canonical_json(path,value)
 

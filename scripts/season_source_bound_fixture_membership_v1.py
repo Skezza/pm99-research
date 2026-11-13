@@ -19,6 +19,7 @@ from bs4 import BeautifulSoup
 
 from app.fdi_indexed import IndexedFDIFile
 from app.player_initial_order import read_initial_order
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_contextual_tactics_v1 as contextual
 from scripts import season_opening_order_repair_v1 as order_repair
 from scripts import season_opening_identity_exchange_v1 as identity_exchange
@@ -54,7 +55,7 @@ def embedded_source_plan(package: Mapping[str, Any], package_path: Path) -> tupl
         cursor = cursor / part
         if cursor.is_symlink():
             raise OpeningXICompositionError("source fixture plan may not traverse symlinks")
-    raw = path.read_bytes()
+    raw = storage_io.read_bytes(path)
     digest = _sha(raw)
     if digest != rows[0].get("sha256"):
         raise OpeningXICompositionError("child-owned source fixture plan hash differs")
@@ -80,7 +81,7 @@ def _layer_path(package: Mapping[str, Any], package_path: Path, suffix: str) -> 
     if relative.is_absolute() or ".." in relative.parts:
         raise OpeningXICompositionError("recipe layer artifact path escapes its package")
     path = package_path.parent / relative
-    if not path.is_file() or _sha(path.read_bytes()) != rows[0].get("sha256"):
+    if not storage_io.is_file(path) or _sha(storage_io.read_bytes(path)) != rows[0].get("sha256"):
         raise OpeningXICompositionError(f"recipe layer artifact hash differs: {suffix}")
     return path
 
@@ -95,15 +96,15 @@ def replay_package(package: Mapping[str, Any], package_path: Path, *,
     parent = registry.load_registered_release(parent_ref.get("season"), parent_ref.get("release_id"))
     if parent.manifest_sha256 != parent_ref.get("manifest_sha256"):
         raise OpeningXICompositionError("registered parent release manifest differs from source plan")
-    parent_main = json.loads(parent.package_path.read_bytes())
+    parent_main = json.loads(storage_io.read_bytes(parent.package_path))
     parent_overlay_path = _layer_path(parent_main, parent.package_path, "english-season-package.json")
-    parent_english = json.loads(parent_overlay_path.read_bytes())
+    parent_english = json.loads(storage_io.read_bytes(parent_overlay_path))
     candidate_overlay_path = _layer_path(package, package_path, "english-season-package.json")
-    candidate_english = json.loads(candidate_overlay_path.read_bytes())
+    candidate_english = json.loads(storage_io.read_bytes(candidate_overlay_path))
     receipt = verify_source_candidate(
         parent, parent_main, parent_english,
-        (parent.game_path / "DBDAT/EQ98030.FDI").read_bytes(),
-        (parent.game_path / "DBDAT/JUG98030.FDI").read_bytes(),
+        storage_io.read_bytes(parent.game_path / 'DBDAT/EQ98030.FDI'),
+        storage_io.read_bytes(parent.game_path / 'DBDAT/JUG98030.FDI'),
         package, candidate_english, compiled_eq, compiled_jug, source_doc)
     receipt["source_plan_sha256"] = source_plan_sha
     receipt["source_plan_artifact_id"] = PLAN_ARTIFACT_ID
@@ -175,9 +176,9 @@ def _source_path(raw: str) -> Path:
     path = Path(raw)
     if path.is_absolute() or not path.parts or ".." in path.parts:
         raise OpeningXICompositionError("source path escapes the workspace")
-    resolved = (registry.ROOT / path).resolve(strict=True)
+    resolved = storage_io.resolve(registry.ROOT / path, strict=True)
     try:
-        resolved.relative_to(registry.ROOT.resolve())
+        resolved.relative_to(storage_io.resolve(registry.ROOT))
     except ValueError as exc:
         raise OpeningXICompositionError("source path escapes through a symlink") from exc
     cursor = registry.ROOT
@@ -198,7 +199,7 @@ def _check_sources(source_doc: Mapping[str, Any]) -> list[dict[str, Any]]:
     checked = []
     for raw_path, row in sorted(rows.items()):
         path = _source_path(raw_path)
-        digest = _sha(path.read_bytes())
+        digest = _sha(storage_io.read_bytes(path))
         if digest != row.get("sha256"):
             raise OpeningXICompositionError(f"retained source hash changed: {raw_path}")
         checked.append({"path": raw_path, "sha256": digest})
@@ -255,7 +256,7 @@ def _verify_raw_match_reports(source_doc: Mapping[str, Any], main_package: Mappi
     person_evidence = None
     if person_bindings:
         person_path, person_binding = person_bindings[0]
-        person_body = _source_path(person_path).read_bytes()
+        person_body = storage_io.read_bytes(_source_path(person_path))
         if _sha(person_body) != person_binding.get("sha256"):
             raise OpeningXICompositionError("provider-person evidence hash differs")
         person_evidence = json.loads(person_body)
@@ -264,7 +265,7 @@ def _verify_raw_match_reports(source_doc: Mapping[str, Any], main_package: Mappi
     if len(preallocation_bindings) != 1:
         raise OpeningXICompositionError("one exact annual preallocation source binding is required")
     preallocation_path, preallocation_binding = preallocation_bindings[0]
-    preallocation_body = _source_path(preallocation_path).read_bytes()
+    preallocation_body = storage_io.read_bytes(_source_path(preallocation_path))
     if _sha(preallocation_body) != preallocation_binding.get("sha256"):
         raise OpeningXICompositionError("annual preallocation source hash differs")
     preallocation = json.loads(preallocation_body)
@@ -273,7 +274,7 @@ def _verify_raw_match_reports(source_doc: Mapping[str, Any], main_package: Mappi
     if len(fixture_bindings) != 1:
         raise OpeningXICompositionError("one hash-bound season opening-fixture capture is required")
     fixture_path, fixture_binding = fixture_bindings[0]
-    fixture_body = _source_path(fixture_path).read_bytes()
+    fixture_body = storage_io.read_bytes(_source_path(fixture_path))
     if _sha(fixture_body) != fixture_binding.get("sha256"):
         raise OpeningXICompositionError("season opening-fixture capture hash differs")
     fixture_capture = json.loads(fixture_body)
@@ -295,13 +296,13 @@ def _verify_raw_match_reports(source_doc: Mapping[str, Any], main_package: Mappi
         for raw_path, row in source_rows.items():
             if not raw_path.lower().endswith(".html"):
                 continue
-            raw_candidate = _source_path(raw_path).read_bytes()
+            raw_candidate = storage_io.read_bytes(_source_path(raw_path))
             if url and url.encode("utf-8") in raw_candidate:
                 matches.append((raw_path, row))
         if len(matches) != 1:
             raise OpeningXICompositionError("each source fixture must bind one exact Transfermarkt report body")
         raw_path, binding = matches[0]
-        body = _source_path(raw_path).read_bytes()
+        body = storage_io.read_bytes(_source_path(raw_path))
         if _sha(body) != binding["sha256"]:
             raise OpeningXICompositionError("raw fixture body hash differs during report reconstruction")
         soup = BeautifulSoup(body, "html.parser")
@@ -631,9 +632,9 @@ def compose_in_memory(parent: Any, main_package: Mapping[str, Any], english_pack
     if len(overlay_artifacts) != 1:
         raise OpeningXICompositionError("parent main package lacks its exact English overlay binding")
     overlay_path = parent.package_path.parent / "english-season-package.json"
-    if _sha(overlay_path.read_bytes()) != overlay_artifacts[0].get("sha256"):
+    if _sha(storage_io.read_bytes(overlay_path)) != overlay_artifacts[0].get("sha256"):
         raise OpeningXICompositionError("English overlay file differs from the main recipe artifact pin")
-    if package_v2.canonical_json_bytes(dict(english_package)) != overlay_path.read_bytes():
+    if package_v2.canonical_json_bytes(dict(english_package)) != storage_io.read_bytes(overlay_path):
         raise OpeningXICompositionError("supplied English overlay differs from its retained canonical file")
     target_ids = source_doc.get("membership_target_club_carriers")
     if (not isinstance(target_ids, list) or not target_ids
@@ -812,7 +813,7 @@ def _base(plan: Mapping[str, Any]):
 
 def prepare(release: Any, source_path: Path) -> dict[str, Any]:
     from scripts import season_pipeline_v2 as pipeline
-    raw = source_path.read_bytes()
+    raw = storage_io.read_bytes(source_path)
     document = json.loads(raw)
     if 'schema' in document or 'transaction_id' in document:
         raise OpeningXICompositionError('source crossmatch must not carry a publication envelope')
@@ -822,7 +823,7 @@ def prepare(release: Any, source_path: Path) -> dict[str, Any]:
     plan.update(schema=PROFILE_SCHEMA, season=release.season, release_id=release.release_id,
         package_sha256=registry.sha256_file(release.package_path),
         jug_sha256=registry.sha256_file(release.game_path / 'DBDAT/JUG98030.FDI'),
-        source_input={'path': registry.relative_workspace_path(source_path.resolve()), 'sha256': _sha(raw)},
+        source_input={'path': registry.relative_workspace_path(storage_io.resolve(source_path)), 'sha256': _sha(raw)},
         scope=('Reviewed opening-roster transaction: five mode-0 rosters, reserve orders and four sourced shirts; Native identities/ratings/tactics/assets preserved; prior705 English identity projection synchronised.' if document.get('schema_version') == 'pm99-source701-mode0-rebased-proposal-v2' else 'Source-proven mode-0 membership and exact opening order/context only; identities, facts, skills, managers and assets unchanged.'))
     plan['transaction_id'] = _sha(pipeline.canonical_json_bytes(plan))[:24]
     verify(release, plan)
@@ -838,7 +839,7 @@ def _verify_envelope(plan: Mapping[str, Any]) -> dict[str, Any]:
     if transaction_id != _sha(pipeline.canonical_json_bytes(original))[:24]:
         raise OpeningXICompositionError('membership transaction content hash differs')
     bound = plan['source_input']
-    raw = _source_path(bound['path']).read_bytes()
+    raw = storage_io.read_bytes(_source_path(bound['path']))
     if _sha(raw) != bound['sha256']:
         raise OpeningXICompositionError('original membership source crossmatch changed')
     document = json.loads(raw)
@@ -856,11 +857,11 @@ def _reconstruct(plan: Mapping[str, Any]) -> dict[str, Any]:
             or registry.sha256_file(release.package_path) != plan['package_sha256']
             or registry.sha256_file(release.game_path / 'DBDAT/JUG98030.FDI') != plan['jug_sha256']):
         raise OpeningXICompositionError('membership publication parent/package/JUG pin differs')
-    main_raw = release.package_path.read_bytes()
+    main_raw = storage_io.read_bytes(release.package_path)
     main = json.loads(main_raw)
-    english_raw = _layer_path(main, release.package_path, 'english-season-package.json').read_bytes()
-    eq = (release.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    english_raw = storage_io.read_bytes(_layer_path(main, release.package_path, 'english-season-package.json'))
+    eq = storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     checked_sources = _check_sources(document)
     key = (plan['transaction_id'], release.manifest_sha256, _sha(main_raw),
            _sha(english_raw), _sha(eq), _sha(jug),
@@ -882,7 +883,7 @@ def verify(release: Any, plan: Mapping[str, Any]) -> None:
 def bind(package: Mapping[str, Any], plan: Mapping[str, Any]) -> dict[str, Any]:
     from scripts import season_pipeline_v2 as pipeline
     release = _base(plan)
-    if package_v2.canonical_json_bytes(dict(package)) != release.package_path.read_bytes():
+    if package_v2.canonical_json_bytes(dict(package)) != storage_io.read_bytes(release.package_path):
         raise OpeningXICompositionError('membership bind input differs from immutable parent recipe')
     result = copy.deepcopy(_reconstruct(plan)['outputs']['main_package'])
     if any(row.get('id') == PLAN_ARTIFACT_ID for row in result['artifacts']):
@@ -899,8 +900,8 @@ def apply(jug: bytes, eq: bytes, plan: Mapping[str, Any]) -> tuple[bytes, bytes]
     release = _base(plan)
     expected = _reconstruct(plan)['outputs']
     result = expected['jug'], expected['eq']
-    before = ((release.game_path / 'DBDAT/JUG98030.FDI').read_bytes(),
-              (release.game_path / 'DBDAT/EQ98030.FDI').read_bytes())
+    before = (storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI'),
+              storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI'))
     if (jug, eq) not in (before, result):
         raise OpeningXICompositionError('membership writer input is neither exact parent nor exact postimage')
     return result
@@ -924,14 +925,14 @@ def reconstruction(previous: Any, release_id: str, *, minimum_free_bytes: int = 
     verify(parent, plan)
     receipt = pipeline.read_json_file(previous.compiler_receipt_path)
     if (receipt.get('compilation_mode') != MODE
-            or path.resolve() != (previous.package_path.parent / filename(plan)).resolve()
+            or storage_io.resolve(path) != storage_io.resolve(previous.package_path.parent / filename(plan))
             or registry.sha256_file(path) != receipt.get('original_profile_assignment_plan_sha256')):
         raise OpeningXICompositionError('membership SOURCE plan/receipt binding differs')
     package = pipeline.read_json_file(previous.package_path)
     if bind(pipeline.read_json_file(parent.package_path), plan) != package:
         raise OpeningXICompositionError('membership SOURCE would discard main recipe edits')
     overlay = _layer_path(package, previous.package_path, 'english-season-package.json')
-    if package_v2.canonical_json_bytes(updated_english(plan)) != overlay.read_bytes():
+    if package_v2.canonical_json_bytes(updated_english(plan)) != storage_io.read_bytes(overlay):
         raise OpeningXICompositionError('membership SOURCE would discard English recipe edits')
     descriptor = previous.package_path.parent / 'role-delta-input.json'
     if pipeline.read_json_file(descriptor) != dict(season=parent.season, release_id=parent.release_id,
@@ -943,7 +944,7 @@ def reconstruction(previous: Any, release_id: str, *, minimum_free_bytes: int = 
         minimum_free_bytes=minimum_free_bytes)
     rebuilt = registry.load_registered_release(previous.season, release_id)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path, pipeline.read_json_file(previous.inventory_path))
-    if rebuilt.package_path.read_bytes() != previous.package_path.read_bytes():
+    if storage_io.read_bytes(rebuilt.package_path) != storage_io.read_bytes(previous.package_path):
         raise OpeningXICompositionError('membership SOURCE complete recipe differs')
     return {'season': previous.season, 'complete_game_inventory_identical': True,
             'complete_recipe_identical': True}

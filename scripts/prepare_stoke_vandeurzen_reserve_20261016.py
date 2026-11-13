@@ -11,6 +11,7 @@ from datetime import UTC, datetime
 import re
 from bs4 import BeautifulSoup
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_historical_roster_audit_v1 as roster
 from scripts import season_wikipedia_career_identity_v1 as wiki
@@ -89,7 +90,7 @@ def annual(season):
 def prepare():
     folder = ROOT / 'reserve-originals'
     _, binding = original(folder, 'vandeurzen-biography', URL)
-    raw = (registry.ROOT / binding['path']).read_bytes()
+    raw = storage_io.read_bytes(registry.ROOT / binding['path'])
     person, owner = wiki.read(raw, 'Jurgen_Vandeurzen', URL, '2002-08-01', 'Stoke City', 'england',
         expected_name='Jurgen Vandeurzen')
     old, old_proof = annual('2001-02')
@@ -118,7 +119,7 @@ def prepare():
 
 def main():
     path = ROOT / 'vandeurzen-positive-opening-reserve-admission.json'
-    if path.exists():
+    if storage_io.exists(path):
         raise ValueError('completed reserve admission must not repeat')
     result = prepare()
     retained(path, dict(utc=datetime.now(UTC).isoformat(), **result))

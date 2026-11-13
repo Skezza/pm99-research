@@ -13,6 +13,14 @@ legacy birth-year encodings visible instead of normalising them away.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 from collections import Counter
 import json
@@ -41,7 +49,7 @@ def _comparison(generic: PlayerRecord, native: dict[str, Any]) -> dict[str, bool
 
 
 def audit(player_file: Path) -> dict[str, Any]:
-    file_bytes = player_file.read_bytes()
+    file_bytes = storage_io.read_bytes(player_file)
     indexed = IndexedFDIFile.from_bytes(file_bytes)
     by_gap: dict[int, Counter[str]] = {3: Counter(), 4: Counter()}
     birth_year_anomalies: list[dict[str, Any]] = []
@@ -137,7 +145,7 @@ def main() -> int:
     args = parser.parse_args()
     result = audit(args.player_file)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(args.output, json.dumps(result, indent=2, sort_keys=True) + '\n', encoding='utf-8')
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0 if result["result"] == "pass" else 1
 

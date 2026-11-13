@@ -3,6 +3,7 @@ import os
 import shutil
 import time
 from pathlib import Path
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_exact_fifa_role_delta_v2 as source
 from scripts import publish_historical_role_delta_v1 as publisher
@@ -29,7 +30,7 @@ def build(season, *, batch_root=ROOT, release_id=RELEASE, replay_id=REPLAY, sour
     RELEASE=release_id;REPLAY=replay_id;source=source_module
     root = batch_root / season
     root.mkdir(parents=True, exist_ok=True)
-    if (root/'complete-SOURCE-replay.json').exists():
+    if storage_io.exists(root / 'complete-SOURCE-replay.json'):
         print(dict(season=season,reused_complete_build=True),flush=True)
         return
     pin = pipeline.read_json_file(batch_root/'baseline.json')
@@ -40,7 +41,7 @@ def build(season, *, batch_root=ROOT, release_id=RELEASE, replay_id=REPLAY, sour
     if shutil.disk_usage(root).free < 8.3*1024**3:
         raise ValueError('role build stops before8GiB reserve is threatened')
     path = root/'role-plan.json'
-    if path.exists():
+    if storage_io.exists(path):
         plan=pipeline.read_json_file(path)
     else:
         plan=source.prepare(base)
@@ -49,14 +50,14 @@ def build(season, *, batch_root=ROOT, release_id=RELEASE, replay_id=REPLAY, sour
     inert=root/'inert.json'
     retained(inert,dict(season=season,release_id=base.release_id,package_sha256=plan['package_sha256'],
         jug_sha256=plan['jug_sha256'],updates=[],unresolved=[]))
-    if not registry.locator_path(season,RELEASE).exists():
+    if not storage_io.exists(registry.locator_path(season, RELEASE)):
         publisher.publish(season,inert,release_id=RELEASE,source_release_id=base.release_id,
             profile_assignment_plan_path=path,resume_unregistered_assignment=allow_declared_country_bytes)
     actual=registry.load_registered_release(season,RELEASE)
-    if not (root/'native-byte-proof.json').exists():
-        left=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-        right=(actual.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-        eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    if not storage_io.exists(root / 'native-byte-proof.json'):
+        left=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+        right=storage_io.read_bytes(actual.game_path / 'DBDAT/JUG98030.FDI')
+        eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
         if source.apply(left,eq,plan)!=(right,eq) or source.apply(right,eq,plan)!=(right,eq):
             raise ValueError('role native patch/replay differs')
         old={e.record_id:e for e in IndexedFDIFile.from_bytes(left).entries}
@@ -103,7 +104,7 @@ def build(season, *, batch_root=ROOT, release_id=RELEASE, replay_id=REPLAY, sour
             **(dict(all_non_role_or_declared_country_native_bytes_identical=True,
                 recipe_only_selected_roles_declared_countries_fallback_receipts_and_source_artifact_changed=True)
                 if allow_declared_country_bytes else {}),full_source_runtime_pending=True))
-    if registry.locator_path(season,REPLAY).exists():
+    if storage_io.exists(registry.locator_path(season, REPLAY)):
         raise ValueError('unreceipted full SOURCE replay exists; inspect before retry')
     retained(root/'complete-SOURCE-replay.json',source.reconstruction(actual,REPLAY))
     replay=registry.load_registered_release(season,REPLAY)
@@ -111,10 +112,10 @@ def build(season, *, batch_root=ROOT, release_id=RELEASE, replay_id=REPLAY, sour
     for a,b in ((actual.package_path,replay.package_path),
                 (actual.game_path/'DBDAT/JUG98030.FDI',replay.game_path/'DBDAT/JUG98030.FDI')):
         if registry.sha256_file(a)!=registry.sha256_file(b):raise ValueError('owned replay bytes differ')
-        if a.stat().st_ino!=b.stat().st_ino:
+        if (storage_io.stat_result(a).st_ino != storage_io.stat_result(b).st_ino) and not storage_io.is_compressed(a) and not storage_io.is_compressed(b):
             temp=b.with_name(b.name+'.verified-link')
-            if temp.exists():raise ValueError('unreceipted sharing temporary exists')
-            os.link(a,temp);os.replace(temp,b)
+            if storage_io.exists(temp):raise ValueError('unreceipted sharing temporary exists')
+            storage_io.link(a, temp);storage_io.replace_file(temp,b)
         sharing.append(dict(source=str(a),target=str(b),sha256=registry.sha256_file(b)))
     retained(root/'owned-identical-content-sharing.json',sharing)
     print(dict(season=season,corrected_players=len(plan['updates']),built_SOURCE_exact=True,preferred_unchanged=True),flush=True)
@@ -124,7 +125,7 @@ def captures():
     env=dict(os.environ,PM99_RUNNER_ARCHIVE_COLD_RUNS='0',PM99_RUNNER_RUN_ROOT_BUDGET_ENFORCE='0')
     for season in SEASONS:
         root=ROOT/season;deadline=time.monotonic()+7200
-        while not (root/'complete-SOURCE-replay.json').exists():
+        while not storage_io.exists(root / 'complete-SOURCE-replay.json'):
             if time.monotonic()>deadline:raise ValueError('bounded own build wait expired')
             time.sleep(10)
         release=registry.load_registered_release(season,RELEASE)
@@ -150,6 +151,6 @@ if __name__=='__main__':
     if len(sys.argv)>1 and sys.argv[1]=='capture':captures()
     else:
         path=ROOT/'baseline.json'
-        if not path.exists():
+        if not storage_io.exists(path):
             retained(path,[dict(season=s,release_id=registry.load_preferred_release(s).release_id) for s in SEASONS])
         for season in SEASONS:build(season)

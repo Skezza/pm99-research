@@ -1,4 +1,5 @@
 """Build only ten new corroborated years on R77, retaining its proof layer."""
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_original_person_birth_years_v1 as source
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import publish_historical_role_delta_v1 as publisher
@@ -20,7 +21,7 @@ def main():
         plan = source.prepare(base, PEOPLE, transaction_id=registry.sha256_file(PEOPLE)[:12])
         if len(plan['updates']) != count:
             raise ValueError('bounded additional corroborated year accounting changed')
-        if path.exists():
+        if storage_io.exists(path):
             if pipeline.read_json_file(path) != plan:
                 raise ValueError('retained incremental source plan changed')
         else:
@@ -29,23 +30,23 @@ def main():
         descriptor = dict(season=season, release_id=base.release_id,
             package_sha256=registry.sha256_file(base.package_path),
             jug_sha256=registry.sha256_file(base.game_path / 'DBDAT/JUG98030.FDI'), updates=[], unresolved=[])
-        if control.exists():
+        if storage_io.exists(control):
             if pipeline.read_json_file(control) != descriptor:
                 raise ValueError('retained incremental baseline descriptor changed')
         else:
             pipeline.write_canonical_json(control, descriptor)
-        if not registry.locator_path(season, RELEASE).exists():
+        if not storage_io.exists(registry.locator_path(season, RELEASE)):
             publisher.publish(season, control, release_id=RELEASE,
                 birth_year_plan_path=path, source_release_id=base.release_id)
         release = registry.load_registered_release(season, RELEASE)
         native = ROOT / (season + '-independent-proof.json')
-        if not native.exists():
+        if not storage_io.exists(native):
             verify(season, RELEASE, path, native)
         elif pipeline.read_json_file(native)['package_sha256'] != registry.sha256_file(release.package_path):
             raise ValueError('incremental native proof binds another recipe')
         replay = ROOT / (season + '-complete-replay-proof.json')
-        if not replay.exists():
-            if registry.locator_path(season, REPLAY).exists():
+        if not storage_io.exists(replay):
+            if storage_io.exists(registry.locator_path(season, REPLAY)):
                 raise ValueError('unreceipted incremental replay: inspect rather than overwrite')
             pipeline.write_canonical_json(replay, source.reconstruction(release, REPLAY))
         else:

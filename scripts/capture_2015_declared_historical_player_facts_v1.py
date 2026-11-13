@@ -29,6 +29,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2 as package_v2  # noqa: E402
 
 
@@ -144,16 +145,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
-        if args.output.exists() or args.output.is_symlink():
+        if storage_io.exists(args.output) or args.output.is_symlink():
             raise DeclaredFactCaptureError(f"refusing to overwrite receipt: {args.output}")
         package = package_v2.read_canonical_package(args.package)
         package_v2.validate_package(package)
-        raw = args.package.read_bytes()
+        raw = storage_io.read_bytes(args.package)
         result = capture(package=package, package_sha256=hashlib.sha256(raw).hexdigest())
     except (OSError, package_v2.PackageValidationError, DeclaredFactCaptureError) as exc:
         parser.error(str(exc))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(package_v2.canonical_json_bytes(result))
+    storage_io.write_bytes(args.output, package_v2.canonical_json_bytes(result))
     print(json.dumps(result["coverage"], ensure_ascii=False, sort_keys=True))
     return 0
 

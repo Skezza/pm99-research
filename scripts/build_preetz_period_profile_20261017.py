@@ -2,6 +2,7 @@
 import argparse
 import shutil
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_preetz_period_profile_v1 as source
 from scripts import publish_historical_role_delta_v1 as publisher
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
@@ -14,8 +15,8 @@ REPLAY='replayed-preetz-period-profile-20261017-r138b'
 
 def verify_native(base,actual,plan):
     source.verify(base,plan)
-    before=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes();after=(actual.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    before=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI');after=storage_io.read_bytes(actual.game_path / 'DBDAT/JUG98030.FDI')
+    eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     if source.apply(before,eq,plan)!=(after,eq) or source.apply(after,eq,plan)!=(after,eq):
         raise ValueError('Preetz actual two-byte delta/idempotence differs')
     entry=next(e for e in IndexedFDIFile.from_bytes(after).entries if e.record_id==plan['carrier_id'])
@@ -36,7 +37,7 @@ def verify_native(base,actual,plan):
 
 def main(season):
     folder=ROOT/season
-    if (folder/'profile-plan.json').exists() or source.registry.locator_path(season,RELEASE).exists():
+    if storage_io.exists(folder / 'profile-plan.json') or storage_io.exists(source.registry.locator_path(season, RELEASE)):
         raise ValueError('existing Preetz transaction must be inspected, not regenerated')
     base=source.registry.load_preferred_release(season);plan=source.prepare(base)
     folder.mkdir(parents=True,exist_ok=True);path=folder/'profile-plan.json';retained(path,plan)

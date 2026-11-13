@@ -12,6 +12,7 @@ from pathlib import Path
 
 from app.fdi_indexed import IndexedFDIFile
 from app.indexed_jug_roles import read_indexed_native_roles
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_adjudicated_player_facts_v1 as adjudicated
 from scripts import season_opening_order_repair_v1 as ownership
 from scripts import season_pipeline_v2 as pipeline
@@ -50,7 +51,7 @@ def _parent(base):
     package = pipeline.read_json_file(base.package_path)
     jug_path = base.game_path / "DBDAT/JUG98030.FDI"
     eq_path = base.game_path / "DBDAT/EQ98030.FDI"
-    return package, jug_path.read_bytes(), eq_path.read_bytes()
+    return package, storage_io.read_bytes(jug_path), storage_io.read_bytes(eq_path)
 
 
 def prepare_request(base, request, input_path):
@@ -132,7 +133,7 @@ def prepare_request(base, request, input_path):
             or observed["position"] != source_broad or facts["birth_date"] != source_facts["birth_date"]
             or owners.get(target) != {club["carrier_id"]}):
         raise ValueError("source/recipe/native identity, broad role, DOB or exclusive owner differs")
-    factory = FACTORY_JUG.read_bytes()
+    factory = storage_io.read_bytes(FACTORY_JUG)
     factory_entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(factory).entries}
     factory_entry = factory_entries[target]
     factory_payload = factory_entry.decode_payload(factory)
@@ -213,7 +214,7 @@ def request_from_plan(plan):
 
 def verify(base, request, plan):
     input_path = registry.ROOT / plan["source_input"]["path"]
-    if (not input_path.resolve().is_relative_to(registry.ROOT.resolve())
+    if (not storage_io.resolve(input_path).is_relative_to(storage_io.resolve(registry.ROOT))
             or _sha(input_path) != plan["source_input"]["sha256"]
             or pipeline.read_json_file(input_path) != request
             or prepare_request(base, request, input_path) != plan):

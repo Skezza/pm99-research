@@ -12,6 +12,7 @@ import subprocess
 import tarfile
 from datetime import UTC, datetime
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts.archive_rejected_rating_recovery_to_pi_20261011 import ssh, HOST, UUID
 from scripts.archive_rejected_role_trials_20261016 import active
@@ -33,13 +34,13 @@ def assert_equal_games(base, replay):
         raise ValueError('completed replay inventory differs from retained actual game')
     pipeline.assert_tree_matches_inventory(base.game_path, original)
     pipeline.assert_tree_matches_inventory(replay.game_path, expected)
-    if base.package_path.read_bytes() != replay.package_path.read_bytes():
+    if storage_io.read_bytes(base.package_path) != storage_io.read_bytes(replay.package_path):
         raise ValueError('completed replay recipe differs from retained actual game')
     return original
 
 
 def no_dependants(replay_id, own_locator):
-    for path in registry.CATALOG_PATH.parent.rglob('locator.json'):
+    for path in storage_io.glob(registry.CATALOG_PATH.parent, 'locator.json', recursive=True):
         if path == own_locator:
             continue
         doc = pipeline.read_json_file(path)
@@ -48,7 +49,7 @@ def no_dependants(replay_id, own_locator):
 
 
 def main():
-    if (ROOT / 'completed.json').exists():
+    if storage_io.exists(ROOT / 'completed.json'):
         raise ValueError('completed SOURCE retirement must not repeat')
     if ssh('findmnt -n -o UUID --target /srv/hdd').strip() != UUID:
         raise ValueError('Pi volume absent or changed')
@@ -59,10 +60,10 @@ def main():
     rows = []
     for rid, baseline, prefix in TARGETS:
         ledger = ROOT / (rid + '.json')
-        if ledger.exists():
+        if storage_io.exists(ledger):
             proof = pipeline.read_json_file(ledger)
             workspace = registry.ROOT / proof['removed_private_workspace']
-            if workspace.exists() or registry.locator_path('2021-22', rid).parent.exists():
+            if storage_io.exists(workspace) or storage_io.exists(registry.locator_path('2021-22', rid).parent):
                 raise ValueError('partially retired SOURCE replay; inspect recorded archive')
             rows.append(dict(path=registry.relative_workspace_path(ledger), sha256=registry.sha256_file(ledger)))
             continue
@@ -72,16 +73,16 @@ def main():
         replay = registry.load_registered_release('2021-22', rid)
         workspace = registry.ROOT / prefix / '2021-22' / rid
         locator = registry.locator_path('2021-22', rid)
-        if (workspace.resolve() != workspace or workspace.is_symlink()
+        if (storage_io.resolve(workspace) != workspace or workspace.is_symlink()
                 or replay.game_path != workspace / 'game' or active(workspace)):
             raise ValueError('unsafe or active private replay workspace')
         no_dependants(rid, locator)
         inventory = assert_equal_games(base, replay)
         members = [(p, 'workspace/' + p.relative_to(workspace).as_posix())
-                   for p in workspace.rglob('*') if p.is_file() and not p.is_relative_to(workspace / 'game')]
+                   for p in storage_io.glob(workspace, '*', recursive=True) if storage_io.is_file(p) and not p.is_relative_to(workspace / 'game')]
         members += [(p, 'registration/' + p.relative_to(locator.parent).as_posix())
-                    for p in locator.parent.rglob('*') if p.is_file()]
-        if any(p.is_symlink() for p in workspace.rglob('*')) or any(p.is_symlink() for p, _ in members):
+                    for p in storage_io.glob(locator.parent, '*', recursive=True) if storage_io.is_file(p)]
+        if any(p.is_symlink() for p in storage_io.glob(workspace, '*', recursive=True)) or any(p.is_symlink() for p, _ in members):
             raise ValueError('symlink in replay recovery scope')
         expected = {name: registry.sha256_file(path) for path, name in members}
         if len(expected) != len(members):

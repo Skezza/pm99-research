@@ -11,6 +11,14 @@ no-photo review queue for every non-applied portrait.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -20,7 +28,7 @@ from pathlib import Path
 from typing import Any
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR_ROOT = REPO_ROOT / "upstream" / "pm99-skezmod-db-editor"
 if str(EDITOR_ROOT) not in sys.path:
     sys.path.insert(0, str(EDITOR_ROOT))
@@ -54,7 +62,7 @@ def _canonical_json_bytes(value: Any) -> bytes:
 
 def read_canonical_ledger(path: Path) -> dict[str, Any]:
     """Read the sole portable on-disk form accepted for a carrier ledger."""
-    raw = path.read_bytes()
+    raw = storage_io.read_bytes(path)
     try:
         value = json.loads(raw.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
@@ -70,7 +78,7 @@ def read_canonical_ledger(path: Path) -> dict[str, Any]:
 
 def write_canonical_ledger(path: Path, ledger: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(_canonical_json_bytes(ledger))
+    storage_io.write_bytes(path, _canonical_json_bytes(ledger))
 
 
 def _schema_errors(ledger: dict[str, Any]) -> list[str]:
@@ -78,7 +86,7 @@ def _schema_errors(ledger: dict[str, Any]) -> list[str]:
         import jsonschema  # type: ignore[import-not-found]
     except ImportError:
         return []
-    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    schema = json.loads(storage_io.read_text(SCHEMA_PATH, encoding='utf-8'))
     validator = jsonschema.Draft202012Validator(schema)
     errors = sorted(validator.iter_errors(ledger), key=lambda item: list(item.absolute_path))
     return [
@@ -334,7 +342,7 @@ def portrait_review_report(package: dict[str, Any]) -> dict[str, Any]:
 
 def audit_output_eq(ledger: dict[str, Any], base_eq: Path, output_eq: Path) -> dict[str, Any]:
     """Prove an EQ output kept directory topology and touched only named carriers."""
-    base_bytes, output_bytes = base_eq.read_bytes(), output_eq.read_bytes()
+    base_bytes, output_bytes = storage_io.read_bytes(base_eq), storage_io.read_bytes(output_eq)
     base, output = IndexedFDIFile.from_bytes(base_bytes), IndexedFDIFile.from_bytes(output_bytes)
     base_identity, output_identity = _directory_identity(base), _directory_identity(output)
     topology_preserved = base_identity == output_identity
@@ -367,7 +375,7 @@ def _render_report(value: dict[str, Any], path: Path | None) -> None:
     rendered = json.dumps(value, indent=2, sort_keys=True) + "\n"
     if path is not None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(rendered, encoding="utf-8")
+        storage_io.write_text(path, rendered, encoding='utf-8')
     print(rendered, end="")
 
 

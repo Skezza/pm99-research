@@ -3,6 +3,7 @@ import argparse
 import os
 from pathlib import Path
 import time
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry,season_pipeline_v2 as pipeline
 from scripts import capture_registered_season_runtime_v1 as capture
 from scripts.capture_arsenal_owned_opening_20261016 import bound_capture
@@ -16,14 +17,14 @@ PROFILES=((11157,'flitney','Flitney'),(11165,'noice','Noice'),(11172,'odubade','
 def main(pid=None):
     if pid is not None:
         deadline=time.monotonic()+1800
-        while not (FOLDER/'complete-SOURCE-replay.json').exists():
-            try:command=(Path('/proc')/str(pid)/'cmdline').read_bytes()
+        while not storage_io.exists(FOLDER / 'complete-SOURCE-replay.json'):
+            try:command=storage_io.read_bytes(Path('/proc') / str(pid) / 'cmdline')
             except FileNotFoundError:raise ValueError('SOURCE builder stopped before proof; inspect rather than restart')
             if b'scripts.publish_eastleigh_private_20261017' not in command:
                 raise ValueError('SOURCE wait PID identity changed')
             if time.monotonic()>deadline:raise ValueError('SOURCE observation window expired; inspect live process')
             time.sleep(10)
-    if not (FOLDER/'complete-SOURCE-replay.json').exists():raise ValueError('whole SOURCE proof required')
+    if not storage_io.exists(FOLDER / 'complete-SOURCE-replay.json'):raise ValueError('whole SOURCE proof required')
     release=registry.load_registered_release(SEASON,RELEASE)
     env=dict(os.environ,PM99_RUNNER_ARCHIVE_COLD_RUNS='0',PM99_RUNNER_RUN_ROOT_BUDGET_ENFORCE='0')
     command,evidence=capture.capture_command(season=SEASON,worker='default',run_tag=TAG,

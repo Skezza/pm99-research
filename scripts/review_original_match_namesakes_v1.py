@@ -4,6 +4,7 @@ Two generated birth dates do not suffice. Require two distinct original match
 IDs, source-bound recipe assignments and original profile birthdays. Native
 date disagreements are reported separately, never silently approved here.
 """
+from scripts import json_storage_io_v1 as storage_io
 from scripts import review_profile_addition_duplicate_assignments_v1 as sources
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
@@ -50,8 +51,8 @@ def prepare(release, case, extra_root, extra_receipt, *, allow_recipe_birthday_c
     person_path = root / 'opening-lineup-person-evidence.json'
     person_doc = pipeline.read_json_file(person_path)
     extra = pipeline.read_json_file(extra_receipt)
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (release.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
     owners = sources.ownership.native_owners(eq)
     _, _, roster = sources.native.roster_rows(eq, club['carrier_id'])
     rows = []

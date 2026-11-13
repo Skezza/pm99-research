@@ -9,6 +9,14 @@ repeatable evidence instead of one-off `strings`/`objdump` output.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import datetime as _dt
 import hashlib
@@ -684,8 +692,8 @@ def count_bytes(data: bytes, needle: bytes) -> int:
 
 
 def build_report(args: argparse.Namespace) -> dict[str, Any]:
-    reference_path = args.reference.expanduser().resolve()
-    reference = reference_path.read_bytes()
+    reference_path = storage_io.resolve(args.reference.expanduser())
+    reference = storage_io.read_bytes(reference_path)
     pe = PEImage(reference)
     imports = parse_imports(pe)
     strings = extract_ascii_strings(reference) + extract_utf16le_strings(reference)
@@ -722,11 +730,11 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
     }
 
     for other_path in args.compare:
-        path = other_path.expanduser().resolve()
-        if not path.exists():
+        path = storage_io.resolve(other_path.expanduser())
+        if not storage_io.exists(path):
             report["comparisons"].append({"path": str(path), "error": "missing"})
             continue
-        other = path.read_bytes()
+        other = storage_io.read_bytes(path)
         report["comparisons"].append(
             {
                 "path": str(path),
@@ -797,7 +805,7 @@ def main(argv: list[str] | None = None) -> int:
     payload = json.dumps(report, indent=2, sort_keys=True)
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(payload + "\n", encoding="utf-8")
+        storage_io.write_text(args.output, payload + '\n', encoding='utf-8')
     else:
         print(payload)
     return 0

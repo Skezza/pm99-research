@@ -12,6 +12,14 @@ make a no-op probe.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -83,14 +91,14 @@ def patch(
     position: int | None,
     skills: list[int] | None,
 ) -> dict[str, Any]:
-    if source.resolve() == destination.resolve():
+    if storage_io.resolve(source) == storage_io.resolve(destination):
         raise ValueError("source and destination must differ")
     if all(value is None for value in (
         nationality, birth_day, birth_month, birth_year, height, weight, position, skills,
     )):
         raise ValueError("supply at least one core-field update")
 
-    source_bytes = source.read_bytes()
+    source_bytes = storage_io.read_bytes(source)
     indexed = IndexedFDIFile.from_bytes(source_bytes)
     entry = next((item for item in indexed.entries if int(item.record_id) == record_id), None)
     if entry is None:
@@ -169,7 +177,7 @@ def patch(
     output[start:end] = xor_encode(bytes(mutated))
     IndexedFDIFile.from_bytes(bytes(output))
     destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.write_bytes(bytes(output))
+    storage_io.write_bytes(destination, bytes(output))
     return {
         "schema_version": 1,
         "purpose": "Disposable mode-1 dd6361 core metadata runtime probe",
@@ -218,7 +226,7 @@ def main() -> int:
         skills=_skills(args.skills),
     )
     args.receipt.parent.mkdir(parents=True, exist_ok=True)
-    args.receipt.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(args.receipt, json.dumps(result, indent=2, sort_keys=True) + '\n', encoding='utf-8')
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0
 

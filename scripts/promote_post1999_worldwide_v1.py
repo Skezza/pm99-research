@@ -9,6 +9,14 @@ interrupted batch continues forward without rebuilding completed seasons.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import json
 import shutil
@@ -17,7 +25,7 @@ import sys
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = storage_io.resolve(Path(__file__)).parents[1]
 LOCAL = ROOT / ".local"
 BASE = LOCAL / "season-pipeline-v2" / "pm99-base-clean"
 VERIFIED_BASE = LOCAL / "season-pipeline-v2" / "verified-base.json"
@@ -31,7 +39,7 @@ class PromotionError(RuntimeError):
 
 
 def _run(command: list[str], *, terminal: Path) -> dict[str, object]:
-    if terminal.exists():
+    if storage_io.exists(terminal):
         return {"status": "reused", "terminal": str(terminal.relative_to(ROOT))}
     completed = subprocess.run(command, cwd=ROOT, text=True, capture_output=True)
     event: dict[str, object] = {
@@ -41,14 +49,14 @@ def _run(command: list[str], *, terminal: Path) -> dict[str, object]:
         "stderr": completed.stderr.strip(),
         "terminal": str(terminal.relative_to(ROOT)),
     }
-    if completed.returncode or not terminal.exists():
+    if completed.returncode or not storage_io.exists(terminal):
         raise PromotionError(json.dumps(event, indent=2))
     event["status"] = "built"
     return event
 
 
 def _require(paths: list[Path]) -> None:
-    missing = [str(path.relative_to(ROOT)) for path in paths if not path.exists()]
+    missing = [str(path.relative_to(ROOT)) for path in paths if not storage_io.exists(path)]
     if missing:
         raise PromotionError("missing inputs: " + ", ".join(missing))
 
@@ -90,7 +98,7 @@ def promote(season: str, *, revision: str, kit_revision: str | None, through: st
         overrides = ROOT / "data" / "season-opening-overrides-v1" / f"{season}.json"
         composed_preallocation = (
             chain / "opening-squad-preallocation.composed.json"
-            if overrides.exists() else chain / "opening-squad-preallocation.json"
+            if storage_io.exists(overrides) else chain / "opening-squad-preallocation.json"
         )
         command = [py, "scripts/compose_english_opening_evidence_v1.py",
                    "--preallocation", str(preallocation), "--reconciliation", str(reconciliation),
@@ -102,7 +110,7 @@ def promote(season: str, *, revision: str, kit_revision: str | None, through: st
                     "--output-manager-ledger", str(chain / "opening-manager-ledger.json"),
                     "--output-audit", str(chain / "english-opening-evidence-composition-audit.json")]
         events.append(_run(command, terminal=chain / "english-opening-evidence-composition-audit.json"))
-        if overrides.exists():
+        if storage_io.exists(overrides):
             events.append(_run([
                 py, "scripts/apply_opening_preallocation_overrides_v1.py",
                 "--preallocation", str(composed_preallocation),
@@ -115,7 +123,7 @@ def promote(season: str, *, revision: str, kit_revision: str | None, through: st
         manager_overrides = ROOT / "data" / "season-manager-overrides-v1" / f"{season}.json"
         manager_layer = (
             chain / "english-manager-layer.composed.json"
-            if manager_overrides.exists() else chain / "english-manager-layer.json"
+            if storage_io.exists(manager_overrides) else chain / "english-manager-layer.json"
         )
         events.append(_run([
             py, "scripts/materialise_english_opening_manager_layers_v1.py",
@@ -126,7 +134,7 @@ def promote(season: str, *, revision: str, kit_revision: str | None, through: st
             "--output-managers", str(manager_layer),
             "--output-audit", str(chain / "english-opening-manager-audit.json"),
         ], terminal=chain / "english-opening-manager-audit.json"))
-        if manager_overrides.exists():
+        if storage_io.exists(manager_overrides):
             events.append(_run([
                 py, "scripts/apply_english_manager_layer_overrides_v1.py",
                 "--layer", str(manager_layer), "--overrides", str(manager_overrides),
@@ -204,14 +212,14 @@ def promote(season: str, *, revision: str, kit_revision: str | None, through: st
         ], terminal=archives / "kit-archive-materialisation-receipt-v1.json"))
 
     if end >= 7:
-        if not runtime.exists():
+        if not storage_io.exists(runtime):
             shutil.copytree(ingress / "game", runtime)
             for name in ("RIDIESC.PKF", "MINIESC.PKF", "NANOESC.PKF"):
                 source = archives / name
-                if not source.exists():
+                if not storage_io.exists(source):
                     source = archives / "archives" / name
-                shutil.copy2(source, runtime / "DBDAT" / name)
-            shutil.copy2(calendar, runtime / "MANAGPRE.EXE")
+                storage_io.copy_file(source, runtime / 'DBDAT' / name, metadata=True)
+            storage_io.copy_file(calendar, runtime / 'MANAGPRE.EXE', metadata=True)
             status = "built"
         else:
             status = "reused"
@@ -229,7 +237,7 @@ def promote(season: str, *, revision: str, kit_revision: str | None, through: st
     }
     receipt_path = merged / "promotion-receipt.json"
     receipt_path.parent.mkdir(parents=True, exist_ok=True)
-    receipt_path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(receipt_path, json.dumps(receipt, indent=2, sort_keys=True) + '\n', encoding='utf-8')
     return receipt
 
 

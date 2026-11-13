@@ -1,5 +1,6 @@
 """Retain an explicit missing-date resolution; not a consensus/date closure."""
 from datetime import UTC,datetime
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import replay_original_soccerbase_openings_v1 as replay
 from scripts import season_external_soccerbase_birthday_v1 as secondary
@@ -43,7 +44,7 @@ def prepare():
 
 if __name__=='__main__':
     path=ROOT/'Noice-original-secondary-birthday-admission.json'
-    if path.exists():raise ValueError('completed original secondary admission must not repeat')
+    if storage_io.exists(path):raise ValueError('completed original secondary admission must not repeat')
     ROOT.mkdir(parents=True,exist_ok=True)
     retained(path,dict(utc=datetime.now(UTC).isoformat(),**prepare()))
     print(dict(original_numeric_August_bench_replayed=True,literal_secondary_birthday='1995-09-27',

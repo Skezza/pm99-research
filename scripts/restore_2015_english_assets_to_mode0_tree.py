@@ -25,6 +25,7 @@ for candidate in (ROOT, EDITOR):
         sys.path.insert(0, str(candidate))
 
 from app.minifoto_bitmap_archive import iter_minifoto_records, iter_minifoto_records_from_bytes, validate_minifoto_bitmap
+from scripts import json_storage_io_v1 as storage_io
 from scripts.materialise_native_no_photo_v2 import _active_offsets_for_players
 
 SCHEMA = "pm99-2015-english-assets-mode0-restoration-v1"
@@ -36,7 +37,7 @@ def canonical_bytes(value: Any) -> bytes:
 
 
 def sha(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def _identity(row: dict[str, Any]) -> tuple[str, str]:
@@ -55,8 +56,8 @@ def build_plan(*, signed_tree: Path, signed_ledger: list[dict[str, Any]], target
     for identity in sorted(source):
         old_id, new_id = int(source[identity]["record_id"]), int(target[identity]["record_id"])
         loose = loose_root / f"J96{old_id:05d}.BMP"
-        if loose.is_file():
-            payload, origin = loose.read_bytes(), "signed-clean-loose"
+        if storage_io.is_file(loose):
+            payload, origin = storage_io.read_bytes(loose), "signed-clean-loose"
         elif old_id in archive:
             payload, origin = archive[old_id].raw_bitmap, "signed-clean-archive"
         else:
@@ -69,29 +70,29 @@ def build_plan(*, signed_tree: Path, signed_ledger: list[dict[str, Any]], target
     if (portraits, no_photo) != (2294, 6):
         raise ValueError(f"signed portrait coverage changed: {portraits} portraits, {no_photo} no-photo")
     for name in KIT_ARCHIVES:
-        if not (signed_tree / "DBDAT" / name).is_file():
+        if not storage_io.is_file(signed_tree / 'DBDAT' / name):
             raise ValueError(f"signed kit archive is missing: {name}")
     calendar = signed_tree / "MANAGPRE.EXE"
-    if not calendar.is_file():
+    if not storage_io.is_file(calendar):
         raise ValueError("signed calendar executable is missing")
-    return {"schema_version": SCHEMA, "result": "restoration-plan-ready", "policy": "identity-bound English portrait remap; signed kit archives; independently-qualified calendar; no carrier-number-only face copy", "sources": {"signed_tree": str(signed_tree.resolve()), "signed_minifoto_sha256": sha(archive_path), "signed_calendar_sha256": sha(calendar), "signed_ledger_sha256": hashlib.sha256(canonical_bytes(signed_ledger)).hexdigest(), "target_ledger_sha256": hashlib.sha256(canonical_bytes(target_ledger)).hexdigest(), "signed_kit_sha256": {name: sha(signed_tree / "DBDAT" / name) for name in KIT_ARCHIVES}}, "coverage": {"identity_count": len(rows), "unchanged_carrier_count": sum(row["carrier_disposition"] == "unchanged" for row in rows), "remapped_carrier_count": sum(row["carrier_disposition"] == "identity-remapped" for row in rows), "approved_portrait_count": portraits, "native_no_photo_count": no_photo, "kit_archive_count": len(KIT_ARCHIVES), "calendar_restoration_count": 1}, "rows": rows}
+    return {"schema_version": SCHEMA, "result": "restoration-plan-ready", "policy": "identity-bound English portrait remap; signed kit archives; independently-qualified calendar; no carrier-number-only face copy", "sources": {"signed_tree": str(storage_io.resolve(signed_tree)), "signed_minifoto_sha256": sha(archive_path), "signed_calendar_sha256": sha(calendar), "signed_ledger_sha256": hashlib.sha256(canonical_bytes(signed_ledger)).hexdigest(), "target_ledger_sha256": hashlib.sha256(canonical_bytes(target_ledger)).hexdigest(), "signed_kit_sha256": {name: sha(signed_tree / "DBDAT" / name) for name in KIT_ARCHIVES}}, "coverage": {"identity_count": len(rows), "unchanged_carrier_count": sum(row["carrier_disposition"] == "unchanged" for row in rows), "remapped_carrier_count": sum(row["carrier_disposition"] == "identity-remapped" for row in rows), "approved_portrait_count": portraits, "native_no_photo_count": no_photo, "kit_archive_count": len(KIT_ARCHIVES), "calendar_restoration_count": 1}, "rows": rows}
 
 
 def apply_plan(*, plan: dict[str, Any], signed_tree: Path, game_tree: Path) -> dict[str, Any]:
     dbdat = game_tree / "DBDAT"
     archive_path = dbdat / "MINIFOTO.PKF"
-    if not archive_path.is_file():
+    if not storage_io.is_file(archive_path):
         raise ValueError("target tree has no MINIFOTO.PKF")
     # Start with the signed archive; identity-remapped portraits are then
     # emitted as loose overrides, which is PM99's proven append-safe path.
     signed_archive = signed_tree / "DBDAT" / "MINIFOTO.PKF"
-    archive = bytearray(signed_archive.read_bytes())
+    archive = bytearray(storage_io.read_bytes(signed_archive))
     no_photo_ids = {int(row["target_player_carrier_id"]) for row in plan["rows"] if row["portrait_disposition"] == "native-no-photo"}
     active = _active_offsets_for_players(archive, no_photo_ids)
     for offsets in active.values():
         for offset in offsets:
             archive[offset] = 0
-    archive_path.write_bytes(bytes(archive))
+    storage_io.write_bytes(archive_path, bytes(archive))
     target_loose = dbdat / "MINIFOTO"
     target_loose.mkdir(parents=True, exist_ok=True)
     signed_loose = signed_tree / "DBDAT" / "MINIFOTO"
@@ -100,27 +101,27 @@ def apply_plan(*, plan: dict[str, Any], signed_tree: Path, game_tree: Path) -> d
     # loose files outside this identity set are untouched.
     cleanup_ids = {int(row["signed_player_carrier_id"]) for row in plan["rows"]} | {int(row["target_player_carrier_id"]) for row in plan["rows"]}
     for player_id in cleanup_ids:
-        (target_loose / f"J96{player_id:05d}.BMP").unlink(missing_ok=True)
+        storage_io.unlink(target_loose / f'J96{player_id:05d}.BMP', missing_ok=True)
     written = 0
     for row in plan["rows"]:
         if row["portrait_disposition"] != "restore-loose-override":
             continue
         old_id, new_id = int(row["signed_player_carrier_id"]), int(row["target_player_carrier_id"])
         source_loose = signed_loose / f"J96{old_id:05d}.BMP"
-        payload = source_loose.read_bytes() if source_loose.is_file() else signed_records[old_id].raw_bitmap
+        payload = storage_io.read_bytes(source_loose) if storage_io.is_file(source_loose) else signed_records[old_id].raw_bitmap
         if hashlib.sha256(payload).hexdigest() != row["portrait_sha256"]:
             raise ValueError(f"signed portrait hash changed for {old_id}")
-        (target_loose / f"J96{new_id:05d}.BMP").write_bytes(payload)
+        storage_io.write_bytes(target_loose / f'J96{new_id:05d}.BMP', payload)
         written += 1
     for name in KIT_ARCHIVES:
-        shutil.copy2(signed_tree / "DBDAT" / name, dbdat / name)
-    shutil.copy2(signed_tree / "MANAGPRE.EXE", game_tree / "MANAGPRE.EXE")
-    active_after = {row.player_record_id for row in iter_minifoto_records_from_bytes(archive_path.name, archive_path.read_bytes())}
+        storage_io.copy_file(signed_tree / 'DBDAT' / name, dbdat / name, metadata=True)
+    storage_io.copy_file(signed_tree / 'MANAGPRE.EXE', game_tree / 'MANAGPRE.EXE', metadata=True)
+    active_after = {row.player_record_id for row in iter_minifoto_records_from_bytes(archive_path.name, storage_io.read_bytes(archive_path))}
     if active_after.intersection(no_photo_ids):
         raise ValueError("restored English no-photo IDs remain active in archive")
     result = dict(plan)
     result["result"] = "restoration-applied"
-    result["target"] = {"game_tree": str(game_tree.resolve()), "loose_portrait_write_count": written, "minifoto_sha256": sha(archive_path), "calendar_sha256": sha(game_tree / "MANAGPRE.EXE"), "kit_sha256": {name: sha(dbdat / name) for name in KIT_ARCHIVES}}
+    result["target"] = {"game_tree": str(storage_io.resolve(game_tree)), "loose_portrait_write_count": written, "minifoto_sha256": sha(archive_path), "calendar_sha256": sha(game_tree / "MANAGPRE.EXE"), "kit_sha256": {name: sha(dbdat / name) for name in KIT_ARCHIVES}}
     return result
 
 
@@ -134,10 +135,10 @@ def main() -> int:
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
     if args.plan:
-        plan = json.loads(args.plan.read_text(encoding="utf-8"))
+        plan = json.loads(storage_io.read_text(args.plan, encoding='utf-8'))
         if plan.get("schema_version") != SCHEMA or plan.get("result") != "restoration-plan-ready":
             parser.error("--plan is not a reviewed restoration-plan-ready receipt")
-        if Path(plan["sources"]["signed_tree"]).resolve() != args.signed_tree.resolve():
+        if storage_io.resolve(Path(plan['sources']['signed_tree'])) != storage_io.resolve(args.signed_tree):
             parser.error("--plan signed tree does not match --signed-tree")
         for relative, expected in (("DBDAT/MINIFOTO.PKF", plan["sources"]["signed_minifoto_sha256"]), ("MANAGPRE.EXE", plan["sources"]["signed_calendar_sha256"])):
             if sha(args.signed_tree / relative) != expected:
@@ -145,10 +146,10 @@ def main() -> int:
     else:
         if not args.signed_ledger or not args.target_ledger:
             parser.error("provide --plan or both --signed-ledger and --target-ledger")
-        plan = build_plan(signed_tree=args.signed_tree, signed_ledger=json.loads(args.signed_ledger.read_text(encoding="utf-8")), target_ledger=json.loads(args.target_ledger.read_text(encoding="utf-8")))
+        plan = build_plan(signed_tree=args.signed_tree, signed_ledger=json.loads(storage_io.read_text(args.signed_ledger, encoding='utf-8')), target_ledger=json.loads(storage_io.read_text(args.target_ledger, encoding='utf-8')))
     result = apply_plan(plan=plan, signed_tree=args.signed_tree, game_tree=args.game_tree) if args.game_tree else plan
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_bytes(result))
+    storage_io.write_bytes(args.output, canonical_bytes(result))
     print(json.dumps({"result": result["result"], **result["coverage"]}, sort_keys=True))
     return 0
 

@@ -6,6 +6,7 @@ This module never writes a recipe/game or approves a pending private release.
 """
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_cgo_disambiguation_v2 as old
 from scripts.capture_stock_replacement_sources_20261010 import ROOT as CACHE
 
@@ -22,7 +23,7 @@ def raw_source(source):
             or metadata['sha256']!=source['sha256']
             or old.registry.sha256_file(receipt)!=source['receipt_sha256']):
         raise ValueError('original country alias witness URL/body/receipt changed')
-    return path.read_bytes()
+    return storage_io.read_bytes(path)
 
 
 def parse(biography,team,name,birthday,season):

@@ -10,6 +10,7 @@ from datetime import date
 from pathlib import Path
 from bs4 import BeautifulSoup
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline, season_package_v2 as packages
 from scripts import season_package_compiler_v2 as compiler
@@ -39,15 +40,15 @@ def _rel(path): return registry.relative_workspace_path(Path(path))
 def _read_bound(root, ref):
     if ref.get('url') not in ('https://www.11v11.com/players/barry-horne-400/','https://www.premierleague.com/en/players/1054/barry-horne/career'):
         raise ValueError('unexpected Horne source URL')
-    p=(registry.ROOT/ref['path']).resolve(); rp=(registry.ROOT/ref['receipt_path']).resolve()
-    if (not p.is_relative_to(registry.ROOT.resolve()) or not rp.is_relative_to(registry.ROOT.resolve())
+    p=storage_io.resolve(registry.ROOT / ref['path']); rp=storage_io.resolve(registry.ROOT / ref['receipt_path'])
+    if (not p.is_relative_to(storage_io.resolve(registry.ROOT)) or not rp.is_relative_to(storage_io.resolve(registry.ROOT))
         or (registry.ROOT/ref['path']).is_symlink() or (registry.ROOT/ref['receipt_path']).is_symlink()
-        or digest(p.read_bytes())!=ref['sha256'] or digest(rp.read_bytes())!=ref['receipt_sha256']):
+        or digest(storage_io.read_bytes(p))!=ref['sha256'] or digest(storage_io.read_bytes(rp))!=ref['receipt_sha256']):
         raise ValueError('source or receipt bytes differ from bound original')
     r=pipeline.read_json_file(rp)
     if r.get('url')!=ref['url'] or r.get('body_sha256')!=ref['sha256']:
         raise ValueError('original source URL/body receipt differs')
-    return p.read_bytes()
+    return storage_io.read_bytes(p)
 
 def _source_facts(request):
     refs=request['source_bindings']
@@ -80,13 +81,13 @@ def _parent_guard(base, request):
 def prepare(base, input_path):
     p=Path(input_path)
     if not p.is_absolute(): p=registry.ROOT/p
-    p=p.resolve()
-    if not p.is_relative_to(registry.ROOT.resolve()) or p.is_symlink() or not p.is_file(): raise ValueError('input must be retained inside workspace')
+    p=storage_io.resolve(p)
+    if not p.is_relative_to(storage_io.resolve(registry.ROOT)) or p.is_symlink() or not storage_io.is_file(p): raise ValueError('input must be retained inside workspace')
     request=pipeline.read_json_file(p)
     if request.get('schema')!='pm99-horne-fact-delta-input-v1' or request.get('mode')!=MODE or request.get('season')!=SEASON or request.get('release_id')!=RELEASE_ID:
         raise ValueError('exact case-scoped Horne input required')
     _parent_guard(base,request); source=_source_facts(request)
-    package=pipeline.read_json_file(base.package_path); jug=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes(); eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    package=pipeline.read_json_file(base.package_path); jug=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI'); eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     actors={x['carrier_id']:x for x in package['players']}; actor=actors[CARRIER_ID]
     if actor!=request['before'] or actor.get('id')!='english-player-26979' or actor.get('person_id')!='player-person-374-6' or actor.get('name')!=FULL_NAME or actor.get('source_name')!=FULL_NAME or actor.get('club_id')!='english-club-374':
         raise ValueError('exact Horne 26979 recipe identity preimage required')
@@ -111,7 +112,7 @@ def prepare(base, input_path):
     if after_facts['birth_date']!=AFTER['birth_date'] or (entry.decode_payload(bytes(post))[end+8]^0x61)!=after_country:
         raise ValueError('independent native postimage parse failed')
     row={'carrier_id':CARRIER_ID,'before':copy.deepcopy(actor),'values':copy.deepcopy(AFTER),'field_mask':['birth_date','nationality'],'native_masks':masks,'witness':{'values':copy.deepcopy(AFTER),'sources':copy.deepcopy(request['source_bindings']),'reviewed_official_profile_claims':copy.deepcopy(request['reviewed_official_profile_claims'])},'expected_owner':CLUB_CARRIER_ID}
-    plan={'schema':SCHEMA,'season':SEASON,'release_id':RELEASE_ID,'kind':KIND,'source_input':{'path':_rel(p),'sha256':digest(p.read_bytes())},'package_sha256':registry.sha256_file(base.package_path),'jug_sha256':digest(jug),'eq_sha256':digest(eq),'textos_sha256':registry.sha256_file(base.game_path/'DBDAT/TEXTOS.PKF'),'updates':[row],'scope':SCOPE,'source_policy':'case-bound-Horne-full-name-date-nationality-two-profile-replay-v1','parent_manifest_sha256':base.manifest_sha256,'source_facts':source}
+    plan={'schema':SCHEMA,'season':SEASON,'release_id':RELEASE_ID,'kind':KIND,'source_input':{'path':_rel(p),'sha256':digest(storage_io.read_bytes(p))},'package_sha256':registry.sha256_file(base.package_path),'jug_sha256':digest(jug),'eq_sha256':digest(eq),'textos_sha256':registry.sha256_file(base.game_path/'DBDAT/TEXTOS.PKF'),'updates':[row],'scope':SCOPE,'source_policy':'case-bound-Horne-full-name-date-nationality-two-profile-replay-v1','parent_manifest_sha256':base.manifest_sha256,'source_facts':source}
     plan['transaction_id']=digest(packages.canonical_json_bytes(plan))[:24]
     # Exercise the shared schema/mask validator; historical TM fixture witness is
     # deliberately not fabricated. This case adapter owns its source replay guard.
@@ -122,7 +123,7 @@ def verify(base,plan):
     if plan.get('schema')!=SCHEMA or plan.get('kind')!=KIND:
         raise ValueError('Horne source-replay plan schema/mode mismatch')
     source=registry.ROOT/plan['source_input']['path']
-    if source.is_symlink() or digest(source.read_bytes())!=plan['source_input']['sha256'] or prepare(base,source)!=plan:
+    if source.is_symlink() or digest(storage_io.read_bytes(source))!=plan['source_input']['sha256'] or prepare(base,source)!=plan:
         raise ValueError('Horne plan/source input no longer independently reproduces')
 
 def validate_mask(plan):
@@ -159,11 +160,11 @@ def reconstruction(previous,release_id):
     if receipt.get('compilation_mode')!=MODE: return None
     relative=getattr(previous,'locator',{}).get('sourced_profile_assignment_plan_path')
     if not relative: raise ValueError('Horne SOURCE receipt lacks assignment plan locator')
-    plan_path=(registry.ROOT/relative).resolve(); plan=pipeline.read_json_file(plan_path)
+    plan_path=storage_io.resolve(registry.ROOT / relative); plan=pipeline.read_json_file(plan_path)
     if plan.get('schema')!=SCHEMA or plan.get('kind')!=KIND:
         raise ValueError('Horne SOURCE receipt points to another plan')
     base=registry.load_registered_release(previous.season,plan['release_id']); verify(base,plan)
-    if (plan_path!=(previous.package_path.parent/filename(plan)).resolve()
+    if (plan_path!=storage_io.resolve(previous.package_path.parent / filename(plan))
         or registry.sha256_file(plan_path)!=receipt.get('original_profile_assignment_plan_sha256')):
         raise ValueError('Horne SOURCE receipt plan path/SHA differs')
     package=pipeline.read_json_file(previous.package_path)
@@ -179,14 +180,14 @@ def reconstruction(previous,release_id):
         source_release_id=base.release_id,profile_assignment_plan_path=plan_path)
     rebuilt=registry.load_registered_release(previous.season,release_id)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path,pipeline.read_json_file(previous.inventory_path))
-    if rebuilt.package_path.read_bytes()!=previous.package_path.read_bytes():
+    if storage_io.read_bytes(rebuilt.package_path)!=storage_io.read_bytes(previous.package_path):
         raise ValueError('Horne SOURCE complete package replay differs')
     return {'season':previous.season,'release_id':release_id,'complete_game_inventory_identical':True,
         'complete_recipe_identical':True,'compilation_mode':MODE}
 
 def apply(jug,eq,plan):
     validate_mask(plan); base=registry.load_registered_release(plan['season'],plan['release_id']); verify(base,plan)
-    source_jug=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes(); source_eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    source_jug=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI'); source_eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     if digest(source_jug)!=plan['jug_sha256'] or digest(source_eq)!=plan['eq_sha256'] or digest(eq)!=plan['eq_sha256']:
         raise ValueError('exact r207a whole JUG/EQ binding required')
     candidate=bytearray(source_jug)

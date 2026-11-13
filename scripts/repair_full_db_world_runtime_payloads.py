@@ -9,6 +9,14 @@ templates so MANAGPRE's Current Squad filter can certify them.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import json
 import shutil
@@ -17,7 +25,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR_ROOT = REPO_ROOT / "upstream" / "pm99-skezmod-db-editor"
 if str(EDITOR_ROOT) not in sys.path:
     sys.path.insert(0, str(EDITOR_ROOT))
@@ -52,7 +60,7 @@ def _json_default(value: Any) -> Any:
 
 
 def _load_json(path: Path) -> dict[str, Any]:
-    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload = json.loads(storage_io.read_text(path, encoding='utf-8'))
     if not isinstance(payload, dict):
         raise ValueError(f"{path} must contain a JSON object")
     return payload
@@ -371,7 +379,7 @@ def _write_raw_indexed_payloads(
 ) -> str | None:
     if not raw_payload_by_offset:
         return None
-    file_data = file_path.read_bytes()
+    file_data = storage_io.read_bytes(file_path)
     indexed = IndexedFDIFile.from_bytes(file_data)
     entries_by_offset = {int(entry.payload_offset): entry for entry in indexed.entries}
     missing = sorted(set(raw_payload_by_offset) - set(entries_by_offset))
@@ -417,11 +425,11 @@ def _write_raw_indexed_payloads(
     if create_backup:
         backup_path = str(file_path.with_suffix(file_path.suffix + ".backup"))
         counter = 1
-        while Path(backup_path).exists():
+        while storage_io.exists(Path(backup_path)):
             backup_path = str(file_path.with_suffix(f"{file_path.suffix}.backup{counter}"))
             counter += 1
-        shutil.copy2(file_path, backup_path)
-    file_path.write_bytes(bytes(rebuilt))
+        storage_io.copy_file(file_path, backup_path, metadata=True)
+    storage_io.write_bytes(file_path, bytes(rebuilt))
     return backup_path
 
 
@@ -432,7 +440,7 @@ def _allocate_no_slot_rows(
     templates: list[dict[str, Any]],
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], dict[int, bytes]]:
     team_file = game_root / "DBDAT" / "EQ98030.FDI"
-    team_data = team_file.read_bytes()
+    team_data = storage_io.read_bytes(team_file)
     indexed = IndexedFDIFile.from_bytes(team_data)
     entries_by_id = {int(entry.record_id): entry for entry in indexed.entries}
 
@@ -604,7 +612,7 @@ def _allocate_no_slot_rows(
 
 
 def _template_candidates(player_file: Path) -> list[dict[str, Any]]:
-    file_data = player_file.read_bytes()
+    file_data = storage_io.read_bytes(player_file)
     indexed = IndexedFDIFile.from_bytes(file_data)
     candidates: list[dict[str, Any]] = []
     for entry in indexed.entries:
@@ -728,13 +736,13 @@ def repair_world_payloads(
     original_payload_mode: str = "fixed-first",
 ) -> dict[str, Any]:
     player_file = game_root / "DBDAT" / "JUG98030.FDI"
-    if not player_file.is_file():
+    if not storage_io.is_file(player_file):
         raise FileNotFoundError(f"Missing player file: {player_file}")
-    if not assignment_path.is_file():
+    if not storage_io.is_file(assignment_path):
         raise FileNotFoundError(f"Missing assignment file: {assignment_path}")
 
     metadata = _build_indexed_player_runtime_metadata_index(str(player_file))
-    file_data = player_file.read_bytes()
+    file_data = storage_io.read_bytes(player_file)
     indexed = IndexedFDIFile.from_bytes(file_data)
     entries_by_id = {int(entry.record_id): entry for entry in indexed.entries}
     templates = _template_candidates(player_file)
@@ -1011,8 +1019,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     result = repair_world_payloads(
-        game_root=Path(args.game_root).expanduser().resolve(),
-        assignment_path=Path(args.assignment).expanduser().resolve(),
+        game_root=storage_io.resolve(Path(args.game_root).expanduser()),
+        assignment_path=storage_io.resolve(Path(args.assignment).expanduser()),
         dry_run=bool(args.dry_run),
         create_backup=not bool(args.no_backup),
         skipped_only=bool(args.skipped_only),
@@ -1020,9 +1028,9 @@ def main(argv: list[str] | None = None) -> int:
         allow_parser_fixed_clone=bool(args.allow_parser_fixed_clone),
         original_payload_mode=str(args.original_payload_mode),
     )
-    output_path = Path(args.output_json).expanduser().resolve()
+    output_path = storage_io.resolve(Path(args.output_json).expanduser())
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(json.dumps(result, indent=2, sort_keys=True, default=_json_default) + "\n", encoding="utf-8")
+    storage_io.write_text(output_path, json.dumps(result, indent=2, sort_keys=True, default=_json_default) + '\n', encoding='utf-8')
     print(json.dumps({k: result[k] for k in ("ok", "counts", "post_apply")}, indent=2, sort_keys=True))
     return 0 if result["ok"] else 1
 

@@ -30,6 +30,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2 as package_v2  # noqa: E402
 from scripts import season_source_package_builder_v1 as builder  # noqa: E402
 
@@ -44,7 +45,7 @@ class ClosureError(ValueError):
 
 def _read(path: Path) -> dict[str, Any]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise ClosureError(f"cannot read JSON: {path}") from exc
@@ -54,7 +55,7 @@ def _read(path: Path) -> dict[str, Any]:
 
 
 def _sha256_file(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def _pointer_artifact(pointer_path: Path, pointer: Mapping[str, Any], name: str) -> Path:
@@ -66,7 +67,7 @@ def _pointer_artifact(pointer_path: Path, pointer: Mapping[str, Any], name: str)
     if not isinstance(relative, str) or not isinstance(expected, str):
         raise ClosureError(f"{pointer_path}: {name!r} artifact is malformed")
     path = pointer_path.parent / relative
-    if not path.is_file() or _sha256_file(path) != expected:
+    if not storage_io.is_file(path) or _sha256_file(path) != expected:
         raise ClosureError(f"{pointer_path}: {name!r} artifact does not verify")
     return path
 
@@ -116,9 +117,9 @@ def _calendar_bound_template(
     season_root = calendar_binding_root / season_id
     template_path = season_root / "draft-season-package.calendar-bound.json"
     audit_path = season_root / "calendar-binding-audit.json"
-    if not template_path.is_file() or template_path.is_symlink():
+    if not storage_io.is_file(template_path) or template_path.is_symlink():
         raise ClosureError(f"{season_id}: calendar-bound template is missing: {template_path}")
-    if not audit_path.is_file() or audit_path.is_symlink():
+    if not storage_io.is_file(audit_path) or audit_path.is_symlink():
         raise ClosureError(f"{season_id}: calendar binding audit is missing: {audit_path}")
     audit = builder._read(audit_path, "calendar binding audit")
     season = audit.get("season")
@@ -149,7 +150,7 @@ def replay(
         if calendar_binding_audit_path is not None else None
     )
     wanted = set(seasons or ())
-    pointer_paths = sorted(current_root.glob("*/current.json"))
+    pointer_paths = sorted(storage_io.glob(current_root, '*/current.json'))
     if wanted:
         pointer_paths = [path for path in pointer_paths if path.parent.name in wanted]
         missing = wanted - {path.parent.name for path in pointer_paths}
@@ -210,7 +211,7 @@ def replay(
         baseline_counts: dict[str, int] | None = None
         if baseline_root is not None:
             baseline_path = baseline_root / season_id / "preallocation-package-audit.json"
-            if baseline_path.is_file():
+            if storage_io.is_file(baseline_path):
                 baseline_counts = _audit_counts(_read(baseline_path))
         current_counts = _audit_counts(audit)
         coverage = audit.get("coverage") or {}

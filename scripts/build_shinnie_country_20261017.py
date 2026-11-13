@@ -6,6 +6,7 @@ or opening-squad approval. No new source scraping or unaffected-season rebuild.
 """
 import shutil
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_original_secondary_facts_v1 as source
 from scripts import publish_historical_role_delta_v1 as publisher
@@ -23,9 +24,9 @@ REPLAY = 'replayed-shinnie-original-country-20261017-r125b'
 def main():
     folder = ROOT / 'country-delivery'
     folder.mkdir(parents=True, exist_ok=True)
-    if (folder / 'complete-SOURCE-replay.json').exists():
+    if storage_io.exists(folder / 'complete-SOURCE-replay.json'):
         raise ValueError('completed country game exists; inspect rather than regenerate')
-    if registry.locator_path(SEASON, RELEASE).exists():
+    if storage_io.exists(registry.locator_path(SEASON, RELEASE)):
         raise ValueError('partial existing country game requires inspection')
     base = registry.load_registered_release(SEASON, BASE)
     if registry.load_preferred_release(SEASON).manifest_sha256 != base.manifest_sha256:
@@ -48,7 +49,7 @@ def main():
     replay = source.reconstruction(actual, REPLAY)
     rebuilt = registry.load_registered_release(SEASON, REPLAY)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path, pipeline.read_json_file(actual.inventory_path))
-    if actual.package_path.read_bytes() != rebuilt.package_path.read_bytes():
+    if storage_io.read_bytes(actual.package_path) != storage_io.read_bytes(rebuilt.package_path):
         raise ValueError('complete country SOURCE recipe differs')
     share_verified(actual, rebuilt, folder)
     retained(folder / 'complete-SOURCE-replay.json', replay)

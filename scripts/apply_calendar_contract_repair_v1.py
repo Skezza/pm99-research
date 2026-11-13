@@ -23,6 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_calendar_package_overlay_v1 as overlay  # noqa: E402
 from scripts import season_package_v2 as package_v2  # noqa: E402
 
@@ -36,7 +37,7 @@ class CalendarContractRepairError(ValueError):
 
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
@@ -44,10 +45,10 @@ def _sha256(path: Path) -> str:
 
 def _write_atomic(path: Path, payload: bytes) -> None:
     temporary = path.with_name(f".{path.name}.calendar-contract.tmp")
-    if temporary.exists() or temporary.is_symlink():
+    if storage_io.exists(temporary) or temporary.is_symlink():
         raise CalendarContractRepairError(f"temporary output already exists: {temporary}")
-    temporary.write_bytes(payload)
-    os.replace(temporary, path)
+    storage_io.write_bytes(temporary, payload)
+    storage_io.replace_file(temporary, path)
 
 
 def repair(
@@ -55,14 +56,14 @@ def repair(
     calendar_store: Path, runtime_game: Path, expected_old_executable_sha256: str,
     receipt_path: Path, apply: bool,
 ) -> dict[str, Any]:
-    resolved = [path.resolve() for path in packages]
+    resolved = [storage_io.resolve(path) for path in packages]
     if not resolved or len(set(resolved)) != len(resolved):
         raise CalendarContractRepairError("supply each mirrored recipe exactly once")
-    executable = calendar_executable.resolve()
-    receipt_source = calendar_receipt.resolve()
-    if not executable.is_file() or not receipt_source.is_file():
+    executable = storage_io.resolve(calendar_executable)
+    receipt_source = storage_io.resolve(calendar_receipt)
+    if not storage_io.is_file(executable) or not storage_io.is_file(receipt_source):
         raise CalendarContractRepairError("new calendar executable or receipt is unavailable")
-    receipt_bytes = receipt_source.read_bytes()
+    receipt_bytes = storage_io.read_bytes(receipt_source)
     try:
         calendar = json.loads(receipt_bytes.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
@@ -72,13 +73,13 @@ def repair(
     executable_sha256 = _sha256(executable)
     receipt_sha256 = hashlib.sha256(receipt_bytes).hexdigest()
     patch_count = overlay._validated_patch_count(calendar)
-    store = calendar_store.resolve()
+    store = storage_io.resolve(calendar_store)
     store_executable = store / "MANAGPRE.EXE"
     store_receipt = store / "calendar-receipt.json"
-    runtime_executable = runtime_game.resolve() / "MANAGPRE.EXE"
+    runtime_executable = storage_io.resolve(runtime_game) / "MANAGPRE.EXE"
     for path, label in ((store_executable, "stored calendar executable"), (store_receipt, "stored calendar receipt"),
                         (runtime_executable, "runtime executable")):
-        if not path.is_file() or path.is_symlink():
+        if not storage_io.is_file(path) or path.is_symlink():
             raise CalendarContractRepairError(f"{label} is unavailable: {path}")
     if _sha256(store_executable) != expected_old_executable_sha256 or _sha256(runtime_executable) != expected_old_executable_sha256:
         raise CalendarContractRepairError("stored or runtime executable no longer has the declared pre-repair hash")
@@ -121,29 +122,29 @@ def repair(
         return result
     archive.mkdir(parents=True, exist_ok=True)
     for source, destination in ((store_executable, archive / "MANAGPRE.EXE"), (store_receipt, archive / "calendar-receipt.json")):
-        if destination.exists():
+        if storage_io.exists(destination):
             if _sha256(destination) != _sha256(source):
                 raise CalendarContractRepairError(f"calendar history collision: {destination}")
         else:
-            shutil.copyfile(source, destination)
+            storage_io.copy_file(source, destination)
     # Stage every byte before changing any live path.
     staged: list[tuple[Path, Path]] = []
     for plan in plans:
         target = plan["path"]
         temporary = target.with_name(f".{target.name}.calendar-contract.stage")
-        if temporary.exists() or temporary.is_symlink():
+        if storage_io.exists(temporary) or temporary.is_symlink():
             raise CalendarContractRepairError(f"staging path already exists: {temporary}")
-        temporary.write_bytes(plan["payload"])
+        storage_io.write_bytes(temporary, plan['payload'])
         staged.append((temporary, target))
-    for target, payload in ((store_executable, executable.read_bytes()), (store_receipt, receipt_bytes),
-                            (runtime_executable, executable.read_bytes())):
+    for target, payload in ((store_executable, storage_io.read_bytes(executable)), (store_receipt, receipt_bytes),
+                            (runtime_executable, storage_io.read_bytes(executable))):
         temporary = target.with_name(f".{target.name}.calendar-contract.stage")
-        if temporary.exists() or temporary.is_symlink():
+        if storage_io.exists(temporary) or temporary.is_symlink():
             raise CalendarContractRepairError(f"staging path already exists: {temporary}")
-        temporary.write_bytes(payload)
+        storage_io.write_bytes(temporary, payload)
         staged.append((temporary, target))
     for temporary, target in staged:
-        os.replace(temporary, target)
+        storage_io.replace_file(temporary, target)
     receipt_path.parent.mkdir(parents=True, exist_ok=True)
     _write_atomic(receipt_path, package_v2.canonical_json_bytes(result))
     return result

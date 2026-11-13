@@ -12,6 +12,7 @@ from pathlib import Path
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]; sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_duplicate_source_context_v1 as context
 from scripts import season_duplicate_ownership_plan_v1 as planner
 from scripts import season_public_identity_and_history_inputs_v1 as public
@@ -26,7 +27,7 @@ def advanced_seasons(review, prior_root=None):
     path=ROOT/previous['path']
     if registry.sha256_file(path)!=previous['sha256']:
         raise ValueError('targeted previous review changed')
-    old=json.loads(path.read_text())
+    old=json.loads(storage_io.read_text(path))
     old_rows={(s['season'],r['club']):r for s in old['seasons'] for r in s['clubs']}
     new_rows={(s['season'],r['club']):r for s in review['seasons'] for r in s['clubs']}
     selected={r['season'] for r in extension['added']
@@ -37,13 +38,13 @@ def advanced_seasons(review, prior_root=None):
     # not just the extension's global parent (which can repeat another review).
     result=set();cache={}
     for season in selected:
-        plan=json.loads((prior_root/season/'ownership-plan.json').read_text())
+        plan=json.loads(storage_io.read_text(prior_root / season / 'ownership-plan.json'))
         bound=plan['bindings']['soccerbase_opening_sources']['review']
         key=bound['path'],bound['sha256']
         if key not in cache:
             p=ROOT/bound['path']
             if registry.sha256_file(p)!=bound['sha256']:raise ValueError('prior season review changed')
-            cache[key]=json.loads(p.read_text())
+            cache[key]=json.loads(storage_io.read_text(p))
         previous_sections=[s for s in cache[key]['seasons'] if s['season']==season]
         current_sections=[s for s in review['seasons'] if s['season']==season]
         if len(previous_sections)!=1 or len(current_sections)!=1:
@@ -55,29 +56,29 @@ def advanced_seasons(review, prior_root=None):
 
 
 def advance(prior_root, review_path, output, *, seasons=None):
-    review = json.loads(review_path.read_text())
+    review = json.loads(storage_io.read_text(review_path))
     selected = advanced_seasons(review,prior_root)
     if seasons is not None: selected &= set(seasons)
-    original = json.loads((prior_root/'2000-01/ownership-plan.json').read_text())
+    original = json.loads(storage_io.read_text(prior_root / '2000-01/ownership-plan.json'))
     pin = original['bindings']['snapshot']
     people=events=None
-    if any(not (output/s/'ownership-plan.json').exists() for s in selected):
+    if any(not storage_io.exists(output / s / 'ownership-plan.json') for s in selected):
         people, events, actual_pin = context.load_snapshot(ROOT/pin['path'], ROOT/pin['pinned_receipt_path'])
         if pin != actual_pin: raise ValueError('targeted plan snapshot pin changed')
-    current_queue = json.loads((prior_root.parent/'closeout-r39-final/unresolved.json').read_text())
+    current_queue = json.loads(storage_io.read_text(prior_root.parent / 'closeout-r39-final/unresolved.json'))
     by_season = collections.defaultdict(list)
     for row in current_queue:
         copied = dict(row); copied.pop('season', None); by_season[row['season']].append(copied)
     for season in registry.supported_seasons():
         target = output/season/'ownership-plan.json'
-        if target.exists():
-            existing = json.loads(target.read_text()); release = registry.load_preferred_release(season)
+        if storage_io.exists(target):
+            existing = json.loads(storage_io.read_text(target)); release = registry.load_preferred_release(season)
             if (existing['release_id'], existing['package_sha256'], existing['jug_sha256']) != (
                     release.release_id, registry.sha256_file(release.package_path),
                     registry.sha256_file(release.game_path/'DBDAT/JUG98030.FDI')):
                 raise ValueError('completed targeted plan baseline changed')
             print(json.dumps({'season': season, 'reused_completed_plan': True}), flush=True); continue
-        old_path = prior_root/season/'ownership-plan.json'; old = json.loads(old_path.read_text())
+        old_path = prior_root/season/'ownership-plan.json'; old = json.loads(storage_io.read_text(old_path))
         if season in selected:
             bindings = old['bindings']; extra = bindings.get('supplemental_opening')
             source_root = (ROOT/bindings['opening_path']).parents[2]
@@ -113,4 +114,4 @@ if __name__ == '__main__':
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--prior-root', type=Path, required=True); p.add_argument('--review', type=Path, required=True)
     p.add_argument('--output', type=Path, required=True); p.add_argument('--seasons', nargs='+')
-    a = p.parse_args(); advance(a.prior_root.resolve(), a.review.resolve(), a.output.resolve(), seasons=a.seasons)
+    a = p.parse_args(); advance(storage_io.resolve(a.prior_root), storage_io.resolve(a.review), storage_io.resolve(a.output), seasons=a.seasons)

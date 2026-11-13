@@ -35,6 +35,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in __import__("sys").path:
     __import__("sys").path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import world_fixed_carrier_ledger_v2 as ledger  # noqa: E402
 from scripts.audit_world_2015_source_coverage import strict_club_key  # noqa: E402
 
@@ -107,12 +108,12 @@ def canonical_json_bytes(value: Any) -> bytes:
 
 def write_canonical_json(path: Path, value: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(canonical_json_bytes(dict(value)))
+    storage_io.write_bytes(path, canonical_json_bytes(dict(value)))
 
 
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
@@ -203,7 +204,7 @@ def _fifa_player_facts(row: Mapping[str, str]) -> tuple[dict[str, Any], dict[str
 
 
 def read_fifa16_rows(path: Path) -> list[dict[str, str]]:
-    with path.open(encoding="utf-8-sig", newline="") as handle:
+    with storage_io.open_file(path, encoding='utf-8-sig', newline='') as handle:
         reader = csv.DictReader(handle)
         if reader.fieldnames is None:
             raise FIFA16DraftError("FIFA CSV has no header")
@@ -459,7 +460,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     registry, _ = ledger.read_canonical_json(args.registry, label="fixed-carrier registry")
     base_ledger, _ = ledger.read_canonical_json(args.base_ledger, label="empty world season ledger")
-    fifa_path = args.fifa16_player_csv.resolve()
+    fifa_path = storage_io.resolve(args.fifa16_player_csv)
     output, report = build_prefilled_ledger(
         registry=registry,
         base_ledger=base_ledger,

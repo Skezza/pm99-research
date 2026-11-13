@@ -3,6 +3,14 @@
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -18,13 +26,13 @@ def canonical_json_bytes(value: Any) -> bytes:
 
 
 def digest(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def build_matrix(source_root: Path, render_root: Path, historical_root: Path | None = None) -> dict[str, Any]:
-    labels = {path.parent.name for path in source_root.glob("*/kit-catalogue-v1.json")} | {path.parent.name for path in render_root.glob("*/kit-render-receipt-v1.json")}
+    labels = {path.parent.name for path in storage_io.glob(source_root, '*/kit-catalogue-v1.json')} | {path.parent.name for path in storage_io.glob(render_root, '*/kit-render-receipt-v1.json')}
     if historical_root is not None:
-        labels |= {path.parent.name for path in historical_root.glob("*/current.json")}
+        labels |= {path.parent.name for path in storage_io.glob(historical_root, '*/current.json')}
     labels = sorted(labels)
     rows = []
     for label in labels:
@@ -33,19 +41,19 @@ def build_matrix(source_root: Path, render_root: Path, historical_root: Path | N
         binding_path = render_root / label / "kit-render-bindings-v1.json"
         receipt_path = render_root / label / "kit-render-receipt-v1.json"
         row: dict[str, Any] = {"season": label}
-        if catalogue_path.is_file() and capture_path.is_file():
-            catalogue = json.loads(catalogue_path.read_text(encoding="utf-8"))
-            capture = json.loads(capture_path.read_text(encoding="utf-8"))
+        if storage_io.is_file(catalogue_path) and storage_io.is_file(capture_path):
+            catalogue = json.loads(storage_io.read_text(catalogue_path, encoding='utf-8'))
+            capture = json.loads(storage_io.read_text(capture_path, encoding='utf-8'))
             row["capture"] = capture["coverage"]
             row["catalogue"] = catalogue["coverage"]
             row["catalogue_sha256"] = digest(catalogue_path)
             row["capture_sha256"] = digest(capture_path)
             if historical_root is not None:
                 current_path = historical_root / label / "current.json"
-                if not current_path.is_file():
+                if not storage_io.is_file(current_path):
                     row["immutable_input_status"] = "missing-current-pointer"
                 else:
-                    current_bytes = current_path.read_bytes()
+                    current_bytes = storage_io.read_bytes(current_path)
                     current = json.loads(current_bytes)
                     expected = ((current.get("artifacts") or {}).get("allocation") or {}).get("sha256")
                     provenance = capture.get("provenance") or {}
@@ -58,10 +66,10 @@ def build_matrix(source_root: Path, render_root: Path, historical_root: Path | N
                     row["immutable_input_status"] = "current-pointer-hash-verified" if matched else "stale-or-unverified-current-pointer"
         else:
             row["capture_status"] = "missing"
-        if binding_path.is_file() and receipt_path.is_file():
-            binding = json.loads(binding_path.read_text(encoding="utf-8"))
-            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
-            if catalogue_path.is_file() and binding.get("kit_catalogue_sha256") != hashlib.sha256(canonical_json_bytes(json.loads(catalogue_path.read_text(encoding="utf-8")))).hexdigest():
+        if storage_io.is_file(binding_path) and storage_io.is_file(receipt_path):
+            binding = json.loads(storage_io.read_text(binding_path, encoding='utf-8'))
+            receipt = json.loads(storage_io.read_text(receipt_path, encoding='utf-8'))
+            if storage_io.is_file(catalogue_path) and binding.get("kit_catalogue_sha256") != hashlib.sha256(canonical_json_bytes(json.loads(storage_io.read_text(catalogue_path, encoding='utf-8')))).hexdigest():
                 raise ValueError(f"{label}: render binding targets a stale catalogue")
             row["render"] = receipt["coverage"]
             row["binding_sha256"] = digest(binding_path)
@@ -82,7 +90,7 @@ def main() -> int:
     args = parser.parse_args()
     matrix = build_matrix(args.source_root, args.render_root, args.historical_root)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_json_bytes(matrix))
+    storage_io.write_bytes(args.output, canonical_json_bytes(matrix))
     print(json.dumps(matrix["coverage"], indent=2, sort_keys=True))
     return 0
 

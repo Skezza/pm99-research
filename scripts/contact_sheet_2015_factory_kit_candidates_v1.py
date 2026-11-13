@@ -25,6 +25,7 @@ for candidate in (ROOT, EDITOR):
         sys.path.insert(0, str(candidate))
 
 from app.minifoto_bitmap_archive import validate_minifoto_bitmap  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts.materialise_2015_world_kits import canonical_json_bytes, sha256_bytes, sha256_file  # noqa: E402
 from scripts.pm99_kit_palette_v1 import runtime_kit_palette  # noqa: E402
 from scripts.rerender_2015_world_kits_factory_v1 import APPROVED_STATUSES, RENDERER_ID  # noqa: E402
@@ -61,7 +62,7 @@ def main() -> int:
     if args.columns < 1 or args.scale < 1:
         parser.error("--columns and --scale must be positive")
     try:
-        source_bytes = args.candidate_materialisation.read_bytes()
+        source_bytes = storage_io.read_bytes(args.candidate_materialisation)
         materialisation = json.loads(source_bytes)
         renderer = materialisation.get("renderer") if isinstance(materialisation.get("renderer"), Mapping) else {}
         if renderer.get("id") != args.renderer_id:
@@ -75,14 +76,14 @@ def main() -> int:
             if not isinstance(asset, Mapping):
                 raise ValueError(f"carrier {row.get('carrier_id')} lacks {args.archive}")
             path = Path(str(asset.get("path") or ""))
-            if not path.is_file() or sha256_file(path) != asset.get("sha256"):
+            if not storage_io.is_file(path) or sha256_file(path) != asset.get("sha256"):
                 raise ValueError(f"candidate asset is missing or altered: {path}")
             recipe = row.get("render_recipe") if isinstance(row.get("render_recipe"), Mapping) else {}
             rows.append((str(recipe.get("pattern") or "unknown"), str(row.get("source_club_name") or "unknown"), int(row["carrier_id"]), path, dict(asset)))
         if not rows:
             raise ValueError("no approved factory-kit assets")
         rows.sort(key=lambda item: (item[0], item[1].casefold(), item[2]))
-        first_shape = validate_minifoto_bitmap(rows[0][3].read_bytes())
+        first_shape = validate_minifoto_bitmap(storage_io.read_bytes(rows[0][3]))
         cell_width = int(first_shape.width) * args.scale + 14
         cell_height = int(first_shape.height) * args.scale + 31
         row_count = (len(rows) + args.columns - 1) // args.columns
@@ -94,7 +95,7 @@ def main() -> int:
             x0, y0 = column * cell_width, row_index * cell_height
             draw.rectangle((x0, y0, x0 + cell_width - 1, y0 + cell_height - 1), outline=(178, 178, 174))
             draw.text((x0 + 3, y0 + 2), f"{carrier} {pattern[:9]}", fill=(25, 25, 25))
-            payload = path.read_bytes()
+            payload = storage_io.read_bytes(path)
             visual = render(payload, palette, args.scale)
             background = Image.new("RGB", visual.size, (249, 249, 247))
             background.paste(visual, (0, 0), visual)
@@ -111,10 +112,10 @@ def main() -> int:
             "runtime_palette": {**palette_info, "sha256": sha256_file(Path(str(palette_info["path"])))},
             "asset_count": len(receipt_rows),
             "rows": receipt_rows,
-            "preview": str(args.output.resolve()),
+            "preview": str(storage_io.resolve(args.output)),
         }
         args.receipt.parent.mkdir(parents=True, exist_ok=True)
-        args.receipt.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        storage_io.write_text(args.receipt, json.dumps(receipt, indent=2, sort_keys=True) + '\n', encoding='utf-8')
         print(receipt["preview"])
         return 0
     except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError, KeyError) as exc:

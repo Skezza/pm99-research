@@ -1,6 +1,7 @@
 """Exact readback of a source-verified club-label and manager-name delta."""
 import json
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_historical_club_label_plan_v1 as labels
 from scripts import publish_historical_role_delta_v1 as publisher
@@ -15,17 +16,17 @@ def verify(base, actual, plan, *, policy):
     club, coach = plan['updates'][0], manager['updates'][0]
     if club['carrier_id'] != coach['club_carrier_id']:
         raise ValueError('manager correction belongs to another club')
-    eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     expected_eq, changes = labels.rewrite_club_labels(eq, plan['updates'])
-    if (actual.game_path / 'DBDAT/EQ98030.FDI').read_bytes() != expected_eq:
+    if storage_io.read_bytes(actual.game_path / 'DBDAT/EQ98030.FDI') != expected_eq:
         raise ValueError('actual club-label bytes differ')
-    ent = (base.game_path / 'DBDAT/ENT98030.FDI').read_bytes()
+    ent = storage_io.read_bytes(base.game_path / 'DBDAT/ENT98030.FDI')
     index = IndexedFDIFile.from_bytes(ent)
     entries = {e.record_id: e for e in index.entries}
     carrier = coach['carrier_id']
     replacement = publisher._patch_ent_name(entries[carrier].decode_payload(ent), carrier, coach['native_after'])
     expected_ent = publisher._rebuild_indexed(ent, index, {carrier: replacement})
-    if (actual.game_path / 'DBDAT/ENT98030.FDI').read_bytes() != expected_ent:
+    if storage_io.read_bytes(actual.game_path / 'DBDAT/ENT98030.FDI') != expected_ent:
         raise ValueError('actual manager bytes differ from the exact one-name rewrite')
     holders, names = publisher._manager_graph(eq_path=actual.game_path / 'DBDAT/EQ98030.FDI',
         ent_path=actual.game_path / 'DBDAT/ENT98030.FDI')

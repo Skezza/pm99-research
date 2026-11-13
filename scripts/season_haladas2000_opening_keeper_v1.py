@@ -9,6 +9,7 @@ import hashlib
 from pathlib import Path
 from statistics import median
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import adjudicate_haladas_opening_keeper_20261017 as admission
 from scripts import season_same_carrier_name_capacity_v1 as capacity
 from scripts import season_duplicate_ownership_delta_v1 as delta
@@ -38,7 +39,7 @@ def prepare(base):
     if copies!={2211,8507}:raise ValueError('additional Kiraly copies require a coupled ownership correction')
     path=admission.ROOT/'same-slot-published-surname-capacity-preflight.json'
     reviewed=pipeline.read_json_file(path);bundle=reviewed['factory_recovery_runtime_bundle']
-    jug=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    jug=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
     _,claim=capacity.recover_slot(jug,8507,bundle)
     if claim!=reviewed['same_slot_recovery'] or reviewed['published_display_name']!='Kurucsai':
         raise ValueError('positive published surname capacity proof differs from exact current slot')
@@ -102,7 +103,7 @@ def bind(package,plan):
 
 def apply(jug,eq,plan):
     base=registry.load_registered_release(plan['season'],plan['release_id']);verify(base,plan)
-    original=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    original=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
     if digest(original)!=plan['jug_sha256'] or digest(eq)!=plan['eq_sha256']:raise ValueError('Haladas whole native preimage differs')
     package=bind(pipeline.read_json_file(base.package_path),plan)
     prepared,claim=capacity.recover_slot(original,8507,plan['capacity_bundle'])
@@ -128,7 +129,7 @@ def reconstruction(previous,release_id):
     path=registry.ROOT/previous.locator['sourced_profile_assignment_plan_path'];plan=pipeline.read_json_file(path)
     base=registry.load_registered_release(previous.season,plan['release_id']);verify(base,plan)
     package=pipeline.read_json_file(previous.package_path);artifact=next(a for a in package['artifacts'] if a['id']==PREFIX+previous.season)
-    if (path.resolve()!=(previous.package_path.parent/FILENAME).resolve() or registry.sha256_file(path)!=artifact['sha256']
+    if (storage_io.resolve(path)!=storage_io.resolve(previous.package_path.parent / FILENAME) or registry.sha256_file(path)!=artifact['sha256']
             or bind(pipeline.read_json_file(base.package_path),plan)!=package):raise ValueError('Haladas SOURCE would discard recipe edits')
     descriptor=previous.package_path.parent/'role-delta-input.json'
     if pipeline.read_json_file(descriptor)!=dict(season=base.season,release_id=base.release_id,
@@ -138,5 +139,5 @@ def reconstruction(previous,release_id):
     publisher.publish(previous.season,descriptor,release_id=release_id,source_release_id=base.release_id,profile_assignment_plan_path=path)
     rebuilt=registry.load_registered_release(previous.season,release_id)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path,pipeline.read_json_file(previous.inventory_path))
-    if rebuilt.package_path.read_bytes()!=previous.package_path.read_bytes():raise ValueError('Haladas complete SOURCE recipe differs')
+    if storage_io.read_bytes(rebuilt.package_path)!=storage_io.read_bytes(previous.package_path):raise ValueError('Haladas complete SOURCE recipe differs')
     return dict(season=previous.season,complete_game_inventory_identical=True,complete_recipe_identical=True,compilation_mode=MODE)

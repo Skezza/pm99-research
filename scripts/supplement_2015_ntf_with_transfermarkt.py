@@ -27,6 +27,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts.capture_2015_missing_family_squads import NATIONALITY_CODES, _normalise, _position
 from scripts import season_player_identity_v1 as identity_lib
 
@@ -297,7 +298,7 @@ def supplement(*, ntf_capture: dict[str, Any], cache_root: Path) -> dict[str, An
         source_path = Path(f"{club['country_catalog']}/{club['candidate_carrier_id']}-{_normalise(tm_name)}.html")
         full_path = cache_root / source_path
         full_path.parent.mkdir(parents=True, exist_ok=True)
-        full_path.write_bytes(detail_payload)
+        storage_io.write_bytes(full_path, detail_payload)
         club["supplemental_sources"] = [{"source_name": "Transfermarkt detailed squad 15/16", "source_url": detail_url, "source_path": source_path.as_posix(), "source_sha256": digest_value, "search_url": search_url, "search_result_name": tm_name, "added_player_row_count": len(added)}]
         club["supplement_status"] = "capacity-complete-second-source" if len(combined) >= fixed else "still-undersized-after-second-source"
         if len(combined) < fixed:
@@ -320,10 +321,10 @@ def main() -> int:
     parser.add_argument("--cache-root", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
-    capture = json.loads(args.ntf_capture.read_text(encoding="utf-8"))
+    capture = json.loads(storage_io.read_text(args.ntf_capture, encoding='utf-8'))
     result = supplement(ntf_capture=capture, cache_root=args.cache_root)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_bytes(result))
+    storage_io.write_bytes(args.output, canonical_bytes(result))
     print(json.dumps(result["summary"], sort_keys=True))
     return 0
 

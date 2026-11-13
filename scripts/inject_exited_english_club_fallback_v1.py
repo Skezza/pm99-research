@@ -3,6 +3,14 @@
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import copy
 import hashlib
@@ -15,7 +23,7 @@ def canonical(value: object) -> bytes:
 
 
 def load(path: Path) -> dict:
-    return json.loads(path.read_text())
+    return json.loads(storage_io.read_text(path))
 
 
 def club_row(document: dict, key: str, club: str) -> dict:
@@ -69,8 +77,8 @@ def main() -> int:
     outputs = []
     for name in names:
         path = args.output_chain / name
-        path.write_bytes(canonical(current[name])); outputs.append(str(path))
-    args.output_kit.write_bytes(canonical(kit)); outputs.append(str(args.output_kit))
+        storage_io.write_bytes(path, canonical(current[name])); outputs.append(str(path))
+    storage_io.write_bytes(args.output_kit, canonical(kit)); outputs.append(str(args.output_kit))
     audit = {"schema_version": "pm99-exited-english-club-fallback-audit-v1",
              "season": current[names[0]].get("season"), "club": club,
              "manager": manager, "policy": "prior-season-squad-and-kit-explicit-fallback",
@@ -78,7 +86,7 @@ def main() -> int:
     audit_bytes = canonical(audit)
     for name in ("english-opening-evidence-composition-audit.json", "english-opening-manager-audit.json",
                  "english-rating-audit.json"):
-        (args.output_chain / name).write_bytes(audit_bytes)
+        storage_io.write_bytes(args.output_chain / name, audit_bytes)
     print(json.dumps({"club": club, "status": "injected"}, sort_keys=True))
     return 0
 

@@ -5,6 +5,7 @@ membership or permission to copy present-day countries/positions/portraits.
 """
 import re
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import tachira_2014_original_opening_v1 as opening
 from scripts.capture_stock_replacement_sources_20261010 import ROOT
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
@@ -17,7 +18,7 @@ def source_rows(key):
     receipt = pipeline.read_json_file(ROOT / (key + '.source.json'))
     if receipt['status'] != 'original-captured' or registry.sha256_file(path) != receipt['sha256']:
         raise ValueError('original identity-link page missing or changed')
-    return path, path.read_bytes(), dict(path=registry.relative_workspace_path(path), sha256=receipt['sha256'])
+    return path, storage_io.read_bytes(path), dict(path=registry.relative_workspace_path(path), sha256=receipt['sha256'])
 
 
 def join():

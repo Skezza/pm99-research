@@ -16,6 +16,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_duplicate_ownership_plan_v1 as planner
@@ -524,7 +525,7 @@ def prepare(season, carrier, new_club, person_path, history_path, entity_path, o
         raise ValueError('optional bench exclusions require a complete source transaction and explicit identity review')
     if fit_verified_reserve_pool and not (inspect_collisions and allow_original_provider_career_reserves):
         raise ValueError('reserve pool fitting requires a complete source transaction and dated provider reserve authority')
-    if output.exists(): raise ValueError('whole-club source proposal is immutable')
+    if storage_io.exists(output): raise ValueError('whole-club source proposal is immutable')
     output.parent.mkdir(parents=True,exist_ok=True)
     # Source-only preparation may overlap an independently checked pending
     # build. Bind its exact registered bytes; never promote it here.
@@ -567,7 +568,7 @@ def prepare(season, carrier, new_club, person_path, history_path, entity_path, o
         roster.source_group(c['country_catalog'])=='england' and source_names & club_keys(c['club_name'])]
     if not opening or len(annuals)>1:
         raise ValueError('target needs one original first-fixture capture and unambiguous optional annual facts')
-    review = json.loads(identity_review_path.read_text()) if identity_review_path is not None else None
+    review = json.loads(storage_io.read_text(identity_review_path)) if identity_review_path is not None else None
     allow_missing_birthday = bool(review and (review.get('allow_explicitly_reviewed_missing_provider_birth_date')
         or exclude_unpublished_bench_birth_dates))
     equivalent_openings = None
@@ -672,7 +673,7 @@ def prepare(season, carrier, new_club, person_path, history_path, entity_path, o
                     'other_club_id': player['club_id']})
     if collisions and not inspect_collisions:
         raise ValueError('incoming players have other-club copies requiring a paired transaction: '+str(collisions))
-    original = (release.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    original = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     displaced=[p for p in players if p['club_id']==old['id']]
     opening_slot_orders=startup_orders(original,displaced)
     allocation_gap = None

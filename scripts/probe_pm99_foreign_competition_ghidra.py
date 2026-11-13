@@ -10,6 +10,14 @@ to distinguish candidate-pool selection from a generic carrier lookup.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import json
 import sys
@@ -148,7 +156,7 @@ def main() -> int:
     rendered = json.dumps(result, indent=2, sort_keys=True)
     if args.report:
         args.report.parent.mkdir(parents=True, exist_ok=True)
-        args.report.write_text(rendered + "\n", encoding="utf-8")
+        storage_io.write_text(args.report, rendered + '\n', encoding='utf-8')
     print(rendered)
     return 0
 

@@ -17,6 +17,14 @@ to drive a later, separately implemented, kit-archive materialiser.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -58,7 +66,7 @@ def sha256_bytes(value: bytes) -> str:
 
 
 def sha256_file(path: Path) -> str:
-    return sha256_bytes(path.read_bytes())
+    return sha256_bytes(storage_io.read_bytes(path))
 
 
 def document_sha256(document: Mapping[str, Any]) -> str:
@@ -67,11 +75,11 @@ def document_sha256(document: Mapping[str, Any]) -> str:
 
 
 def _read_object(path: Path, errors: list[str], label: str) -> dict[str, Any] | None:
-    if not path.is_file():
+    if not storage_io.is_file(path):
         errors.append(f"missing-{label}")
         return None
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(storage_io.read_text(path, encoding='utf-8'))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         errors.append(f"invalid-{label}: {type(exc).__name__}")
         return None
@@ -143,7 +151,7 @@ def _artifact_problems(binding_row: Mapping[str, Any] | None, receipt_row: Mappi
         candidate = render_dir / relative_path
         if not relative or relative_path.is_absolute() or ".." in relative_path.parts:
             problems.append("binding-artifact-path-invalid")
-        elif not candidate.is_file():
+        elif not storage_io.is_file(candidate):
             problems.append("binding-artifact-missing")
         elif sha256_file(candidate) != expected:
             problems.append("binding-artifact-hash-mismatch")
@@ -158,8 +166,8 @@ def _current_context(
     allocation = _read_object(allocation_path, errors, "carrier-allocation")
     assignments = _indexed_rows(allocation, "assignments", errors, "carrier-allocation")
     issues: list[str] = []
-    current_sha = sha256_file(current_path) if current_path.is_file() else None
-    allocation_sha = sha256_file(allocation_path) if allocation_path.is_file() else None
+    current_sha = sha256_file(current_path) if storage_io.is_file(current_path) else None
+    allocation_sha = sha256_file(allocation_path) if storage_io.is_file(allocation_path) else None
     if current is None or current.get("schema_version") != CURRENT_SCHEMA:
         issues.append("current-pointer-invalid")
     else:
@@ -271,7 +279,7 @@ def build_triage(historical_root: Path, catalogue_root: Path, render_root: Path)
         receipt_rows = _indexed_rows(receipt_document, "rows", errors, "kit-render-receipt")
         binding_rows = _indexed_rows(binding_document, "clubs", errors, "kit-render-bindings")
         catalogue_sha = document_sha256(catalogue) if catalogue is not None else None
-        request_sha = sha256_file(request_path) if request_path.is_file() else None
+        request_sha = sha256_file(request_path) if storage_io.is_file(request_path) else None
         render_document_issues: list[str] = []
         if catalogue is None or catalogue.get("schema_version") != CATALOGUE_SCHEMA:
             render_document_issues.append("catalogue-schema-invalid")
@@ -323,7 +331,7 @@ def build_triage(historical_root: Path, catalogue_root: Path, render_root: Path)
         diagnostic_by_classification = Counter(row["stale_artifact_diagnostic_classification"] for row in season_requirements)
         season_errors = sorted(set(errors))
         input_hashes = {
-            name: (sha256_file(path) if path.is_file() else None)
+            name: (sha256_file(path) if storage_io.is_file(path) else None)
             for name, path in (
                 ("current_json_sha256", current_path),
                 ("carrier_allocation_sha256", allocation_path),
@@ -370,9 +378,9 @@ def build_triage(historical_root: Path, catalogue_root: Path, render_root: Path)
             "writes": "none; read-only triage",
         },
         "provenance": {
-            "historical_root": str(historical_root.resolve()),
-            "catalogue_root": str(catalogue_root.resolve()),
-            "render_root": str(render_root.resolve()),
+            "historical_root": str(storage_io.resolve(historical_root)),
+            "catalogue_root": str(storage_io.resolve(catalogue_root)),
+            "render_root": str(storage_io.resolve(render_root)),
             "inputs": input_rows,
         },
         "coverage": {
@@ -405,7 +413,7 @@ def main() -> int:
     args = parser.parse_args()
     document = build_triage(args.historical_root, args.catalogue_root, args.render_root)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_json_bytes(document))
+    storage_io.write_bytes(args.output, canonical_json_bytes(document))
     print(json.dumps(document["coverage"], indent=2, sort_keys=True))
     print(json.dumps({"safe_automated_integration": document["safe_automated_integration"]["candidate_count"]}, sort_keys=True))
     return 0

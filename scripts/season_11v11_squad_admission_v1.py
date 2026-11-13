@@ -15,6 +15,7 @@ import re
 from urllib.parse import urlsplit
 
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 
 
@@ -43,13 +44,13 @@ def _workspace_file(bound: dict) -> tuple[object, bytes]:
     from pathlib import Path
     if not isinstance(bound, dict) or not isinstance(bound.get("path"), str):
         raise ValueError("source binding requires a retained workspace path")
-    root = registry.ROOT.resolve()
+    root = storage_io.resolve(registry.ROOT)
     path = Path(bound["path"])
     path = path if path.is_absolute() else root / path
     absolute = path.absolute()
     try:
         relative = absolute.relative_to(root)
-        resolved = absolute.resolve(strict=True)
+        resolved = storage_io.resolve(absolute, strict=True)
         resolved.relative_to(root)
     except (ValueError, OSError) as exc:
         raise ValueError("source path must exist inside the workspace") from exc
@@ -60,7 +61,7 @@ def _workspace_file(bound: dict) -> tuple[object, bytes]:
             raise ValueError("source path may not traverse a symlink")
     if resolved != absolute:
         raise ValueError("source path resolution changed through a symlink or alias")
-    raw = absolute.read_bytes()
+    raw = storage_io.read_bytes(absolute)
     if sha256(raw) != bound.get("sha256"):
         raise ValueError("retained source SHA-256 differs")
     return absolute, raw
@@ -186,7 +187,7 @@ def _verify_football_squads_source_file(season: str, source_path: str, source_sh
     root = registry.ROOT
     cache_root = root / ".local/external-sources/cache.footballsquads"
     sources, _ = audit.load_sources(season)
-    rel = Path(source_path).resolve().relative_to(cache_root.resolve()).as_posix()
+    rel = storage_io.resolve(Path(source_path)).relative_to(storage_io.resolve(cache_root)).as_posix()
     rows = [r for r in sources if r.get("source_path") == rel and r.get("source_sha256") == source_sha]
     if len(rows) != 1:
         raise ValueError("FootballSquads retained capture dataset must bind one exact source row")
@@ -214,9 +215,9 @@ def parse_footballsquads(bound: dict, *, season: str, club: str,
         raise ValueError("FootballSquads source URL/season/retained-text kind differs")
     path, raw = _workspace_file(bound)
     cache_root = registry.ROOT / ".local/external-sources/cache.footballsquads"
-    if not path.is_relative_to(cache_root.resolve()):
+    if not path.is_relative_to(storage_io.resolve(cache_root)):
         raise ValueError("FootballSquads source must be from the retained source cache")
-    source_rel = path.relative_to(cache_root.resolve()).as_posix()
+    source_rel = path.relative_to(storage_io.resolve(cache_root)).as_posix()
     expected_url = "https://www.footballsquads.co.uk/" + source_rel[:-4] + ".htm" if source_rel.endswith(".txt") else ""
     if bound.get("url") != expected_url:
         raise ValueError("FootballSquads source URL does not map to the bound cached file")

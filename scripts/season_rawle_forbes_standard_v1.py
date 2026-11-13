@@ -12,6 +12,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_duplicate_ownership_delta_v1 as delta
 from scripts import season_package_v2 as package_v2
 from scripts import season_package_compiler_v2 as compiler
@@ -35,12 +36,12 @@ FILENAME_PREFIX = 'rawle-forbes-source-plan-'
 
 
 def _sha(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def _raw_sources(root: Path) -> tuple[dict[str, dict], dict]:
     receipt_path = root / CAPTURE_RECEIPT
-    receipt = json.loads(receipt_path.read_text())
+    receipt = json.loads(storage_io.read_text(receipt_path))
     if receipt.get('schema') != 'rawle-replacement-source-capture-v2':
         raise ValueError('unexpected Rawle replacement source capture schema')
     sources = {r['slug']: r for r in receipt.get('sources', [])}
@@ -64,7 +65,7 @@ def _raw_sources(root: Path) -> tuple[dict[str, dict], dict]:
     # Bind the paired wrong-owner chronology source separately. The Forbes
     # match/profile sources do not establish why Rawle is the displaced actor.
     secondary_path = root / SOURCE_DIR.parent / 'web-source-capture-receipt.json'
-    secondary = json.loads(secondary_path.read_text())
+    secondary = json.loads(storage_io.read_text(secondary_path))
     rawle_rows = [r for r in secondary.get('sources', []) if r.get('slug') == 'rawle-11v11-profile']
     if len(rawle_rows) != 1 or rawle_rows[0].get('requested_url') != 'https://www.11v11.com/players/mark-rawle-14289/':
         raise ValueError('Rawle chronology source receipt is missing or ambiguous')
@@ -81,7 +82,7 @@ def _raw_sources(root: Path) -> tuple[dict[str, dict], dict]:
 
 
 def _text(root: Path, row: dict) -> tuple[BeautifulSoup, str]:
-    page = BeautifulSoup((root / row['raw_path']).read_bytes(), 'lxml')
+    page = BeautifulSoup(storage_io.read_bytes(root / row['raw_path']), 'lxml')
     text = ' '.join(page.get_text(' ', strip=True).split())
     return page, text
 
@@ -99,9 +100,9 @@ def verify_sources(root: Path, plan: dict | None = None) -> dict:
     sb_capture = sources['scott-forbes-soccerbase-profile']
     sb_profile_url = 'https://www.soccerbase.com/players/player.sd?player_id=21684'
     sb_receipt_path = root / sb_capture['raw_path']
-    if not sb_receipt_path.is_file() or sb_capture['url'] != sb_profile_url:
+    if not storage_io.is_file(sb_receipt_path) or sb_capture['url'] != sb_profile_url:
         raise ValueError('captured original Soccerbase Forbes profile is missing or misbound')
-    sb_raw = sb_receipt_path.read_bytes()
+    sb_raw = storage_io.read_bytes(sb_receipt_path)
     sb_sha = hashlib.sha256(sb_raw).hexdigest()
     sb_page = BeautifulSoup(sb_raw, 'lxml')
     sb_text = ' '.join(sb_page.get_text(' ', strip=True).split())
@@ -182,7 +183,7 @@ def _parent(base, plan: dict | None = None) -> tuple[dict, Path, Path]:
             or registered.manifest_sha256 != base.manifest_sha256):
         raise ValueError('Rawle/Forbes parent object differs from the registered release')
     package_path = base.package_path
-    package_bytes = package_path.read_bytes()
+    package_bytes = storage_io.read_bytes(package_path)
     package = json.loads(package_bytes)
     game_dir = base.game_path
     if package.get('season', {}).get('label') != '2000/01':
@@ -208,8 +209,8 @@ def _parent_native(base, plan: dict | None = None) -> dict:
     paths = {name: game / 'DBDAT' / name for name in
              ('JUG98030.FDI', 'EQ98030.FDI', 'MINIFOTO.PKF')}
     hashes = {name: _sha(path) for name, path in paths.items()}
-    jug = paths['JUG98030.FDI'].read_bytes()
-    eq = paths['EQ98030.FDI'].read_bytes()
+    jug = storage_io.read_bytes(paths['JUG98030.FDI'])
+    eq = storage_io.read_bytes(paths['EQ98030.FDI'])
     entries = {entry.record_id: entry for entry in IndexedFDIFile.from_bytes(jug).entries}
     if CARRIER not in entries:
         raise ValueError('Rawle native carrier is missing')
@@ -226,7 +227,7 @@ def _parent_native(base, plan: dict | None = None) -> dict:
             or ownership.native_owners(eq).get(CARRIER) != {CLUB_CARRIER}):
         raise ValueError('native preimage is not the exact Southend-owned Mark Rawle carrier')
     loose_photo = game / 'DBDAT/MINIFOTO' / f'J96{CARRIER:05d}.BMP'
-    if loose_photo.exists() or loose_photo.is_symlink():
+    if storage_io.exists(loose_photo) or loose_photo.is_symlink():
         raise ValueError('displaced Rawle loose portrait is present; publication must remove it explicitly')
     if plan is not None and (plan['parent'].get('native_files') != hashes
             or plan['parent'].get('target_native_preimage') != {
@@ -500,8 +501,8 @@ def apply(jug: bytes, eq: bytes, plan: dict) -> tuple[bytes, bytes]:
     base = registry.load_registered_release(plan.get('season'), plan.get('release_id'))
     verify(base, plan)
     package, _, game_dir = _parent(base, plan)
-    before_jug = (game_dir / 'DBDAT/JUG98030.FDI').read_bytes()
-    before_eq = (game_dir / 'DBDAT/EQ98030.FDI').read_bytes()
+    before_jug = storage_io.read_bytes(game_dir / 'DBDAT/JUG98030.FDI')
+    before_eq = storage_io.read_bytes(game_dir / 'DBDAT/EQ98030.FDI')
     bound_package = bind(package, plan)
     country_codes = compiler._extract_country_codes_from_textos(game_dir / 'DBDAT/TEXTOS.PKF')
     player_id = plan['updates'][0]['player_id']
@@ -624,7 +625,7 @@ def selected_carriers(plan: dict) -> set[int]:
 def apply_minifoto(archive: bytes, plan: dict) -> bytes:
     base = registry.load_registered_release(plan.get('season'), plan.get('release_id'))
     verify(base, plan)
-    original = (base.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
+    original = storage_io.read_bytes(base.game_path / 'DBDAT/MINIFOTO.PKF')
     if archive != original:
         raise ValueError('MINIFOTO apply accepts only the exact pinned parent archive')
     result, offsets = delta.no_photo_archive(original, selected_carriers(plan))
@@ -633,7 +634,7 @@ def apply_minifoto(archive: bytes, plan: dict) -> bytes:
         # the source wrong-owner photo must be deliberately cleared/re-reviewed.
         raise ValueError('pinned parent unexpectedly contains a Rawle portrait; clear and rebind explicitly')
     loose = base.game_path / 'DBDAT/MINIFOTO' / f'J96{CARRIER:05d}.BMP'
-    if loose.exists() or loose.is_symlink():
+    if storage_io.exists(loose) or loose.is_symlink():
         raise ValueError('pinned parent contains the displaced identity loose portrait')
     return result
 
@@ -657,11 +658,11 @@ def reconstruction(previous, release_id):
     relative = locator.get('sourced_profile_assignment_plan_path')
     if not relative:
         raise ValueError('Rawle/Forbes SOURCE lacks its typed assignment plan locator')
-    path = (registry.ROOT / relative).resolve()
+    path = storage_io.resolve(registry.ROOT / relative)
     plan = pipeline.read_json_file(path)
     if plan.get('schema_version') != SCHEMA or plan.get('mode') != MODE:
         raise ValueError('Rawle/Forbes SOURCE locator points to another plan schema/mode')
-    if (path != (previous.package_path.parent / filename(plan)).resolve()
+    if (path != storage_io.resolve(previous.package_path.parent / filename(plan))
             or registry.sha256_file(path) != receipt.get('original_profile_assignment_plan_sha256')):
         raise ValueError('Rawle/Forbes compiler receipt does not bind the exact saved plan')
     artifact = source_artifact(plan)

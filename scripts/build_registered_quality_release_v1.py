@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import apply_compiled_nationality_readback_repair_v1 as nationality  # noqa: E402
 from scripts import compose_registered_quality_package_v1 as composition  # noqa: E402
 from scripts import finalize_season_release_v1 as finalizer  # noqa: E402
@@ -44,14 +45,14 @@ def _write_new(path: Path, value: Any) -> None:
 
 
 def _hardlink_clone(source: Path, target: Path) -> None:
-    if target.exists() or target.is_symlink():
+    if storage_io.exists(target) or target.is_symlink():
         raise QualityBuildError(f"refusing existing output game: {target}")
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copytree(source, target, copy_function=os.link)
     for relative in DATABASE_FILES:
         path = target / relative
-        path.unlink()
-        shutil.copyfile(finalizer.DEFAULT_BASE / relative, path)
+        storage_io.unlink(path)
+        storage_io.copy_file(finalizer.DEFAULT_BASE / relative, path)
 
 
 def _recipe_artifact_matches(path, artifact):
@@ -65,9 +66,9 @@ def _recipe_artifact_matches(path, artifact):
     if not artifact['id'].startswith(legacy):
         return False
     try:
-        value = json.loads(path.read_text())
+        value = json.loads(storage_io.read_text(path))
         encoded = pipeline.canonical_json_bytes(value)
-        return path.read_bytes() == encoded + b'\n' and hashlib.sha256(encoded).hexdigest() == artifact['sha256']
+        return storage_io.read_bytes(path) == encoded + b'\n' and hashlib.sha256(encoded).hexdigest() == artifact['sha256']
     except (ValueError, UnicodeError):
         return False
 
@@ -84,16 +85,16 @@ def _carry_recipe_local_artifacts(package, source_package_path, target_package_p
         source, target = source_package_path.parent / rel, target_package_path.parent / rel
         # Some legacy descriptors are external/declarative only. Preserve
         # existing behaviour for those; actual replay layers require files.
-        if not source.is_file():
+        if not storage_io.is_file(source):
             continue
         if not _recipe_artifact_matches(source, artifact):
             raise QualityBuildError('recipe-local artifact source hash changed')
         target.parent.mkdir(parents=True, exist_ok=True)
-        if target.exists():
+        if storage_io.exists(target):
             if not _recipe_artifact_matches(target, artifact):
                 raise QualityBuildError('recipe-local artifact destination conflicts')
         else:
-            os.link(source, target)
+            storage_io.link(source, target)
 
 
 def _kit_receipt(season: str, *, source_release=None) -> Path:
@@ -122,7 +123,7 @@ def _kit_receipt(season: str, *, source_release=None) -> Path:
                         raise QualityBuildError(f'complete kit receipt is stale: {name}')
                 return path
     path = ROOT / f".local/season-kit-runtime-overlays-v1/{season}/v5/receipt.json"
-    if not path.is_file():
+    if not storage_io.is_file(path):
         raise QualityBuildError(f"missing V5 kit receipt: {path}")
     return path
 
@@ -130,7 +131,7 @@ def _kit_receipt(season: str, *, source_release=None) -> Path:
 def _reuse_completed(season: str, release_id: str) -> dict[str, Any] | None:
     """Return an already finalized candidate after rechecking immutable bytes."""
     path = registry.locator_path(season, release_id)
-    if not path.is_file():
+    if not storage_io.is_file(path):
         return None
     locator = pipeline.read_json_file(path)
     if (
@@ -139,10 +140,10 @@ def _reuse_completed(season: str, release_id: str) -> dict[str, Any] | None:
         or locator.get("release_id") != release_id
     ):
         raise QualityBuildError(f"completed release has an invalid locator: {path}")
-    game = (ROOT / str(locator.get("game_path"))).resolve()
-    inventory_path = (ROOT / str(locator.get("inventory_path"))).resolve()
-    manifest_path = (ROOT / str(locator.get("release_manifest_path"))).resolve()
-    package_path = (ROOT / str(locator.get("package_path"))).resolve()
+    game = storage_io.resolve(ROOT / str(locator.get('game_path')))
+    inventory_path = storage_io.resolve(ROOT / str(locator.get('inventory_path')))
+    manifest_path = storage_io.resolve(ROOT / str(locator.get('release_manifest_path')))
+    package_path = storage_io.resolve(ROOT / str(locator.get('package_path')))
     for candidate in (game, inventory_path, manifest_path, package_path):
         if ROOT not in candidate.parents:
             raise QualityBuildError(f"completed release points outside the workspace: {candidate}")
@@ -154,7 +155,7 @@ def _reuse_completed(season: str, release_id: str) -> dict[str, Any] | None:
         raise QualityBuildError(f"completed release has no required-file hashes: {path}")
     for relative in registry.REQUIRED_GAME_FILES:
         target = game / relative
-        if not target.is_file() or registry.sha256_file(target) != required.get(relative):
+        if not storage_io.is_file(target) or registry.sha256_file(target) != required.get(relative):
             raise QualityBuildError(f"completed release required file changed: {target}")
     return {
         "season": season,
@@ -216,7 +217,7 @@ def _build_manager_reconstruction(previous, *, release_id,
     manager_sha = receipt.get('manager_plan_sha256')
     if not isinstance(manager_sha, str) or not re.fullmatch(r'[0-9a-f]{64}', manager_sha):
         raise QualityBuildError('manager reconstruction plan binding missing')
-    candidates = [path for path in folder.glob('manager-update-*.json')
+    candidates = [path for path in storage_io.glob(folder, 'manager-update-*.json')
                   if re.fullmatch(r'manager-update-[0-9a-f]{64}\.json', path.name)
                   and registry.sha256_file(path) == manager_sha]
     if len(candidates) > 1:
@@ -226,7 +227,7 @@ def _build_manager_reconstruction(previous, *, release_id,
     manager_plan = pipeline.read_json_file(manager_path)
     club_path = None
     if mode == 'known-good-baseline-club-and-manager-name-delta':
-        club_candidates = [p for p in folder.glob('club-update-*.json')
+        club_candidates = [p for p in storage_io.glob(folder, 'club-update-*.json')
             if re.fullmatch(r'club-update-[0-9a-f]{64}\.json',p.name)
             and registry.sha256_file(p) == receipt.get('club_plan_sha256')]
         if len(club_candidates) > 1:
@@ -312,7 +313,7 @@ is safer than discarding that edit or silently regenerating unrelated people.
                   'updates': [], 'unresolved': []}
     # The bounded publication already saved this exact inert descriptor.
     # Rebuilds never add or alter evidence in the immutable input workspace.
-    if not delta_input.is_file() or pipeline.read_json_file(delta_input) != descriptor:
+    if not storage_io.is_file(delta_input) or pipeline.read_json_file(delta_input) != descriptor:
         raise QualityBuildError('Italian reconstruction descriptor missing or changed')
     plan_path = previous.package_path.parent / italian.FILENAME
     result = publisher.publish(previous.season, delta_input, release_id=release_id,
@@ -619,7 +620,7 @@ def build(season: str, *, release_id: str, resume: bool = False) -> dict[str, An
         return reconstructed
     build_root = ROOT / ".local/season-release-builds-v1" / season / release_id
     game = ROOT / ".local/season-runtime-candidates-v1" / season / release_id / "game"
-    if build_root.exists() or game.exists() or registry.locator_path(season, release_id).parent.exists():
+    if storage_io.exists(build_root) or storage_io.exists(game) or storage_io.exists(registry.locator_path(season, release_id).parent):
         raise QualityBuildError(f"release ID already exists for {season}: {release_id}")
     build_root.mkdir(parents=True)
     package, composition_audit = composition.compose(season)
@@ -674,8 +675,8 @@ def register(results: list[dict[str, Any]]) -> None:
         }
     value = {"schema_version": registry.CATALOG_SCHEMA, "seasons": [catalog[key] for key in sorted(catalog)]}
     temporary = registry.CATALOG_PATH.with_suffix(".json.tmp")
-    temporary.write_bytes(pipeline.canonical_json_bytes(value) + b"\n")
-    os.replace(temporary, registry.CATALOG_PATH)
+    storage_io.write_bytes(temporary, pipeline.canonical_json_bytes(value) + b'\n')
+    storage_io.replace_file(temporary, registry.CATALOG_PATH)
 
 
 def main(argv: Sequence[str] | None = None) -> int:

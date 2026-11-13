@@ -22,6 +22,7 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_portrait_pipeline_v1 as portraits
 from scripts import season_release_registry_v1 as registry
 from scripts import season_visual_patch_v1 as art
@@ -33,7 +34,7 @@ def source_index():
     path = ROOT / '.local/external-sources/sofifa-fifa16/male_players_legacy.csv'
     editions = defaultdict(lambda: defaultdict(dict))
     all_rows = defaultdict(dict)
-    with path.open() as handle:
+    with storage_io.open_file(path) as handle:
         for row in csv.DictReader(handle):
             candidate = {'sofifa_id': int(row['player_id']), 'short_name': row['short_name'],
                          'long_name': row['long_name'], 'dob': row['dob'], 'club': row['club_name'],
@@ -55,12 +56,12 @@ def match(player, index):
 
 def prepare(season, output, source_path, editions, identities, detector, maximum):
     release = registry.load_preferred_release(season)
-    if (output / 'patch/receipt.json').exists():
+    if storage_io.exists(output / 'patch/receipt.json'):
         raise ValueError('completed rollout output already exists')
-    package = json.loads(release.package_path.read_text())
+    package = json.loads(storage_io.read_text(release.package_path))
     club_names = portraits._club_by_player(package)
     from scripts.audit_registered_visual_assets_v1 import _source_roster_owners
-    owners, _, modes = _source_roster_owners((release.game_path / 'DBDAT/EQ98030.FDI').read_bytes())
+    owners, _, modes = _source_roster_owners(storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI'))
     edition = int(season[:4]) - 1999
     index = editions.get(edition, identities)
     grouped = defaultdict(list)
@@ -93,8 +94,8 @@ def prepare(season, output, source_path, editions, identities, detector, maximum
     work_inputs = {'release_id': release.release_id, 'package_sha256': art.sha(release.package_path),
                    'source_sha256': art.sha(source_path), 'maximum': maximum, 'candidates': candidates}
     work_path = output / 'work-inputs.json'
-    if work_path.exists():
-        if json.loads(work_path.read_text()) != work_inputs:
+    if storage_io.exists(work_path):
+        if json.loads(storage_io.read_text(work_path)) != work_inputs:
             raise ValueError('resume inputs differ from the retained portrait job')
     else:
         art.save(work_path, work_inputs)
@@ -127,17 +128,17 @@ def prepare(season, output, source_path, editions, identities, detector, maximum
             portraits.validate_minifoto_bitmap(bitmap)
             path = output / 'patch/DBDAT/MINIFOTO' / f'J96{int(row["carrier_id"]):05d}.BMP'
             path.parent.mkdir(parents=True, exist_ok=True)
-            if path.exists() and path.read_bytes() != bitmap:
+            if storage_io.exists(path) and storage_io.read_bytes(path) != bitmap:
                 raise ValueError('resumed bitmap differs from retained output')
-            if not path.exists(): path.write_bytes(bitmap)
+            if not storage_io.exists(path): storage_io.write_bytes(path, bitmap)
             accepted.append({**row, 'status': 'source-and-framing-pass', 'bitmap_sha256': art.sha(path),
                              'face_count': 1, 'face_pixels': round(float(min(detected[0][2:4])), 1)})
         print(json.dumps({'season': season, 'fetched': min(start+16,len(candidates)), 'accepted': len(accepted)}), flush=True)
     no_photo, included = [], []
     old_plan = ROOT / '.local/season-visual-patches-v2' / season / 'plan.json'
     old_patch = old_plan.parent / 'patch'
-    if old_plan.is_file():
-        old = json.loads(old_plan.read_text()); old_receipt = json.loads((old_patch / 'receipt.json').read_text())
+    if storage_io.is_file(old_plan):
+        old = json.loads(storage_io.read_text(old_plan)); old_receipt = json.loads(storage_io.read_text(old_patch / 'receipt.json'))
         if old['inputs']['release_id'] == release.release_id:
             if old_receipt['plan_sha256'] != art.sha(old_plan) or old_receipt['archive_before_sha256'] != art.sha(release.game_path / 'DBDAT/MINIFOTO.PKF'):
                 raise ValueError('old no-photo cleanup is stale')
@@ -145,7 +146,7 @@ def prepare(season, output, source_path, editions, identities, detector, maximum
             no_photo = [r for r in old['no_photo'] if int(r['carrier_id']) not in photos]
             path = output / 'patch/DBDAT/MINIFOTO.PKF'
             path.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(old_patch / 'DBDAT/MINIFOTO.PKF', path)
+            storage_io.copy_file(old_patch / 'DBDAT/MINIFOTO.PKF', path)
             included = [art.sha(old_plan)]
     plan = {'schema_version': art.SCHEMA, 'season': season,
             'inputs': {'release_id': release.release_id, 'package_sha256': art.sha(release.package_path),
@@ -154,7 +155,7 @@ def prepare(season, output, source_path, editions, identities, detector, maximum
     art.save(output / 'plan.json', plan)
     receipt = {'schema_version': 'pm99-season-visual-patch-materialisation-v1', 'season': season,
                'plan_sha256': art.sha(output / 'plan.json'), 'archive_before_sha256': art.sha(release.game_path / 'DBDAT/MINIFOTO.PKF'),
-               'outputs': {str(p.relative_to(output / 'patch')): art.sha(p) for p in sorted((output / 'patch').rglob('*')) if p.is_file()},
+               'outputs': {str(p.relative_to(output / 'patch')): art.sha(p) for p in sorted(storage_io.glob(output / 'patch', '*', recursive=True)) if storage_io.is_file(p)},
                'replacements': accepted, 'rejected': rejected, 'no_photo_count': len(no_photo),
                'coverage': {'candidate_count': len(candidates), 'accepted': len(accepted),
                             'foreign_clubs_with_new_photos': len({r['target_club'] for r in accepted})},
@@ -178,7 +179,7 @@ if __name__ == '__main__':
         if int(season[:4]) < 2009 or season in ('2014-15','2015-16') or args.season not in ('all',season): continue
         output = args.output_root / season
         receipt = output / 'patch/receipt.json'
-        if receipt.exists(): coverage = json.loads(receipt.read_text())['coverage']
+        if storage_io.exists(receipt): coverage = json.loads(storage_io.read_text(receipt))['coverage']
         else: coverage = prepare(season, output, source, editions, identities, detector, args.maximum_per_season)
         if args.install:
             current = registry.load_preferred_release(season)

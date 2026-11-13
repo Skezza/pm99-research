@@ -26,6 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import capture_2015_wikipedia_player_facts_v1 as common  # noqa: E402
 from scripts import prepare_2015_world_fifa16_drafts as fifa  # noqa: E402
 from scripts import season_package_v2 as package_v2  # noqa: E402
@@ -41,8 +42,8 @@ class FifaFactCaptureError(ValueError):
 
 
 def _read_csv(path: Path) -> tuple[list[dict[str, str]], str]:
-    digest = hashlib.sha256(path.read_bytes()).hexdigest()
-    with path.open(encoding="utf-8-sig", newline="") as handle:
+    digest = hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
+    with storage_io.open_file(path, encoding='utf-8-sig', newline='') as handle:
         rows = list(csv.DictReader(handle))
     required = {"player_id", "name", "birthdate", "nationality", "height", "weight"}
     if not rows or not required <= set(rows[0]):
@@ -134,19 +135,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args(argv)
     try:
-        if args.output.exists():
+        if storage_io.exists(args.output):
             raise FifaFactCaptureError(f"refusing to overwrite output: {args.output}")
         package = package_v2.read_canonical_package(args.package)
         package_v2.validate_package(package)
         fifa_rows, fifa_sha = _read_csv(args.fifa16_csv)
         result = capture(
-            package=package, package_sha256=hashlib.sha256(args.package.read_bytes()).hexdigest(),
+            package=package, package_sha256=hashlib.sha256(storage_io.read_bytes(args.package)).hexdigest(),
             fifa_rows=fifa_rows, fifa_sha256=fifa_sha,
         )
     except (OSError, package_v2.PackageValidationError, FifaFactCaptureError) as exc:
         parser.error(str(exc))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(package_v2.canonical_json_bytes(result))
+    storage_io.write_bytes(args.output, package_v2.canonical_json_bytes(result))
     print(json.dumps(result["coverage"], sort_keys=True))
     return 0
 

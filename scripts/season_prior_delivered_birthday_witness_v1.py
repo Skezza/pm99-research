@@ -5,6 +5,7 @@ or a convenient date. Reverify the original bounded correction and its actual
 delivered recipe. This does not infer new birthdays or new club membership.
 """
 import copy
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import season_source_bound_birthday_disagreements_v1 as birthdays
 from scripts import season_historical_roster_audit_v1 as roster
@@ -19,7 +20,7 @@ def resolve(review,bio,annual):
     delivered=registry.load_registered_release(witness['season'],witness['release_id'])
     path=registry.ROOT/witness['plan_path']
     if (registry.sha256_file(path)!=witness['plan_sha256']
-            or path.resolve()!=(registry.ROOT/delivered.locator['sourced_profile_assignment_plan_path']).resolve()):
+            or storage_io.resolve(path)!=storage_io.resolve(registry.ROOT / delivered.locator['sourced_profile_assignment_plan_path'])):
         raise ValueError('prior delivered birthday source plan changed')
     plan=pipeline.read_json_file(path)
     if plan.get('schema')!=birthdays.SCHEMA:raise ValueError('prior witness is not a source-verified birthday-only correction')

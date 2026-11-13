@@ -3,6 +3,7 @@ import copy
 from datetime import UTC, datetime
 from pathlib import Path
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_kit_render_bindings_v1 as kits
 from scripts import build_registered_quality_release_v1 as builder
@@ -20,7 +21,7 @@ from scripts.capture_genoa_2021_kit_runtime_20261016 import TAG
 def run():
     prior = ROOT.parent / 'release-delivery-checklist-v51.json'
     output = ROOT.parent / 'release-delivery-checklist-v52.json'
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('completed kit delivery checkpoint must not repeat')
     result = copy.deepcopy(pipeline.read_json_file(prior))
     old = {r['season']: r for r in result['current_release_bindings']}
@@ -38,7 +39,7 @@ def run():
             or not replay['complete_game_inventory_identical']
             or not replay['complete_recipe_identical']):
         raise ValueError('Genoa native/full SOURCE evidence incomplete')
-    if release.package_path.read_bytes() != base.package_path.read_bytes():
+    if storage_io.read_bytes(release.package_path) != storage_io.read_bytes(base.package_path):
         raise ValueError('kit correction changed recipe bytes')
     before = pipeline.read_json_file(base.inventory_path)
     after = pipeline.assert_tree_matches_inventory(release.game_path, pipeline.read_json_file(release.inventory_path))
@@ -85,7 +86,7 @@ def run():
         return current
     current_bindings()
     builder.register([dict(season=SEASON, release_id=RELEASE, release_manifest_sha256=release.manifest_sha256)])
-    if not (ROOT / 'final-attestation.json').exists():
+    if not storage_io.exists(ROOT / 'final-attestation.json'):
         retained(ROOT / 'final-attestation.json', runtime.attest(season=SEASON, evidence_dir=evidence))
     validation = registry.validate_preferred_release(SEASON, level='playable')
     if not validation['valid']:

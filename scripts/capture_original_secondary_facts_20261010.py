@@ -3,6 +3,7 @@ import os
 import subprocess
 import time
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import capture_registered_season_runtime_v1 as capture
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts.build_original_secondary_facts_20261010 import ROOT, CASES
@@ -14,7 +15,7 @@ def main(*, root=ROOT, cases=CASES, profiles=PROFILES, preceding=None,
          proof_suffix='-independent-proof-v2.json',profile_tokens=None):
     preceding = preceding or root.parent / 'additional-original-person-birth-years-v1/apter-profile-transport.json'
     deadline = time.monotonic() + 30 * 60
-    while not preceding.exists():
+    while not storage_io.exists(preceding):
         if time.monotonic() > deadline:
             raise ValueError('bounded preceding runner wait expired')
         time.sleep(10)
@@ -24,7 +25,7 @@ def main(*, root=ROOT, cases=CASES, profiles=PROFILES, preceding=None,
     for season, case in cases.items():
         proof_path = root / (season + proof_suffix)
         replay_path = root / (season + '-complete-replay-proof.json')
-        while not proof_path.exists() or not replay_path.exists():
+        while not storage_io.exists(proof_path) or not storage_io.exists(replay_path):
             if time.monotonic() > deadline:
                 raise ValueError('bounded independent readback wait expired')
             time.sleep(10)
@@ -39,12 +40,12 @@ def main(*, root=ROOT, cases=CASES, profiles=PROFILES, preceding=None,
         command, evidence = capture.capture_command(season=season, worker='default', run_tag=tag,
             compact_evidence=True, release_id=case['release'])
         transport = root / (season + '-startup-transport.json')
-        if transport.exists():
+        if storage_io.exists(transport):
             retained = pipeline.read_json_file(transport)
             if retained['exit_code'] != 0 or retained['release_manifest_sha256'] != release.manifest_sha256:
                 raise ValueError('retained secondary-fact startup failed or binds another release')
         else:
-            if evidence.exists():
+            if storage_io.exists(evidence):
                 raise ValueError('unreceipted secondary-fact startup exists: inspect instead of overwrite')
             completed = subprocess.run(command, env=env, check=False)
             pipeline.write_canonical_json(transport, dict(season=season, release_id=case['release'],
@@ -64,33 +65,33 @@ def main(*, root=ROOT, cases=CASES, profiles=PROFILES, preceding=None,
                 ('ENT98030.FDI', 'EQ98030.FDI', 'JUG98030.FDI', 'MINIESC.PKF', 'MINIFOTO.PKF', 'NANOESC.PKF', 'RIDIESC.PKF')},
             scope='Exact factual repair and unchanged skills/kit; no global historical quality approval')
         receipt = candidate / 'candidate-receipt.json'
-        if receipt.exists():
+        if storage_io.exists(receipt):
             if pipeline.read_json_file(receipt) != expected:
                 raise ValueError('retained secondary-fact profile helper changed')
         else:
             pipeline.write_canonical_json(receipt, expected)
         game = candidate / 'game'
         if game.is_symlink():
-            if game.resolve() != release.game_path.resolve():
+            if storage_io.resolve(game) != storage_io.resolve(release.game_path):
                 raise ValueError('secondary-fact profile points to another game')
-        elif game.exists():
+        elif storage_io.exists(game):
             raise ValueError('secondary-fact profile game must be a symlink')
         else:
             game.symlink_to(release.game_path, target_is_directory=True)
         recipe = candidate / 'season-package.json'
-        if recipe.exists():
+        if storage_io.exists(recipe):
             if registry.sha256_file(recipe) != expected['package_sha256']:
                 raise ValueError('secondary-fact profile recipe differs')
         else:
-            os.link(release.package_path, recipe)
+            storage_io.link(release.package_path, recipe)
         profile_transport = root / (label + '-profile-transport.json')
-        if profile_transport.exists():
+        if storage_io.exists(profile_transport):
             if pipeline.read_json_file(profile_transport)['exit_code'] != 0:
                 raise ValueError('retained secondary-fact profile failed')
             continue
         profile_tag = tag + '_' + label
         profile_evidence = root / 'runtime' / profile_tag
-        if profile_evidence.exists():
+        if storage_io.exists(profile_evidence):
             raise ValueError('unreceipted secondary-fact profile exists: inspect rather than repeat')
         completed = subprocess.run([str(registry.ROOT / 'scripts/run_stars_player_offer_probe_direct.sh'),
             '--worker', 'default', '--run-tag', profile_tag, '--local-game-dir', str(game),

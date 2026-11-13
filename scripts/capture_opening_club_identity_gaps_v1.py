@@ -12,6 +12,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import capture_original_public_club_entities_v1 as capture
 from scripts import prepare_duplicate_club_disposition_v1 as whole
 from scripts import season_duplicate_source_context_v1 as context
@@ -21,9 +22,9 @@ from scripts import season_release_registry_v1 as registry
 
 
 def run(plan_path, season, targets, output):
-    if (output / 'source-plan.json').exists():
+    if storage_io.exists(output / 'source-plan.json'):
         raise ValueError('completed club discovery extension is immutable')
-    plan = json.loads(plan_path.read_text())
+    plan = json.loads(storage_io.read_text(plan_path))
     bindings = plan['bindings']
     pin = bindings['snapshot']
     people, events, actual = context.load_snapshot(ROOT / pin['path'], ROOT / pin['pinned_receipt_path'])
@@ -67,19 +68,19 @@ def run(plan_path, season, targets, output):
         'source_plan': {'path': registry.relative_workspace_path(plan_path),
                         'sha256': registry.sha256_file(plan_path)},
         'native_writes': 0, 'historical_ownership_approved': False}
-    if discovery_path.exists() and json.loads(discovery_path.read_text()) != discovery:
+    if storage_io.exists(discovery_path) and json.loads(storage_io.read_text(discovery_path)) != discovery:
         raise ValueError('saved missing-club query no longer replays')
-    if not discovery_path.exists():
+    if not storage_io.exists(discovery_path):
         pipeline.write_canonical_json(discovery_path, discovery)
     additional_path = output / 'additional-entities.json'
-    if additional_path.exists():
+    if storage_io.exists(additional_path):
         entities.read_entities(additional_path)
-        additional = json.loads(additional_path.read_text())
+        additional = json.loads(storage_io.read_text(additional_path))
         if additional['discovery']['sha256'] != registry.sha256_file(discovery_path):
             raise ValueError('saved additional club capture has different discovery')
     else:
         additional = capture.run(discovery_path, output / 'raw', additional_path)
-    merged = copy.deepcopy(json.loads(old_path.read_text()))
+    merged = copy.deepcopy(json.loads(storage_io.read_text(old_path)))
     merged['batches'].extend(additional['batches'])
     merged['source_extension'] = {'previous': old_binding,
         'additional': {'path': registry.relative_workspace_path(additional_path),

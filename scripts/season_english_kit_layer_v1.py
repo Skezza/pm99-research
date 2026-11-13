@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_kit_catalogue_v1 as catalogue_v1  # noqa: E402
 from scripts import season_kit_source_capture_v1 as capture_v1  # noqa: E402
 
@@ -119,14 +120,14 @@ def main() -> int:
     parser.add_argument("--allow-network", action="store_true")
     parser.add_argument("--stoke-matrix", type=Path)
     args = parser.parse_args()
-    intake = json.loads(args.source_intake.read_text(encoding="utf-8"))
+    intake = json.loads(storage_io.read_text(args.source_intake, encoding='utf-8'))
     allocation = capture_allocation(intake)
     capture_v1.materialise(allocation, output_dir=args.capture_output_dir, cache_dir=args.cache_dir, allow_network=args.allow_network)
-    catalogue = json.loads((args.capture_output_dir / "kit-catalogue-v1.json").read_text(encoding="utf-8"))
-    stoke_matrix = json.loads(args.stoke_matrix.read_text(encoding="utf-8")) if args.stoke_matrix else None
+    catalogue = json.loads(storage_io.read_text(args.capture_output_dir / 'kit-catalogue-v1.json', encoding='utf-8'))
+    stoke_matrix = json.loads(storage_io.read_text(args.stoke_matrix, encoding='utf-8')) if args.stoke_matrix else None
     layer = build_layer(intake, catalogue, stoke_matrix)
     args.output_layer.parent.mkdir(parents=True, exist_ok=True)
-    args.output_layer.write_bytes(canonical_json_bytes(layer))
+    storage_io.write_bytes(args.output_layer, canonical_json_bytes(layer))
     print(json.dumps(layer["coverage"], indent=2, sort_keys=True))
     return 0
 

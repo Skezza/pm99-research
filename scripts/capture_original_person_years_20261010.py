@@ -3,13 +3,14 @@ import os
 import subprocess
 import time
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import capture_registered_season_runtime_v1 as capture
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts.build_original_person_years_20261010 import ROOT, RELEASE, SEASONS
 
 
 def wait_for(path, deadline):
-    while not path.is_file():
+    while not storage_io.is_file(path):
         if time.monotonic() >= deadline:
             raise ValueError('bounded native proof wait expired: ' + str(path))
         time.sleep(10)
@@ -30,12 +31,12 @@ def main():
         command, evidence = capture.capture_command(season=season, worker='default',
             run_tag=tag, compact_evidence=True, release_id=RELEASE)
         transport = ROOT / (season + '-startup-transport.json')
-        if transport.exists():
+        if storage_io.exists(transport):
             retained = pipeline.read_json_file(transport)
             if retained['exit_code'] != 0 or retained['release_manifest_sha256'] != release.manifest_sha256:
                 raise ValueError('retained startup failed or binds another game')
             continue
-        if evidence.exists():
+        if storage_io.exists(evidence):
             raise ValueError('unreceipted startup exists; inspect rather than overwrite')
         result = subprocess.run(command, check=False, env=env)
         pipeline.write_canonical_json(transport, dict(season=season, release_id=RELEASE,
@@ -62,33 +63,33 @@ def main():
             for name in ('ENT98030.FDI', 'EQ98030.FDI', 'JUG98030.FDI', 'MINIESC.PKF',
                          'MINIFOTO.PKF', 'NANOESC.PKF', 'RIDIESC.PKF')},
         scope='Actual Ferran9166 leap-day year repair age and unchanged skills; not roster or artwork approval')
-    if receipt_path.exists():
+    if storage_io.exists(receipt_path):
         if pipeline.read_json_file(receipt_path) != expected:
             raise ValueError('retained profile input changed')
     else:
         pipeline.write_canonical_json(receipt_path, expected)
     game = candidate / 'game'
     if game.is_symlink():
-        if game.resolve() != release.game_path.resolve():
+        if storage_io.resolve(game) != storage_io.resolve(release.game_path):
             raise ValueError('profile helper points to another game')
-    elif game.exists():
+    elif storage_io.exists(game):
         raise ValueError('profile game helper must be a symlink')
     else:
         game.symlink_to(release.game_path, target_is_directory=True)
     recipe = candidate / 'season-package.json'
-    if recipe.exists():
+    if storage_io.exists(recipe):
         if registry.sha256_file(recipe) != expected['package_sha256']:
             raise ValueError('profile helper recipe differs')
     else:
-        os.link(release.package_path, recipe)
+        storage_io.link(release.package_path, recipe)
     transport = ROOT / 'ferran-profile-transport.json'
-    if transport.exists():
+    if storage_io.exists(transport):
         if pipeline.read_json_file(transport)['exit_code'] != 0:
             raise ValueError('retained Ferran profile failed')
         return
     tag = 'original_person_ferran_2021_r77a_20261010'
     evidence = ROOT / 'runtime' / tag
-    if evidence.exists():
+    if storage_io.exists(evidence):
         raise ValueError('profile evidence exists; inspect rather than overwrite')
     result = subprocess.run([str(registry.ROOT / 'scripts/run_stars_player_offer_probe_direct.sh'),
         '--worker', 'default', '--run-tag', tag, '--local-game-dir', str(game),

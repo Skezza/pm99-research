@@ -14,18 +14,19 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
 
 
 def collect(args):
-    if args.output.exists():
+    if storage_io.exists(args.output):
         raise ValueError('collection exists; never overwrite evidence')
     release = registry.load_preferred_release('2015-16')
     if not registry.validate_preferred_release('2015-16')['valid']:
         raise ValueError('reconciled 2015 release is not fully bound')
     qa_path = args.corrected_qa / '2015-16/qa-report.json'
-    qa = json.loads(qa_path.read_text())
+    qa = json.loads(storage_io.read_text(qa_path))
     if (qa['inputs']['package_sha256'] != registry.sha256_file(release.package_path)
             or qa['inputs']['game_tree'] != registry.relative_workspace_path(release.game_path)):
         raise ValueError('new QA does not describe the current recipe/game')
@@ -36,7 +37,7 @@ def collect(args):
             source = args.corrected_review / season
             shutil.copytree(source, review_root / season, copy_function=os.link)
             target = opening_root / season; target.mkdir(parents=True)
-            os.link(source / 'opening-review.json', target / 'opening-review.json')
+            storage_io.link(source / 'opening-review.json', target / 'opening-review.json')
             target = qa_root / season; target.mkdir(parents=True)
             qa['historical_revision_binding'] = {'release_id': release.release_id,
                 'release_manifest_sha256': release.manifest_sha256,
@@ -52,7 +53,7 @@ def collect(args):
                '--review-root', str(review_root), '--opening-root', str(opening_root),
                '--qa-root', str(qa_root), '--output', str(args.output / 'collection')]
     subprocess.run(command, cwd=ROOT, check=True)
-    retained = json.loads((ROOT / 'data/retained-season-releases-v1.json').read_text())
+    retained = json.loads(storage_io.read_text(ROOT / 'data/retained-season-releases-v1.json'))
     for row in retained['releases']:
         locator_path = ROOT / row['locator_path']
         if registry.sha256_file(locator_path) != row['locator_sha256']:

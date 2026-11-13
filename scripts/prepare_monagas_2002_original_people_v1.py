@@ -10,6 +10,7 @@ from pathlib import Path
 
 from bs4 import BeautifulSoup
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import monagas_2002_original_august_v1 as opening
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_published_person_identity_v1 as people
@@ -20,7 +21,7 @@ URL = 'https://www.transfermarkt.es/monagas-sc/kader/verein/14596/saison_id/2001
 
 
 def prepare(output):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('original sixteen-person review is immutable')
     with tempfile.TemporaryDirectory(prefix='pm99-monagas2002-original-') as tmp:
         actual = opening.prepare(Path(tmp) / 'opening.json')
@@ -52,7 +53,7 @@ def prepare(output):
         raw_path = registry.ROOT / batch['raw_path']
         if registry.sha256_file(raw_path) != batch['raw_sha256']:
             raise ValueError('original person response changed')
-        response = json.loads(raw_path.read_bytes())
+        response = json.loads(storage_io.read_bytes(raw_path))
         for gap in batch['gaps']:
             if gap['reason'] != 'original-DOB-unpublished-or-unconfirmed':
                 continue

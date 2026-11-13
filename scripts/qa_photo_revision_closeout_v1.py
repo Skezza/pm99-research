@@ -9,6 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import pm99_season_qa_v1 as qa
 from scripts import register_season_qa_results_v1 as registration
 from scripts import season_release_registry_v1 as registry
@@ -40,8 +41,8 @@ def main():
     results = []
     for season in sorted(pending):
         path = args.output_root / season / 'qa-report.json'
-        if not path.is_file(): continue
-        report = json.loads(path.read_text())
+        if not storage_io.is_file(path): continue
+        report = json.loads(storage_io.read_text(path))
         if report.get('photo_revision_binding') != binding(bindings[season]) or report['result'] != 'pass':
             raise ValueError('existing QA is stale or failed; use a fresh report root: ' + season)
         registration.register(season, path)
@@ -78,7 +79,7 @@ def main():
                 raise TimeoutError('fresh runtime proof still missing for ' + ', '.join(sorted(pending)))
             if pending or running: time.sleep(1)
     results.sort(key=lambda row: row['season'])
-    if not (args.output_root / 'summary.json').exists():
+    if not storage_io.exists(args.output_root / 'summary.json'):
         art.save(args.output_root / 'summary.json', {'seasons': results})
     return int(any(r['result'] != 'pass' for r in results))
 

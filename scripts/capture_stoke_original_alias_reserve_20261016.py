@@ -3,6 +3,7 @@ import argparse
 import os
 from pathlib import Path
 import time
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import capture_registered_season_runtime_v1 as capture
 from scripts.capture_arsenal_owned_opening_20261016 import bound_capture
@@ -15,7 +16,7 @@ def wait_for_sweep(pid):
     deadline = time.monotonic() + 7200
     while True:
         try:
-            command = (Path('/proc') / str(pid) / 'cmdline').read_bytes()
+            command = storage_io.read_bytes(Path('/proc') / str(pid) / 'cmdline')
         except FileNotFoundError:
             return
         if b'scripts.capture_remaining_manager_tenures_20261016' not in command:
@@ -26,7 +27,7 @@ def wait_for_sweep(pid):
 
 
 def main(wait_pid=None):
-    if not all((ROOT / name).is_file() for name in ('native-byte-proof.json', 'complete-SOURCE-replay.json')):
+    if not all(storage_io.is_file(ROOT / name) for name in ('native-byte-proof.json', 'complete-SOURCE-replay.json')):
         raise ValueError('actual alias native and complete SOURCE proofs required')
     if wait_pid is not None:
         wait_for_sweep(wait_pid)

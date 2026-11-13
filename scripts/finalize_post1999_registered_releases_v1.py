@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import finalize_season_release_v1 as finalizer  # noqa: E402
 from scripts import season_pipeline_v2 as pipeline  # noqa: E402
 from scripts import season_release_registry_v1 as registry  # noqa: E402
@@ -26,7 +27,7 @@ EVIDENCE_SUFFIX = {
 
 
 def _read(path: Path) -> dict[str, object]:
-    value = json.loads(path.read_text(encoding="utf-8"))
+    value = json.loads(storage_io.read_text(path, encoding='utf-8'))
     if not isinstance(value, dict):
         raise ValueError(f"expected JSON object: {path}")
     return value
@@ -56,7 +57,7 @@ def _package_for_receipt(root: Path, receipt: dict[str, object]) -> Path:
     ]
     matches = [
         path for path in candidates
-        if path.is_file() and registry.canonical_document_sha256(path) == expected
+        if storage_io.is_file(path) and registry.canonical_document_sha256(path) == expected
     ]
     if not matches:
         raise ValueError(f"no retained package matches compiler receipt in {root}")
@@ -66,8 +67,8 @@ def _package_for_receipt(root: Path, receipt: dict[str, object]) -> Path:
 def _write(path: Path, value: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_bytes(pipeline.canonical_json_bytes(value) + b"\n")
-    temporary.replace(path)
+    storage_io.write_bytes(temporary, pipeline.canonical_json_bytes(value) + b'\n')
+    storage_io.move(temporary, path, replace=True)
 
 
 def main() -> int:
@@ -95,7 +96,7 @@ def main() -> int:
         result = finalizer.finalize(
             season=season, release_id=args.release_label, game=game,
             package=package, compiler_receipt=compiler_path,
-            static_receipt=static if static.is_file() else None,
+            static_receipt=static if storage_io.is_file(static) else None,
             kit_receipt=kit, calendar_source=calendar,
             runtime_evidence=_runtime_evidence(season), legacy_revision=revision,
             base_already_verified=True,

@@ -4,6 +4,7 @@ import os
 import shutil
 from pathlib import Path
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import prepare_ofk_2004_source_allocation_v1 as source
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_kit_render_bindings_v1 as render
@@ -12,7 +13,7 @@ from scripts.season_art_transaction_v1 import atomic_bytes
 
 
 def assemble(output, *, native=None, proof_path=None, proposal_path=None, kits_dir=None, season='2004-05'):
-    if output.exists(): raise ValueError('private assembled game is immutable')
+    if storage_io.exists(output): raise ValueError('private assembled game is immutable')
     native = native or source.AUDIT / 'ofk-2004-private-native-v1'
     kits = kits_dir or source.AUDIT / 'ofk-2004-private-kits-v1'
     proof_path = proof_path or source.AUDIT / 'ofk-2004-independent-native-readback-v1.json'
@@ -39,7 +40,7 @@ def assemble(output, *, native=None, proof_path=None, proposal_path=None, kits_d
     for n, path in ingredients.items():
         if registry.sha256_file(path) != names[n]: raise ValueError('private ingredient changed')
     package = copy.deepcopy(pipeline.read_json_file(native / 'season-package.json'))
-    compositions = {path.name:path for path in native.glob('ownership-plan-*.json')}
+    compositions = {path.name:path for path in storage_io.glob(native, 'ownership-plan-*.json')}
     opening_name = 'ofk-original-opening-2015.html' if coupled else 'ofk-original-opening.html'
     opening_path = source.ROOT / ('ofk-first-fixture-2015-2598829.html' if coupled else 'ofk-first-fixture-2004-3142214.html')
     source_overrides = {opening_name:opening_path, **compositions}
@@ -63,14 +64,14 @@ def assemble(output, *, native=None, proof_path=None, proposal_path=None, kits_d
     package['artifacts'].sort(key=lambda a: a['id'])
     from scripts import season_package_v2 as packages
     packages.validate_package(package)
-    if shutil.disk_usage(baseline.game_path).free < 8 * 1024**3 + sum(p.stat().st_size for p in ingredients.values()):
+    if shutil.disk_usage(baseline.game_path).free < 8 * 1024**3 + sum(storage_io.size(p) for p in ingredients.values()):
         raise ValueError('private materialisation crosses8GiB local reserve')
     output.mkdir(parents=True)
     shutil.copytree(baseline.game_path, output / 'game', copy_function=os.link)
-    for n, path in ingredients.items(): atomic_bytes(output / 'game/DBDAT' / n, path.read_bytes())
+    for n, path in ingredients.items(): atomic_bytes(output / 'game/DBDAT' / n, storage_io.read_bytes(path))
     for row in readback['players']:
         path = output / 'game/DBDAT/MINIFOTO' / f"J96{row['carrier_id']:05d}.BMP"
-        if path.exists(): path.unlink()  # Only this private clone's hardlink; baseline survives.
+        if storage_io.exists(path): storage_io.unlink(path)  # Only this private clone's hardlink; baseline survives.
     new_inputs = {
         opening_name: opening_path,
         'ofk-period-kit-source.json': kits / 'kit-catalogue.json',
@@ -85,7 +86,7 @@ def assemble(output, *, native=None, proof_path=None, proposal_path=None, kits_d
         verify_recipe_artifact(path, artifact['sha256'])
         target = output / relative
         target.parent.mkdir(parents=True, exist_ok=True)
-        os.link(path, target)
+        storage_io.link(path, target)
     pipeline.write_canonical_json(output / 'season-package.json', package)
     inventory = pipeline.build_tree_inventory(output / 'game')
     if any(registry.sha256_file(path) != names[n] for n, path in ingredients.items()):

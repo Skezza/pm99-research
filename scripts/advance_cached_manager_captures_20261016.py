@@ -2,6 +2,7 @@
 import argparse
 from pathlib import Path
 import time
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts.build_cached_manager_repairs_20261016 import ROOT, RELEASE
 from scripts.capture_cached_manager_repairs_20261016 import main as capture
@@ -11,16 +12,16 @@ def main(build_pid):
     for season in registry.supported_seasons():
         if season=='2015-16':continue  # explicitly separate legacy source layout
         root=ROOT/season;deadline=time.monotonic()+14400
-        while not (root/'complete-SOURCE-replay.json').exists():
-            if (root/'no-native-or-recipe-correction-needed.json').exists():break
+        while not storage_io.exists(root / 'complete-SOURCE-replay.json'):
+            if storage_io.exists(root / 'no-native-or-recipe-correction-needed.json'):break
             proc=Path('/proc')/str(build_pid)/'cmdline'
-            if not proc.exists() or b'scripts.advance_cached_manager_builds_20261016' not in proc.read_bytes():
+            if not storage_io.exists(proc) or b'scripts.advance_cached_manager_builds_20261016' not in storage_io.read_bytes(proc):
                 raise ValueError('own manager builder stopped; inspect terminal outcome')
             if time.monotonic()>deadline:raise ValueError('bounded own manager build wait expired')
             time.sleep(10)
-        if (root/'no-native-or-recipe-correction-needed.json').exists():continue
+        if storage_io.exists(root / 'no-native-or-recipe-correction-needed.json'):continue
         transport=root/'startup-transport.json'
-        if transport.exists():
+        if storage_io.exists(transport):
             release=registry.load_registered_release(season,RELEASE)
             saved=pipeline.read_json_file(transport)
             if saved['exit_code']!=0 or saved['release_manifest_sha256']!=release.manifest_sha256:

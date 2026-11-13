@@ -9,6 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_portrait_pipeline_v1 as portraits
 from scripts import season_visual_patch_v1 as art
@@ -18,22 +19,22 @@ def committed_photo_receipts(release):
     """Read only receipts bound to committed stages of this release's chain."""
     if release.build_chain_path is None:
         return []
-    chain = json.loads(release.build_chain_path.read_text())
+    chain = json.loads(storage_io.read_text(release.build_chain_path))
     stages = {stage['id']: (index, stage) for index, stage in enumerate(chain['stages'])}
     found = []
-    for journal_path in (ROOT / '.local/season-art-transactions-v1').glob('*/' + release.season + '/journal.json'):
-        journal = json.loads(journal_path.read_text())
+    for journal_path in storage_io.glob(ROOT / '.local/season-art-transactions-v1', '*/' + release.season + '/journal.json'):
+        journal = json.loads(storage_io.read_text(journal_path))
         key = 'portrait-' + journal.get('release_id', '')
         if journal.get('state') != 'committed' or key not in stages:
             continue
         application_path = journal_path.parent / 'visual-patch-application.json'
-        application = json.loads(application_path.read_text())
+        application = json.loads(storage_io.read_text(application_path))
         path = Path(application['materialisation_path'])
-        path.resolve().relative_to(ROOT.resolve())
+        storage_io.resolve(path).relative_to(storage_io.resolve(ROOT))
         index, stage = stages[key]
         if art.sha(application_path) != stage['receipt_sha256'] or art.sha(path) != application['materialisation_sha256']:
             raise ValueError('committed photo receipt no longer matches the release chain')
-        found.append((index, journal['release_id'], json.loads(path.read_text())))
+        found.append((index, journal['release_id'], json.loads(storage_io.read_text(path))))
     return [(lane, receipt) for _, lane, receipt in sorted(found)]
 
 
@@ -53,12 +54,12 @@ def verify(output):
         for record in portraits.iter_minifoto_records(release.game_path / 'DBDAT/MINIFOTO.PKF'):
             active_archive.setdefault(record.player_record_id, []).append(
                 hashlib.sha256(record.raw_bitmap).hexdigest())
-        players={int(p['carrier_id']):p for p in json.loads(release.package_path.read_text())['players']}
+        players={int(p['carrier_id']):p for p in json.loads(storage_io.read_text(release.package_path))['players']}
         expected={}
         for root in ('foreign-portrait-rollout-r8','reviewed-real-photo-rollout-r9'):
             path=ROOT/'.local'/root/season/'patch/receipt.json'
-            if path.exists():
-                for row in json.loads(path.read_text())['replacements']:expected[int(row['carrier_id'])]=(root,row)
+            if storage_io.exists(path):
+                for row in json.loads(storage_io.read_text(path))['replacements']:expected[int(row['carrier_id'])]=(root,row)
         for lane, receipt in committed_photo_receipts(release):
             for row in receipt.get('replacements', []):
                 if 'source_sha256' in row and 'bitmap_sha256' in row:
@@ -69,8 +70,8 @@ def verify(output):
             if not player or player['name']!=row['name'] or player.get('facts',{}).get('birth_date')!=row['birth_date']:
                 issues.append('recipe-identity-changed')
             bitmap=release.game_path/'DBDAT/MINIFOTO'/f'J96{carrier:05d}.BMP'
-            if not bitmap.exists() or art.sha(bitmap)!=row['bitmap_sha256']:issues.append('installed-bitmap-changed')
-            else:portraits.validate_minifoto_bitmap(bitmap.read_bytes())
+            if not storage_io.exists(bitmap) or art.sha(bitmap)!=row['bitmap_sha256']:issues.append('installed-bitmap-changed')
+            else:portraits.validate_minifoto_bitmap(storage_io.read_bytes(bitmap))
             if any(digest != row['bitmap_sha256'] for digest in active_archive.get(carrier, [])):
                 issues.append('conflicting-active-archive-portrait')
             if 'source_image_url' in row:
@@ -78,20 +79,20 @@ def verify(output):
             else:
                 url=row['source']['image_url'];key=hashlib.sha256(url.encode()).hexdigest()
                 cache = Path(row.get('source_cache_root', ROOT/'.local/foreign-photo-expansion-v1/source-cache'))
-                cache.resolve().relative_to(ROOT.resolve())
+                storage_io.resolve(cache).relative_to(storage_io.resolve(ROOT))
                 source=cache/key[:2]/(key+'.bin')
-            if not source.exists() or art.sha(source)!=row['source_sha256']:issues.append('source-bytes-changed')
+            if not storage_io.exists(source) or art.sha(source)!=row['source_sha256']:issues.append('source-bytes-changed')
             checked.append({'carrier_id':carrier,'name':row['name'],'lane':root,'issues':issues,
                             'source_kind': 'real-photo' if 'source' in row else 'fifa-photo',
                             'active_archive_entry_count':len(active_archive.get(carrier, []))})
             if issues:failures.append({'season':season,**checked[-1]})
-        package = json.loads(release.package_path.read_text())
+        package = json.loads(storage_io.read_text(release.package_path))
         foreign_ids = foreign_roster_ids(package)
         verified = {p['carrier_id']: p for p in checked if not p['issues']}
         counts = {}
         coverage_path = output.parent / 'coverage' / (season + '.csv')
         coverage_path.parent.mkdir(parents=True, exist_ok=True)
-        with coverage_path.open('w', newline='') as handle:
+        with storage_io.open_file(coverage_path, 'w', newline='') as handle:
             writer = csv.DictWriter(handle, fieldnames=['season', 'carrier_id', 'name', 'birth_date', 'club_id', 'status'])
             writer.writeheader()
             for p in package['players']:
@@ -99,7 +100,7 @@ def verify(output):
                 carrier = int(p['carrier_id'])
                 bmp = release.game_path/'DBDAT/MINIFOTO'/f'J96{carrier:05d}.BMP'
                 status = ('verified-' + verified[carrier]['source_kind']) if carrier in verified else (
-                    'inherited-unverified' if bmp.is_file() or carrier in active_archive else 'missing')
+                    'inherited-unverified' if storage_io.is_file(bmp) or carrier in active_archive else 'missing')
                 counts[status] = counts.get(status, 0) + 1
                 writer.writerow({'season': season, 'carrier_id': carrier, 'name': p['name'],
                                  'birth_date': p.get('facts', {}).get('birth_date'), 'club_id': p['club_id'], 'status': status})

@@ -19,6 +19,14 @@ It therefore fails closed for a different executable or unexpected code.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -260,14 +268,14 @@ def patch_calendar(
 ) -> dict[str, object]:
     if target_year not in SUPPORTED_YEARS:
         raise PatchError("target year must be in the supported 1900..2026 range")
-    if input_path.resolve() == output_path.resolve():
+    if storage_io.resolve(input_path) == storage_io.resolve(output_path):
         raise PatchError("input and output must differ; this patcher never modifies the input EXE")
-    if not input_path.is_file():
+    if not storage_io.is_file(input_path):
         raise PatchError(f"missing input EXE: {input_path}")
-    if output_path.exists():
+    if storage_io.exists(output_path):
         raise PatchError(f"refusing to overwrite existing output: {output_path}")
 
-    source = input_path.read_bytes()
+    source = storage_io.read_bytes(input_path)
     source_hash = sha256(source)
     if strict_profile and source_hash != KNOWN_INPUT_SHA256:
         raise PatchError(
@@ -353,16 +361,16 @@ def patch_calendar(
 
     patched = bytes(image.blob)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_bytes(patched)
-    readback = output_path.read_bytes()
+    storage_io.write_bytes(output_path, patched)
+    readback = storage_io.read_bytes(output_path)
     if readback != patched:
         raise PatchError("output readback mismatch")
 
     return {
         "schema_version": "pm99-calendar-patch-v1",
         "profile": "managpre-calendar-1998-99-to-target-v1",
-        "input": str(input_path.resolve()),
-        "output": str(output_path.resolve()),
+        "input": str(storage_io.resolve(input_path)),
+        "output": str(storage_io.resolve(output_path)),
         "base_year": BASE_YEAR,
         "rollover_year": ROLLOVER_YEAR,
         "target_year": target_year,
@@ -395,7 +403,7 @@ def main() -> int:
     text = json.dumps(receipt, indent=2, sort_keys=True) + "\n"
     if args.receipt:
         args.receipt.parent.mkdir(parents=True, exist_ok=True)
-        args.receipt.write_text(text, encoding="utf-8")
+        storage_io.write_text(args.receipt, text, encoding='utf-8')
     print(text, end="")
     return 0
 

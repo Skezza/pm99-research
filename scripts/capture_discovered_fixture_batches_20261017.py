@@ -6,6 +6,7 @@ import argparse
 import os
 from pathlib import Path
 import time
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry,season_pipeline_v2 as pipeline
 from scripts import season_frozen_fixture_reserve_v1 as source
 from scripts import capture_registered_season_runtime_v1 as capture
@@ -19,9 +20,9 @@ def tag(season):return 'frozen_original_fixture_'+season.replace('-','_')+'_r123
 
 def wait_build(season,pid):
     folder=ROOT/season;deadline=time.monotonic()+3600
-    while not (folder/'complete-SOURCE-replay.json').exists():
-        if any((folder/name).exists() for name in ('source-gap.json','build-failure.json')):return False
-        try:command=(Path('/proc')/str(pid)/'cmdline').read_bytes()
+    while not storage_io.exists(folder / 'complete-SOURCE-replay.json'):
+        if any(storage_io.exists(folder / name) for name in ('source-gap.json','build-failure.json')):return False
+        try:command=storage_io.read_bytes(Path('/proc') / str(pid) / 'cmdline')
         except FileNotFoundError:raise ValueError('batch builder stopped without source proof/failure; inspect partial state')
         if b'scripts.build_discovered_fixture_batches_20261017' not in command:raise ValueError('batch wait PID identity changed')
         if time.monotonic()>deadline:raise ValueError('batch observation expired; inspect exact existing process')

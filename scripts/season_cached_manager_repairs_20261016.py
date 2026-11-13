@@ -6,6 +6,7 @@ Full canonical identity and bounded native display alias remain separate.
 """
 import collections
 from pathlib import Path
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_historical_opening_review_v1 as opening
 from scripts import season_historical_roster_audit_v1 as roster
@@ -103,7 +104,7 @@ def main():
     for season in registry.supported_seasons():
         release=registry.load_preferred_release(season)
         path=root/'source-plans'/season/(release.release_id+'.json')
-        if path.exists():
+        if storage_io.exists(path):
             plan=pipeline.read_json_file(path)
             if plan['package_sha256']!=registry.sha256_file(release.package_path):
                 raise ValueError('prepared manager source recipe changed')

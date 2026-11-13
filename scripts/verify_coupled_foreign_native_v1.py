@@ -2,6 +2,7 @@
 from pathlib import Path
 import tempfile
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import prepare_ofk_2004_source_allocation_v1 as source
 from scripts import prepare_ofk_2015_verified_inputs_v1 as inputs
 from scripts import prepare_duplicate_whole_club_native_v1 as native
@@ -17,7 +18,7 @@ from app.ent_manager_profiles import parse_indexed_ent_manager_profile
 
 
 def verify(candidate,output, *, source_bound_game=False):
-    if output.exists():raise ValueError('coupled native readback evidence is immutable')
+    if storage_io.exists(output):raise ValueError('coupled native readback evidence is immutable')
     receipt_path=candidate/('candidate-receipt.json' if source_bound_game else 'native-proof.json')
     receipt=pipeline.read_json_file(receipt_path)
     if receipt.get('registered') or receipt.get('publication_authorised'):
@@ -44,7 +45,7 @@ def verify(candidate,output, *, source_bound_game=False):
         data_root=candidate/('game/DBDAT' if source_bound_game else 'DBDAT')
         if registry.sha256_file(data_root/name)!=sha or registry.sha256_file(baseline.game_path/'DBDAT'/name)!=receipt['before_hashes'][name]:
             raise ValueError('coupled native input/output hash changed')
-        data[name]=(data_root/name).read_bytes()
+        data[name]=storage_io.read_bytes(data_root / name)
     players={p['carrier_id']:p for p in package['players']}
     corrected=set(receipt['detail']['corrected_native_carriers'])
     original=pipeline.read_json_file(baseline.package_path)
@@ -92,7 +93,7 @@ def verify(candidate,output, *, source_bound_game=False):
             or any(owners[id]!={706} for id in ordered)
             or rosters[706].short_name!='OFK Beograd' or rosters[706].stadium_name!=proposal['dated_manager_ground']['ground']):
         raise ValueError('native actual OFK18/XI/source order/ownership/ground differs')
-    old_eq=(baseline.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    old_eq=storage_io.read_bytes(baseline.game_path / 'DBDAT/EQ98030.FDI')
     e=next(e for e in IndexedFDIFile.from_bytes(old_eq).entries if e.record_id==48)
     old_celta=native.parse_eq_external_team_roster_payload(old_eq[e.payload_offset:e.payload_offset+e.payload_length],{})
     outgoing=proposal['coupled_native_carrier_exchange']['OFK_to_Celta']
@@ -107,10 +108,10 @@ def verify(candidate,output, *, source_bound_game=False):
     if profile.display_name!='Petrovic' or profile.surname!='Petrovic' or manager['name']!='Vladimir Petrovic':
         raise ValueError('native OFK manager differs from dated original')
     for name,ids in [('JUG98030.FDI',corrected),('EQ98030.FDI',{48,706}),('ENT98030.FDI',{manager['carrier_id']})]:
-        native.preserve_other_records((baseline.game_path/'DBDAT'/name).read_bytes(),data[name],ids)
+        native.preserve_other_records(storage_io.read_bytes(baseline.game_path / 'DBDAT' / name),data[name],ids)
     cleared,_=native.delta.no_photo_archive(data['MINIFOTO.PKF'],corrected)
     if cleared!=data['MINIFOTO.PKF']:raise ValueError('coupled displaced portrait remains')
-    if source_bound_game and any((candidate/'game/DBDAT/MINIFOTO'/f'J96{id:05d}.BMP').exists() for id in corrected):
+    if source_bound_game and any(storage_io.exists(candidate / 'game/DBDAT/MINIFOTO' / f'J96{id:05d}.BMP') for id in corrected):
         raise ValueError('coupled displaced loose portrait remains')
     index,snapshot=identities.load_identity_snapshot()
     for filename in ['ofk-2015-original-person-identities-v1.json','celta-2015-madinda-original-person-v1.json']:

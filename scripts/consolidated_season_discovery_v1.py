@@ -16,6 +16,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_duplicate_ownership_plan_v1 as layers
 from scripts import season_historical_roster_audit_v1 as roster
@@ -39,7 +40,7 @@ def bindings():
 
 def write_new(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open('x') as stream:
+    with storage_io.open_file(path, 'x') as stream:
         json.dump(value, stream, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
         stream.write('\n')
 
@@ -51,8 +52,8 @@ def run(output):
                 'catalog_sha256': registry.sha256_file(registry.CATALOG_PATH),
                 'rows': bindings()}
     snapshot_path = output / 'snapshot.json'
-    if snapshot_path.exists():
-        retained = json.loads(snapshot_path.read_text())
+    if storage_io.exists(snapshot_path):
+        retained = json.loads(storage_io.read_text(snapshot_path))
         if retained['rows'] != snapshot['rows'] or retained['catalog_sha256'] != snapshot['catalog_sha256']:
             raise ValueError('Cannot resume discovery against changed releases')
         snapshot = retained
@@ -61,16 +62,16 @@ def run(output):
     results = []
     for row in snapshot['rows']:
         # No game copies, downloads, or large uncompressed CSV exports.
-        ram = output.resolve().is_relative_to(Path('/run/user'))
+        ram = storage_io.resolve(output).is_relative_to(Path('/run/user'))
         reserve = 128 * 1024**2 if ram else 8 * 1024**3
         if shutil.disk_usage(output).free < reserve:
             raise RuntimeError('Discovery stopped before additional writes: evidence-store reserve breached')
         season = row['season']
         prior = ROOT / '.local/historical-authored-clubs-review-20261005-r1' / season / 'report.json'
         evidence = output / 'rosters' / season / 'report.json.gz'
-        if not evidence.exists():
+        if not storage_io.exists(evidence):
             roster.audit_season(season, output / 'rosters' / season,
-                               prior if prior.is_file() else None, compressed=True)
+                               prior if storage_io.is_file(prior) else None, compressed=True)
         with gzip.open(evidence, 'rt') as stream:
             report = json.load(stream)
         assert report['bindings']['package_sha256'] == row['package_sha256']

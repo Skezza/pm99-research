@@ -26,6 +26,7 @@ sys.path[:0] = [str(ROOT), str(ROOT / 'upstream/pm99-skezmod-db-editor')]
 
 from app.eq_jug_linked import parse_eq_external_team_roster_payload
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_opening_identity_exchange_v1 as exchange
 from scripts import season_opening_order_repair_v1 as ownership
 from scripts import season_package_v2 as packages
@@ -41,7 +42,7 @@ class UnsupportedArtifactSchema(ValueError):
 
 
 def _sha(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def _verify_plan_identity(plan: dict) -> dict:
@@ -62,8 +63,8 @@ def _verify_plan_identity(plan: dict) -> dict:
 
 
 def _rooted(value: str) -> Path:
-    path = (ROOT / value).resolve()
-    path.relative_to(ROOT.resolve())
+    path = storage_io.resolve(ROOT / value)
+    path.relative_to(storage_io.resolve(ROOT))
     return path
 
 
@@ -276,7 +277,7 @@ def _walsall_membership(request: dict, update: dict) -> tuple[str, list[dict]]:
 
 def _audit_exchange(release, package, eq: bytes, artifact: dict) -> list[dict]:
     artifact_path = _rooted(str(release.package_path.parent / artifact['relative_path']))
-    raw = artifact_path.read_bytes()
+    raw = storage_io.read_bytes(artifact_path)
     if hashlib.sha256(raw).hexdigest() != artifact.get('sha256'):
         raise ValueError(f"opening exchange artifact hash differs: {artifact['id']}")
     plan = json.loads(raw)
@@ -417,7 +418,7 @@ def _audit_exchange(release, package, eq: bytes, artifact: dict) -> list[dict]:
 def audit_release(season: str, release_id: str) -> dict:
     release = registry.load_registered_release(season, release_id)
     package = pipeline.read_json_file(release.package_path)
-    eq = (release.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    eq = storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
     rows, unsupported = [], []
     artifacts = [a for a in package.get('artifacts', [])
                  if a.get('id', '').startswith(exchange.PREFIX)]
@@ -456,7 +457,7 @@ def audit_ftc_whole_roster_plan(season: str, release_id: str, plan_path: str) ->
     """Explicit supplementary reader for the retained FTC whole-roster v3 plan."""
     release = registry.load_registered_release(season, release_id)
     plan_file = _rooted(plan_path)
-    plan = json.loads(plan_file.read_bytes())
+    plan = json.loads(storage_io.read_bytes(plan_file))
     if (plan.get('schema') != exchange.SCHEMA
             or plan.get('season') != season or len(plan.get('updates', [])) != 20):
         raise ValueError('FTC supplementary visibility input is not the exact v3 twenty-person plan')
@@ -470,7 +471,7 @@ def audit_ftc_whole_roster_plan(season: str, release_id: str, plan_path: str) ->
         'package_sha256': plan['package_sha256'], 'eq_sha256': plan['eq_sha256'],
         'jug_sha256': plan['jug_sha256']}
     package = pipeline.read_json_file(release.package_path)
-    eq = (release.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    eq = storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
     rows, unmatched = [], []
     for update in plan['updates']:
         carrier = update['carrier_id']
@@ -533,7 +534,7 @@ def main(argv=None) -> int:
     parser.add_argument('--output', required=True, help='new workspace-relative JSON receipt path')
     args = parser.parse_args(argv)
     output = _rooted(args.output)
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('visibility audit output is immutable and already exists')
     if not output.parent.is_dir():
         raise ValueError('visibility audit output parent directory must already exist')

@@ -8,6 +8,14 @@ adds PM99-safe display aliases to the assignment rows used for DB writes.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import json
 import unicodedata
@@ -116,7 +124,7 @@ def _patch_name_row(row: dict[str, Any], changes: list[dict[str, Any]], *, club_
 
 
 def build_runtime_safe_assignment(input_path: Path) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-    payload = json.loads(input_path.read_text(encoding="utf-8"))
+    payload = json.loads(storage_io.read_text(input_path, encoding='utf-8'))
     if not isinstance(payload, dict):
         raise ValueError(f"{input_path} must contain a JSON object")
     changes: list[dict[str, Any]] = []
@@ -168,20 +176,20 @@ def main() -> int:
     parser.add_argument("--report", required=True)
     args = parser.parse_args()
 
-    output, changes = build_runtime_safe_assignment(Path(args.input).expanduser().resolve())
-    output_path = Path(args.output).expanduser().resolve()
-    report_path = Path(args.report).expanduser().resolve()
+    output, changes = build_runtime_safe_assignment(storage_io.resolve(Path(args.input).expanduser()))
+    output_path = storage_io.resolve(Path(args.output).expanduser())
+    report_path = storage_io.resolve(Path(args.report).expanduser())
     output_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(json.dumps(output, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(output_path, json.dumps(output, indent=2, sort_keys=True) + '\n', encoding='utf-8')
     report = {
         "schema": "pm99-runtime-safe-assignment-report-v1",
-        "input": str(Path(args.input).expanduser().resolve()),
+        "input": str(storage_io.resolve(Path(args.input).expanduser())),
         "output": str(output_path),
         "change_count": len(changes),
         "changes": changes,
     }
-    report_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(report_path, json.dumps(report, indent=2, sort_keys=True) + '\n', encoding='utf-8')
     print(json.dumps({"change_count": len(changes), "output": str(output_path)}, indent=2, sort_keys=True))
     return 0
 

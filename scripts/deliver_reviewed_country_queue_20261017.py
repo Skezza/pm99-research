@@ -8,6 +8,7 @@ import argparse
 from pathlib import Path
 import time
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import deliver_original_country_defaults_20261017 as initial
 from scripts import deliver_country_policy_v2_cohort_20261017 as cohort
@@ -18,7 +19,7 @@ ROOT=registry.ROOT/'.local/consolidated-audit-20261009/reviewed-country-delivery
 
 
 def main(previous_pid):
-    if ROOT.exists():
+    if storage_io.exists(ROOT):
         raise ValueError('existing reviewed delivery queue needs inspection; never blind rerun')
     ROOT.mkdir()
     root=ROOT.parent;prior=root/'release-delivery-checklist-v74.json'
@@ -27,8 +28,8 @@ def main(previous_pid):
         tasks=[dict(season='2014-15',release_id=initial.RELEASE,previous_version=74),
                dict(season='2009-10',release_id=cohort.build.RELEASE,previous_version=75)],
         automatic_visual_approval=False,unaffected_regeneration=False))
-    while not (prior.exists() and predecessor.exists()):
-        try:command=Path(f'/proc/{previous_pid}/cmdline').read_bytes()
+    while not (storage_io.exists(prior) and storage_io.exists(predecessor)):
+        try:command=storage_io.read_bytes(Path(f'/proc/{previous_pid}/cmdline'))
         except FileNotFoundError as exc:
             raise ValueError('2012 publication stopped without final checkpoint; inspect before continuing') from exc
         if b'scripts.deliver_original_country_defaults_20261017' not in command or b'2012-13' not in command:

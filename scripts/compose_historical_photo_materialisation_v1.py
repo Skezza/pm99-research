@@ -14,17 +14,18 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts.season_pipeline_v2 import write_canonical_json
 from scripts.season_pipeline_v2 import canonical_json_bytes
 
 
 def sha(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def rebind_unchanged_club_qa(original_path, revised_path, qa_path, discovery_path, output_path):
     """Reuse a completed face review ONLY if every club input row is unchanged."""
-    original, revised, qa, discovery = [json.loads(p.read_text()) for p in (
+    original, revised, qa, discovery = [json.loads(storage_io.read_text(p)) for p in (
         original_path, revised_path, qa_path, discovery_path)]
     if qa['input_hashes']['fifa_manifest'] != sha(original_path) or qa['input_hashes']['discovery_receipt'] != sha(discovery_path):
         raise ValueError('original QA inputs are stale')
@@ -52,8 +53,8 @@ def rebind_unchanged_club_qa(original_path, revised_path, qa_path, discovery_pat
 
 
 def compose(fifa_path: Path, qa_path: Path) -> dict:
-    fifa = json.loads(fifa_path.read_text())
-    qa = json.loads(qa_path.read_text())
+    fifa = json.loads(storage_io.read_text(fifa_path))
+    qa = json.loads(storage_io.read_text(qa_path))
     if fifa["season"] != qa["season"] or qa["schema_version"] != "pm99-historical-photo-qa-v1":
         raise ValueError("QA receipt and FIFA materialisation disagree")
     if qa.get("input_hashes", {}).get("fifa_manifest") != sha(fifa_path):
@@ -81,7 +82,7 @@ def compose(fifa_path: Path, qa_path: Path) -> dict:
             continue
         photo = replacement["selected"]
         bitmap = Path(photo["bitmap"])
-        if not bitmap.is_file() or sha(bitmap) != photo["bitmap_sha256"]:
+        if not storage_io.is_file(bitmap) or sha(bitmap) != photo["bitmap_sha256"]:
             raise ValueError("historical bitmap changed: " + replacement["name"])
         if row["name"] != replacement["name"]:
             raise ValueError("player name mismatch: " + replacement["name"])
@@ -93,17 +94,17 @@ def compose(fifa_path: Path, qa_path: Path) -> dict:
             "sofifa_id", "source_name", "source_birth_date", "source_club", "source_profile_url",
             "source_edition", "era_distance_seasons", "preview_path", "preview_sha256")}
         preview = Path(photo["preview"])
-        rows.append({**updated, "status": "applied", "converted_path": str(bitmap.resolve()),
+        rows.append({**updated, "status": "applied", "converted_path": str(storage_io.resolve(bitmap)),
                      "converted_sha256": photo["bitmap_sha256"],
                      "source_image_url": photo.get("image_url"),
                      "source_profile_url": photo["source_page"], "source_name": replacement["name"],
                      "source_sha256": photo["source_sha256"],
-                     "preview_path": str(preview.resolve()), "preview_sha256": sha(preview),
+                     "preview_path": str(storage_io.resolve(preview)), "preview_sha256": sha(preview),
                      "photograph_provenance": {key: photo.get(key) for key in (
                          "source_page", "image_url", "original_url", "photo_date", "date_basis",
                          "licence", "licence_url", "artist")}, "fifa_fallback": fallback,
                      "era_grade": "dated-historical-photograph",
-                     "portrait_qa_receipt": str(qa_path.resolve())})
+                     "portrait_qa_receipt": str(storage_io.resolve(qa_path))})
     coverage = dict(fifa["coverage"])
     coverage["applied_count"] = sum(row["status"] == "applied" for row in rows)
     coverage["native_no_photo_count"] = sum(row["status"] == "native-no-photo" for row in rows)
@@ -113,7 +114,7 @@ def compose(fifa_path: Path, qa_path: Path) -> dict:
     coverage["era_grade_counts"] = dict(sorted(Counter(row.get("era_grade", "unresolved")
                                                        for row in rows).items()))
     return {**fifa, "players": rows, "coverage": coverage,
-            "historical_photo_overlay": {"qa_receipt": str(qa_path.resolve()), "qa_sha256": sha(qa_path),
+            "historical_photo_overlay": {"qa_receipt": str(storage_io.resolve(qa_path)), "qa_sha256": sha(qa_path),
                                          "fifa_materialisation_sha256": sha(fifa_path),
                                          "photo_carriers": sorted(selected)}}
 

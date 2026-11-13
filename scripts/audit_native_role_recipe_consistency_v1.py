@@ -19,6 +19,7 @@ sys.path[:0] = [str(ROOT), str(ROOT / 'upstream/pm99-skezmod-db-editor')]
 
 from app.fdi_indexed import IndexedFDIFile
 from app.indexed_jug_roles import read_indexed_native_roles
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_exact_fifa_role_delta_v1 as role_policy
 from scripts import season_historical_roster_audit_v1 as roster_audit
 from scripts import season_opening_order_repair_v1 as ownership
@@ -30,7 +31,7 @@ POSITIONS = {'G', 'D', 'M', 'F'}
 
 
 def read_json(path: Path) -> Any:
-    return json.loads(path.read_text(encoding='utf-8'))
+    return json.loads(storage_io.read_text(path, encoding='utf-8'))
 
 
 def binding_snapshot(releases: list[registry.PreferredRelease]) -> dict[str, Any]:
@@ -78,8 +79,8 @@ def order_status(actor: dict[str, Any], club: dict[str, Any], order: dict[str, t
 
 def season_audit(release: registry.PreferredRelease) -> tuple[dict[str, Any], list[dict[str, Any]], list[dict[str, Any]]]:
     package = read_json(release.package_path)
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (release.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
     entries = {entry.record_id: entry for entry in IndexedFDIFile.from_bytes(jug).entries}
     owners = ownership.native_owners(eq)
     clubs = {club['id']: club for club in package.get('clubs', [])}
@@ -244,8 +245,8 @@ def season_audit(release: registry.PreferredRelease) -> tuple[dict[str, Any], li
 
 
 def run(output: Path) -> dict[str, Any]:
-    output = output.resolve()
-    if output.exists():
+    output = storage_io.resolve(output)
+    if storage_io.exists(output):
         raise ValueError(f'output path already exists: {output}')
     output.parent.mkdir(parents=True, exist_ok=True)
     releases = [registry.load_preferred_release(season) for season in registry.supported_seasons()]
@@ -259,9 +260,7 @@ def run(output: Path) -> dict[str, Any]:
     for release in releases:
         summary, cases, whole_preserve_actors = season_audit(release)
         case_path = cases_dir / f'{release.season}.json'
-        case_path.write_text(json.dumps({'schema': SCHEMA + '-season-cases', **summary,
-                                         'whole_record_preserve_actors': whole_preserve_actors,
-                                         'cases': cases}, sort_keys=True, separators=(',', ':')) + '\n', encoding='utf-8')
+        storage_io.write_text(case_path, json.dumps({'schema': SCHEMA + '-season-cases', **summary, 'whole_record_preserve_actors': whole_preserve_actors, 'cases': cases}, sort_keys=True, separators=(',', ':')) + '\n', encoding='utf-8')
         summaries.append(summary)
         for row in summary['representative_explicit_mismatches']:
             representatives.append({'season': release.season, **row})
@@ -280,7 +279,7 @@ def run(output: Path) -> dict[str, Any]:
         'representative_explicit_mismatches_first_by_season_and_carrier': representatives,
         'interpretation': 'A mismatch is a mechanical consistency flag, not a confirmed historical bug.',
     }
-    (output / 'summary.json').write_text(json.dumps(report, sort_keys=True, indent=2) + '\n', encoding='utf-8')
+    storage_io.write_text(output / 'summary.json', json.dumps(report, sort_keys=True, indent=2) + '\n', encoding='utf-8')
     return report
 
 
@@ -293,7 +292,7 @@ def main() -> int:
     print(json.dumps({'preferred_release_count': report['preferred_release_count'],
                       'season_case_counts': {row['season']: row['case_count'] for row in report['season_summaries']},
                       'explicit_representatives': len(report['representative_explicit_mismatches_first_by_season_and_carrier']),
-                      'output': str(args.output.resolve())}, sort_keys=True))
+                      'output': str(storage_io.resolve(args.output))}, sort_keys=True))
     return 0
 
 

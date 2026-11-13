@@ -8,6 +8,7 @@ import copy
 import re
 from datetime import UTC, datetime
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts.publish_historical_role_delta_v1 import register_completed_delta
 from scripts import attest_registered_season_runtime_v1 as runtime
@@ -58,7 +59,7 @@ def verify_profile_review(review, profile, player, year, countries, *, native_he
 def run(*, prior, output, season, release_id, case_id, candidate, replay_path,
         profile_path, review_path, visual_path, evidence_dir, attestation_path,
         observed_date, player_carrier, scope):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('completed checkpoint must not be repeated')
     result=copy.deepcopy(pipeline.read_json_file(prior))
     release=registry.load_registered_release(season,release_id)
@@ -104,7 +105,7 @@ def run(*, prior, output, season, release_id, case_id, candidate, replay_path,
     from scripts import prepare_duplicate_whole_club_native_v1 as native_tools
     countries=native_tools.delta.compiler._extract_country_codes_from_textos(release.game_path/'DBDAT/TEXTOS.PKF')
     from app.editor_actions import _read_native_dd6360_fields
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     entry = next(e for e in native_tools.IndexedFDIFile.from_bytes(jug).entries if e.record_id == player_carrier)
     raw = entry.decode_payload(jug)
     if raw[2:5] != bytes.fromhex('dd6360'):
@@ -158,7 +159,7 @@ def run(*, prior, output, season, release_id, case_id, candidate, replay_path,
         raise ValueError('frozen duplicate accounting inconsistent before promotion')
     register_completed_delta(season,release_id)
     attestation=runtime.attest(season=season,evidence_dir=evidence_dir)
-    if attestation_path.exists():
+    if storage_io.exists(attestation_path):
         if pipeline.read_json_file(attestation_path)!=attestation:
             raise ValueError('retained attestation changed')
     else:

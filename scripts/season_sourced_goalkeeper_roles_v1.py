@@ -12,6 +12,7 @@ from pathlib import Path
 
 from app.fdi_indexed import IndexedFDIFile
 from app.indexed_jug_roles import read_indexed_native_roles
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_historical_roster_audit_v1 as audit
 from scripts import season_release_registry_v1 as registry
 from scripts import season_opening_order_repair_v1 as order
@@ -37,9 +38,9 @@ def prepare_position_consistency(release):
     that the current person's historical position or roster ownership is right.
     Explicit fine-role declarations and whole-person fallbacks stay closed.
     """
-    raw = release.package_path.read_bytes()
+    raw = storage_io.read_bytes(release.package_path)
     package = json.loads(raw)
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(jug).entries}
     updates, unresolved = [], []
     for player in package['players']:
@@ -86,7 +87,7 @@ def original_keeper(capture, name, birthday):
 
 
 def prepare(release, reparse_report):
-    report_raw = reparse_report.read_bytes()
+    report_raw = storage_io.read_bytes(reparse_report)
     report_hash = hashlib.sha256(report_raw).hexdigest()
     report = json.loads(report_raw)
     captures, bindings = audit.load_sources(release.season)
@@ -94,13 +95,13 @@ def prepare(release, reparse_report):
     by_club = defaultdict(list)
     for capture in captures:
         by_club[(audit.source_group(capture['country_catalog']), audit.normalise(capture['club_name']))].append(capture)
-    package_raw = release.package_path.read_bytes()
+    package_raw = storage_io.read_bytes(release.package_path)
     package_hash = hashlib.sha256(package_raw).hexdigest()
     package = json.loads(package_raw)
     clubs = {c['id']: c for c in package['clubs']}
-    eq = (release.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    eq = storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
     owners = order.native_owners(eq)
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     index = {e.record_id: e for e in IndexedFDIFile.from_bytes(jug).entries}
     updates, unresolved = [], []
     for player in package['players']:
@@ -219,10 +220,10 @@ def reconstruction(previous, release_id, *, minimum_free_bytes=None):
     verify(base, plan)
     if publisher.updated_package(pipeline.read_json_file(base.package_path), plan) != pipeline.read_json_file(previous.package_path):
         raise ValueError('edited keeper recipe cannot be silently reconstructed')
-    before = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    before = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
     expected, _ = rewrite_indexed_native_roles(before,
         {row['carrier_id']: row['fine_roles'] for row in plan['updates']})
-    if expected != (previous.game_path / 'DBDAT/JUG98030.FDI').read_bytes():
+    if expected != storage_io.read_bytes(previous.game_path / 'DBDAT/JUG98030.FDI'):
         raise ValueError('keeper SOURCE current native bytes differ from its exact plan')
     inventories = [pipeline.read_json_file(item.inventory_path) for item in (base, previous)]
     left, right = [{row['path']: row['sha256'] for row in inv['files']} for inv in inventories]
@@ -234,7 +235,7 @@ def reconstruction(previous, release_id, *, minimum_free_bytes=None):
                       source_release_id=base.release_id, **options)
     rebuilt = registry.load_registered_release(previous.season, release_id)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path, inventories[1])
-    if rebuilt.package_path.read_bytes() != previous.package_path.read_bytes():
+    if storage_io.read_bytes(rebuilt.package_path) != storage_io.read_bytes(previous.package_path):
         raise ValueError('keeper SOURCE complete recipe replay differs')
     if not registry.validate_preferred_release(previous.season, release_id=release_id, level='playable')['valid']:
         raise ValueError('keeper SOURCE output failed playable validation')

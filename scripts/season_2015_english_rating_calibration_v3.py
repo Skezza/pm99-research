@@ -5,6 +5,7 @@ shared carriers, use the unchanged v3 policy and publish its edited recipe too.
 """
 import copy
 from dataclasses import replace
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import season_package_v2 as packages,season_rating_calibration_v3 as ratings
 from scripts import season_quality_only_delta_v1 as quality
@@ -19,7 +20,7 @@ def overlay(base):
     artifacts=[a for a in main['artifacts'] if a['id']==ARTIFACT]
     if len(artifacts)!=1:raise ValueError('one exact English rating overlay required')
     artifact=artifacts[0];path=base.package_path.parent/artifact['relative_path']
-    if path.parent.resolve()!=base.package_path.parent.resolve():raise ValueError('English rating overlay must be recipe-local')
+    if storage_io.resolve(path.parent)!=storage_io.resolve(base.package_path.parent):raise ValueError('English rating overlay must be recipe-local')
     if registry.sha256_file(path)!=artifact['sha256']:raise ValueError('English rating overlay preimage/hash differs')
     document=pipeline.read_json_file(path);packages.validate_package(document)
     if {p['carrier_id'] for p in main['players']} & {p['carrier_id'] for p in document['players']}:

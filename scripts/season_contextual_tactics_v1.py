@@ -23,6 +23,7 @@ from app.eq_initial_tactics import FORMAT, GRID_BYTES, patch_indexed_tactics, re
 from app.eq_jug_linked import parse_eq_external_team_roster_payload
 from app.fdi_indexed import IndexedFDIFile
 from app.editor_actions import _indexed_variable_name_runtime_segments
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2 as package_v2
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
@@ -139,7 +140,7 @@ def package_layers(package, package_path):
         relative = Path(artifact.get('relative_path', ''))
         if not relative.parts or relative.is_absolute() or '..' in relative.parts:
             raise ValueError('unsafe contextual tactics artifact path')
-        raw = (package_path.parent / relative).read_bytes()
+        raw = storage_io.read_bytes(package_path.parent / relative)
         if hashlib.sha256(raw).hexdigest() != artifact['sha256']:
             raise ValueError('contextual tactics input hash differs')
         layer = json.loads(raw)
@@ -214,12 +215,12 @@ def prepare(output):
     release = registry.load_preferred_release('2015-16')
     english_path = ROOT / '.local/season-2015-16/2015-16-english92.v2.json'
     factory_path = ROOT / '.local/visual-qa-20261003/native-source/EQ98030.FDI'
-    english_raw = english_path.read_bytes()
+    english_raw = storage_io.read_bytes(english_path)
     english = json.loads(english_raw)
     eq_path = release.game_path / 'DBDAT/EQ98030.FDI'
-    eq_data = eq_path.read_bytes()
-    jug_data = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    layer = build_stoke_layer(english, hashlib.sha256(english_raw).hexdigest(), eq_data, jug_data, factory_path.read_bytes())
+    eq_data = storage_io.read_bytes(eq_path)
+    jug_data = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
+    layer = build_stoke_layer(english, hashlib.sha256(english_raw).hexdigest(), eq_data, jug_data, storage_io.read_bytes(factory_path))
     patched = apply_layer(eq_data, jug_data, layer)
     if apply_layer(patched, jug_data, layer) != patched:
         raise ValueError('contextual tactics are not byte-idempotent')
@@ -228,19 +229,19 @@ def prepare(output):
     # the runner creates its own independent writable runtime installation.
     shutil.copytree(release.game_path / 'DBDAT', output / 'DBDAT', copy_function=os.link)
     temporary = output / 'patched-eq.tmp'
-    temporary.write_bytes(patched)
-    temporary.replace(output / 'DBDAT/EQ98030.FDI')
+    storage_io.write_bytes(temporary, patched)
+    storage_io.move(temporary, output / 'DBDAT/EQ98030.FDI', replace=True)
     pipeline.write_canonical_json(output / 'contextual-tactics.json', layer)
     club = next(c for c in english['clubs'] if c['carrier_id'] == 307)
     club['opening']['tactics_context'] = layer['clubs'][0]['context']
     club['opening']['tactics_positions'] = summary_positions(club['opening']['tactics_context'])
-    (output / 'english-season-package.json').write_bytes(package_v2.canonical_json_bytes(english))
-    package = json.loads(release.package_path.read_text())
+    storage_io.write_bytes(output / 'english-season-package.json', package_v2.canonical_json_bytes(english))
+    package = json.loads(storage_io.read_text(release.package_path))
     package['artifacts'].append({'id': ARTIFACT_PREFIX + '2015-16', 'kind': 'season-input',
         'sha256': registry.sha256_file(output / 'contextual-tactics.json'),
         'media_type': 'application/json', 'relative_path': 'contextual-tactics.json'})
     package['artifacts'].sort(key=lambda a: a['id'])
-    (output / 'season-package.json').write_bytes(package_v2.canonical_json_bytes(package))
+    storage_io.write_bytes(output / 'season-package.json', package_v2.canonical_json_bytes(package))
     changed = [i for i, (a, b) in enumerate(zip(eq_data, patched)) if a != b]
     receipt = {'schema_version': 'pm99-contextual-tactics-candidate-v1', 'season': '2015-16',
         'source_release_id': release.release_id, 'source_game_path': str(release.game_path),
@@ -250,7 +251,7 @@ def prepare(output):
         'changed_carriers': [307], 'byte_idempotent': True, 'registered': False,
         'runtime_proven': False, 'exe_path': str(release.game_path / 'MANAGPRE.EXE')}
     pipeline.write_canonical_json(output / 'candidate-receipt.json', receipt)
-    if eq_path.read_bytes() != eq_data:
+    if storage_io.read_bytes(eq_path) != eq_data:
         raise ValueError('source release changed during candidate preparation')
     return receipt
 
@@ -259,7 +260,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('output', type=Path)
     args = parser.parse_args()
-    print(json.dumps(prepare(args.output.resolve()), indent=2))
+    print(json.dumps(prepare(storage_io.resolve(args.output)), indent=2))
 
 
 if __name__ == '__main__':

@@ -15,6 +15,7 @@ from typing import Any
 
 from bs4 import BeautifulSoup
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_duplicate_ownership_delta_v1 as delta
 from scripts import season_package_v2 as packages
 from scripts import season_pipeline_v2 as pipeline
@@ -57,11 +58,11 @@ def _file_sha(path: Path) -> str:
 
 
 def _read_rel(path: str, expected: str) -> bytes:
-    p = (registry.ROOT / path).resolve()
+    p = storage_io.resolve(registry.ROOT / path)
     registry.relative_workspace_path(p)
-    if p.is_symlink() or not p.is_file() or _file_sha(p) != expected:
+    if p.is_symlink() or not storage_io.is_file(p) or _file_sha(p) != expected:
         raise ValueError(f"retained source binding changed: {path}")
-    return p.read_bytes()
+    return storage_io.read_bytes(p)
 
 
 def _source_bindings() -> list[dict[str, str]]:
@@ -96,9 +97,9 @@ def _source_bindings() -> list[dict[str, str]]:
         (BERKOVIC_LOAN_PATH, BERKOVIC_LOAN_SHA),
     ]
     for path, digest in rows:
-        p = (registry.ROOT / path).resolve()
+        p = storage_io.resolve(registry.ROOT / path)
         registry.relative_workspace_path(p)
-        if p.is_symlink() or not p.is_file() or _file_sha(p) != digest:
+        if p.is_symlink() or not storage_io.is_file(p) or _file_sha(p) != digest:
             raise ValueError(f"source binding changed: {path}")
     return [dict(path=p, sha256=d) for p, d in sorted(set(rows))]
 
@@ -125,11 +126,11 @@ def _parent(base) -> dict[str, Any]:
 
 def _implementations() -> list[dict[str, str]]:
     from app import indexed_jug_roles
-    paths = {"adapter":Path(__file__).resolve(),
-        "native_delta":Path(delta.__file__).resolve(),
-        "package_schema":Path(packages.__file__).resolve(),
-        "rating_calibration":Path(__import__("scripts.season_rating_calibration_v3",fromlist=["x"]).__file__).resolve(),
-        "indexed_native_writer":Path(indexed_jug_roles.__file__).resolve()}
+    paths = {"adapter":storage_io.resolve(Path(__file__)),
+        "native_delta":storage_io.resolve(Path(delta.__file__)),
+        "package_schema":storage_io.resolve(Path(packages.__file__)),
+        "rating_calibration":storage_io.resolve(Path(__import__('scripts.season_rating_calibration_v3', fromlist=['x']).__file__)),
+        "indexed_native_writer":storage_io.resolve(Path(indexed_jug_roles.__file__))}
     return [dict(name=name,path=registry.relative_workspace_path(path),sha256=_file_sha(path))
         for name,path in sorted(paths.items())]
 
@@ -218,8 +219,8 @@ def _compile(base, expected=None) -> dict:
         return copy.deepcopy(cached)
     source_evidence = _verify_sources()
     package = pipeline.read_json_file(base.package_path)
-    jug = (base.game_path / "DBDAT/JUG98030.FDI").read_bytes()
-    eq = (base.game_path / "DBDAT/EQ98030.FDI").read_bytes()
+    jug = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     records = _records(package)
     egil, berkovic = records[9184], records[9501]
     if (egil["name"], egil["source_name"], egil["club_id"], egil["facts"]["birth_date"]) != (
@@ -306,14 +307,14 @@ def _compile(base, expected=None) -> dict:
     post_jug=delta.compile_players(jug,package,changed_ids,codes)
     post_eq=eq
     native={"JUG98030.FDI":post_jug,"EQ98030.FDI":post_eq,
-        "ENT98030.FDI":(base.game_path/"DBDAT/ENT98030.FDI").read_bytes(),
-        "MINIFOTO.PKF":(base.game_path/"DBDAT/MINIFOTO.PKF").read_bytes()}
+        "ENT98030.FDI":storage_io.read_bytes(base.game_path / 'DBDAT/ENT98030.FDI'),
+        "MINIFOTO.PKF":storage_io.read_bytes(base.game_path / 'DBDAT/MINIFOTO.PKF')}
     cleared_archive, cleared_offsets = delta.no_photo_archive(native["MINIFOTO.PKF"], {9184, 9501})
     if cleared_archive != native["MINIFOTO.PKF"] or any(cleared_offsets.values()):
         raise ValueError("selected identity unexpectedly has an archive portrait; explicit removal review required")
     for carrier in (9184, 9501):
         loose = base.game_path / "DBDAT/MINIFOTO" / f"J96{carrier:05d}.BMP"
-        if loose.exists() or loose.is_symlink():
+        if storage_io.exists(loose) or loose.is_symlink():
             raise ValueError("selected identity unexpectedly has a loose portrait")
     # Record-level locality and required Etuhu readback are checked before a plan is exposed.
     old_ix,new_ix=IndexedFDIFile.from_bytes(jug),IndexedFDIFile.from_bytes(post_jug)
@@ -340,14 +341,14 @@ def _compile(base, expected=None) -> dict:
     if expected is not None and plan!=expected: raise ValueError("r220a source/native prepare did not reproduce exact plan")
     result={"plan":plan,"package":package,"native":native,
         "before":{"JUG98030.FDI":jug,"EQ98030.FDI":eq,
-            "ENT98030.FDI":(base.game_path/"DBDAT/ENT98030.FDI").read_bytes(),
-            "MINIFOTO.PKF":(base.game_path/"DBDAT/MINIFOTO.PKF").read_bytes()}}
+            "ENT98030.FDI":storage_io.read_bytes(base.game_path / 'DBDAT/ENT98030.FDI'),
+            "MINIFOTO.PKF":storage_io.read_bytes(base.game_path / 'DBDAT/MINIFOTO.PKF')}}
     _CACHE[cache_key]=copy.deepcopy(result)
     return result
 
 
 def prepare(base, input_path=INPUT) -> dict:
-    if Path(input_path).resolve()!=INPUT.resolve(): raise ValueError("exact typed input path required")
+    if storage_io.resolve(Path(input_path))!=storage_io.resolve(INPUT): raise ValueError("exact typed input path required")
     return copy.deepcopy(_compile(base)["plan"])
 
 
@@ -423,18 +424,18 @@ def reconstruction(previous, release_id: str):
     relative = previous.locator.get("sourced_profile_assignment_plan_path")
     if not relative:
         raise ValueError("Blackburn/City SOURCE receipt lacks its typed assignment plan path")
-    path = (registry.ROOT / relative).resolve()
+    path = storage_io.resolve(registry.ROOT / relative)
     plan = pipeline.read_json_file(path)
     base = registry.load_registered_release(SEASON, PARENT)
     verify(base, plan)
-    if (path != (previous.package_path.parent / filename(plan)).resolve()
+    if (path != storage_io.resolve(previous.package_path.parent / filename(plan))
             or _file_sha(path) != receipt.get("original_profile_assignment_plan_sha256")):
         raise ValueError("Blackburn/City SOURCE outer plan path/hash differs")
     inner = source_artifact(plan)
     if _file_sha(previous.package_path.parent / inner["filename"]) != inner["sha256"]:
         raise ValueError("Blackburn/City SOURCE inner source artifact differs")
     expected_package = bind(pipeline.read_json_file(base.package_path), plan)
-    previous_bytes = previous.package_path.read_bytes()
+    previous_bytes = storage_io.read_bytes(previous.package_path)
     if (pipeline.read_json_file(previous.package_path) != expected_package
             or previous_bytes != packages.canonical_json_bytes(expected_package)):
         raise ValueError("Blackburn/City SOURCE recipe bytes differ from exact canonical postimage")
@@ -452,7 +453,7 @@ def reconstruction(previous, release_id: str):
     rebuilt=registry.load_registered_release(SEASON,release_id)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path, previous_inventory)
     if (pipeline.read_json_file(rebuilt.package_path) != expected_package
-            or rebuilt.package_path.read_bytes() != previous_bytes):
+            or storage_io.read_bytes(rebuilt.package_path) != previous_bytes):
         raise ValueError("Blackburn/City whole SOURCE recipe bytes differ")
     return dict(season=SEASON,release_id=release_id,
         complete_game_inventory_identical=True,complete_recipe_identical=True,compilation_mode=MODE)

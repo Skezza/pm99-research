@@ -18,6 +18,7 @@ for candidate in (ROOT, EDITOR):
         sys.path.insert(0, str(candidate))
 
 from app.minifoto_bitmap_archive import iter_obfuscated_bmp_records, validate_minifoto_bitmap  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts.materialise_2015_world_kits import ARCHIVES, canonical_json_bytes, sha256_bytes, sha256_file  # noqa: E402
 from scripts.rerender_2015_world_kits_shading_v1 import (  # noqa: E402
     APPROVED_STATUSES,
@@ -73,7 +74,7 @@ def audit(*, source: Mapping[str, Any], rerendered: Mapping[str, Any], dbdat: Pa
         if status == "release-eligible-fifa16-identity-bound":
             source_image = old_row.get("source_image") if isinstance(old_row.get("source_image"), Mapping) else {}
             path = Path(str(source_image.get("cache_path") or ""))
-            if not path.is_file() or sha256_file(path) != source_image.get("sha256"):
+            if not storage_io.is_file(path) or sha256_file(path) != source_image.get("sha256"):
                 _fail(errors, "fifa-source-image-hash-mismatch", carrier)
         for archive in ARCHIVES:
             old_asset = (old_row.get("assets") or {}).get(archive) if isinstance(old_row.get("assets"), Mapping) else None
@@ -82,7 +83,7 @@ def audit(*, source: Mapping[str, Any], rerendered: Mapping[str, Any], dbdat: Pa
                 _fail(errors, "missing-asset", carrier, archive)
                 continue
             path = Path(str(new_asset.get("path") or ""))
-            if not path.is_file() or sha256_file(path) != new_asset.get("sha256"):
+            if not storage_io.is_file(path) or sha256_file(path) != new_asset.get("sha256"):
                 _fail(errors, "rerendered-asset-hash-mismatch", carrier, archive)
                 continue
             if new_asset.get("rerendered_from_sha256") != old_asset.get("sha256") or new_asset.get("renderer") != RENDERER_ID:
@@ -91,7 +92,7 @@ def audit(*, source: Mapping[str, Any], rerendered: Mapping[str, Any], dbdat: Pa
             if record is None:
                 _fail(errors, "base-record-missing", carrier, archive)
                 continue
-            payload = path.read_bytes()
+            payload = storage_io.read_bytes(path)
             try:
                 shape, base_shape = validate_minifoto_bitmap(payload), validate_minifoto_bitmap(record.raw_bitmap)
                 shape_ok = all(getattr(shape, field) == getattr(base_shape, field) for field in ("width", "height", "bits_per_pixel", "pixel_offset", "bitmap_length"))
@@ -130,11 +131,11 @@ def main() -> int:
     parser.add_argument("--clean-dbdat", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    source = json.loads(args.source_materialisation.read_text(encoding="utf-8"))
-    rerendered = json.loads(args.rerendered_materialisation.read_text(encoding="utf-8"))
+    source = json.loads(storage_io.read_text(args.source_materialisation, encoding='utf-8'))
+    rerendered = json.loads(storage_io.read_text(args.rerendered_materialisation, encoding='utf-8'))
     result = audit(source=source, rerendered=rerendered, dbdat=args.clean_dbdat)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(args.output, json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8')
     print(json.dumps({"result": result["result"], **result["coverage"]}, sort_keys=True))
     return 0 if result["result"] == "pass" else 1
 

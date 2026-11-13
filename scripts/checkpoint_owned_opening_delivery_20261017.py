@@ -2,6 +2,7 @@
 import copy
 from datetime import UTC, datetime
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_kit_render_bindings_v1 as kits
 from scripts import publish_historical_role_delta_v1 as publisher
@@ -28,7 +29,7 @@ RELEASE = 'sourced-owned-opening-period-kit-20261017-r147a'
 def run():
     prior = ROOT / 'release-delivery-checklist-v114.json'
     output = ROOT / 'release-delivery-checklist-v115.json'
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('completed checkpoint must not repeat')
     previous = pipeline.read_json_file(prior)
     if bindings() != previous['current_release_bindings']:
@@ -49,10 +50,10 @@ def run():
             raise ValueError('whole SOURCE proof incomplete')
         rebuilt = registry.load_registered_release(SEASON, replay_id)
         pipeline.assert_tree_matches_inventory(rebuilt.game_path, pipeline.read_json_file(actual.inventory_path))
-        if rebuilt.package_path.read_bytes() != actual.package_path.read_bytes():
+        if storage_io.read_bytes(rebuilt.package_path) != storage_io.read_bytes(actual.package_path):
             raise ValueError('SOURCE recipe does not match exact actual release')
     pipeline.assert_tree_matches_inventory(final.game_path, pipeline.read_json_file(final.inventory_path))
-    if final.package_path.read_bytes() != roster.package_path.read_bytes():
+    if storage_io.read_bytes(final.package_path) != storage_io.read_bytes(roster.package_path):
         raise ValueError('kit child changed corrected recipe')
     left = {r['path']: r['sha256'] for r in pipeline.read_json_file(roster.inventory_path)['files']}
     right = {r['path']: r['sha256'] for r in pipeline.read_json_file(final.inventory_path)['files']}

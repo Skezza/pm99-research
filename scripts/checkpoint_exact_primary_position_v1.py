@@ -3,6 +3,7 @@ import copy
 from datetime import UTC, datetime
 
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_exact_primary_position_delta_v1 as source
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import publish_historical_role_delta_v1 as publisher, attest_registered_season_runtime_v1 as runtime
@@ -21,7 +22,7 @@ def binding(path):
 
 def run(root,season,release_id,replay_id,previous_path,output,tag,profiles,*,policy=None):
     source_policy = policy if policy is not None else source
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('completed position publication must not repeat')
     previous=pipeline.read_json_file(previous_path);old=previous['current_release_bindings']
     if bindings()!=old:
@@ -34,9 +35,9 @@ def run(root,season,release_id,replay_id,previous_path,output,tag,profiles,*,pol
     source_policy.verify(base,plan)
     if not plan['updates'] or {r['carrier_id'] for r in plan['updates']}!={r[0] for r in profiles}:
         raise ValueError('every changed position requires its original final-game profile')
-    before=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    after=(actual.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    before=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    after=storage_io.read_bytes(actual.game_path / 'DBDAT/JUG98030.FDI')
+    eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     if source_policy.apply(before,eq,plan)!=(after,eq) or source_policy.apply(after,eq,plan)!=(after,eq):
         raise ValueError('complete position native bytes or idempotence differ')
     entries={e.record_id:e for e in IndexedFDIFile.from_bytes(before).entries}
@@ -63,7 +64,7 @@ def run(root,season,release_id,replay_id,previous_path,output,tag,profiles,*,pol
         raise ValueError('position whole SOURCE proof incomplete')
     for release in (actual,rebuilt):
         pipeline.assert_tree_matches_inventory(release.game_path,pipeline.read_json_file(actual.inventory_path))
-    if rebuilt.package_path.read_bytes()!=actual.package_path.read_bytes():
+    if storage_io.read_bytes(rebuilt.package_path)!=storage_io.read_bytes(actual.package_path):
         raise ValueError('position whole SOURCE recipe differs')
     evidence=registry.ROOT/'.local/runlogs/pm99_runner'/tag
     transport=pipeline.read_json_file(root/'startup-transport.json')

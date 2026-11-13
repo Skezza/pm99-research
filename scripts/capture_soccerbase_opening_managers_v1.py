@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts.supplement_soccerbase_opening_lineups_v1 import BASE_URL, Cache, canonical_json_bytes  # noqa: E402
 
 
@@ -87,10 +88,10 @@ def main() -> int:
     parser.add_argument("--delay", type=float, default=0.25)
     parser.add_argument("--strict", action="store_true")
     args = parser.parse_args()
-    lineups = json.loads(args.opening_lineups.read_text(encoding="utf-8"))
+    lineups = json.loads(storage_io.read_text(args.opening_lineups, encoding='utf-8'))
     result = capture(lineups=lineups, source_capture_sha256=args.source_capture_sha256, cache=Cache(args.cache_dir, offline=args.offline, delay=args.delay))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_json_bytes(result))
+    storage_io.write_bytes(args.output, canonical_json_bytes(result))
     print(json.dumps(result["summary"], sort_keys=True))
     return 1 if args.strict and result["gaps"] else 0
 

@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts.supplement_2015_ntf_with_transfermarkt import _get, parse_squad
 
 SCHEMA = "pm99-footballsquads-season-capture-v1"
@@ -42,13 +43,13 @@ def acquire(draft: dict[str, Any], cache_root: Path, fetch: Callable[[str], byte
         url = f"https://www.transfermarkt.com/{slug}/kader/verein/{club_id}/saison_id/2015"
         rel = Path(f"transfermarkt-duplicate-closeout/{country}/{carrier_id}-{club_id}.html")
         path = cache_root / rel
-        payload = path.read_bytes() if path.is_file() else fetch(url)
+        payload = storage_io.read_bytes(path) if storage_io.is_file(path) else fetch(url)
         players = parse_squad(payload)
         capacity = int(proposal["fixed_roster_slot_count"])
         if len(players) < capacity:
             raise ValueError(f"pinned squad short for carrier {carrier_id}: {len(players)}/{capacity}")
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(payload)
+        storage_io.write_bytes(path, payload)
         clubs.append({
             "candidate_carrier_id": carrier_id, "candidate_baseline_name": proposal["baseline_name"],
             "fixed_roster_slot_count": capacity, "country_catalog": country,
@@ -65,8 +66,8 @@ def acquire(draft: dict[str, Any], cache_root: Path, fetch: Callable[[str], byte
 
 def main() -> int:
     ap = argparse.ArgumentParser(); ap.add_argument("--draft", type=Path, required=True); ap.add_argument("--cache-root", type=Path, required=True); ap.add_argument("--output", type=Path, required=True)
-    a = ap.parse_args(); result = acquire(json.loads(a.draft.read_text()), a.cache_root)
-    a.output.parent.mkdir(parents=True, exist_ok=True); a.output.write_bytes(canonical_bytes(result)); print(json.dumps(result["summary"], sort_keys=True)); return 0
+    a = ap.parse_args(); result = acquire(json.loads(storage_io.read_text(a.draft)), a.cache_root)
+    a.output.parent.mkdir(parents=True, exist_ok=True); storage_io.write_bytes(a.output, canonical_bytes(result)); print(json.dumps(result["summary"], sort_keys=True)); return 0
 
 
 if __name__ == "__main__": raise SystemExit(main())

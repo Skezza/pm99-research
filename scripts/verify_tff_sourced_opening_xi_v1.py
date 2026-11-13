@@ -5,6 +5,7 @@ from pathlib import Path
 
 from app.fdi_indexed import IndexedFDIFile
 from app.player_initial_order import read_initial_order
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_historical_roster_audit_v1 as audit
 from scripts import season_tff_sourced_opening_xi_v1 as source
 from scripts import season_release_registry_v1 as registry
@@ -96,19 +97,19 @@ def verify_players(before, after, package, plan, countries):
 
 
 def verify(season, release_id, plan_path, output):
-    if output.exists(): raise ValueError('full-XI evidence is immutable')
-    plan = json.loads(plan_path.read_text())
+    if storage_io.exists(output): raise ValueError('full-XI evidence is immutable')
+    plan = json.loads(storage_io.read_text(plan_path))
     base = registry.load_registered_release(season, plan['source_release_id'])
     release = registry.load_registered_release(season, release_id)
     source.verify(base,plan)
     saved = registry.ROOT / release.locator['sourced_mode1_opening_plan_path']
-    if json.loads(saved.read_text()) != plan: raise ValueError('saved original-XI plan differs')
-    original_package = json.loads(base.package_path.read_text())
-    package = json.loads(release.package_path.read_text())
+    if json.loads(storage_io.read_text(saved)) != plan: raise ValueError('saved original-XI plan differs')
+    original_package = json.loads(storage_io.read_text(base.package_path))
+    package = json.loads(storage_io.read_text(release.package_path))
     if package != source.updated_package(original_package,plan):
         raise ValueError('full-XI repair changed unrelated recipe data')
-    before = (base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    after = (release.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    before = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    after = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     from scripts.season_package_compiler_v2 import _extract_country_codes_from_textos
     countries = _extract_country_codes_from_textos(release.game_path/'DBDAT/TEXTOS.PKF')
     result = verify_players(before,after,package,plan,countries)
@@ -122,15 +123,15 @@ def verify(season, release_id, plan_path, output):
             or not {r['path'] for r in diff['changed']} <= allowed):
         raise ValueError('full-XI delta changed unrelated game/kit/manager/tactics files')
     from scripts.materialise_native_no_photo_v2 import _active_offsets_for_players
-    archive = (release.game_path/'DBDAT/MINIFOTO.PKF').read_bytes()
-    original_archive = (base.game_path/'DBDAT/MINIFOTO.PKF').read_bytes()
+    archive = storage_io.read_bytes(release.game_path / 'DBDAT/MINIFOTO.PKF')
+    original_archive = storage_io.read_bytes(base.game_path / 'DBDAT/MINIFOTO.PKF')
     offsets = _active_offsets_for_players(original_archive,wrong_people)
     allowed_photo_bytes = {i for places in offsets.values() for i in places}
     if len(original_archive)!=len(archive) or any(a!=b and i not in allowed_photo_bytes for i,(a,b) in enumerate(zip(original_archive,archive))):
         raise ValueError('portrait suppression changed other photos or archive bytes')
-    if any(_active_offsets_for_players(archive,wrong_people).values()) or any((release.game_path/p).exists() for p in removed):
+    if any(_active_offsets_for_players(archive,wrong_people).values()) or any(storage_io.exists(release.game_path / p) for p in removed):
         raise ValueError('wrong-person photograph remains active')
-    eq = (release.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    eq = storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
     if source.apply(after,eq,package,countries,plan)!=after:
         raise ValueError('source repair is not idempotent')
     replayed, replay_changes = source.replay(after,eq,package,release.package_path,countries)

@@ -18,6 +18,7 @@ from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
 from scripts.season_art_transaction_v1 import atomic_bytes
@@ -80,10 +81,10 @@ def merge(events, supplement):
         expected_url = BASE + str(id)
         if record['source_url'] != expected_url:
             raise ValueError('transfer response is not bound to the original publisher/player')
-        metadata = json.loads((ROOT / record['source_receipt_path']).read_text())
+        metadata = json.loads(storage_io.read_text(ROOT / record['source_receipt_path']))
         if metadata != {'url': expected_url, 'sha256': record['raw_sha256']}:
             raise ValueError('original transfer response URL/SHA receipt changed')
-        rows = parse(json.loads(path.read_text()), id)
+        rows = parse(json.loads(storage_io.read_text(path)), id)
         if rows != record['events']:
             raise ValueError('saved transfer chronology differs from original response')
         def edge(e):
@@ -106,21 +107,21 @@ def repaired_club_plan_ids(path):
     query scope beyond the ordinary unresolved-duplicate plans.
     """
     from scripts import repair_prefix_selected_opening_sources_v1 as repair
-    plan = json.loads(path.read_text())
+    plan = json.loads(storage_io.read_text(path))
     if plan.get('schema_version') != 'pm99-source-repaired-opening-club-roster-plan-v1':
         raise ValueError('unsupported source-repaired club plan')
     binding = plan['bindings']
     source_path = ROOT / binding['source_correction_path']
     if registry.sha256_file(source_path) != binding['source_correction_sha256']:
         raise ValueError('club original source correction changed')
-    correction = json.loads(source_path.read_text())
+    correction = json.loads(storage_io.read_text(source_path))
     if (correction['club'], correction['carrier_id']) != (plan['club'], plan['carrier_id']):
         raise ValueError('club source correction identifies another club')
     original_path = ROOT / correction['original_capture_path']
     if registry.sha256_file(original_path) != correction['original_capture_sha256']:
         raise ValueError('club original capture changed')
     corrected, evidence, _ = repair.replay(correction['before'],
-        json.loads(original_path.read_text()), original_path.parent / 'cache')
+        json.loads(storage_io.read_text(original_path)), original_path.parent / 'cache')
     if corrected != correction['after']:
         raise ValueError('club repaired original report does not reproduce')
     people = set(map(int, evidence['starting_xi'])) | set(map(int, evidence['substitutes']))
@@ -131,12 +132,12 @@ def repaired_club_plan_ids(path):
 
 
 def capture(plan_roots, cache, output, club_plans=()):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('transfer history supplement is immutable')
     claims, plans = set(), []
     for root in plan_roots:
-        for path in sorted(root.glob('*/ownership-plan.json')):
-            plan = json.loads(path.read_text())
+        for path in sorted(storage_io.glob(root, '*/ownership-plan.json')):
+            plan = json.loads(storage_io.read_text(path))
             plans.append({'path': registry.relative_workspace_path(path), 'sha256': registry.sha256_file(path)})
             for row in plan['unresolved']:
                 person = row.get('identity', {}).get('source_person')
@@ -157,7 +158,7 @@ def capture_ids(claims, cache, output, plans, scope):
     This function cannot authorise ownership or native writes. The existing
     merge independently replays receipts and rejects conflicts with the pin.
     """
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('transfer history supplement is immutable')
     if any(type(id) is not int or id < 1 for id in claims):
         raise ValueError('history acquisition requires explicit positive publisher IDs')
@@ -167,9 +168,9 @@ def capture_ids(claims, cache, output, plans, scope):
         path = cache / 'history' / f'{id}.json'
         receipt = path.with_suffix('.source.json')
         try:
-            if path.exists():
-                raw = path.read_bytes()
-                binding = json.loads(receipt.read_text())
+            if storage_io.exists(path):
+                raw = storage_io.read_bytes(path)
+                binding = json.loads(storage_io.read_text(receipt))
                 if binding != {'url': url, 'sha256': hashlib.sha256(raw).hexdigest()}:
                     raise ValueError('cached response URL/SHA changed')
             else:
@@ -193,7 +194,7 @@ def capture_ids(claims, cache, output, plans, scope):
         except Exception as exc:
             row = {'player_id': id, 'status': 'source-history-gap', 'source_url': url,
                    'reason': str(exc)}
-            if not path.exists():
+            if not storage_io.exists(path):
                 time.sleep(1)
         results.append(row)
         print(json.dumps({'player_id': id, 'status': row['status'],

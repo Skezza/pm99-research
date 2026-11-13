@@ -10,6 +10,7 @@ import re
 
 from bs4 import BeautifulSoup
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_duplicate_ownership_plan_v1 as planner
 from scripts import season_historical_transfer_review_v1 as transfer
@@ -168,7 +169,7 @@ def replay_sources(*, secondary_facts=False):
 
 
 def prepare(output, *, secondary_facts=False, baseline_release_id=None):
-    if output.exists(): raise ValueError('source allocation is immutable')
+    if storage_io.exists(output): raise ValueError('source allocation is immutable')
     source = replay_sources(secondary_facts=secondary_facts)
     release = (registry.load_registered_release('2004-05', baseline_release_id) if baseline_release_id
         else registry.load_preferred_release('2004-05'))
@@ -182,7 +183,7 @@ def prepare(output, *, secondary_facts=False, baseline_release_id=None):
         raise ValueError('proposed target already exists')
     slots = [p for p in package['players'] if p['club_id'] == club['id']]
     if len(slots) != 18: raise ValueError('foreign fixed capacity changed')
-    original = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    original = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     orders = allocation.startup_orders(original, slots)
     people_path = AUDIT / 'ofk-2004-original-person-identities-v1.json'
     ids = [r['source_person']['source_player_id'] for r in source['desired_people']]

@@ -15,6 +15,14 @@ not automatically source-ready for a fixed PM99 carrier.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import html
@@ -330,7 +338,7 @@ def _get(url: str) -> bytes:
 
 
 def _draft_targets(draft_path: Path) -> list[dict[str, Any]]:
-    payload = json.loads(draft_path.read_text(encoding="utf-8"))
+    payload = json.loads(storage_io.read_text(draft_path, encoding='utf-8'))
     result = []
     for proposal in payload.get("proposals", []):
         if proposal.get("status") == "source-squad-ready":
@@ -363,7 +371,7 @@ def capture(*, draft_path: Path, cache_root: Path, countries: set[str] | None = 
             continue
         index_path = cache_root / family / "_league_2015_1.html"
         index_path.parent.mkdir(parents=True, exist_ok=True)
-        index_path.write_bytes(index_payload)
+        storage_io.write_bytes(index_path, index_payload)
         indexes.append({"family": family, "url": index_url, "source_path": index_path.relative_to(cache_root).as_posix(), "source_sha256": _sha256_bytes(index_payload), "club_link_count": len(parse_league_links(index_payload))})
         links = parse_league_links(index_payload)
         by_name: dict[str, list[tuple[str, str]]] = {}
@@ -395,7 +403,7 @@ def capture(*, draft_path: Path, cache_root: Path, countries: set[str] | None = 
             source_path = Path(f"{family}/{target['carrier_id']}-{_normalise(display)}.html")
             full_path = cache_root / source_path
             full_path.parent.mkdir(parents=True, exist_ok=True)
-            full_path.write_bytes(payload)
+            storage_io.write_bytes(full_path, payload)
             players = parse_squad_page(payload, country_name=country_slug.replace("_", " "), season_label=source_season_label)
             if not players:
                 unresolved.append({**target, "reason": "club-page-has-no-dated-2015-16-player-rows", "source_url": url, "source_sha256": _sha256_bytes(payload)})
@@ -444,7 +452,7 @@ def main() -> int:
     args = parser.parse_args()
     result = capture(draft_path=args.draft, cache_root=args.cache_root, countries=set(args.country) if args.country else None)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(_canonical_json_bytes(result))
+    storage_io.write_bytes(args.output, _canonical_json_bytes(result))
     print(json.dumps({"output": str(args.output), **result["summary"]}, sort_keys=True))
     return 0
 

@@ -12,6 +12,7 @@ from pathlib import Path
 import sys
 
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_duplicate_english_overlay_v1 as overlay
 from scripts import season_sourced_reserve_role_policy_v1 as roles
 from scripts import season_published_transfer_history_v1 as histories
@@ -22,13 +23,13 @@ from scripts import season_pipeline_v2 as pipeline
 
 
 def prepare(feasibility_path,output):
-    if output.exists():raise ValueError('English overlay repair proposal is immutable')
-    doc=json.loads(feasibility_path.read_text());plan_path=ROOT/doc['source_plan_path']
+    if storage_io.exists(output):raise ValueError('English overlay repair proposal is immutable')
+    doc=json.loads(storage_io.read_text(feasibility_path));plan_path=ROOT/doc['source_plan_path']
     if doc['schema_version']!='pm99-2015-English-overlay-duplicate-source-feasibility-v1' or doc['native_writes']!=0:
         raise ValueError('English overlay proposal requires the explicit read-only source review')
     if registry.sha256_file(plan_path)!=doc['source_plan_sha256']:
         raise ValueError('reviewed original ownership proposal changed')
-    plan=copy.deepcopy(json.loads(plan_path.read_text()))
+    plan=copy.deepcopy(json.loads(storage_io.read_text(plan_path)))
     release=registry.load_preferred_release('2015-16')
     if (release.release_id,registry.sha256_file(release.package_path),registry.sha256_file(release.game_path/'DBDAT/JUG98030.FDI'))!=(
             plan['release_id'],plan['package_sha256'],plan['jug_sha256']):
@@ -38,7 +39,7 @@ def prepare(feasibility_path,output):
         raise ValueError('English source review does not cover the exact unresolved cohort')
     public=plan['bindings']['published_transfer_supplement']; path=ROOT/public['path']
     if registry.sha256_file(path)!=public['sha256']:raise ValueError('original transfer source supplement changed')
-    original=json.loads(path.read_text());wanted={r['duplicate_source_person']['source_player_id'] for r in doc['rows']}
+    original=json.loads(storage_io.read_text(path));wanted={r['duplicate_source_person']['source_player_id'] for r in doc['rows']}
     original['players']=[r for r in original['players'] if r['player_id'] in wanted]
     events,summary=histories.merge({},original)
     if wanted-set(summary['accepted_player_ids']):raise ValueError('known English owners lack original complete transfer histories')

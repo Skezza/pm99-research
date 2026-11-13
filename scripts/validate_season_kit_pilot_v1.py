@@ -28,6 +28,7 @@ for candidate in (ROOT, EDITOR):
         sys.path.insert(0, str(candidate))
 
 from app.minifoto_bitmap_archive import iter_obfuscated_bmp_records, validate_minifoto_bitmap  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts import materialise_season_kit_archives_v1 as materialiser  # noqa: E402
 from scripts import season_kit_catalogue_v1 as catalogue_v1  # noqa: E402
 
@@ -57,7 +58,7 @@ def _sha_bytes(value: bytes) -> str:
 
 def _sha_file(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
@@ -65,17 +66,17 @@ def _sha_file(path: Path) -> str:
 
 def _regular(path: Path, label: str) -> Path:
     try:
-        if path.is_symlink() or not stat.S_ISREG(path.stat().st_mode):
+        if path.is_symlink() or not stat.S_ISREG(storage_io.stat_result(path).st_mode):
             raise PilotValidationError(f"{label} must be a regular non-symlink file: {path}")
     except OSError as exc:
         raise PilotValidationError(f"{label} is unavailable: {path}") from exc
-    return path.resolve()
+    return storage_io.resolve(path)
 
 
 def _document(path: Path, label: str) -> tuple[Path, dict[str, Any], str]:
     path = _regular(path, label)
     try:
-        payload = path.read_bytes()
+        payload = storage_io.read_bytes(path)
         value = json.loads(payload.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise PilotValidationError(f"{label} is not valid JSON: {exc}") from exc
@@ -257,7 +258,7 @@ def validate(
         before_records, after_records = _records(base_archive, f"clean base {archive}"), _records(staged_archive, f"staged {archive}")
         if set(before_records) != set(after_records) or not set(carrier_ids).issubset(before_records):
             raise PilotValidationError(f"{archive} carrier record set changed unexpectedly")
-        _assert_only_pixel_bytes_changed(base_archive.read_bytes(), staged_archive.read_bytes(), before_records, set(carrier_ids), archive)
+        _assert_only_pixel_bytes_changed(storage_io.read_bytes(base_archive), storage_io.read_bytes(staged_archive), before_records, set(carrier_ids), archive)
         for carrier, before in before_records.items():
             after = after_records[carrier]
             if carrier not in carrier_ids and before.raw_bitmap != after.raw_bitmap:
@@ -267,7 +268,7 @@ def validate(
                 if _sha_bytes(after.raw_bitmap) != event.get("bitmap_sha256_after"):
                     raise PilotValidationError(f"{archive} carrier {carrier} post-write bitmap hash is stale")
                 artifact = bindings_path.parent / str(event.get("render_artifact_relative_path") or "")
-                if not artifact.is_file() or _sha_file(artifact) != event.get("render_artifact_sha256") or artifact.read_bytes() != after.raw_bitmap:
+                if not storage_io.is_file(artifact) or _sha_file(artifact) != event.get("render_artifact_sha256") or storage_io.read_bytes(artifact) != after.raw_bitmap:
                     raise PilotValidationError(f"{archive} carrier {carrier} staged bitmap differs from its render artifact")
         archive_checks.append({"archive": archive, "carrier_record_count": len(before_records), "all_records_os2_8bit_validated": True, "only_bound_pixel_bytes_changed": True})
 
@@ -317,7 +318,7 @@ def main() -> int:
     parser.add_argument("--archive-stage", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True, help="new validation receipt path")
     args = parser.parse_args()
-    if args.output.exists() or args.output.is_symlink():
+    if storage_io.exists(args.output) or args.output.is_symlink():
         parser.error(f"refusing to replace existing receipt: {args.output}")
     try:
         result = validate(
@@ -332,7 +333,7 @@ def main() -> int:
     except PilotValidationError as exc:
         parser.error(str(exc))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(_canonical(result))
+    storage_io.write_bytes(args.output, _canonical(result))
     print(json.dumps({"result": result["result"], "pilot_carrier_ids": result["scope"]["pilot_carrier_ids"], "rendered_artifacts": result["validation"]["rendered_artifacts"]}, sort_keys=True))
     return 0
 

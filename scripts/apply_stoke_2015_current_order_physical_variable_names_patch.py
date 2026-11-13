@@ -14,6 +14,14 @@ truly variable length.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import json
 import shutil
@@ -23,12 +31,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR_ROOT = REPO_ROOT / "upstream" / "pm99-skezmod-db-editor"
 if str(EDITOR_ROOT) not in sys.path:
     sys.path.insert(0, str(EDITOR_ROOT))
-if str(Path(__file__).resolve().parent) not in sys.path:
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
+if str(storage_io.resolve(Path(__file__)).parent) not in sys.path:
+    sys.path.insert(0, str(storage_io.resolve(Path(__file__)).parent))
 
 from app.editor_actions import _IndexedRawStageRecord, write_player_staged_records  # noqa: E402
 from app.editor_helpers import _player_display_name  # noqa: E402
@@ -233,9 +241,9 @@ def _patch_physical_variable_payload(decoded: bytes, source_row: dict[str, Any])
 
 def main() -> int:
     args = _parse_args()
-    base_game = Path(args.base_game).expanduser().resolve()
-    out_game = Path(args.out_game).expanduser().resolve()
-    if out_game.exists():
+    base_game = storage_io.resolve(Path(args.base_game).expanduser())
+    out_game = storage_io.resolve(Path(args.out_game).expanduser())
+    if storage_io.exists(out_game):
         if not args.force:
             raise SystemExit(f"Output exists: {out_game}")
         shutil.rmtree(out_game)
@@ -251,7 +259,7 @@ def main() -> int:
     source_by_name = {_norm(row["game_name"]): row for row in _source_rows(country_codes)}
     roster_rows = _resolve_roster(team_file, player_file, args.team_query)
 
-    file_data = player_file.read_bytes()
+    file_data = storage_io.read_bytes(player_file)
     indexed = IndexedFDIFile.from_bytes(file_data)
     entries_by_id = {int(entry.record_id): entry for entry in indexed.entries}
     stages: list[tuple[int, _IndexedRawStageRecord]] = []
@@ -294,8 +302,8 @@ def main() -> int:
     if not failures:
         backup_path = write_player_staged_records(str(player_file), stages, create_backup_before_write=True)
 
-    (artifact_dir / "physical_variable_patches.json").write_text(json.dumps(patch_rows, indent=2), encoding="utf-8")
-    (artifact_dir / "team_roster.json").write_text(json.dumps(roster_rows, indent=2), encoding="utf-8")
+    storage_io.write_text(artifact_dir / 'physical_variable_patches.json', json.dumps(patch_rows, indent=2), encoding='utf-8')
+    storage_io.write_text(artifact_dir / 'team_roster.json', json.dumps(roster_rows, indent=2), encoding='utf-8')
     manifest = {
         "schema": "pm99-stoke-2015-physical-variable-compact-names-v1",
         "generated_at_utc": datetime.now(UTC).isoformat(),
@@ -317,7 +325,7 @@ def main() -> int:
             "ENT98030.FDI": sha256(coach_file),
         },
     }
-    (artifact_dir / "physical_variable_manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    storage_io.write_text(artifact_dir / 'physical_variable_manifest.json', json.dumps(manifest, indent=2), encoding='utf-8')
     print(
         json.dumps(
             {

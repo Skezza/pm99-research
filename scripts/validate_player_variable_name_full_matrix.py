@@ -3,6 +3,14 @@
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import csv
 import json
@@ -13,7 +21,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR_ROOT = REPO_ROOT / "upstream" / "pm99-skezmod-db-editor"
 if str(EDITOR_ROOT) not in sys.path:
     sys.path.insert(0, str(EDITOR_ROOT))
@@ -44,7 +52,7 @@ def _sha256(path: Path) -> str:
     import hashlib
 
     h = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             h.update(chunk)
     return h.hexdigest()
@@ -55,7 +63,7 @@ def _display(record: PlayerRecord) -> str:
 
 
 def _load_parser_backed_players(player_file: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    data = player_file.read_bytes()
+    data = storage_io.read_bytes(player_file)
     indexed = IndexedFDIFile.from_bytes(data)
     players: list[dict[str, Any]] = []
     opaque: list[dict[str, Any]] = []
@@ -103,7 +111,7 @@ def _load_parser_backed_players(player_file: Path) -> tuple[list[dict[str, Any]]
 
 def _write_targets_csv(path: Path, players: list[dict[str, Any]], target_name: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", newline="", encoding="utf-8") as handle:
+    with storage_io.open_file(path, 'w', newline='', encoding='utf-8') as handle:
         writer = csv.DictWriter(
             handle,
             fieldnames=["record_id", "payload_offset", "current_name", "target_name"],
@@ -135,7 +143,7 @@ def _targets(players: list[dict[str, Any]], target_name: str) -> list[PlayerVari
 
 def _save_json(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(_jsonable(payload), indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(path, json.dumps(_jsonable(payload), indent=2, sort_keys=True) + '\n', encoding='utf-8')
 
 
 def _mode_summary(name: str, source_file: Path, target_name: str, result: Any, output_file: Path) -> dict[str, Any]:
@@ -159,7 +167,7 @@ def _mode_summary(name: str, source_file: Path, target_name: str, result: Any, o
         "status_counts": dict(getattr(result, "status_counts", {}) or {}),
         "family_counts": dict(getattr(result, "family_counts", {}) or {}),
         "anchor_status_counts": dict(getattr(result, "anchor_status_counts", {}) or {}),
-        "output_sha256": _sha256(output_file) if output_file.is_file() else None,
+        "output_sha256": _sha256(output_file) if storage_io.is_file(output_file) else None,
         "failure_samples": [
             _jsonable(row)
             for row in list(getattr(result, "rows", []) or [])
@@ -227,14 +235,14 @@ def _render_html(path: Path, summary: dict[str, Any]) -> None:
 </body>
 </html>
 """
-    path.write_text(html, encoding="utf-8")
+    storage_io.write_text(path, html, encoding='utf-8')
 
 
 def run(args: argparse.Namespace) -> dict[str, Any]:
-    player_file = Path(args.player_file).expanduser().resolve()
+    player_file = storage_io.resolve(Path(args.player_file).expanduser())
     timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     output_dir = (
-        Path(args.output_dir).expanduser().resolve()
+        storage_io.resolve(Path(args.output_dir).expanduser())
         if args.output_dir
         else REPO_ROOT / "work" / "pm99" / "player_variable_name_full_matrix" / timestamp
     )
@@ -284,15 +292,15 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             output_file=output_file,
             create_backup_before_write=False,
         )
-        if mode_name == "noop_current" and not output_file.exists():
-            shutil.copy2(source_file, output_file)
+        if mode_name == "noop_current" and not storage_io.exists(output_file):
+            storage_io.copy_file(source_file, output_file, metadata=True)
         _save_json(mode_dir / "result.json", result)
         mode_summary = _mode_summary(mode_name, source_file, target_label, result, output_file)
         summaries.append(mode_summary)
         if mode_name == "near_max_224_bytes":
             long_output = output_file
 
-    if long_output is not None and long_output.is_file():
+    if long_output is not None and storage_io.is_file(long_output):
         long_players, _long_opaque = _load_parser_backed_players(long_output)
         mode_name = "roundtrip_near_max_to_short_3_bytes"
         mode_dir = output_dir / mode_name

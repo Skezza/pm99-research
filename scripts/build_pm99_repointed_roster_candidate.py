@@ -29,6 +29,7 @@ from app.eq_jug_linked import load_eq_linked_team_rosters  # noqa: E402
 from app.fdi_indexed import IndexedFDIFile  # noqa: E402
 from app.file_writer import replace_player_name_preserving_layout  # noqa: E402
 from app.models import PlayerRecord  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts.repair_full_db_world_runtime_payloads import (  # noqa: E402
     _build_variable_original_name_payload,
     _linked_roster_layout,
@@ -43,7 +44,7 @@ def _norm(value: str) -> str:
 
 
 def _load_json(path: Path) -> dict[str, Any]:
-    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload = json.loads(storage_io.read_text(path, encoding='utf-8'))
     if not isinstance(payload, dict):
         raise ValueError(f"{path} must contain a JSON object")
     return payload
@@ -105,7 +106,7 @@ def _assignment_target_rows(assignment_path: Path) -> tuple[list[dict[str, Any]]
 
 
 def _candidate_player_rows(player_file: Path, *, excluded_record_ids: set[int]) -> list[dict[str, Any]]:
-    file_data = player_file.read_bytes()
+    file_data = storage_io.read_bytes(player_file)
     indexed = IndexedFDIFile.from_bytes(file_data)
     candidates: list[dict[str, Any]] = []
     for entry in indexed.entries:
@@ -321,7 +322,7 @@ def _build_non_assigned_payload(
 
 
 def build_repointed_candidate(*, base_game: Path, assignment_path: Path, out_game: Path, force: bool) -> dict[str, Any]:
-    if out_game.exists():
+    if storage_io.exists(out_game):
         if not force:
             raise FileExistsError(f"Output game already exists: {out_game}")
         shutil.rmtree(out_game)
@@ -385,7 +386,7 @@ def build_repointed_candidate(*, base_game: Path, assignment_path: Path, out_gam
 
     write_player_staged_records(str(player_file), player_stages, create_backup_before_write=False)
 
-    team_data = team_file.read_bytes()
+    team_data = storage_io.read_bytes(team_file)
     indexed_teams = IndexedFDIFile.from_bytes(team_data)
     team_entries_by_id = {int(entry.record_id): entry for entry in indexed_teams.entries}
     by_eq: dict[int, list[dict[str, Any]]] = {}
@@ -449,7 +450,7 @@ def build_repointed_candidate(*, base_game: Path, assignment_path: Path, out_gam
         int(roster.eq_record_id): roster
         for roster in load_eq_linked_team_rosters(team_file=str(team_file), player_file=str(player_file))
     }
-    post_meta_file = player_file.read_bytes()
+    post_meta_file = storage_io.read_bytes(player_file)
     post_indexed = IndexedFDIFile.from_bytes(post_meta_file)
     post_entry_by_id = {int(entry.record_id): entry for entry in post_indexed.entries}
     failures: list[dict[str, Any]] = []
@@ -490,10 +491,7 @@ def build_repointed_candidate(*, base_game: Path, assignment_path: Path, out_gam
         "failures": failures[:100],
         "allocations": allocations,
     }
-    (out_game / "repointed_roster_manifest.json").write_text(
-        json.dumps(manifest, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
+    storage_io.write_text(out_game / 'repointed_roster_manifest.json', json.dumps(manifest, indent=2, sort_keys=True) + '\n', encoding='utf-8')
     return manifest
 
 
@@ -506,9 +504,9 @@ def main() -> int:
     args = parser.parse_args()
 
     manifest = build_repointed_candidate(
-        base_game=Path(args.base_game).expanduser().resolve(),
-        assignment_path=Path(args.assignment).expanduser().resolve(),
-        out_game=Path(args.out_game).expanduser().resolve(),
+        base_game=storage_io.resolve(Path(args.base_game).expanduser()),
+        assignment_path=storage_io.resolve(Path(args.assignment).expanduser()),
+        out_game=storage_io.resolve(Path(args.out_game).expanduser()),
         force=bool(args.force),
     )
     print(

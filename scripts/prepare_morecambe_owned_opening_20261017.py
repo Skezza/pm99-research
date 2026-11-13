@@ -12,6 +12,7 @@ from pathlib import Path
 from statistics import median
 
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_historical_roster_audit_v1 as roster
 from scripts import season_external_soccerbase_birthday_v2 as birthdays
@@ -119,8 +120,8 @@ def prepare(base):
     if [p['source_player']['name'] for p in desired[16:]] != ['Jamie Murphy','Garry Thompson']:
         raise ValueError('positive opening capacity reserves changed')
     source.validate_opening_birth_dates(desired,actual['fixture']['date'])
-    jug=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    jug=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     native={e.record_id:roster.native_player(e.decode_payload(jug),e.record_id)
         for e in IndexedFDIFile.from_bytes(jug).entries if 10986 <= e.record_id <= 11003}
     rows=decide(package,desired,native,ownership.native_owners(eq))
@@ -149,7 +150,7 @@ def prepare(base):
 
 if __name__ == '__main__':
     output=ROOT/'same-carrier-opening-assignment-v2.json'
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('existing Morecambe assignment must be inspected, not overwritten')
     base=registry.load_registered_release('2000-01',BASE)
     plan=prepare(base);retained(output,plan)

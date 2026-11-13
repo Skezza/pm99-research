@@ -12,6 +12,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_dated_reserve_owner_v1 as reserve
 from scripts import season_duplicate_ownership_plan_v1 as planner
 from scripts import season_historical_roster_audit_v1 as roster
@@ -25,7 +26,7 @@ from scripts import season_pipeline_v2 as pipeline
 
 
 def review(path, people, events, snapshot):
-    plan = json.loads(path.read_text())
+    plan = json.loads(storage_io.read_text(path))
     if plan['bindings']['snapshot'] != snapshot:
         raise ValueError('reserve audit snapshot differs from saved proposal')
     release = registry.load_registered_release(plan['season'], plan['release_id'])
@@ -47,7 +48,7 @@ def review(path, people, events, snapshot):
         source_path = ROOT / source_path
         if registry.sha256_file(source_path) != expected_sha:
             raise ValueError('reserve audit original opening review changed')
-        opening = json.loads(source_path.read_text())
+        opening = json.loads(storage_io.read_text(source_path))
         transfer.verify_opening_sources(opening)
         original.extend((row, opening) for row in opening['clubs'])
     carriers = {c['carrier_id']: c for c in clubs.values()}
@@ -63,7 +64,7 @@ def review(path, people, events, snapshot):
     previous_path = ROOT / bindings['review_path']
     if registry.sha256_file(previous_path) != bindings['review_sha256']:
         raise ValueError('reserve audit prior raw reparse evidence changed')
-    verifier = roster.SourceVerifier(plan['season'], json.loads(previous_path.read_text()), actual_bindings)
+    verifier = roster.SourceVerifier(plan['season'], json.loads(storage_io.read_text(previous_path)), actual_bindings)
     people, _ = supplement.extend(people, list(clubs.values()), evidence, captures, verifier)
     rows = []
     for problem in plan['unresolved']:
@@ -84,12 +85,12 @@ def review(path, people, events, snapshot):
 
 
 def run(plan_root, person_path, history_path, output):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('reserve ownership feasibility evidence is immutable')
-    paths = sorted(plan_root.glob('*/ownership-plan.json'))
+    paths = sorted(storage_io.glob(plan_root, '*/ownership-plan.json'))
     if not paths:
         raise ValueError('no completed original ownership proposals')
-    first = json.loads(paths[0].read_text())
+    first = json.loads(storage_io.read_text(paths[0]))
     pin = first['bindings']['snapshot']
     people, events, _, actual = transfer.load_snapshot(ROOT / pin['path'], ROOT / pin['pinned_receipt_path'])
     if actual != pin:

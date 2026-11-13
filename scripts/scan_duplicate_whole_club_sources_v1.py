@@ -13,6 +13,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import inventory_duplicate_club_dispositions_v1 as inventory
 from scripts import prepare_duplicate_club_disposition_v1 as whole
 from scripts import season_duplicate_source_context_v1 as context
@@ -46,7 +47,7 @@ class BoundSnapshotCache:
         self.public_files = {}
 
     def load(self, database, receipt):
-        key = (database.resolve(), receipt.resolve())
+        key = (storage_io.resolve(database), storage_io.resolve(receipt))
         if key not in self.loaded:
             self.loaded[key] = context.load_snapshot(database, receipt)
         return self.loaded[key]
@@ -72,7 +73,7 @@ class BoundSnapshotCache:
                 if whole.registry.sha256_file(path) != item['sha256']:
                     raise ValueError('cached public supplement differs from its binding')
                 self.public_files[path] = item['sha256']
-                documents.append(json.loads(path.read_text()))
+                documents.append(json.loads(storage_io.read_text(path)))
             for document in documents:
                 for row in document.get('batches', document.get('players', [])):
                     if 'raw_sha256' not in row:
@@ -87,7 +88,7 @@ class BoundSnapshotCache:
 
 def scan(prior_root, capacity_root, output, seasons, capacity_fallback_plan=None, *,
          matchday_career_route=False, first_fit_per_target=False,fit_verified_reserve_pool=False):
-    if (output / 'summary.json').exists():
+    if storage_io.exists(output / 'summary.json'):
         raise ValueError('completed source scan must not be repeated')
     output.mkdir(parents=True,exist_ok=True)
     route=explicit_matchday_route(matchday_career_route,fit_verified_reserve_pool)
@@ -104,15 +105,15 @@ def scan(prior_root, capacity_root, output, seasons, capacity_fallback_plan=None
         if matchday_career_route:
             duplicates=sorted(duplicates,key=lambda c:(c['fixed_capacity'],c['carrier_id']))
         prior_path = prior_root / season / 'ownership-plan.json'
-        prior = json.loads(prior_path.read_text())
+        prior = json.loads(storage_io.read_text(prior_path))
         bindings = prior['bindings']
         cap_path = capacity_root / season / 'ownership-plan.json'
-        bundle = json.loads(cap_path.read_text())['bindings'].get('same_carrier_name_capacity')
+        bundle = json.loads(storage_io.read_text(cap_path))['bindings'].get('same_carrier_name_capacity')
         if bundle is None:
             if capacity_fallback_plan is None:
                 raise ValueError('explicit capacity fallback plan required for a zero-update season')
             cap_path = capacity_fallback_plan
-            bundle = json.loads(cap_path.read_text())['bindings']['same_carrier_name_capacity']
+            bundle = json.loads(storage_io.read_text(cap_path))['bindings']['same_carrier_name_capacity']
         capacity.verify_bundle(bundle)
         for target in targets:
             shared_gaps = {}
@@ -123,8 +124,8 @@ def scan(prior_root, capacity_root, output, seasons, capacity_fallback_plan=None
                 target_key = whole.roster.normalise(target['club'])
                 path = output / season / f'{carrier}-{target_key}.json'
                 decision = path.with_name(path.stem + '-decision.json')
-                if decision.exists():
-                    saved = json.loads(decision.read_text())
+                if storage_io.exists(decision):
+                    saved = json.loads(storage_io.read_text(decision))
                     if (matchday_career_route or first_fit_per_target) and saved.get('source_scan_policy')!=scan_policy:
                         raise ValueError('saved source scan used another explicit route; preserve it')
                     if (saved['baseline_package_sha256'] != whole.registry.sha256_file(release.package_path)
@@ -162,7 +163,7 @@ def scan(prior_root, capacity_root, output, seasons, capacity_fallback_plan=None
                     outcomes.append(result)
                     continue
                 try:
-                    if not path.exists():
+                    if not storage_io.exists(path):
                         whole.prepare(season, carrier, target['club'],
                             ROOT / bindings['published_person_supplement']['path'],
                             ROOT / bindings['published_transfer_supplement']['path'],
@@ -171,7 +172,7 @@ def scan(prior_root, capacity_root, output, seasons, capacity_fallback_plan=None
                             inspect_collisions=True, snapshot_binding=bindings['snapshot'],
                             allow_keeper_order_exchange=True, snapshot_loader=cache.load,
                             public_loader=cache.merge_public,**route)
-                    proposal = json.loads(path.read_text())
+                    proposal = json.loads(storage_io.read_text(path))
                     if (proposal['schema_version'] != 'pm99-whole-club-collision-diagnostic-only-v1'
                             or proposal['release_id'] != release.release_id
                             or proposal['package_sha256'] != result['baseline_package_sha256']

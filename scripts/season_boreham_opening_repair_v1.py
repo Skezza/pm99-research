@@ -7,6 +7,7 @@ from app.fdi_indexed import IndexedFDIFile
 from app.indexed_jug_roles import rewrite_indexed_native_roles
 from app.indexed_jug_birth_date import rewrite_indexed_native_birth_dates
 from app.player_initial_order import OrderReplacement, patch_owned_mode1_complete_orders, read_initial_order
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_package_v2 as packages
@@ -43,7 +44,7 @@ def source(key, receipt_name):
     row = matches[0]; path = ROOT / row['cache_path']
     if not row['url'].startswith('https://www.borehamwoodfootballclub.co.uk/') or registry.sha256_file(path) != row['sha256']:
         raise ValueError('original club authority or source bytes changed')
-    soup = BeautifulSoup(path.read_bytes(), 'lxml')
+    soup = BeautifulSoup(storage_io.read_bytes(path), 'lxml')
     return soup.get_text(' ', strip=True), dict(path=registry.relative_workspace_path(path),
         sha256=row['sha256'], url=row['url'], receipt_path=registry.relative_workspace_path(receipt),
         receipt_sha256=registry.sha256_file(receipt))
@@ -56,9 +57,9 @@ def profile(id):
     url = f'https://www.soccerbase.com/players/player.sd?player_id={id}'
     if row['url'] != url or registry.sha256_file(path) != row['sha256']:
         raise ValueError('original numeric source person changed')
-    facts = august.player_profile(path.read_bytes(), fallback_name='', fallback_position='?')
+    facts = august.player_profile(storage_io.read_bytes(path), fallback_name='', fallback_position='?')
     return facts, dict(path=registry.relative_workspace_path(path), sha256=row['sha256'],
-        url=url, receipt_path=registry.relative_workspace_path(receipt), receipt_sha256=registry.sha256_file(receipt)), BeautifulSoup(path.read_bytes(), 'lxml').get_text(' ', strip=True)
+        url=url, receipt_path=registry.relative_workspace_path(receipt), receipt_sha256=registry.sha256_file(receipt)), BeautifulSoup(storage_io.read_bytes(path), 'lxml').get_text(' ', strip=True)
 
 
 def prepare(release):
@@ -129,8 +130,8 @@ def prepare(release):
         expected = REPLACE.get(p['carrier_id']) or next(n for n, id in KEEP.items() if id == p['carrier_id'])
         if (p.get('source_name') or p['name']) != PREIMAGE_ALIASES.get(expected, expected):
             raise ValueError('current full identity preimage changed')
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (release.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
     from scripts import season_italian_opening_layer_v1 as linked
     from scripts import season_opening_order_repair_v1 as ownership
     owners = ownership.native_owners(eq)
@@ -251,7 +252,7 @@ def bind(package,plan, *, prefix=PREFIX, filename=FILENAME, retained=KEEP,
 
 def apply(jug,eq,plan, *, club=CLUB, replace=REPLACE, keep=KEEP, bind_recipe=bind):
     baseline=registry.load_registered_release(plan['season'],plan['release_id'])
-    initial=(baseline.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    initial=storage_io.read_bytes(baseline.game_path / 'DBDAT/JUG98030.FDI')
     if core.digest(initial)!=plan['jug_sha256'] or core.digest(eq)!=plan['eq_sha256']:
         raise ValueError('native source baseline changed')
     prepared=initial
@@ -289,7 +290,7 @@ def apply(jug,eq,plan, *, club=CLUB, replace=REPLACE, keep=KEEP, bind_recipe=bin
 def reconstruction(previous,release_id):
     from scripts import publish_historical_role_delta_v1 as publisher
     path=registry.ROOT/previous.locator['sourced_profile_assignment_plan_path'];plan=pipeline.read_json_file(path)
-    if path.resolve()!=(previous.package_path.parent/filename(plan)).resolve():raise ValueError('source locator differs')
+    if storage_io.resolve(path)!=storage_io.resolve(previous.package_path.parent / filename(plan)):raise ValueError('source locator differs')
     package=pipeline.read_json_file(previous.package_path)
     artifact=[a for a in package['artifacts'] if a['id']==PREFIX+previous.season]
     if len(artifact)!=1 or artifact[0]['relative_path']!=FILENAME or registry.sha256_file(path)!=artifact[0]['sha256']:raise ValueError('source artifact changed')

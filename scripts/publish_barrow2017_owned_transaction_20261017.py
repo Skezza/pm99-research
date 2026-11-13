@@ -1,4 +1,5 @@
 """Private atomic delivery and complete SOURCE proof; never promotes by itself."""
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_verified_owned_roster_transaction_v1 as transaction
 from scripts.prepare_barrow2017_opening_source_20261017 import FOLDER,retained
 from scripts import publish_historical_role_delta_v1 as publisher
@@ -15,11 +16,11 @@ def main():
     descriptor=FOLDER/'role-delta-input.json'
     retained(descriptor,dict(season=base.season,release_id=base.release_id,
         package_sha256=plan['package_sha256'],jug_sha256=plan['jug_sha256'],updates=[],unresolved=[]))
-    if not transaction.registry.locator_path(base.season,RELEASE).exists():
+    if not storage_io.exists(transaction.registry.locator_path(base.season, RELEASE)):
         publisher.publish(base.season,descriptor,release_id=RELEASE,
             source_release_id=base.release_id,profile_assignment_plan_path=path)
     actual=transaction.registry.load_registered_release(base.season,RELEASE)
-    if (FOLDER/'complete-SOURCE-replay.json').exists():raise ValueError('completed SOURCE proof must not repeat')
+    if storage_io.exists(FOLDER / 'complete-SOURCE-replay.json'):raise ValueError('completed SOURCE proof must not repeat')
     result=transaction.reconstruction(actual,REPLAY)
     retained(FOLDER/'complete-SOURCE-replay.json',result)
     print(dict(private_release=RELEASE,**result,preferred_changed=False),flush=True)

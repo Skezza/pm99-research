@@ -1,4 +1,5 @@
 """Audit all prepared country corrections against exact historical FIFA data."""
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_country_fifa_crosscheck_v1 as cross
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
@@ -8,14 +9,14 @@ ROOT=registry.ROOT/'.local/consolidated-audit-20261009/country-source-crosscheck
 
 def main():
     output=ROOT/'audit.json'
-    if output.exists():raise ValueError('completed country crosscheck must not repeat')
+    if storage_io.exists(output):raise ValueError('completed country crosscheck must not repeat')
     ROOT.mkdir(parents=True,exist_ok=True)
     sha=registry.sha256_file(cross.fifa.identity.old.FIFA);index=cross.load(sha)
     rows=[]
     for namespace in ('original-country-default-delivery-20261017-v1','country-policy-v2-cohort-20261017'):
         for folder in sorted((ROOT.parent/namespace).iterdir()):
             path=folder/'country-plan.json'
-            if not path.is_file():continue
+            if not storage_io.is_file(path):continue
             plan=pipeline.read_json_file(path)
             for actor in plan['updates']:
                 result=cross.check(actor,plan['season'],index=index,file_sha=sha)

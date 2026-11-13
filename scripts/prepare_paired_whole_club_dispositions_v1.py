@@ -6,6 +6,7 @@ from pathlib import Path
 import sys
 
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import prepare_duplicate_club_disposition_v1 as whole
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
@@ -103,22 +104,22 @@ def source_guard(document, proposals):
 
 
 def prepare(season, pairs, prior_plan, output, *, capacity_bundle=None, keeper_exchange_carriers=()):
-    if output.exists():raise ValueError('paired source proposal is immutable')
-    plan=json.loads(prior_plan.read_text());bindings=plan['bindings']
+    if storage_io.exists(output):raise ValueError('paired source proposal is immutable')
+    plan=json.loads(storage_io.read_text(prior_plan));bindings=plan['bindings']
     if not set(keeper_exchange_carriers)<={c for c,n in pairs}:
         raise ValueError('keeper exchange must name one of the explicitly replaced whole clubs')
     release=registry.load_preferred_release(season)
     proposed=[];paths=[]
     for carrier,target in pairs:
         path=output.parent/f'{carrier}-source-collision-diagnostic.json'
-        if not path.exists():
+        if not storage_io.exists(path):
             whole.prepare(season,carrier,target,ROOT/bindings['published_person_supplement']['path'],
                 ROOT/bindings['published_transfer_supplement']['path'],
                 ROOT/bindings['soccerbase_opening_sources']['club_entities']['path'],path,
                 capacity_bundle=capacity_bundle or bindings.get('same_carrier_name_capacity'),
                 baseline_release_id=release.release_id,inspect_collisions=True,snapshot_binding=bindings['snapshot'],
                 allow_keeper_order_exchange=carrier in keeper_exchange_carriers)
-        proposed.append(json.loads(path.read_text()));paths.append(path)
+        proposed.append(json.loads(storage_io.read_text(path)));paths.append(path)
         if proposed[-1]['bindings'].get('snapshot')!=bindings['snapshot']:
             raise ValueError('saved paired diagnostic lacks the exact original person/history snapshot')
         if capacity_bundle is not None and proposed[-1].get('capacity_policy_bundle')!=capacity_bundle:
@@ -147,7 +148,7 @@ if __name__=='__main__':
     a=p.parse_args();bundle=None
     if a.capacity_plan is not None:
         from scripts import season_same_carrier_name_capacity_v1 as capacity
-        bundle=json.loads(a.capacity_plan.read_text())['bindings']['same_carrier_name_capacity']
+        bundle=json.loads(storage_io.read_text(a.capacity_plan))['bindings']['same_carrier_name_capacity']
         capacity.verify_bundle(bundle)
     prepare(a.season,[(int(c),n) for c,n in a.pair],a.prior_plan,a.output,capacity_bundle=bundle,
         keeper_exchange_carriers=a.keeper_order_exchange_carrier)

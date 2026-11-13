@@ -5,6 +5,7 @@ from pathlib import Path
 from app.editor_actions import edit_team_roster_eq_jug_linked
 from app.eq_jug_linked import load_eq_linked_team_rosters
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2 as packages, season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
 from scripts.season_within_club_reserve_repair_v1 import native_facts
@@ -21,8 +22,8 @@ SOURCE_PLAN='.local/historical-role-deltas-v1/2005-06/sourced-espanyol-city-madr
 def sha(data): return hashlib.sha256(data).hexdigest()
 def binding(path): return {'path':registry.relative_workspace_path(Path(path)), 'sha256':registry.sha256_file(Path(path))}
 def source(value):
-    p=(registry.ROOT/value['path']).resolve(); registry.relative_workspace_path(p)
-    if not p.is_file() or registry.sha256_file(p)!=value['sha256']: raise ValueError('bound source hash mismatch')
+    p=storage_io.resolve(registry.ROOT / value['path']); registry.relative_workspace_path(p)
+    if not storage_io.is_file(p) or registry.sha256_file(p)!=value['sha256']: raise ValueError('bound source hash mismatch')
     return p
 def _native(eq,jug):
     # Parse the indexed EQ payload directly through the public linked-roster reader.
@@ -64,7 +65,7 @@ def _source_admission(input_value):
         'source_request':input_value['source_request'],'ownership_plan':input_value['ownership_plan']}
 
 def prepare(base,input_path):
-    path=Path(input_path).resolve(); registry.relative_workspace_path(path); inp=pipeline.read_json_file(path)
+    path=storage_io.resolve(Path(input_path)); registry.relative_workspace_path(path); inp=pipeline.read_json_file(path)
     if inp.get('schema')!=INPUT_SCHEMA or base.season!='2005-06' or base.release_id!=RELEASE:
         raise ValueError('activation input is scoped to the registered r204a 2005-06 parent')
     loc=registry.locator_path(base.season,base.release_id)
@@ -76,7 +77,7 @@ def prepare(base,input_path):
       'locator_sha256':registry.sha256_file(loc)}
     if observed!=expected: raise ValueError('registered parent bindings differ')
     package=pipeline.read_json_file(base.package_path); actors=[p for p in package['players'] if p.get('carrier_id')==19]
-    jug=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes(); eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    jug=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI'); eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     if len(actors)!=1 or actors[0].get('source_name')!='Rubén de la Red' or actors[0]['facts'].get('birth_date')!='1985-06-05': raise ValueError('carrier 19 package identity differs')
     if actors[0].get('club_id') != 'club-4' or actors[0].get('person_id') != 'person-transfermarkt-35522':
         raise ValueError('Rubén recipe club or source person identity differs')
@@ -113,9 +114,9 @@ def prepare(base,input_path):
 
 def _writer(eq,jug):
     with tempfile.TemporaryDirectory(prefix='madrid-activation-') as td:
-        eqp=Path(td)/'EQ98030.FDI'; jp=Path(td)/'JUG98030.FDI'; eqp.write_bytes(eq); jp.write_bytes(jug)
+        eqp=Path(td)/'EQ98030.FDI'; jp=Path(td)/'JUG98030.FDI'; storage_io.write_bytes(eqp, eq); storage_io.write_bytes(jp, jug)
         edit_team_roster_eq_jug_linked(team_file=str(eqp),player_file=str(jp),eq_record_id=4,slot_number=4,player_record_id=19,flag=0,write_changes=True)
-        out=eqp.read_bytes()
+        out=storage_io.read_bytes(eqp)
     diffs=[i for i,(a,b) in enumerate(zip(eq,out)) if a!=b]
     if len(diffs)!=1 or len(eq)!=len(out): raise ValueError('canonical editor writer changed more than one byte')
     return out,diffs[0]
@@ -144,10 +145,10 @@ def reconstruction(previous,release_id):
     if receipt.get('compilation_mode')!=MODE: return None
     relative=getattr(previous,'locator',{}).get('sourced_profile_assignment_plan_path')
     if not relative: raise ValueError('Madrid activation SOURCE receipt lacks assignment-plan locator')
-    plan_path=(registry.ROOT/relative).resolve(); plan=pipeline.read_json_file(plan_path)
+    plan_path=storage_io.resolve(registry.ROOT / relative); plan=pipeline.read_json_file(plan_path)
     if plan.get('schema')!=SCHEMA: raise ValueError('Madrid activation SOURCE receipt points to another plan schema')
     base=registry.load_registered_release(previous.season,plan['release_id']); verify(base,plan)
-    if (plan_path!=(previous.package_path.parent/filename(plan)).resolve()
+    if (plan_path!=storage_io.resolve(previous.package_path.parent / filename(plan))
         or registry.sha256_file(plan_path)!=receipt.get('original_profile_assignment_plan_sha256')):
         raise ValueError('Madrid activation SOURCE receipt path or plan SHA differs')
     package=pipeline.read_json_file(previous.package_path)
@@ -162,7 +163,7 @@ def reconstruction(previous,release_id):
         profile_assignment_plan_path=plan_path)
     rebuilt=registry.load_registered_release(previous.season,release_id)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path,pipeline.read_json_file(previous.inventory_path))
-    if rebuilt.package_path.read_bytes()!=previous.package_path.read_bytes():
+    if storage_io.read_bytes(rebuilt.package_path)!=storage_io.read_bytes(previous.package_path):
         raise ValueError('Madrid activation SOURCE complete package replay differs')
     return dict(season=previous.season,release_id=release_id,complete_game_inventory_identical=True,
         complete_recipe_identical=True,compilation_mode=MODE)

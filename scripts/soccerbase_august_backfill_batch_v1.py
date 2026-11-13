@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts.capture_ntf_historical_carrier_squads_v1 import Cache
 from scripts.capture_soccerbase_august_squads_v1 import capture
 from scripts.capture_transfermarkt_historical_squads_v1 import canonical_bytes
@@ -21,7 +22,7 @@ from scripts.promote_soccerbase_august_squads_v1 import promote
 
 
 def _scope(path: Path, requested: set[str]) -> list[dict[str, Any]]:
-    value = json.loads(path.read_text())
+    value = json.loads(storage_io.read_text(path))
     if value.get("schema_version") != "pm99-soccerbase-august-scope-v1":
         raise ValueError("unsupported Soccerbase scope schema")
     rows = value.get("seasons")
@@ -44,8 +45,8 @@ def _capture(row: dict[str, Any], *, offline: bool, delay: float) -> tuple[str, 
         cache=Cache(local / "soccerbase-august-cache-v1", offline=offline, delay=delay),
     )
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_bytes(canonical_bytes(result))
-    gaps_output.write_bytes(canonical_bytes(gaps))
+    storage_io.write_bytes(output, canonical_bytes(result))
+    storage_io.write_bytes(gaps_output, canonical_bytes(gaps))
     return season, output, gaps_output, result["summary"]
 
 
@@ -71,7 +72,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         results.append({**promoted, "capture_summary": summary})
     matrix = {"schema_version": "pm99-soccerbase-august-backfill-batch-v1", "seasons": results}
     matrix_output = args.matrix_output or args.output_root / "soccerbase-august-matrix.json"
-    matrix_output.write_bytes(canonical_bytes(matrix))
+    storage_io.write_bytes(matrix_output, canonical_bytes(matrix))
     print(json.dumps(results, sort_keys=True))
     return 0
 

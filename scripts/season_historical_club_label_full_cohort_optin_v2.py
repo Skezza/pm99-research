@@ -12,6 +12,7 @@ ROOT = next((parent for parent in Path(__file__).resolve().parents if (parent / 
 if ROOT is None:
     raise RuntimeError('cannot locate repository scripts directory')
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_source_package_builder_v1 as builder
 from scripts.season_historical_roster_audit_v1 import club_group, club_names, source_group
@@ -71,7 +72,7 @@ def _reparse_soccerbase_august(season, selector, source):
         raise ValueError('unsupported Soccerbase source selector shape')
     team_id = int(match.group(1))
     scope_path = ROOT / 'scripts/data/soccerbase-national-league-august-scope-v1.json'
-    scope = json.loads(scope_path.read_text(encoding='utf-8'))
+    scope = json.loads(storage_io.read_text(scope_path, encoding='utf-8'))
     scope_rows = [r for r in scope['seasons'] if r.get('season') == season]
     if len(scope_rows) != 1:
         raise ValueError('target season has no unique Soccerbase competition-year binding')
@@ -81,8 +82,8 @@ def _reparse_soccerbase_august(season, selector, source):
     def original(kind, ident, expected_url):
         body_path = cache / kind / (str(ident) + '.html')
         receipt_path = body_path.with_name(body_path.name + '.source.json')
-        raw = body_path.read_bytes()
-        receipt = json.loads(receipt_path.read_text(encoding='utf-8'))
+        raw = storage_io.read_bytes(body_path)
+        receipt = json.loads(storage_io.read_text(receipt_path, encoding='utf-8'))
         digest = hashlib.sha256(raw).hexdigest()
         if (receipt != {'url': expected_url, 'sha256': digest} or digest != registry.sha256_file(body_path)):
             raise ValueError('Soccerbase body or adjacent original URL receipt changed')
@@ -182,7 +183,7 @@ def _reparse_mixed_source_cohort(season, selector, source, *, source_dir):
         raise ValueError('mixed source cohort repeats a row or lacks unique numeric profile IDs')
     annual_proof = _reparse_source_cohort(season, selector, dict(source, players=annual))
     source_dir = Path(source_dir)
-    lineup = json.loads((source_dir / 'opening-lineups.json').read_bytes())
+    lineup = json.loads(storage_io.read_bytes(source_dir / 'opening-lineups.json'))
     matches = [row for row in lineup['clubs'] if all(
         row['source_selector'].get(key) == selector.get(key)
         for key in ('country_catalog', 'competition_catalog', 'club_name'))]
@@ -197,7 +198,7 @@ def _reparse_mixed_source_cohort(season, selector, source, *, source_dir):
     if (opening['date'] != source.get('opening_fixture_date')
             or date.fromisoformat(opening['date']).year != year):
         raise ValueError('mixed source opening fixture does not belong to the target year')
-    persons = json.loads((source_dir / 'opening-lineup-person-evidence.json').read_bytes())
+    persons = json.loads(storage_io.read_bytes(source_dir / 'opening-lineup-person-evidence.json'))
     receipts = persons['source']['cache_files']
     profiles = []
     for row in additions:
@@ -372,13 +373,13 @@ def create_witness(*, season, source_root, carrier_id, expected_source_selector,
     """Create a witness only when every current roster row joins exactly."""
     release = (registry.load_registered_release(season, source_release_id)
         if source_release_id is not None else registry.load_preferred_release(season))
-    package = json.loads(release.package_path.read_bytes())
+    package = json.loads(storage_io.read_bytes(release.package_path))
     artifact_id = ARTIFACT_PREFIX + season
     descriptor = next((a for a in package.get('artifacts', []) if a.get('id') == artifact_id), None)
     if not descriptor:
         raise ValueError('current package has no bound preallocation artifact')
     pre_path = Path(source_root) / season / 'opening-squad-preallocation.json'
-    pre_bytes = pre_path.read_bytes()
+    pre_bytes = storage_io.read_bytes(pre_path)
     pre_sha = registry.sha256_file(pre_path)
     if pre_sha != descriptor.get('sha256'):
         raise ValueError('preallocation bytes do not match current package descriptor')
@@ -439,7 +440,7 @@ def create_witness(*, season, source_root, carrier_id, expected_source_selector,
             if target_names & club_names(other_group, other.get('name', ''), other.get('full_name', '')):
                 raise ValueError('desired source club label is already represented by another package-layer club')
     eq_path = release.game_path / 'DBDAT/EQ98030.FDI'
-    eq_bytes = eq_path.read_bytes()
+    eq_bytes = storage_io.read_bytes(eq_path)
     eq_index, owners = _native_owner_index(eq_bytes)
     # The desired name must also be free in the complete native EQ directory.
     for entry in eq_index.entries:
@@ -461,7 +462,7 @@ def create_witness(*, season, source_root, carrier_id, expected_source_selector,
     # path binds authored names to decoded JUG identities and self IDs.
     target_players = [p for p in package['players'] if p.get('club_id') == club['id']]
     native_players = None if legacy_numeric_witness else _native_jug_identity_index(
-        (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes(),
+        storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI'),
         [int(player['carrier_id']) for player in target_players])
     target_bindings = _bind_cohort(package, club, source, require_all=True,
         expected_artifact_id=artifact_id, owners=owners, native_players=native_players)
@@ -539,7 +540,7 @@ def proposed_review_row(witness, *, manager_after, manager_carrier_id, manager_o
         path = Path(source['path'])
         if not path.is_absolute():
             path = ROOT / path
-        if not path.is_file() or registry.sha256_file(path) != source['sha256']:
+        if not storage_io.is_file(path) or registry.sha256_file(path) != source['sha256']:
             raise ValueError('manager source bytes are absent or changed')
     evidence = {'date': witness.get('source_fixture_date'), 'manager': manager_after,
         'identity_basis': witness['identity_basis'], 'source_match_id': witness.get('source_match_id'),
@@ -573,7 +574,7 @@ def verify_manager_sources(row):
         path = path if path.is_absolute() else ROOT / path
         if registry.sha256_file(path) != source['sha256']:
             raise ValueError('manager source bytes changed')
-        page = BeautifulSoup(path.read_bytes(), 'lxml')
+        page = BeautifulSoup(storage_io.read_bytes(path), 'lxml')
         for node in page(['script', 'style']):
             node.decompose()
         text = _normalise(page.get_text(' ', strip=True))

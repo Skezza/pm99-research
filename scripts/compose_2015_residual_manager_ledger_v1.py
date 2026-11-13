@@ -21,6 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2 as package_v2  # noqa: E402
 
 
@@ -78,9 +79,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args(argv)
     try:
-        if args.output.exists():
+        if storage_io.exists(args.output):
             raise ResidualLedgerError(f"refusing to overwrite output: {args.output}")
-        raw = args.residual_receipt.read_bytes()
+        raw = storage_io.read_bytes(args.residual_receipt)
         receipt = json.loads(raw.decode("utf-8"))
         if not isinstance(receipt, dict) or raw != package_v2.canonical_json_bytes(receipt):
             raise ResidualLedgerError("residual receipt must be canonical JSON")
@@ -88,7 +89,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (OSError, UnicodeDecodeError, json.JSONDecodeError, ResidualLedgerError) as exc:
         parser.error(str(exc))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(package_v2.canonical_json_bytes(result))
+    storage_io.write_bytes(args.output, package_v2.canonical_json_bytes(result))
     print(json.dumps({"manager_count": len(result["managers"])}, sort_keys=True))
     return 0
 

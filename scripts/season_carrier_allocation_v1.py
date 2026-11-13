@@ -24,6 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts.prepare_2015_world_fifa16_carrier_allocation import group_for_carrier
 
 
@@ -412,7 +413,7 @@ def _row(group: str, carrier: Mapping[str, Any], club: Mapping[str, Any], method
 
 
 def _read(path: Path) -> dict[str, Any]:
-    raw = path.read_bytes()
+    raw = storage_io.read_bytes(path)
     value = json.loads(raw.decode())
     if not isinstance(value, dict) or raw != canonical_json_bytes(value):
         raise AllocationError(f"input must be canonical JSON: {path}")
@@ -427,7 +428,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     result = build_allocation(source=_read(args.source), registry=_read(args.registry))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_json_bytes(result))
+    storage_io.write_bytes(args.output, canonical_json_bytes(result))
     print(json.dumps(result["coverage"], sort_keys=True))
     return 0
 

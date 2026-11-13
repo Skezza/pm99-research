@@ -10,6 +10,14 @@ race.  It still does not reveal a writable competition topology field.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -23,11 +31,11 @@ REPORT_SCHEMA = "pm99-foreign-host-frame-comparison-v1"
 
 
 def sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def load_capture(path: Path) -> dict[str, Any]:
-    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload = json.loads(storage_io.read_text(path, encoding='utf-8'))
     if not isinstance(payload, dict) or payload.get("schema") != SCHEMA:
         raise ValueError(f"Expected {SCHEMA} capture JSON")
     tiles = payload.get("tiles")
@@ -50,7 +58,7 @@ def compare(*, capture: dict[str, Any], roots: list[Path]) -> dict[str, Any]:
             if not screenshot or Path(screenshot).is_absolute() or ".." in Path(screenshot).parts:
                 raise ValueError("tile screenshot must be a safe relative path")
             path = root / screenshot
-            sequence.append(sha256(path) if path.is_file() else None)
+            sequence.append(sha256(path) if storage_io.is_file(path) else None)
         sequences.append(sequence)
     for index, item in enumerate(tiles):
         tile_index = int(item["tile_index"])
@@ -85,7 +93,7 @@ def compare(*, capture: dict[str, Any], roots: list[Path]) -> dict[str, Any]:
         "schema": REPORT_SCHEMA,
         "read_only": True,
         "capture_id": capture.get("capture_id"),
-        "roots": [str(root.resolve()) for root in roots],
+        "roots": [str(storage_io.resolve(root)) for root in roots],
         "counts": {
             "captures": len(roots),
             "tiles": len(rows),
@@ -112,11 +120,11 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     try:
-        report = compare(capture=load_capture(args.capture), roots=[path.resolve() for path in args.capture_root])
+        report = compare(capture=load_capture(args.capture), roots=[storage_io.resolve(path) for path in args.capture_root])
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         parser.error(str(exc))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(args.output, json.dumps(report, indent=2, sort_keys=True) + '\n', encoding='utf-8')
     print(json.dumps(report["counts"], sort_keys=True))
     return 0
 

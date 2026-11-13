@@ -4,6 +4,7 @@ from pathlib import Path
 from datetime import date
 
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_sourced_birth_years_v1 as source
 from scripts import season_historical_roster_audit_v1 as audit
 from scripts import season_release_registry_v1 as registry
@@ -12,9 +13,9 @@ from scripts.audit_compiled_player_birth_dates_v1 import inspect
 
 
 def verify(season, release_id, plan_path, output):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('birth-year verification evidence is immutable')
-    plan = json.loads(plan_path.read_text())
+    plan = json.loads(storage_io.read_text(plan_path))
     from scripts import season_biographic_birth_years_v1 as biographic
     reader = biographic if plan.get('policy') == biographic.POLICY else source
     from scripts import season_cross_period_birth_years_v1 as cross_period
@@ -27,10 +28,10 @@ def verify(season, release_id, plan_path, output):
     release = registry.load_registered_release(season, release_id)
     reader.verify(base, plan)
     saved = registry.ROOT / release.locator['sourced_birth_year_plan_path']
-    if json.loads(saved.read_text()) != plan:
+    if json.loads(storage_io.read_text(saved)) != plan:
         raise ValueError('compiled birth-year plan differs')
-    before = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    after = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    before = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    after = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     if len(before) != len(after):
         raise ValueError('birth-year repair changed native file length')
     entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(before).entries}
@@ -57,8 +58,8 @@ def verify(season, release_id, plan_path, output):
         if digest != registry.sha256_file(base.game_path/name):
             raise ValueError('birth-year repair changed another native file or executable')
         unchanged[name] = digest
-    original = json.loads(base.package_path.read_text())
-    package = json.loads(release.package_path.read_text())
+    original = json.loads(storage_io.read_text(base.package_path))
+    package = json.loads(storage_io.read_text(release.package_path))
     without_new_artifact = dict(package)
     added_artifact = reader.artifact_id(plan) if hasattr(reader, 'artifact_id') else reader.PREFIX+season
     without_new_artifact['artifacts'] = [a for a in package['artifacts'] if a['id'] != added_artifact]

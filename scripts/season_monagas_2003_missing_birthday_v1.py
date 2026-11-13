@@ -8,6 +8,7 @@ import json
 import tempfile
 from pathlib import Path
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import prepare_monagas_2003_original_people_v1 as source
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 
@@ -48,7 +49,7 @@ def display_candidates(person):
         path = registry.ROOT / batch['raw_path']
         if registry.sha256_file(path) != batch['raw_sha256']:
             raise ValueError('original unknown-DOB display source changed')
-        rows = [row for row in json.loads(path.read_bytes())['data']
+        rows = [row for row in json.loads(storage_io.read_bytes(path))['data']
                 if str(row.get('id')) == str(person['source_player_id'])]
         if not rows:
             continue

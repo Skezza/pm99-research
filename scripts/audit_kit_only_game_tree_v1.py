@@ -3,6 +3,14 @@
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -22,14 +30,14 @@ SCHEMA = "pm99-kit-only-game-tree-audit-v1"
 
 def sha256(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
 
 
 def files(root: Path) -> set[Path]:
-    return {path.relative_to(root) for path in root.rglob("*") if path.is_file()}
+    return {path.relative_to(root) for path in storage_io.glob(root, '*', recursive=True) if storage_io.is_file(path)}
 
 
 def audit(*, baseline: Path, target: Path, kit_receipt: dict[str, Any]) -> dict[str, Any]:
@@ -46,7 +54,7 @@ def audit(*, baseline: Path, target: Path, kit_receipt: dict[str, Any]) -> dict[
     expected_archives = ((kit_receipt.get("target") or {}).get("archive_sha256_after") or {})
     for path in sorted(KIT_PATHS):
         expected = expected_archives.get(path.name)
-        actual = sha256(target / path) if (target / path).is_file() else None
+        actual = sha256(target / path) if storage_io.is_file(target / path) else None
         if not expected or actual != expected:
             errors.append({"code": "kit-archive-readback-mismatch", "path": str(path)})
     event_count = len(kit_receipt.get("foreign_events") or [])
@@ -56,8 +64,8 @@ def audit(*, baseline: Path, target: Path, kit_receipt: dict[str, Any]) -> dict[
     return {
         "schema_version": SCHEMA,
         "result": "pass" if not errors else "fail",
-        "baseline_game_tree": str(baseline.resolve()),
-        "target_game_tree": str(target.resolve()),
+        "baseline_game_tree": str(storage_io.resolve(baseline)),
+        "target_game_tree": str(storage_io.resolve(target)),
         "coverage": {"checked_nonkit_file_count": checked_nonkit, "checked_kit_archive_count": len(KIT_PATHS), "foreign_event_readback_count": event_count, "error_count": len(errors)},
         "errors": errors,
     }
@@ -73,10 +81,10 @@ def main() -> int:
     result = audit(
         baseline=args.baseline_game_tree,
         target=args.target_game_tree,
-        kit_receipt=json.loads(args.kit_receipt.read_text(encoding="utf-8")),
+        kit_receipt=json.loads(storage_io.read_text(args.kit_receipt, encoding='utf-8')),
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(args.output, json.dumps(result, indent=2, sort_keys=True) + '\n', encoding='utf-8')
     print(json.dumps({"result": result["result"], **result["coverage"]}, sort_keys=True))
     return 0 if result["result"] == "pass" else 1
 

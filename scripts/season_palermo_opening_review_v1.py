@@ -11,6 +11,7 @@ from pathlib import Path
 
 from bs4 import BeautifulSoup
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_atalanta_opening_review_v1 as biographies
 from scripts import season_football_data_opening_dates_v1 as dates
 from scripts import season_historical_roster_audit_v1 as annual
@@ -71,24 +72,24 @@ def prepare(release=None):
         raise ValueError('Palermo review only supports 2005-06')
     root = registry.ROOT / '.local/opening-xi-repairs-20261008'
     source_dir = root / 'palermo-source-review'
-    package = json.loads(release.package_path.read_text())
+    package = json.loads(storage_io.read_text(release.package_path))
     players = {p['carrier_id']: p for p in package['players']}
     club = next(c for c in package['clubs'] if c['carrier_id'] == 223)
     capture, annual_proof = roster.annual_capture(release.season, club)
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     bindings = {}
 
     def bind(label, path, url):
         bindings[label] = {'path': registry.relative_workspace_path(path),
                            'sha256': registry.sha256_file(path), 'url': url}
-        return path.read_bytes()
+        return storage_io.read_bytes(path)
 
     sheet = report(bind('lineup_report', root / 'italian-preflight/sources/palermo-first-round-trivela.html', URL))
     first = dates.first_fixture(bind('league_results', source_dir / '2005-06-I1.csv',
                                'https://www.football-data.co.uk/mmz4281/0506/I1.csv'), release.season, 'I1', 'Palermo')
     if first['fixture'] != {'date': '2005-08-28', 'home': 'Parma', 'away': 'Palermo', 'competition_code': 'I1'}:
         raise ValueError('original complete results first fixture differs')
-    past = guardalben_past_row((registry.ROOT / annual_proof['local_path']).read_bytes())
+    past = guardalben_past_row(storage_io.read_bytes(registry.ROOT / annual_proof['local_path']))
     keeper_bio = biographies.biography(bind('guardalben_biography', source_dir / 'matteo-guardalben-wikipedia.html',
                                            'https://en.wikipedia.org/wiki/Matteo_Guardalben'), 'Matteo Guardalben')
     keeper_sky = BeautifulSoup(bind('guardalben_profile', source_dir / 'matteo-guardalben-sky.html',

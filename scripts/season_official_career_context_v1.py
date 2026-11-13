@@ -16,6 +16,7 @@ from collections import OrderedDict
 from pathlib import Path
 from urllib.parse import urlsplit
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts.capture_2015_source_tail_squads_v1 import NATIONALITY_CODES
 
 POLICY = 'annual-source-row-person-identity-null-dob-v1'
@@ -32,16 +33,16 @@ def _pdf_executable_binding():
     found = shutil.which('pdftotext')
     if not found:
         raise FileNotFoundError('pdftotext executable was not found')
-    path = Path(found).resolve(strict=True)
-    if not path.is_file():
+    path = storage_io.resolve(Path(found), strict=True)
+    if not storage_io.is_file(path):
         raise ValueError('pdftotext resolved path is not a regular file')
-    raw = path.read_bytes()
+    raw = storage_io.read_bytes(path)
     return str(path), hashlib.sha256(raw).hexdigest()
 
 
 def _helper_code_fingerprint():
     """Bind cache entries to the helper implementation, not a version label."""
-    raw = Path(__file__).read_bytes()
+    raw = storage_io.read_bytes(Path(__file__))
     functions = '\n'.join(inspect.getsource(fn) for fn in (_read_binding, _pdf_executable_binding, source_text))
     return hashlib.sha256(raw + functions.encode('utf-8')).hexdigest()
 
@@ -394,10 +395,10 @@ def _read_binding(binding):
         raise ValueError('retained source binding malformed')
     from scripts import season_release_registry_v1 as registry
     path = registry.ROOT / binding['path']
-    if (Path(binding['path']).is_absolute() or not path.resolve().is_relative_to(registry.ROOT.resolve())
-            or path.is_symlink() or not path.is_file()):
+    if (Path(binding['path']).is_absolute() or not storage_io.resolve(path).is_relative_to(storage_io.resolve(registry.ROOT))
+            or path.is_symlink() or not storage_io.is_file(path)):
         raise ValueError('retained source path must be a regular workspace file')
-    raw = path.read_bytes()
+    raw = storage_io.read_bytes(path)
     if hashlib.sha256(raw).hexdigest() != binding.get('sha256'):
         raise ValueError('retained source digest differs')
     return path, raw
@@ -506,7 +507,7 @@ def verify_official_source_claims(witness):
         if dif_pair:
             if source.get('provider') == 'dif-current-player-profile-v1':
                 from scripts.season_dif_club_profile_match_programme_v1 import parse_dif_player_profile
-                parsed = parse_dif_player_profile(body_path.read_bytes(), url=source['url'],
+                parsed = parse_dif_player_profile(storage_io.read_bytes(body_path), url=source['url'],
                     fullname=witness['full_name'])
                 if (claim.get('label') != 'Född' or claim.get('literal') not in parsed['profile_card']
                         or source.get('nationality') != {'label': 'Nationalitet',
@@ -529,7 +530,7 @@ def verify_official_source_claims(witness):
         if source.get('document_type') == 'application/pdf':
             text = _pdf_subject_text(text,witness['full_name'],claims)
         else:
-            text = _html_subject_text(body_path.read_bytes(),witness['full_name'],source)
+            text = _html_subject_text(storage_io.read_bytes(body_path),witness['full_name'],source)
         if witness['full_name'] not in text:
             raise ValueError('official fact source subject context does not name the exact person')
         if claim['label'] + ' ' + claim['literal'] not in ' '.join(text.replace('|',' ').split()):

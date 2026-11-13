@@ -1,4 +1,5 @@
 """Resume additional source-bound private year-only deltas from R69 games."""
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_cross_period_birth_years_v1 as source
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import publish_historical_role_delta_v1 as publisher
@@ -17,7 +18,7 @@ def main():
         season = f'{year}-{str(year+1)[-2:]}'
         base = registry.load_registered_release(season, BASE)
         plan_path = ROOT / (season + '-plan.json')
-        if plan_path.exists():
+        if storage_io.exists(plan_path):
             plan = pipeline.read_json_file(plan_path)
             if plan['release_id'] != BASE or plan['package_sha256'] != registry.sha256_file(base.package_path):
                 raise ValueError('retained cross-period plan belongs to another baseline')
@@ -31,24 +32,24 @@ def main():
         descriptor = dict(season=season, release_id=BASE,
             package_sha256=registry.sha256_file(base.package_path),
             jug_sha256=registry.sha256_file(base.game_path / 'DBDAT/JUG98030.FDI'), updates=[], unresolved=[])
-        if control.exists():
+        if storage_io.exists(control):
             if pipeline.read_json_file(control) != descriptor:
                 raise ValueError('retained cross-period descriptor differs')
         else:
             pipeline.write_canonical_json(control, descriptor)
-        if not registry.locator_path(season, RELEASE).exists():
+        if not storage_io.exists(registry.locator_path(season, RELEASE)):
             publisher.publish(season, control, release_id=RELEASE,
                 birth_year_plan_path=plan_path, source_release_id=BASE)
         release = registry.load_registered_release(season, RELEASE)
         native_path = ROOT / (season + '-independent-proof.json')
-        if not native_path.exists():
+        if not storage_io.exists(native_path):
             verify(season, RELEASE, plan_path, native_path)
         else:
             native = pipeline.read_json_file(native_path)
             if native['package_sha256'] != registry.sha256_file(release.package_path):
                 raise ValueError('retained cross-period proof belongs to another recipe')
         semantic_path = ROOT / (season + '-skill-and-all-file-proof.json')
-        if not semantic_path.exists():
+        if not storage_io.exists(semantic_path):
             old_inventory, inventory = pipeline.read_json_file(base.inventory_path), pipeline.read_json_file(release.inventory_path)
             for game, inv in ((base.game_path, old_inventory), (release.game_path, inventory)):
                 pipeline.assert_tree_matches_inventory(game, inv)
@@ -66,8 +67,8 @@ def main():
                 all_other_game_files_identical=True, all_visible_skills_and_role_ratings_identical=True,
                 all_biographic_stat_ids_preserved=True, biographic_stat_records_checked=len(before)))
         replay_path = ROOT / (season + '-complete-replay-proof.json')
-        if not replay_path.exists():
-            if registry.locator_path(season, REPLAY).exists():
+        if not storage_io.exists(replay_path):
+            if storage_io.exists(registry.locator_path(season, REPLAY)):
                 raise ValueError('unreceipted cross-period replay exists; inspect instead of rerun')
             pipeline.write_canonical_json(replay_path, source.reconstruction(release, REPLAY))
         else:

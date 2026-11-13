@@ -5,6 +5,7 @@ the old coach must change too. It must not certify an opening XI or kits.
 """
 from datetime import date,datetime
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_period_squad_carrier_label_v2 as annual
 from scripts.build_original_carrier_label_20261017 import external
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
@@ -100,7 +101,7 @@ def admit(base):
     if any(c['id']!=club['id'] and prior.old.roster.club_group(c)==group and
            prior.old.roster.club_names(group,c['name'])&prior.old.roster.club_names(group,'Hertha Berlin') for c in package['clubs']):
         raise ValueError('another target club requires paired carrier adjudication')
-    jug=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes();eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    jug=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI');eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     entries={e.record_id:e for e in prior.IndexedFDIFile.from_bytes(jug).entries}
     owners=prior.owners.native_owners(eq)
     for person in people:

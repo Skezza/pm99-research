@@ -3,6 +3,14 @@
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -61,8 +69,8 @@ class Cache:
 
     def get(self, url: str, key: str) -> bytes:
         path = self.root / key
-        if path.is_file():
-            payload = path.read_bytes()
+        if storage_io.is_file(path):
+            payload = storage_io.read_bytes(path)
         elif self.offline:
             raise SoccerbaseCaptureError(f"offline snapshot is missing: {path}")
         else:
@@ -72,7 +80,7 @@ class Cache:
             if self.delay:
                 time.sleep(self.delay)
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_bytes(payload)
+            storage_io.write_bytes(path, payload)
         sample = payload[:100_000].decode("utf-8", errors="ignore").casefold()
         if len(payload) < 1000 or "just a moment..." in sample or "cf-chl-" in sample:
             raise SoccerbaseCaptureError(f"source response is not a usable Soccerbase document: {url}")
@@ -283,18 +291,18 @@ def main() -> int:
     parser.add_argument("--delay", type=float, default=0.25)
     parser.add_argument("--strict", action="store_true")
     args = parser.parse_args()
-    source_raw, primary_raw = args.source_capture.read_bytes(), args.primary_lineups.read_bytes()
+    source_raw, primary_raw = storage_io.read_bytes(args.source_capture), storage_io.read_bytes(args.primary_lineups)
     selection, selection_sha = None, None
     if args.lineup_source_selection is not None:
-        selection_raw = args.lineup_source_selection.read_bytes()
+        selection_raw = storage_io.read_bytes(args.lineup_source_selection)
         selection, selection_sha = json.loads(selection_raw), hashlib.sha256(selection_raw).hexdigest()
     intake, intake_sha = None, None
     if args.source_intake is not None:
-        intake_raw = args.source_intake.read_bytes()
+        intake_raw = storage_io.read_bytes(args.source_intake)
         intake, intake_sha = json.loads(intake_raw), hashlib.sha256(intake_raw).hexdigest()
     result = supplement(source_capture=json.loads(source_raw), source_capture_sha256=hashlib.sha256(source_raw).hexdigest(), primary=json.loads(primary_raw), primary_sha256=hashlib.sha256(primary_raw).hexdigest(), season_start_year=args.season_start_year, cache=Cache(args.cache_dir, offline=args.offline, delay=args.delay), lineup_source_selection=selection, lineup_source_selection_sha256=selection_sha, source_intake=intake, source_intake_sha256=intake_sha)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_json_bytes(result))
+    storage_io.write_bytes(args.output, canonical_json_bytes(result))
     print(json.dumps(result["summary"], sort_keys=True))
     return 1 if args.strict and result["failures"] else 0
 

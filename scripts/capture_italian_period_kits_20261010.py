@@ -4,6 +4,7 @@ from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
 
@@ -19,7 +20,7 @@ SOURCES = {
 
 def capture(url, path):
     receipt = path.with_name(path.name + '.source.json')
-    if path.exists():
+    if storage_io.exists(path):
         if pipeline.read_json_file(receipt) != dict(url=url, sha256=registry.sha256_file(path)):
             raise ValueError('retained original capture differs')
         return
@@ -28,7 +29,7 @@ def capture(url, path):
     if len(response.content) > 8 * 1024**2:
         raise ValueError('source exceeds bounded capture budget')
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(response.content)
+    storage_io.write_bytes(path, response.content)
     pipeline.write_canonical_json(receipt, dict(url=url, sha256=registry.sha256_file(path)))
 
 
@@ -36,7 +37,7 @@ def main():
     for name, (url, images) in SOURCES.items():
         page = OUTPUT / (name + '.html')
         capture(url, page)
-        soup = BeautifulSoup(page.read_bytes(), 'html.parser')
+        soup = BeautifulSoup(storage_io.read_bytes(page), 'html.parser')
         actual = {urljoin(url, image.get('src', '')) for image in soup.find_all('img')}
         for number, src in enumerate(images, 1):
             source = urljoin(url, src)

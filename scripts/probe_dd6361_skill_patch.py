@@ -25,6 +25,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from app.xor import decode_entry, encode_entry  # type: ignore
+from scripts import json_storage_io_v1 as storage_io
 from scripts import probe_bio_trailer_stats as bp  # type: ignore
 
 
@@ -222,7 +223,7 @@ def inspect_dd6361_trailer_stats(
     GUI/CLI tooling can prefill forms safely before applying changes.
     """
     in_path = Path(player_file)
-    file_bytes = in_path.read_bytes()
+    file_bytes = storage_io.read_bytes(in_path)
     entries = _iter_entries_with_lengths(file_bytes)
     markers = _collect_markers(entries)
     marker_idx, marker = _select_target_marker(markers, name_query)
@@ -272,7 +273,7 @@ def build_dd6361_pid_stats_index(
     Each entry includes the resolved biography name plus the verified mapped10 trailer fields.
     """
     in_path = Path(player_file)
-    file_bytes = in_path.read_bytes()
+    file_bytes = storage_io.read_bytes(in_path)
     entries = _iter_entries_with_lengths(file_bytes)
     markers = _collect_markers(entries)
     out: dict[int, dict[str, Any]] = {}
@@ -408,7 +409,7 @@ def patch_dd6361_trailer_stats(
     if not updates_norm:
         raise ValueError("At least one field update is required")
 
-    file_bytes = in_path.read_bytes()
+    file_bytes = storage_io.read_bytes(in_path)
     entries = _iter_entries_with_lengths(file_bytes)
     markers = _collect_markers(entries)
     marker_idx, marker = _select_target_marker(markers, name_query)
@@ -443,7 +444,7 @@ def patch_dd6361_trailer_stats(
         backup_path = create_backup(str(out_path))
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_bytes(patched_file)
+    storage_io.write_bytes(out_path, patched_file)
 
     # Verification pass on the patched output (same query).
     verify_entries = bp._iter_decoded_entries(out_path)
@@ -500,7 +501,7 @@ def patch_dd6361_trailer_stats(
     }
 
     if json_output:
-        Path(json_output).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        storage_io.write_text(Path(json_output), json.dumps(payload, indent=2) + '\n', encoding='utf-8')
     return payload
 
 

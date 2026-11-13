@@ -4,6 +4,7 @@ Private only; never changes preferred bindings or counts a case as delivered.
 """
 import os
 import shutil
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_stoke_original_alias_reserve_v1 as source
 from scripts import publish_historical_role_delta_v1 as publisher
@@ -18,9 +19,9 @@ REPLAY = 'replayed-stoke-original-alias-reserve-20261016-r117b'
 
 
 def main():
-    if (ROOT / 'complete-SOURCE-replay.json').exists():
+    if storage_io.exists(ROOT / 'complete-SOURCE-replay.json'):
         raise ValueError('completed alias build must not repeat')
-    if not (managers.ROOT / SEASON / 'complete-SOURCE-replay.json').exists():
+    if not storage_io.exists(managers.ROOT / SEASON / 'complete-SOURCE-replay.json'):
         raise ValueError('exact manager parent is not SOURCE-complete')
     if shutil.disk_usage(registry.ROOT).free < 8.3 * 1024**3:
         raise ValueError('alias build refuses to threaten8GiB reserve')
@@ -31,14 +32,14 @@ def main():
     descriptor = folder / 'inert.json'
     retained(descriptor, dict(season=SEASON, release_id=base.release_id,
         package_sha256=plan['package_sha256'], jug_sha256=plan['jug_sha256'], updates=[], unresolved=[]))
-    if not registry.locator_path(SEASON, RELEASE).exists():
+    if not storage_io.exists(registry.locator_path(SEASON, RELEASE)):
         publisher.publish(SEASON, descriptor, release_id=RELEASE, source_release_id=base.release_id,
             ownership_plan_path=path)
     actual = registry.load_registered_release(SEASON, RELEASE)
     proof = ROOT / 'native-byte-proof.json'
-    if not proof.exists():
+    if not storage_io.exists(proof):
         verify_native_batch(ROOT, RELEASE, proof, seasons=[SEASON])
-    if registry.locator_path(SEASON, REPLAY).exists():
+    if storage_io.exists(registry.locator_path(SEASON, REPLAY)):
         raise ValueError('unreceipted alias SOURCE game exists; inspect rather than rerun')
     result = source.reconstruction(actual, REPLAY)
     rebuilt = registry.load_registered_release(SEASON, REPLAY)
@@ -52,11 +53,11 @@ def main():
             (actual.game_path / 'DBDAT/JUG98030.FDI', rebuilt.game_path / 'DBDAT/JUG98030.FDI')):
         if registry.sha256_file(a) != registry.sha256_file(b):
             raise ValueError('new SOURCE copy differs before verified content sharing')
-        if a.stat().st_ino != b.stat().st_ino:
+        if (storage_io.stat_result(a).st_ino != storage_io.stat_result(b).st_ino) and not storage_io.is_compressed(a) and not storage_io.is_compressed(b):
             temporary = b.with_name(b.name + '.verified-link')
-            if temporary.exists():
+            if storage_io.exists(temporary):
                 raise ValueError('unreceipted sharing temporary')
-            os.link(a, temporary); os.replace(temporary, b)
+            storage_io.link(a, temporary); storage_io.replace_file(temporary, b)
     print(dict(actual_game_built=True, entire_SOURCE_replay=True, season=SEASON,
         native_replacement='Kris Commons', retained_defender='Sergey Shtanyuk',
         preferred_unchanged=True, runtime_review_pending=True, cases_closed=0), flush=True)

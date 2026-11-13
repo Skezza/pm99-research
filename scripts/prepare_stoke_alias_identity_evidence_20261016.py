@@ -7,6 +7,7 @@ dated career evidence. Native replacement plans follow the manager rollout.
 from datetime import datetime, date, UTC
 import re
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_historical_roster_audit_v1 as roster
 from scripts.audit_shtanyuk_runtime_aliases_20261016 import ROOT
@@ -21,7 +22,7 @@ def original(folder,key,url):
     if (row['status']!='public-original-captured' or row['url']!=url
             or raw!=folder/(key+'.html') or registry.sha256_file(raw)!=row['raw_sha256']):
         raise ValueError('original identity source URL/body/receipt changed')
-    return BeautifulSoup(raw.read_bytes(),'html.parser'),dict(path=registry.relative_workspace_path(raw),
+    return BeautifulSoup(storage_io.read_bytes(raw),'html.parser'),dict(path=registry.relative_workspace_path(raw),
         sha256=row['raw_sha256'],url=url,receipt_path=registry.relative_workspace_path(receipt),
         receipt_sha256=registry.sha256_file(receipt))
 
@@ -132,7 +133,7 @@ def prepare():
 
 def main():
     output=ROOT/'identity-and-reserve-source-admission.json'
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('completed original identity admission must not repeat')
     result=prepare()
     retained(output,dict(utc=datetime.now(UTC).isoformat(),**result))

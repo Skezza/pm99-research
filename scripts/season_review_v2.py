@@ -27,6 +27,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2 as package_v2
 
 
@@ -71,12 +72,12 @@ def sha256_bytes(value: bytes) -> str:
 
 def write_canonical_json(path: Path, value: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(canonical_json_bytes(value))
+    storage_io.write_bytes(path, canonical_json_bytes(value))
 
 
 def _read_canonical_object(path: Path, *, label: str) -> dict[str, Any]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise SeasonReviewError(f"cannot read {label}: {path}: {exc}") from exc
@@ -124,7 +125,7 @@ def _schema_errors(value: dict[str, Any]) -> list[str]:
         import jsonschema  # type: ignore[import-not-found]
     except ImportError:
         return []
-    schema = json.loads(OVERRIDES_SCHEMA_PATH.read_text(encoding="utf-8"))
+    schema = json.loads(storage_io.read_text(OVERRIDES_SCHEMA_PATH, encoding='utf-8'))
     errors = sorted(jsonschema.Draft202012Validator(schema).iter_errors(value), key=lambda item: list(item.absolute_path))
     return [f"{'.'.join(str(part) for part in error.absolute_path) or '<root>'}: {error.message}" for error in errors]
 
@@ -301,7 +302,7 @@ def _build_indexes(package: dict[str, Any]) -> tuple[dict[str, dict[str, Any]], 
 def portrait_results_from_legacy_face_receipt(package: dict[str, Any], receipt_path: Path) -> dict[str, Any]:
     """Normalise an old face-stage receipt into portable, per-player outcomes."""
     try:
-        receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+        receipt = json.loads(storage_io.read_text(receipt_path, encoding='utf-8'))
     except (OSError, json.JSONDecodeError) as exc:
         raise SeasonReviewError(f"cannot read face receipt: {receipt_path}: {exc}") from exc
     if not isinstance(receipt, dict) or not isinstance(receipt.get("rows"), list):
@@ -355,7 +356,7 @@ def portrait_results_from_application_receipt(
     never preserve an unrelated carrier portrait by accident.
     """
     try:
-        receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+        receipt = json.loads(storage_io.read_text(receipt_path, encoding='utf-8'))
     except (OSError, json.JSONDecodeError) as exc:
         raise SeasonReviewError(
             f"cannot read portrait application receipt: {receipt_path}: {exc}"

@@ -11,6 +11,7 @@ from datetime import date, datetime
 import re
 
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
 from scripts import capture_soccerbase_august_squads_v1 as source
@@ -48,7 +49,7 @@ def read_profile(path, *, person_id, team_id, day):
     receipt_path = path.with_suffix(path.suffix + '.source.json')
     receipt = pipeline.read_json_file(receipt_path)
     url = f'https://www.soccerbase.com/players/player.sd?player_id={person_id}'
-    raw = path.read_bytes()
+    raw = storage_io.read_bytes(path)
     if receipt.get('url') != url or receipt.get('sha256') != registry.sha256_file(path):
         raise ValueError('original reserve profile URL/hash changed')
     facts = source.player_profile(raw, fallback_name='', fallback_position='?')
@@ -90,10 +91,10 @@ def candidates(season, capture, actual, selected, *, annual=None):
                 raise ValueError('annual reserve discovery repeats a full name')
             annual_candidates[key]=row
     result = []
-    for path in sorted(root.glob('*.html')):
+    for path in sorted(storage_io.glob(root, '*.html')):
         # Restrict first by original profile facts; membership is established
         # only by the numerical club/date parser below, never this name filter.
-        facts = source.player_profile(path.read_bytes(), fallback_name='', fallback_position='?')
+        facts = source.player_profile(storage_io.read_bytes(path), fallback_name='', fallback_position='?')
         expected = pending.get(facts['name'].casefold())
         if expected is not None:
             if facts != expected:continue

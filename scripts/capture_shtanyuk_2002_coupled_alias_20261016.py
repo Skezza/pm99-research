@@ -1,6 +1,7 @@
 """Capture both actual repaired people after the manager sweep's normal FIFO."""
 import argparse
 import os
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import capture_registered_season_runtime_v1 as capture
 from scripts.capture_stoke_original_alias_reserve_20261016 import wait_for_sweep
@@ -11,7 +12,7 @@ TAG='shtanyuk_coupled_2002_03_r119a_20261016'
 
 
 def main(pid=None):
-    if not all((ROOT/n).exists() for n in ('native-byte-proof.json','complete-SOURCE-replay.json')):
+    if not all(storage_io.exists(ROOT / n) for n in ('native-byte-proof.json','complete-SOURCE-replay.json')):
         raise ValueError('actual coupled native and full SOURCE proofs required')
     if pid is not None:wait_for_sweep(pid)
     release=registry.load_registered_release(SEASON,RELEASE)

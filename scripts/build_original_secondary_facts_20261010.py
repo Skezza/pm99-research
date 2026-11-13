@@ -1,4 +1,5 @@
 """Build only source-proved placeholder dates and the visible Ferran country."""
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_original_secondary_facts_v1 as layer
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import publish_historical_role_delta_v1 as publisher
@@ -28,7 +29,7 @@ def main():
         if len(plan['updates']) != case['count'] or plan['unresolved']:
             raise ValueError('original secondary-fact target count changed')
         path = ROOT / (season + '-plan.json')
-        if path.exists():
+        if storage_io.exists(path):
             if pipeline.read_json_file(path) != plan:
                 raise ValueError('retained secondary-fact source plan differs')
         else:
@@ -37,23 +38,23 @@ def main():
             package_sha256=registry.sha256_file(base.package_path),
             jug_sha256=registry.sha256_file(base.game_path / 'DBDAT/JUG98030.FDI'), updates=[], unresolved=[])
         control = ROOT / (season + '-inert.json')
-        if control.exists():
+        if storage_io.exists(control):
             if pipeline.read_json_file(control) != descriptor:
                 raise ValueError('secondary-fact baseline descriptor differs')
         else:
             pipeline.write_canonical_json(control, descriptor)
-        if not registry.locator_path(season, case['release']).exists():
+        if not storage_io.exists(registry.locator_path(season, case['release'])):
             publisher.publish(season, control, release_id=case['release'],
                 profile_assignment_plan_path=path, source_release_id=base.release_id)
         release = registry.load_registered_release(season, case['release'])
         proof = ROOT / (season + '-independent-proof.json')
-        if not proof.exists():
+        if not storage_io.exists(proof):
             verify(season, case['release'], path, proof)
         elif pipeline.read_json_file(proof)['package_sha256'] != registry.sha256_file(release.package_path):
             raise ValueError('secondary-fact native proof binds another recipe')
         replay = ROOT / (season + '-complete-replay-proof.json')
-        if not replay.exists():
-            if registry.locator_path(season, case['replay']).exists():
+        if not storage_io.exists(replay):
+            if storage_io.exists(registry.locator_path(season, case['replay'])):
                 raise ValueError('unreceipted secondary-fact replay: inspect rather than repeat')
             pipeline.write_canonical_json(replay, layer.reconstruction(release, case['replay']))
         else:

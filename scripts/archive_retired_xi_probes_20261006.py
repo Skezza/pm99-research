@@ -14,6 +14,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import archive_retired_season_tests_20261004 as transport
 from scripts import archive_old_crash_probe_assets_20261006 as old
 from scripts import archive_superseded_ingress_games_20261004 as ingress
@@ -28,8 +29,8 @@ REMOTE = '/srv/hdd/pm99-archive/packages/retired-xi-probes/20261006'
 def reference_paths(path, mtime_ns, size):
     # Cache expensive path resolution only while the exact source stat is
     # unchanged. Publication replaces/modifies these files, invalidating it.
-    return tuple((ROOT / value).resolve() for value in
-        ingress.nested_strings(json.loads(path.read_text()))
+    return tuple(storage_io.resolve(ROOT / value) for value in
+        ingress.nested_strings(json.loads(storage_io.read_text(path)))
         if value.startswith(('.local/', str(ROOT) + '/')))
 
 
@@ -37,19 +38,19 @@ def guard(name):
     if name not in NAMES:
         raise ValueError('not an exact retired XI crash probe')
     source = old.guard_probe(name)
-    source_root = source.resolve()
+    source_root = storage_io.resolve(source)
     for asset in old.ASSETS:
         receipt = old.RECEIPTS / name / asset / 'receipt.json'
-        value = json.loads(receipt.read_text())
-        if (source / asset).exists() or not value.get('archive_verified') or not value.get('local_removed'):
+        value = json.loads(storage_io.read_text(receipt))
+        if storage_io.exists(source / asset) or not value.get('archive_verified') or not value.get('local_removed'):
             raise ValueError('retired probe assets lack their completed separate archive')
     for season in registry.supported_seasons():
         release = registry.load_preferred_release(season)
-        targets = [(ROOT / value).resolve() for value in ingress.nested_strings(release.locator)
+        targets = [storage_io.resolve(ROOT / value) for value in ingress.nested_strings(release.locator)
                    if value.startswith(('.local/', str(ROOT) + '/'))]
         for path in (release.package_path, release.release_manifest_path,
                      release.compiler_receipt_path, release.build_chain_path):
-            stat = path.stat()
+            stat = storage_io.stat_result(path)
             targets.extend(reference_paths(path, stat.st_mtime_ns, stat.st_size))
         if any(target == source_root or target.is_relative_to(source_root) for target in targets):
             raise ValueError('current release or rebuild input refers to retired probe')
@@ -65,16 +66,16 @@ def run(apply=False):
     rows = []
     for name in NAMES:
         source = transport.WORKSPACE / name
-        if not source.exists():
-            receipt = json.loads((RECEIPTS / name / 'receipt.json').read_text())
+        if not storage_io.exists(source):
+            receipt = json.loads(storage_io.read_text(RECEIPTS / name / 'receipt.json'))
             if not receipt.get('archive_verified') or not receipt.get('local_removed'):
                 raise ValueError('missing retired probe lacks verified archive')
             rows.append(receipt)
             continue
         source = guard(name)
-        files = [p for p in source.rglob('*') if p.is_file()]
-        row = {'probe': name, 'files': len(files), 'bytes': sum(p.stat().st_size for p in files),
-               'allocated_bytes': sum(p.stat().st_blocks * 512 for p in files), 'read_only': True}
+        files = [p for p in storage_io.glob(source, '*', recursive=True) if storage_io.is_file(p)]
+        row = {'probe': name, 'files': len(files), 'bytes': sum(storage_io.size(p) for p in files),
+               'allocated_bytes': sum(storage_io.stat_result(p).st_blocks * 512 for p in files), 'read_only': True}
         if apply:
             # Recheck task-specific reference guards at the exact deletion gate.
             original_guard = transport.guard

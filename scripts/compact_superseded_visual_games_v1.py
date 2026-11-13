@@ -14,6 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import compact_superseded_kit_experiments_v1 as compact
 from scripts import season_release_registry_v1 as registry
 from scripts.season_art_transaction_v1 import _active_game, atomic_bytes
@@ -27,24 +28,24 @@ TARGETS = ('.local/season-visual-patches-v2/2014-15/playable/game',
 
 
 def run(delete=False):
-    preferred = {registry.load_preferred_release(s).game_path.resolve() for s in registry.supported_seasons()}
+    preferred = {storage_io.resolve(registry.load_preferred_release(s).game_path) for s in registry.supported_seasons()}
     base, dirs = compact.inventory(BASE)
     results = []
     for index, name in enumerate(TARGETS):
         source = ROOT / name
         target = OUTPUT / f'variant-{index+1}'
         receipt = target / 'receipt.json'
-        if not source.exists():
-            row = json.loads(receipt.read_text())
+        if not storage_io.exists(source):
+            row = json.loads(storage_io.read_text(receipt))
         else:
-            if source.is_symlink() or source.resolve() in preferred or _active_game(source):
+            if source.is_symlink() or storage_io.resolve(source) in preferred or _active_game(source):
                 raise ValueError('not an inactive superseded game: ' + name)
             original, directories = compact.inventory(source)
             delta = [k for k,v in original.items() if base.get(k,{}).get('sha256') != v['sha256']]
             for key in delta:
                 dest = target / 'files' / key
                 dest.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(source / key, dest)
+                storage_io.copy_file(source / key, dest, metadata=True)
                 if compact.digest(dest) != original[key]['sha256']:
                     raise ValueError('delta verification failed')
             row = {'source': str(source), 'base': str(BASE), 'files': original, 'directories': directories,
@@ -64,8 +65,8 @@ def run(delete=False):
                 shutil.rmtree(source)
                 row['deleted'] = True
                 compact.save(receipt, row)
-                for locator in (registry.LOCAL_ROOT / 'releases').glob('*/*/locator.json'):
-                    old = json.loads(locator.read_text())
+                for locator in storage_io.glob(registry.LOCAL_ROOT / 'releases', '*/*/locator.json'):
+                    old = json.loads(storage_io.read_text(locator))
                     if old.get('game_path') == name:
                         old.update(technical_status='archived-visual-game-delta',
                                    compact_game_recovery_receipt=registry.relative_workspace_path(receipt))
@@ -76,9 +77,9 @@ def run(delete=False):
 
 
 def restore(variant, destination):
-    if variant not in (1,2,3) or destination.exists():
+    if variant not in (1,2,3) or storage_io.exists(destination):
         raise ValueError('choose variant 1--3 and a new recovery directory')
-    row = json.loads((OUTPUT / f'variant-{variant}/receipt.json').read_text())
+    row = json.loads(storage_io.read_text(OUTPUT / f'variant-{variant}/receipt.json'))
     delta = set(row['delta_files'])
     inputs = {}
     for name, expected in row['files'].items():
@@ -89,7 +90,7 @@ def restore(variant, destination):
     destination.mkdir(parents=True)
     for name, path in inputs.items():
         target = destination / name
-        target.parent.mkdir(parents=True, exist_ok=True); shutil.copy2(path, target)
+        target.parent.mkdir(parents=True, exist_ok=True); storage_io.copy_file(path, target, metadata=True)
         expected = row['files'][name]
         os.chmod(target, expected['mode']); os.utime(target, ns=(expected['mtime_ns'],expected['mtime_ns']))
         if compact.digest(target) != expected['sha256']: raise ValueError('restored bytes differ')

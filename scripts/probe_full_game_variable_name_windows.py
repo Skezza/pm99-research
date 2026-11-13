@@ -10,6 +10,14 @@ profile route can visually validate those player payloads in-game.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import csv
 import json
@@ -22,12 +30,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR_ROOT = REPO_ROOT / "upstream" / "pm99-skezmod-db-editor"
 if str(EDITOR_ROOT) not in sys.path:
     sys.path.insert(0, str(EDITOR_ROOT))
-if str(Path(__file__).resolve().parent) not in sys.path:
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
+if str(storage_io.resolve(Path(__file__)).parent) not in sys.path:
+    sys.path.insert(0, str(storage_io.resolve(Path(__file__)).parent))
 
 from app.editor_actions import (  # noqa: E402
     _IndexedRawStageRecord,
@@ -114,7 +122,7 @@ def _parse_args() -> argparse.Namespace:
 
 def _json_dump(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(path, json.dumps(payload, indent=2, sort_keys=True) + '\n', encoding='utf-8')
 
 
 def _display_name(decoded: bytes, payload_offset: int) -> str:
@@ -237,7 +245,7 @@ def _status_for_patch(func: Any, decoded: bytes, current_name: str, target_name:
 
 
 def _load_windows(player_file: Path) -> tuple[list[PlayerWindow], dict[int, bytes], dict[int, Any], bytes]:
-    data = player_file.read_bytes()
+    data = storage_io.read_bytes(player_file)
     indexed = IndexedFDIFile.from_bytes(data)
     decoded_by_id: dict[int, bytes] = {}
     entries_by_id: dict[int, Any] = {}
@@ -361,11 +369,11 @@ def _load_windows(player_file: Path) -> tuple[list[PlayerWindow], dict[int, byte
 
 def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
     if not rows:
-        path.write_text("", encoding="utf-8")
+        storage_io.write_text(path, '', encoding='utf-8')
         return
     path.parent.mkdir(parents=True, exist_ok=True)
     fieldnames = list(rows[0].keys())
-    with path.open("w", newline="", encoding="utf-8") as handle:
+    with storage_io.open_file(path, 'w', newline='', encoding='utf-8') as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(rows)
@@ -489,7 +497,7 @@ def _select_samples(
 
 
 def _patch_sample_names(player_file: Path, samples: list[SamplePlayer]) -> list[dict[str, Any]]:
-    data = player_file.read_bytes()
+    data = storage_io.read_bytes(player_file)
     indexed = IndexedFDIFile.from_bytes(data)
     entries_by_id = {int(entry.record_id): entry for entry in indexed.entries}
     stages: list[tuple[int, _IndexedRawStageRecord]] = []
@@ -515,7 +523,7 @@ def _patch_sample_names(player_file: Path, samples: list[SamplePlayer]) -> list[
 
 def _write_stoke_batch_csv(path: Path, samples: list[SamplePlayer], target_team_query: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", newline="", encoding="utf-8") as handle:
+    with storage_io.open_file(path, 'w', newline='', encoding='utf-8') as handle:
         writer = csv.DictWriter(handle, fieldnames=["team", "source", "slot", "player_id", "flag"])
         writer.writeheader()
         for sample in samples:
@@ -539,7 +547,7 @@ def _build_runner_batches(
     target_team_query: str,
 ) -> list[dict[str, Any]]:
     all_game = output_dir / "all_samples_game"
-    if all_game.exists():
+    if storage_io.exists(all_game):
         shutil.rmtree(all_game)
     shutil.copytree(base_game, all_game, symlinks=True)
     patch_rows = _patch_sample_names(all_game / "DBDAT" / "JUG98030.FDI", samples)
@@ -549,7 +557,7 @@ def _build_runner_batches(
     for batch_index in sorted({sample.batch_index for sample in samples}):
         batch_samples = [sample for sample in samples if sample.batch_index == batch_index]
         batch_root = output_dir / f"runner_batch_{batch_index:02d}_game"
-        if batch_root.exists():
+        if storage_io.exists(batch_root):
             shutil.rmtree(batch_root)
         shutil.copytree(all_game, batch_root, symlinks=True)
         csv_path = output_dir / f"runner_batch_{batch_index:02d}_stoke_roster.csv"
@@ -584,9 +592,9 @@ def _build_runner_batches(
 
 def main() -> int:
     args = _parse_args()
-    base_game = Path(args.base_game).expanduser().resolve()
-    output_dir = Path(args.output_dir).expanduser().resolve()
-    if output_dir.exists():
+    base_game = storage_io.resolve(Path(args.base_game).expanduser())
+    output_dir = storage_io.resolve(Path(args.output_dir).expanduser())
+    if storage_io.exists(output_dir):
         if not args.force:
             raise SystemExit(f"Output exists: {output_dir}")
         shutil.rmtree(output_dir)

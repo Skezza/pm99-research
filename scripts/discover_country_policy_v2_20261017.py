@@ -7,6 +7,7 @@ are explicitly preferred when SOURCE-complete, not regenerated.
 """
 from datetime import UTC,datetime
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import season_original_country_policy_v2 as source
 from scripts import build_original_country_defaults_20261017 as initial
@@ -19,7 +20,7 @@ ROOT=initial.ROOT.parent/'original-country-policy-v2-discovery-20261017'
 
 def main():
     ROOT.mkdir(parents=True,exist_ok=True)
-    if (ROOT/'discovery.json').exists():
+    if storage_io.exists(ROOT / 'discovery.json'):
         raise ValueError('completed policy source discovery must not repeat')
     original_path=initial.discovery.ROOT/'discovery.json'
     original=pipeline.read_json_file(original_path)
@@ -27,13 +28,13 @@ def main():
     rows=[]
     for season in registry.supported_seasons():
         saved=ROOT/(season+'.json')
-        if saved.exists():
+        if storage_io.exists(saved):
             rows.append(pipeline.read_json_file(saved));continue
         base=registry.load_preferred_release(season)
         parent_source='current-preferred'
-        if (initial.ROOT/season/'complete-SOURCE-replay.json').exists():
+        if storage_io.exists(initial.ROOT / season / 'complete-SOURCE-replay.json'):
             base=registry.load_registered_release(season,initial.RELEASE);parent_source='existing-source-complete-r127'
-        if (policy.ROOT/season/'complete-SOURCE-replay.json').exists():
+        if storage_io.exists(policy.ROOT / season / 'complete-SOURCE-replay.json'):
             base=registry.load_registered_release(season,policy.RELEASE);parent_source='existing-source-complete-r128'
         package=pipeline.read_json_file(base.package_path)
         actors={p['carrier_id']:p for p in package['players']}

@@ -12,6 +12,7 @@ from app.bitmap_pixel_rows import (
     bitmap_pixel_ranges, read_top_down_bitmap_rows, replace_top_down_bitmap_rows,
 )
 from app.minifoto_bitmap_archive import iter_obfuscated_bmp_records_from_bytes
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
 
@@ -57,13 +58,13 @@ def create_source_envelope(*, release, source_dir, source_team_id, target_team_i
     this format adapter neither establishes historical identity nor publishes.
     """
     output = Path(output)
-    if output.exists() or output.is_symlink():
+    if storage_io.exists(output) or output.is_symlink():
         raise ValueError('factory source envelope output must be new')
     source_name, target_name = f'EQ96{source_team_id:04d}.BMP', f'EQ96{target_team_id:04d}.BMP'
     prepared, proofs = {}, {}
     for name in ARCHIVES:
-        original = (Path(source_dir) / name).read_bytes()
-        target_bytes = (release.game_path / 'DBDAT' / name).read_bytes()
+        original = storage_io.read_bytes(Path(source_dir) / name)
+        target_bytes = storage_io.read_bytes(release.game_path / 'DBDAT' / name)
         source_records = records(name, original)
         target_records = records(name, target_bytes)
         sources = [r for r in source_records if r.file_name == source_name]
@@ -109,7 +110,7 @@ def create_source_envelope(*, release, source_dir, source_team_id, target_team_i
     # Complete all preflight checks before creating any source-envelope files.
     output.mkdir(parents=True)
     for name, raw in prepared.items():
-        (output / name).write_bytes(raw)
+        storage_io.write_bytes(output / name, raw)
     receipt = dict(schema='pm99-literal-factory-pixels-target-header-source-envelope-v1',
         season=release.season, parent_release_id=release.release_id,
         parent_manifest_sha256=release.manifest_sha256,

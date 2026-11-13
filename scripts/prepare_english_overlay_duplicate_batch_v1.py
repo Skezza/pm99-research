@@ -10,6 +10,7 @@ from pathlib import Path
 import sys
 
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import closeout_duplicate_ownership_batch_v1 as batch
 from scripts import season_duplicate_english_overlay_v1 as overlay
 from scripts import season_release_registry_v1 as registry
@@ -17,8 +18,8 @@ from scripts import season_pipeline_v2 as pipeline
 
 
 def prepare(input_root,english_plan_path,output):
-    if output.exists():raise ValueError('next batch plans are immutable')
-    plan=json.loads(english_plan_path.read_text());release=registry.load_preferred_release('2015-16')
+    if storage_io.exists(output):raise ValueError('next batch plans are immutable')
+    plan=json.loads(storage_io.read_text(english_plan_path));release=registry.load_preferred_release('2015-16')
     if plan['season']!='2015-16' or not plan['updates'] or any(r['layer']!='english' for r in plan['updates']):
         raise ValueError('requires the exact English-only 2015 correction proposal')
     if (plan['release_id'],plan['package_sha256'],plan['jug_sha256'])!=(
@@ -27,7 +28,7 @@ def prepare(input_root,english_plan_path,output):
     overlay.validate_binding(release,plan)
     selected=[s for s in registry.supported_seasons() if s!='2015-16']
     batch.rebase_completed_plans(input_root,output,seasons=selected)
-    if any(json.loads(p.read_text())['updates'] for p in output.glob('*/ownership-plan.json')):
+    if any(json.loads(storage_io.read_text(p))['updates'] for p in storage_io.glob(output, '*/ownership-plan.json')):
         raise ValueError('the preceding batch has not finished promotion; do not rebuild its slots')
     target=output/'2015-16/ownership-plan.json';target.parent.mkdir(parents=True)
     pipeline.write_canonical_json(target,plan)

@@ -7,6 +7,7 @@ import argparse
 import copy
 from datetime import UTC, datetime
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import build_shinnie_country_20261017 as build
 from scripts.capture_shinnie_country_20261017 import TAG
 from scripts import season_original_secondary_facts_v1 as source
@@ -32,7 +33,7 @@ def main(previous_version):
     audit_root = build.ROOT.parent
     previous_path = audit_root / f'release-delivery-checklist-v{previous_version}.json'
     output = audit_root / f'release-delivery-checklist-v{previous_version + 1}.json'
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('completed country publication must not repeat')
     previous = pipeline.read_json_file(previous_path)
     old = previous['current_release_bindings']
@@ -59,7 +60,7 @@ def main(previous_version):
         raise ValueError('country whole SOURCE proof incomplete')
     for release in (actual, rebuilt):
         pipeline.assert_tree_matches_inventory(release.game_path, pipeline.read_json_file(actual.inventory_path))
-    if actual.package_path.read_bytes() != rebuilt.package_path.read_bytes():
+    if storage_io.read_bytes(actual.package_path) != storage_io.read_bytes(rebuilt.package_path):
         raise ValueError('whole country SOURCE recipe differs')
     evidence = registry.ROOT / '.local/runlogs/pm99_runner' / TAG
     visual = pipeline.read_json_file(folder / 'startup-visual-review.json')

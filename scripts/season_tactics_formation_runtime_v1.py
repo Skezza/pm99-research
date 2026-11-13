@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT), str(ROOT / 'upstream/pm99-skezmod-db-editor')]
 from app.player_initial_order import read_initial_order
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_contextual_tactics_v1 as tactics
 from scripts import season_contextual_tactics_rollout_v1 as rollout
 from scripts import season_pipeline_v2 as pipeline
@@ -75,21 +76,21 @@ def sample_one(sample, *, worker, root):
         tag = previous_run
     else:
         candidate = parent / 'english-rollout-candidate-v3'
-        if not candidate.exists():
+        if not storage_io.exists(candidate):
             candidate = parent / 'english-rollout-candidate-v1'
         tag = RETRY_TAGS.get(formation, f"tactics_shape_{formation.replace('-', '_')}_{season.replace('-', '_')}_20261005_a")
-    layer = json.loads((candidate / 'contextual-tactics.json').read_text())
+    layer = json.loads(storage_io.read_text(candidate / 'contextual-tactics.json'))
     row = next(c for c in layer['clubs'] if c['carrier_id'] == carrier)
     if row['formation'] != formation or row['name'] != name:
         raise ValueError('formation sample identity differs from frozen candidate')
-    receipt = json.loads((candidate / 'candidate-receipt.json').read_text())
-    english = json.loads((candidate / 'english-season-package.json').read_text())
+    receipt = json.loads(storage_io.read_text(candidate / 'candidate-receipt.json'))
+    english = json.loads(storage_io.read_text(candidate / 'english-season-package.json'))
     club = next(c for c in english['clubs'] if c['carrier_id'] == carrier)
     coords = selector(english, club)
     run = ROOT / '.local/runlogs/pm99_runner' / tag
     proof_path = root / 'formation-runtime-proofs-v2' / (formation + '.json')
-    if not (run / 'summary.json').exists():
-        if run.exists():
+    if not storage_io.exists(run / 'summary.json'):
+        if storage_io.exists(run):
             raise ValueError('incomplete/failed run is retained; investigate rather than blindly relaunch: ' + str(run))
         if previous_run:
             raise ValueError('previous runtime sample is missing')
@@ -105,11 +106,11 @@ def sample_one(sample, *, worker, root):
         env = dict(os.environ, PM99_RUNNER_ARCHIVE_COLD_RUNS='0', PM99_RUNNER_RUN_ROOT_BUDGET_ENFORCE='0')
         subprocess.run(command, cwd=ROOT, env=env, check=True)
     review = root / 'formation-header-reviews-v1' / (tag + '.json')
-    proof = verify(candidate, run, carrier, header_review=review if review.is_file() else None)
-    launch = json.loads((run / 'control_launch.json').read_text())['child_command']
+    proof = verify(candidate, run, carrier, header_review=review if storage_io.is_file(review) else None)
+    launch = json.loads(storage_io.read_text(run / 'control_launch.json'))['child_command']
     def argument(flag):
         return launch[launch.index(flag) + 1]
-    if (Path(argument('--dbdat-dir')).resolve() != (candidate / 'DBDAT').resolve() or
+    if (storage_io.resolve(Path(argument('--dbdat-dir'))) != storage_io.resolve(candidate / 'DBDAT') or
             registry.sha256_file(Path(argument('--exe-file'))) != registry.sha256_file(Path(receipt['exe_path']))):
         raise ValueError('formation proof does not bind the season database and executable')
     proof.update({'candidate_path': str(candidate), 'run_path': str(run),
@@ -117,8 +118,8 @@ def sample_one(sample, *, worker, root):
                   'candidate_jug_sha256': registry.sha256_file(candidate / 'DBDAT/JUG98030.FDI'),
                   'season_exe_sha256': registry.sha256_file(Path(receipt['exe_path'])),
                   'selector': coords, 'season': season, 'registered': False})
-    if proof_path.exists():
-        frozen = json.loads(proof_path.read_text())
+    if storage_io.exists(proof_path):
+        frozen = json.loads(storage_io.read_text(proof_path))
         frozen.setdefault('header_visual_review', None)
         if pipeline.canonical_json_bytes(frozen) != pipeline.canonical_json_bytes(proof):
             raise ValueError('frozen formation proof differs on replay')
@@ -137,31 +138,31 @@ def verify_coverage(root, candidates):
     a claim the new whole database was launched in that earlier run.
     """
     proven = {}
-    for path in (root / 'formation-runtime-proofs-v2').glob('*.json'):
-        stored = json.loads(path.read_text())
+    for path in storage_io.glob(root / 'formation-runtime-proofs-v2', '*.json'):
+        stored = json.loads(storage_io.read_text(path))
         candidate, run = Path(stored['candidate_path']), Path(stored['run_path'])
         review = stored.get('header_visual_review')
         proof = verify(candidate, run, stored['carrier_id'], header_review=Path(review['path']) if review else None)
         if pipeline.canonical_json_bytes(proof) != pipeline.canonical_json_bytes({k: stored.get(k) for k in proof}):
             raise ValueError('formation runtime evidence changed')
-        launch = json.loads((run / 'control_launch.json').read_text())['child_command']
+        launch = json.loads(storage_io.read_text(run / 'control_launch.json'))['child_command']
         exe = Path(launch[launch.index('--exe-file') + 1])
         if (registry.sha256_file(candidate / 'DBDAT/EQ98030.FDI') != stored['candidate_eq_sha256'] or
                 registry.sha256_file(candidate / 'DBDAT/JUG98030.FDI') != stored['candidate_jug_sha256'] or
                 registry.sha256_file(exe) != stored['season_exe_sha256']):
             raise ValueError('formation source database changed')
         final = candidates / stored['season'] / 'english-rollout-candidate-v3'
-        before_layer = json.loads((candidate / 'contextual-tactics.json').read_text())
-        after_layer = json.loads((final / 'contextual-tactics.json').read_text())
+        before_layer = json.loads(storage_io.read_text(candidate / 'contextual-tactics.json'))
+        after_layer = json.loads(storage_io.read_text(final / 'contextual-tactics.json'))
         before = next(c for c in before_layer['clubs'] if c['carrier_id'] == stored['carrier_id'])
         after = next(c for c in after_layer['clubs'] if c['carrier_id'] == stored['carrier_id'])
         cid = stored['carrier_id']
-        old_eq = tactics.payloads((candidate / 'DBDAT/EQ98030.FDI').read_bytes())[cid]
-        new_eq = tactics.payloads((final / 'DBDAT/EQ98030.FDI').read_bytes())[cid]
+        old_eq = tactics.payloads(storage_io.read_bytes(candidate / 'DBDAT/EQ98030.FDI'))[cid]
+        new_eq = tactics.payloads(storage_io.read_bytes(final / 'DBDAT/EQ98030.FDI'))[cid]
         if before['context'] != after['context'] or old_eq != new_eq:
             raise ValueError('formation sample deployment changed in final candidate')
         def xi(folder):
-            jug = (folder / 'DBDAT/JUG98030.FDI').read_bytes()
+            jug = storage_io.read_bytes(folder / 'DBDAT/JUG98030.FDI')
             return tactics.native_xi(new_eq, jug)
         expected_xi = [(s['native_player_id'], s['native_name']) for s in after['context']['slots']]
         if xi(candidate) != expected_xi or xi(final) != expected_xi:
@@ -172,7 +173,7 @@ def verify_coverage(root, candidates):
     needed = set()
     for season in registry.supported_seasons():
         path = candidates / season / 'english-rollout-candidate-v3/contextual-tactics.json'
-        needed.update(c['formation'] for c in json.loads(path.read_text())['clubs'])
+        needed.update(c['formation'] for c in json.loads(storage_io.read_text(path))['clubs'])
     if needed - set(proven):
         raise ValueError('unproved formation families: ' + ', '.join(sorted(needed - set(proven))))
     return {'success': True, 'formation_families': sorted(needed), 'samples': proven,
@@ -188,13 +189,13 @@ def main():
     parser.add_argument('--audit', action='store_true')
     args = parser.parse_args()
     if args.audit:
-        report = verify_coverage(args.root.resolve(), args.root.resolve())
+        report = verify_coverage(storage_io.resolve(args.root), storage_io.resolve(args.root))
         print(json.dumps(report, indent=2))
         return
     for sample in SAMPLES:
         if args.only and sample[0] != args.only:
             continue
-        proof = sample_one(sample, worker=args.worker, root=args.root.resolve())
+        proof = sample_one(sample, worker=args.worker, root=storage_io.resolve(args.root))
         print(json.dumps({'formation': sample[0], 'season': sample[1], 'club': sample[3],
                           'success': proof['success'], 'named_player_phases_checked': 22}), flush=True)
 

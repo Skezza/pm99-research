@@ -5,6 +5,7 @@ summary and transport remain untouched. A new ASCII comparison token does not
 rename the player; exact native identity/club/digits still gate publication.
 """
 import unicodedata
+from scripts import json_storage_io_v1 as storage_io
 from scripts import build_original_country_defaults_20261017 as build
 from scripts.capture_original_country_defaults_20261017 import tag
 from scripts.capture_shinnie_country_20261017 import main as capture
@@ -23,11 +24,11 @@ def ascii_token(search):
 
 
 def main():
-    if ROOT.exists():raise ValueError('existing runtime resume needs inspection; never repeat successful captures')
+    if storage_io.exists(ROOT):raise ValueError('existing runtime resume needs inspection; never repeat successful captures')
     folder=build.ROOT/'2017-18';old=pipeline.read_json_file(folder/'runtime-profile-spec.json')
     transport=folder/'country_3362-profile-transport.json'
     failed=pipeline.read_json_file(transport)
-    summaries=list((registry.ROOT/failed['evidence']).rglob('summary.json'))
+    summaries=list(storage_io.glob(registry.ROOT / failed['evidence'], 'summary.json', recursive=True))
     if len(summaries)!=1:raise ValueError('one original failed token summary required')
     summary=pipeline.read_json_file(summaries[0])
     if (failed['exit_code']!=1 or summary['player_profile']['expected_name_token_satisfied'] is not False
@@ -47,14 +48,14 @@ def main():
         season=row['season']
         if season<'2017-18':continue
         folder=build.ROOT/season;actual=registry.load_registered_release(season,build.RELEASE)
-        if not (folder/'complete-SOURCE-replay.json').is_file():raise ValueError('missing complete SOURCE; inspect existing build')
+        if not storage_io.is_file(folder / 'complete-SOURCE-replay.json'):raise ValueError('missing complete SOURCE; inspect existing build')
         if season=='2017-18':
             saved=folder/'runtime-profile-spec-rejected-accent-token-v1.json'
-            if saved.exists():raise ValueError('accent retry already prepared; inspect before rerun')
-            (folder/'runtime-profile-spec.json').rename(saved)
+            if storage_io.exists(saved):raise ValueError('accent retry already prepared; inspect before rerun')
+            storage_io.move(folder / 'runtime-profile-spec.json', saved)
             profile=dict(old['profiles'][0],label='country_3362_ascii_name',token='Ramirez')
         else:
-            if (folder/'runtime-profile-spec.json').exists():raise ValueError('later runtime spec already exists; inspect before capture')
+            if storage_io.exists(folder / 'runtime-profile-spec.json'):raise ValueError('later runtime spec already exists; inspect before capture')
             plan=pipeline.read_json_file(folder/'country-plan.json')
             actor=min(plan['updates'],key=lambda r:r['carrier_id'])['before_player']
             search=build.source.original.names.undecorated(actor['name'])

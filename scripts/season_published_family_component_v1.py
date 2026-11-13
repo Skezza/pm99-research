@@ -9,6 +9,7 @@ new canonical person or independent ownership proof.
 import copy
 import json
 import re
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_published_display_names_v1 as display
 from scripts import season_published_person_identity_v1 as people
 from scripts import season_release_registry_v1 as registry
@@ -38,7 +39,7 @@ def components(raw):
 
 
 def claims(path,required_ids):
-    doc=json.loads(path.read_text())
+    doc=json.loads(storage_io.read_text(path))
     if doc.get('schema_version')!=people.SCHEMA or doc.get('policy')!=people.POLICY:
         raise ValueError('family display components require the original confirmed-person source input')
     required=set(required_ids);result={}

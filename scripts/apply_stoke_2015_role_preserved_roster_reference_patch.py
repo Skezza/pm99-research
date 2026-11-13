@@ -16,6 +16,14 @@ goalkeeper compact template into the dropped Odemwingie PID.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import json
 import shutil
@@ -25,12 +33,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR_ROOT = REPO_ROOT / "upstream" / "pm99-skezmod-db-editor"
 if str(EDITOR_ROOT) not in sys.path:
     sys.path.insert(0, str(EDITOR_ROOT))
-if str(Path(__file__).resolve().parent) not in sys.path:
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
+if str(storage_io.resolve(Path(__file__)).parent) not in sys.path:
+    sys.path.insert(0, str(storage_io.resolve(Path(__file__)).parent))
 
 from app.editor_actions import _IndexedRawStageRecord, edit_team_roster_eq_jug_linked, write_player_staged_records  # noqa: E402
 from app.editor_helpers import _player_display_name  # noqa: E402
@@ -174,9 +182,9 @@ def _patch_compact_payload(decoded: bytes, source_row: dict[str, Any], *, templa
 
 def main() -> int:
     args = _parse_args()
-    base_game = Path(args.base_game).expanduser().resolve()
-    out_game = Path(args.out_game).expanduser().resolve()
-    if out_game.exists():
+    base_game = storage_io.resolve(Path(args.base_game).expanduser())
+    out_game = storage_io.resolve(Path(args.out_game).expanduser())
+    if storage_io.exists(out_game):
         if not args.force:
             raise SystemExit(f"Output exists: {out_game}")
         shutil.rmtree(out_game)
@@ -199,7 +207,7 @@ def main() -> int:
     target_pid_by_name = {name: pid_by_name[_norm(name)] for names in TARGET_NAMES_BY_ROLE.values() for name in names if name != SHAY_GIVEN_NAME}
     target_pid_by_name[SHAY_GIVEN_NAME] = DROPPED_FORWARD_PID_FOR_SHAY_GIVEN
 
-    file_data = player_file.read_bytes()
+    file_data = storage_io.read_bytes(player_file)
     indexed = IndexedFDIFile.from_bytes(file_data)
     entries_by_id = {int(entry.record_id): entry for entry in indexed.entries}
     butland_pid = pid_by_name[_norm(BUTLAND_TEMPLATE_NAME)]
@@ -271,9 +279,9 @@ def main() -> int:
         if _norm(expected["target_name"]) != _norm(actual["player_name"])
     ]
 
-    (artifact_dir / "rosterref_variable_assignments.json").write_text(json.dumps(assignment_rows, indent=2), encoding="utf-8")
-    (artifact_dir / "jug_variable_name_patches.json").write_text(json.dumps(jug_patch_rows, indent=2), encoding="utf-8")
-    (artifact_dir / "team_roster_final.json").write_text(json.dumps(final_rows, indent=2), encoding="utf-8")
+    storage_io.write_text(artifact_dir / 'rosterref_variable_assignments.json', json.dumps(assignment_rows, indent=2), encoding='utf-8')
+    storage_io.write_text(artifact_dir / 'jug_variable_name_patches.json', json.dumps(jug_patch_rows, indent=2), encoding='utf-8')
+    storage_io.write_text(artifact_dir / 'team_roster_final.json', json.dumps(final_rows, indent=2), encoding='utf-8')
     manifest = {
         "schema": "pm99-stoke-2015-role-preserved-rosterref-variable-v1",
         "generated_at_utc": datetime.now(UTC).isoformat(),
@@ -299,7 +307,7 @@ def main() -> int:
             "ENT98030.FDI": sha256(coach_file),
         },
     }
-    (artifact_dir / "rosterref_variable_manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    storage_io.write_text(artifact_dir / 'rosterref_variable_manifest.json', json.dumps(manifest, indent=2), encoding='utf-8')
     print(json.dumps({"ok": manifest["ok"], "out_game": str(out_game), "manifest": str(artifact_dir / "rosterref_variable_manifest.json")}, indent=2))
     return 0 if manifest["ok"] else 1
 

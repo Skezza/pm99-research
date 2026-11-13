@@ -30,6 +30,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from app.loaders import load_teams  # type: ignore
 from app.xor import decode_entry  # type: ignore
+from scripts import json_storage_io_v1 as storage_io
 from scripts import probe_bio_trailer_stats as bio_probe  # type: ignore
 from scripts import probe_lineup_screenshot as lineup_probe  # type: ignore
 
@@ -81,7 +82,7 @@ def _core4_from_dd6361(row: dict[str, Any]) -> tuple[int, int, int, int]:
 
 
 def _iter_decoded_fdi_entries(file_path: Path) -> list[tuple[int, int, bytes]]:
-    data = file_path.read_bytes()
+    data = storage_io.read_bytes(file_path)
     out: list[tuple[int, int, bytes]] = []
     offset = 0x400
     data_len = len(data)
@@ -422,10 +423,10 @@ def main(argv: list[str]) -> int:
     args = parse_args(argv)
     player_file = Path(args.player_file)
     team_file = Path(args.team_file)
-    if not player_file.exists():
+    if not storage_io.exists(player_file):
         print(json.dumps({"error": f"Player file not found: {player_file}"}, indent=2))
         return 2
-    if not team_file.exists():
+    if not storage_io.exists(team_file):
         print(json.dumps({"error": f"Team file not found: {team_file}"}, indent=2))
         return 2
 
@@ -541,7 +542,7 @@ def main(argv: list[str]) -> int:
     if args.json_output:
         out_path = Path(args.json_output)
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(text + "\n", encoding="utf-8")
+        storage_io.write_text(out_path, text + '\n', encoding='utf-8')
     print(text)
     return 0
 

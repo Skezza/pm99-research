@@ -3,6 +3,14 @@
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -10,9 +18,9 @@ import os
 from pathlib import Path
 from typing import Iterable
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-LEGACY_LOCAL_GAME_ROOT = (REPO_ROOT / ".local" / "premier-manager-ninety-nine").resolve()
-DEFAULT_FIXTURE_ROOT = (REPO_ROOT / "work" / "fixtures" / "premier-manager-ninety-nine-pristine").resolve()
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
+LEGACY_LOCAL_GAME_ROOT = storage_io.resolve(REPO_ROOT / '.local' / 'premier-manager-ninety-nine')
+DEFAULT_FIXTURE_ROOT = storage_io.resolve(REPO_ROOT / 'work' / 'fixtures' / 'premier-manager-ninety-nine-pristine')
 DEFAULT_FIXTURE_MANIFEST = DEFAULT_FIXTURE_ROOT.parent / "premier-manager-ninety-nine-pristine.manifest.json"
 
 CORE_GAME_RELATIVE_PATHS: tuple[str, ...] = (
@@ -30,27 +38,27 @@ CORE_DBDAT_FILES: tuple[str, ...] = (
 
 def _candidate_first_existing(paths: Iterable[Path]) -> Path | None:
     for path in paths:
-        if path.exists():
-            return path.resolve()
+        if storage_io.exists(path):
+            return storage_io.resolve(path)
     return None
 
 
 def sha256(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
 
 
 def _mode_has_any_write_bits(path: Path) -> bool:
-    return bool(path.stat().st_mode & 0o222)
+    return bool(storage_io.stat_result(path).st_mode & 0o222)
 
 
 def _writable_targets(paths: Iterable[Path]) -> list[str]:
     writable: list[str] = []
     for path in paths:
-        if not path.exists():
+        if not storage_io.exists(path):
             continue
         if _mode_has_any_write_bits(path):
             writable.append(str(path))
@@ -58,7 +66,7 @@ def _writable_targets(paths: Iterable[Path]) -> list[str]:
 
 
 def _ensure_not_legacy_local(path: Path, *, label: str) -> Path:
-    resolved = path.expanduser().resolve()
+    resolved = storage_io.resolve(path.expanduser())
     if resolved == LEGACY_LOCAL_GAME_ROOT or resolved.is_relative_to(LEGACY_LOCAL_GAME_ROOT):
         raise ValueError(
             f"{label} points into legacy shared state: {resolved}. "
@@ -72,7 +80,7 @@ def ensure_not_legacy_path(path: str | Path, *, label: str) -> Path:
 
 
 def _ensure_required_paths(root: Path, relative_paths: Iterable[str], *, label: str) -> None:
-    missing = [str(root / relative) for relative in relative_paths if not (root / relative).is_file()]
+    missing = [str(root / relative) for relative in relative_paths if not storage_io.is_file(root / relative)]
     if missing:
         raise FileNotFoundError(f"{label} is missing required PM99 files: {', '.join(missing)}")
 
@@ -92,7 +100,7 @@ def _ensure_writable(path: Path, *, label: str) -> None:
 
 
 def fixture_manifest_path(fixture_root: Path | None = None) -> Path:
-    fixture = (fixture_root or DEFAULT_FIXTURE_ROOT).expanduser().resolve()
+    fixture = storage_io.resolve((fixture_root or DEFAULT_FIXTURE_ROOT).expanduser())
     if fixture == DEFAULT_FIXTURE_ROOT:
         return DEFAULT_FIXTURE_MANIFEST
     return fixture.parent / f"{fixture.name}.manifest.json"
@@ -150,12 +158,12 @@ def resolve_dbdat_dir(
 
     if not path.is_dir():
         raise NotADirectoryError(f"DBDAT directory not found: {path}")
-    missing = [str(path / file_name) for file_name in required_files if not (path / file_name).is_file()]
+    missing = [str(path / file_name) for file_name in required_files if not storage_io.is_file(path / file_name)]
     if missing:
         raise FileNotFoundError(f"DBDAT directory is missing required files: {', '.join(missing)}")
     if require_writable:
         _ensure_writable(path, label="DBDAT directory")
-    return path.resolve()
+    return storage_io.resolve(path)
 
 
 def default_fixture_dbdat_dir(*, required_files: Iterable[str] = CORE_DBDAT_FILES) -> Path:
@@ -165,7 +173,7 @@ def default_fixture_dbdat_dir(*, required_files: Iterable[str] = CORE_DBDAT_FILE
 def default_fixture_file(relative_path: str) -> Path:
     fixture = resolve_fixture_root()
     path = fixture / relative_path
-    if not path.is_file():
+    if not storage_io.is_file(path):
         raise FileNotFoundError(f"Fixture file not found: {path}")
     return path
 
@@ -195,9 +203,9 @@ def choose_preferred_game_root(
     if not dbdat_root.is_dir():
         raise FileNotFoundError(f"Expected DBDAT/ under {chosen}")
     for relative in CORE_DBDAT_FILES:
-        if not (dbdat_root / relative).is_file():
+        if not storage_io.is_file(dbdat_root / relative):
             raise FileNotFoundError(f"Expected {(dbdat_root / relative)}")
-    return chosen.resolve()
+    return storage_io.resolve(chosen)
 
 
 def core_file_hashes(root: Path) -> dict[str, dict[str, object]]:
@@ -207,15 +215,15 @@ def core_file_hashes(root: Path) -> dict[str, dict[str, object]]:
         out[relative_path] = {
             "path": str(file_path),
             "sha256": sha256(file_path),
-            "size": int(file_path.stat().st_size),
+            "size": int(storage_io.size(file_path)),
         }
     return out
 
 
 def load_manifest(path: Path) -> dict[str, object] | None:
-    if not path.is_file():
+    if not storage_io.is_file(path):
         return None
-    return json.loads(path.read_text(encoding="utf-8"))
+    return json.loads(storage_io.read_text(path, encoding='utf-8'))
 
 
 def _build_cli_summary(args: argparse.Namespace) -> dict[str, object]:
@@ -252,7 +260,7 @@ def _build_cli_summary(args: argparse.Namespace) -> dict[str, object]:
                 file_name: {
                     "path": str(dbdat_dir / file_name),
                     "sha256": sha256(dbdat_dir / file_name),
-                    "size": int((dbdat_dir / file_name).stat().st_size),
+                    "size": int(storage_io.size(dbdat_dir / file_name)),
                 }
                 for file_name in required_files
             },

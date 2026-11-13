@@ -8,6 +8,7 @@ It neither changes runner success nor certifies historical facts by itself.
 from pathlib import Path
 import hashlib
 from PIL import Image
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts.capture_registered_season_local_v1 import summary_matches
 
@@ -95,7 +96,7 @@ def verify(release, evidence, selector, review, reference_release,
         if registry.sha256_file(root / 'input-provenance.json') != registry.sha256_file(native_release.compiler_receipt_path):
             raise ValueError('native capture compiler input binding differs')
         hashes = {line.split()[1]: line.split()[0]
-                  for line in (root / 'dbdat_override.sha256').read_text().splitlines()
+                  for line in storage_io.read_text(root / 'dbdat_override.sha256').splitlines()
                   if line and not line.startswith('#')}
         for name in ('JUG98030.FDI', 'EQ98030.FDI', 'ENT98030.FDI', 'MINIFOTO.PKF',
                      'RIDIESC.PKF', 'MINIESC.PKF', 'NANOESC.PKF'):

@@ -7,6 +7,14 @@ without writing or dumping decompressed proprietary payloads.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -161,13 +169,13 @@ def normalize_suffixes(values: Iterable[str]) -> set[str]:
 def iter_files(roots: Iterable[Path], *, suffixes: set[str], all_files: bool) -> list[Path]:
     paths: list[Path] = []
     for root in roots:
-        if not root.exists():
+        if not storage_io.exists(root):
             print(f"warning: missing root: {root}", file=sys.stderr)
             continue
-        if root.is_file():
+        if storage_io.is_file(root):
             candidates = [root]
         else:
-            candidates = sorted(path for path in root.rglob("*") if path.is_file())
+            candidates = sorted(path for path in storage_io.glob(root, '*', recursive=True) if storage_io.is_file(path))
         for path in candidates:
             if all_files or path.suffix.lower() in suffixes:
                 paths.append(path)
@@ -370,7 +378,7 @@ def scan_file(
     max_streams_per_file: int,
     scan_dmz1: bool,
 ) -> tuple[int, list[StreamHit], int, list[DMZ1Hit]]:
-    data = path.read_bytes()
+    data = storage_io.read_bytes(path)
     candidate_count = 0
     hits: list[StreamHit] = []
     dmz1_candidate_count = 0
@@ -450,7 +458,7 @@ def main() -> int:
         family = classify_family(path)
         files_by_family[family] += 1
         try:
-            file_size = path.stat().st_size
+            file_size = storage_io.size(path)
             scanned_bytes += file_size
             bytes_by_family[family] += file_size
             candidate_count, file_hits, dmz1_candidate_count, file_dmz1_hits = scan_file(
@@ -535,7 +543,7 @@ def main() -> int:
 
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+        storage_io.write_text(args.output, json.dumps(report, indent=2) + '\n', encoding='utf-8')
         print(f"\nWrote {args.output}")
 
     return 0

@@ -7,6 +7,14 @@ structural information to pair the mutation with a fresh-game Ground screen.
 """
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -45,13 +53,13 @@ def _changed_spans(before: bytes, after: bytes) -> list[dict[str, int]]:
 
 def main() -> int:
     args = _parse_args()
-    eq_path = args.dbdat.resolve() / "EQ98030.FDI"
-    if not eq_path.is_file():
+    eq_path = storage_io.resolve(args.dbdat) / "EQ98030.FDI"
+    if not storage_io.is_file(eq_path):
         raise SystemExit(f"missing EQ98030.FDI: {eq_path}")
     if not 0 <= int(args.new_capacity) <= 2_147_483_647:
         raise SystemExit("new capacity must fit a non-negative signed 32-bit lane")
 
-    before_file = eq_path.read_bytes()
+    before_file = storage_io.read_bytes(eq_path)
     indexed = IndexedFDIFile.from_bytes(before_file)
     entry = next((item for item in indexed.entries if item.record_id == args.eq_record_id), None)
     if entry is None:
@@ -84,7 +92,7 @@ def main() -> int:
     after_file = bytearray(before_file)
     after_file[entry.payload_offset : entry.payload_offset + entry.payload_length] = raw_after
     IndexedFDIFile.from_bytes(bytes(after_file))
-    eq_path.write_bytes(after_file)
+    storage_io.write_bytes(eq_path, after_file)
 
     receipt = {
         "schema": "pm99-mode1-team-capacity-probe/v1",
@@ -114,7 +122,7 @@ def main() -> int:
         "after_sha256": hashlib.sha256(after_file).hexdigest(),
     }
     args.receipt.parent.mkdir(parents=True, exist_ok=True)
-    args.receipt.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
+    storage_io.write_text(args.receipt, json.dumps(receipt, indent=2) + '\n', encoding='utf-8')
     print(json.dumps(receipt, indent=2))
     return 0
 

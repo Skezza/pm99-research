@@ -5,6 +5,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import archive_retired_season_tests_20261004 as archive
 from scripts.archive_retired_compile_tests_20261007 import check_references
 from scripts.archive_superseded_ingress_games_20261004 import nested_strings
@@ -23,17 +24,17 @@ def run():
     def guard(source):
         inherited(source)
         check_references(source)
-        if any(p.is_symlink() for p in source.rglob('*')):
+        if any(p.is_symlink() for p in storage_io.glob(source, '*', recursive=True)):
             raise ValueError('failed build contains an unresolved symbolic link')
-        for exe in source.rglob('MANAGPRE.EXE'):
+        for exe in storage_io.glob(source, 'MANAGPRE.EXE', recursive=True):
             if _active_game(exe.parent):
                 raise ValueError('failed build contains a running game')
-        for loc in (archive.registry.LOCAL_ROOT / 'releases').glob('*/*/locator.json'):
-            row = json.loads(loc.read_text())
+        for loc in storage_io.glob(archive.registry.LOCAL_ROOT / 'releases', '*/*/locator.json'):
+            row = json.loads(storage_io.read_text(loc))
             if any(source.name in v for v in nested_strings(row)):
                 raise ValueError('registered historical input references failed build')
-            game = (ROOT / row.get('game_path', '.')).resolve()
-            if game == source.resolve() or source.resolve() in game.parents:
+            game = storage_io.resolve(ROOT / row.get('game_path', '.'))
+            if game == storage_io.resolve(source) or storage_io.resolve(source) in game.parents:
                 raise ValueError('registered historical game is inside failed build')
     archive.guard = guard
     try:

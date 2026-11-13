@@ -4,6 +4,7 @@ Annual name/DOB coverage is entity evidence only, not August squad approval.
 No regeneration, edits, new source downloads or duplicate-case closures.
 """
 from datetime import UTC,datetime
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import season_duplicate_ownership_plan_v1 as layers
 from scripts import season_historical_roster_audit_v1 as roster
@@ -15,7 +16,7 @@ ROOT=registry.ROOT/'.local/consolidated-audit-20261009/whole-club-next-current-v
 
 def main():
     path=ROOT/'current-Eastleigh-alternatives.json'
-    if path.exists():raise ValueError('completed current owner inspection must not repeat')
+    if storage_io.exists(path):raise ValueError('completed current owner inspection must not repeat')
     base=registry.load_preferred_release('2014-15')
     packages=layers.package_layers(base)
     clubs=[c for _,p,_ in packages for c in p['clubs']]

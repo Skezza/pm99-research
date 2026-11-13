@@ -3,6 +3,7 @@ import copy
 import gzip
 import hashlib
 from datetime import UTC,datetime
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import season_quality_only_delta_v1 as quality
 from scripts import season_2015_english_rating_calibration_v3 as english
@@ -22,7 +23,7 @@ def verify_woking_after_ratings():
     source_path=BATCH.parent/'woking-nationalities-v1/sixteen-native-nationalities.json'
     expected=pipeline.read_json_file(source_path)['players']
     release=registry.load_registered_release('2003-04',release_id('2003-04'))
-    raw=(release.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    raw=storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     entries={e.record_id:e for e in IndexedFDIFile.from_bytes(raw).entries}
     package=pipeline.read_json_file(release.package_path);players={p['carrier_id']:p for p in package['players']}
     if len(expected)!=16 or len({p['carrier_id'] for p in expected})!=16:raise ValueError('Woking source scope changed')
@@ -39,7 +40,7 @@ def verify_woking_after_ratings():
 
 def run():
     prior=BATCH.parent/'release-delivery-checklist-v43.json';output=BATCH.parent/'release-delivery-checklist-v44.json'
-    if output.exists():raise ValueError('completed English rating checkpoint must not repeat')
+    if storage_io.exists(output):raise ValueError('completed English rating checkpoint must not repeat')
     previous=pipeline.read_json_file(prior);result=copy.deepcopy(previous)
     baseline=registry.load_registered_release(SEASON,release_id(SEASON));release=registry.load_registered_release(SEASON,RELEASE)
     if registry.load_preferred_release(SEASON).release_id not in (baseline.release_id,release.release_id):
@@ -63,7 +64,7 @@ def run():
                 'non_rating_recipe_fields_identical','outfield_handling_guard_passed'))):raise ValueError('actual English native/SOURCE proof incomplete')
     detail=registry.ROOT/native['players_path']
     if (registry.sha256_file(detail)!=native['players_gzip_sha256']
-            or hashlib.sha256(gzip.decompress(detail.read_bytes())).hexdigest()!=native['players_sha256']):
+            or hashlib.sha256(gzip.decompress(storage_io.read_bytes(detail))).hexdigest()!=native['players_sha256']):
         raise ValueError('English native readback detail hash differs')
     main=pipeline.read_json_file(release.package_path)
     if main!=quality.bind(pipeline.read_json_file(baseline.package_path),plan):raise ValueError('English edit changed unrelated main recipe data')

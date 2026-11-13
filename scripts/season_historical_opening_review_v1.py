@@ -23,6 +23,7 @@ from bs4 import BeautifulSoup
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_historical_roster_audit_v1 as roster
@@ -153,7 +154,7 @@ def verified_page(root, receipts, url):
     receipt = matches[0]; relative = Path(receipt['cache_path'])
     if relative.is_absolute() or '..' in relative.parts: raise ValueError('unsafe cache path')
     path = root / relative
-    raw = path.read_bytes()
+    raw = storage_io.read_bytes(path)
     if hashlib.sha256(raw).hexdigest() != receipt['sha256']:
         raise ValueError('original source hash changed')
     return raw, {'path': registry.relative_workspace_path(path), **receipt}
@@ -213,18 +214,18 @@ def duplicate_queue(players, clubs, opening):
 
 def audit(season, opening_root, output_root, reuse_path=None):
     release = registry.load_preferred_release(season)
-    package = json.loads(release.package_path.read_text())
+    package = json.loads(storage_io.read_text(release.package_path))
     clubs, players, legacy = roster.add_legacy_english(package, season)
     path = opening_root / season / 'opening-lineups.json'
-    capture = json.loads(path.read_text()) if path.exists() else None
+    capture = json.loads(storage_io.read_text(path)) if storage_io.exists(path) else None
     binding = {'release_id': release.release_id, 'package_sha256': registry.sha256_file(release.package_path),
                'eq_sha256': registry.sha256_file(release.game_path / 'DBDAT/EQ98030.FDI'),
                'ent_sha256': registry.sha256_file(release.game_path / 'DBDAT/ENT98030.FDI'), 'legacy': legacy,
-               'opening_capture_path': registry.relative_workspace_path(path) if path.exists() else None,
-               'opening_capture_sha256': registry.sha256_file(path) if path.exists() else None}
+               'opening_capture_path': registry.relative_workspace_path(path) if storage_io.exists(path) else None,
+               'opening_capture_sha256': registry.sha256_file(path) if storage_io.exists(path) else None}
     reused = {}
     if reuse_path is not None:
-        previous = json.loads(reuse_path.read_text())
+        previous = json.loads(storage_io.read_text(reuse_path))
         if previous['schema_version'] != SCHEMA or previous['season'] != season or previous['bindings'] != binding:
             raise ValueError('opening evidence reuse requires identical recipe, native managers and capture')
         for row in previous['clubs']:
@@ -293,16 +294,16 @@ def main():
     pending = []
     for season in registry.supported_seasons() if args.season == 'all' else [args.season]:
         saved = args.output / season / 'opening-review.json'
-        if saved.exists():
+        if storage_io.exists(saved):
             if not args.resume: raise ValueError('completed opening review exists; use --resume')
-            document = json.loads(saved.read_text()); release = registry.load_preferred_release(season)
+            document = json.loads(storage_io.read_text(saved)); release = registry.load_preferred_release(season)
             capture = args.opening_root / season / 'opening-lineups.json'
             expected = document['bindings']
             if (document['schema_version'], document['season'], expected['release_id'], expected['package_sha256'],
                     expected['eq_sha256'], expected['ent_sha256'], expected['opening_capture_sha256']) != (
                     SCHEMA, season, release.release_id, registry.sha256_file(release.package_path),
                     registry.sha256_file(release.game_path / 'DBDAT/EQ98030.FDI'), registry.sha256_file(release.game_path / 'DBDAT/ENT98030.FDI'),
-                    registry.sha256_file(capture) if capture.exists() else None):
+                    registry.sha256_file(capture) if storage_io.exists(capture) else None):
                 raise ValueError('completed opening review is stale')
             for club in document['clubs']:
                 for source in club.get('evidence', {}).get('raw_sources', []):
@@ -311,7 +312,7 @@ def main():
             summaries.append(document['summary']); print(json.dumps({'existing_proof_reused': True, **document['summary']}), flush=True)
             continue
         old = args.reuse_root / season / 'opening-review.json' if args.reuse_root else None
-        pending.append((season, old if old and old.exists() else None))
+        pending.append((season, old if old and storage_io.exists(old) else None))
     with concurrent.futures.ProcessPoolExecutor(max_workers=args.jobs) as pool:
         work = [pool.submit(audit, season, args.opening_root, args.output, old) for season, old in pending]
         for future in concurrent.futures.as_completed(work):

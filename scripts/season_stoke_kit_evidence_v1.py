@@ -9,6 +9,14 @@ colour/pattern contract.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -51,11 +59,11 @@ def _fetch(url: str) -> bytes:
 
 def capture_url(url: str, cache_dir: Path, *, allow_network: bool, fetcher: Callable[[str], bytes] = _fetch) -> dict[str, Any]:
     index_path = cache_dir / "url-index" / f"{sha256_bytes(url.encode('utf-8'))}.json"
-    if index_path.is_file():
-        row = json.loads(index_path.read_text(encoding="utf-8"))
+    if storage_io.is_file(index_path):
+        row = json.loads(storage_io.read_text(index_path, encoding='utf-8'))
         blob = cache_dir / str(row.get("relative_path") or "")
-        if blob.is_file():
-            cached = blob.read_bytes()
+        if storage_io.is_file(blob):
+            cached = storage_io.read_bytes(blob)
             if cached.strip() and sha256_bytes(cached) == row.get("sha256"):
                 return row
     if not allow_network:
@@ -66,13 +74,13 @@ def capture_url(url: str, cache_dir: Path, *, allow_network: bool, fetcher: Call
     digest = sha256_bytes(payload)
     blob = cache_dir / "blobs" / digest[:2] / digest
     blob.parent.mkdir(parents=True, exist_ok=True)
-    if blob.exists() and blob.read_bytes() != payload:
+    if storage_io.exists(blob) and storage_io.read_bytes(blob) != payload:
         raise StokeKitEvidenceError(f"content-addressed collision: {blob}")
-    if not blob.exists():
-        blob.write_bytes(payload)
+    if not storage_io.exists(blob):
+        storage_io.write_bytes(blob, payload)
     row = {"url": url, "sha256": digest, "byte_count": len(payload), "relative_path": str(blob.relative_to(cache_dir))}
     index_path.parent.mkdir(parents=True, exist_ok=True)
-    index_path.write_bytes(canonical_json_bytes(row))
+    storage_io.write_bytes(index_path, canonical_json_bytes(row))
     return row
 
 
@@ -144,7 +152,7 @@ def parse_wikipedia_home_export(payload: bytes, expected_title: str) -> dict[str
 
 def build_matrix(cache_dir: Path, *, allow_network: bool, fetcher: Callable[[str], bytes] = _fetch) -> dict[str, Any]:
     page_cache = capture_url(HFK_PAGE, cache_dir, allow_network=allow_network, fetcher=fetcher)
-    page = (cache_dir / page_cache["relative_path"]).read_bytes()
+    page = storage_io.read_bytes(cache_dir / page_cache['relative_path'])
     entries = parse_hfk_entries(page)
     rows = []
     for season in TARGET_SEASONS:
@@ -165,7 +173,7 @@ def build_matrix(cache_dir: Path, *, allow_network: bool, fetcher: Callable[[str
         spec = _recent_specs()[season]
         export_url = _wikipedia_export(spec["title"])
         evidence = capture_url(export_url, cache_dir, allow_network=allow_network, fetcher=fetcher)
-        payload = (cache_dir / evidence["relative_path"]).read_bytes()
+        payload = storage_io.read_bytes(cache_dir / evidence['relative_path'])
         parsed = parse_wikipedia_home_export(payload, spec["title"])
         article_url = "https://en.wikipedia.org/wiki/" + urllib.parse.quote(spec["title"].replace(" ", "_"), safe="_.()")
         rows.append({
@@ -190,7 +198,7 @@ def main() -> int:
     args = parser.parse_args()
     matrix = build_matrix(args.cache_dir, allow_network=args.allow_network)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_json_bytes(matrix))
+    storage_io.write_bytes(args.output, canonical_json_bytes(matrix))
     print(json.dumps(matrix["coverage"], indent=2, sort_keys=True))
     return 0
 

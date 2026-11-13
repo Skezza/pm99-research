@@ -8,31 +8,32 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import consolidated_season_discovery_v1 as discovery
 from scripts import season_release_registry_v1 as registry
 
 
 def run(output, roster_store):
-    snapshot = json.loads((output / 'snapshot.json').read_text())
+    snapshot = json.loads(storage_io.read_text(output / 'snapshot.json'))
     assert discovery.bindings() == snapshot['rows'], 'Release bindings drifted'
     qa = []
     evidence = []
     for row in snapshot['rows']:
         path = output / 'quality' / row['season'] / 'qa-report.json'
-        report = json.loads(path.read_text())
+        report = json.loads(storage_io.read_text(path))
         assert report['inputs']['package_sha256'] == row['package_sha256']
         qa.append(report)
         evidence.append({'path': str(path), 'sha256': registry.sha256_file(path)})
-    cross = json.loads((output / 'cross-club-identities-enriched.json').read_text())
-    within = json.loads((output / 'within-club-and-date-triage.json').read_text())
-    photos = json.loads((output / 'portrait-coverage.json').read_text())
-    rosters = json.loads((roster_store / 'roster-summary.json').read_text())
+    cross = json.loads(storage_io.read_text(output / 'cross-club-identities-enriched.json'))
+    within = json.loads(storage_io.read_text(output / 'within-club-and-date-triage.json'))
+    photos = json.loads(storage_io.read_text(output / 'portrait-coverage.json'))
+    rosters = json.loads(storage_io.read_text(roster_store / 'roster-summary.json'))
     for document in (cross, photos):
         by_season = {r['season']:r for r in document['seasons']}
         assert set(by_season) == {r['season'] for r in snapshot['rows']}
         for row in snapshot['rows']:
             assert by_season[row['season']]['release_id'] == row['release_id']
-    assert json.loads((roster_store / 'snapshot.json').read_text())['rows'] == snapshot['rows']
+    assert json.loads(storage_io.read_text(roster_store / 'snapshot.json'))['rows'] == snapshot['rows']
     count = lambda check, field: sum(r['checks'][check].get(field, 0) for r in qa)
     issues = [
         {'id':'roster-duplicates', 'priority':1, 'classification':'review-candidates',

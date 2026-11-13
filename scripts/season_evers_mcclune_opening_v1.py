@@ -17,6 +17,7 @@ from statistics import median
 from app.fdi_indexed import IndexedFDIFile
 from app.player_initial_order import OrderReplacement, read_initial_order, patch_initial_orders
 from app.xor import xor_encode, xor_decode
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry, season_pipeline_v2 as pipeline
 from scripts import season_package_v2 as packages, season_package_compiler_v2 as compiler
 from scripts import season_duplicate_ownership_delta_v1 as delta
@@ -64,23 +65,23 @@ def _safe_input(path):
     p = Path(path)
     if not p.is_absolute():
         p = registry.ROOT / p
-    p = p.resolve()
-    if not p.is_relative_to(registry.ROOT.resolve()) or p.is_symlink() or not p.is_file():
+    p = storage_io.resolve(p)
+    if not p.is_relative_to(storage_io.resolve(registry.ROOT)) or p.is_symlink() or not storage_io.is_file(p):
         raise ValueError('input must be a retained workspace file')
     return p
 
 
 def _sha_file(path):
-    return digest(Path(path).read_bytes())
+    return digest(storage_io.read_bytes(Path(path)))
 
 
 def _web_text():
-    p = (registry.ROOT / WEB_PATH).resolve()
-    rp = (registry.ROOT / WEB_RECEIPT).resolve()
-    if not p.is_relative_to(registry.ROOT.resolve()) or not rp.is_relative_to(registry.ROOT.resolve()):
+    p = storage_io.resolve(registry.ROOT / WEB_PATH)
+    rp = storage_io.resolve(registry.ROOT / WEB_RECEIPT)
+    if not p.is_relative_to(storage_io.resolve(registry.ROOT)) or not rp.is_relative_to(storage_io.resolve(registry.ROOT)):
         raise ValueError('McClune source path escaped workspace')
-    b = p.read_bytes()
-    recbytes = rp.read_bytes()
+    b = storage_io.read_bytes(p)
+    recbytes = storage_io.read_bytes(rp)
     rec = json.loads(recbytes)
     text = json.loads(b)
     if (rec.get('response_sha256') != digest(b)
@@ -100,10 +101,10 @@ def _web_text():
 def _check_evers_sources():
     read = {}
     for key, (rel, expected) in EVERS_SOURCES.items():
-        p = (registry.ROOT / rel).resolve()
-        if not p.is_relative_to(registry.ROOT.resolve()):
+        p = storage_io.resolve(registry.ROOT / rel)
+        if not p.is_relative_to(storage_io.resolve(registry.ROOT)):
             raise ValueError('Evers source escaped workspace: ' + key)
-        b = p.read_bytes()
+        b = storage_io.read_bytes(p)
         if digest(b) != expected:
             raise ValueError('retained Evers source hash changed: ' + key)
         read[key] = b.decode('utf-8', 'replace')
@@ -147,8 +148,8 @@ def prepare(base, input_path):
     if _base_hashes(base) != request.get('parent'):
         raise ValueError('explicit parent manifest/package/JUG/EQ hashes differ')
     pkg = pipeline.read_json_file(base.package_path)
-    jug = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     webp, webbytes, _, webreceipt, webrecbytes, webrec = _web_text()
     evers_sources = _check_evers_sources()
     p_by = {x['carrier_id']: x for x in pkg['players']}
@@ -221,7 +222,7 @@ def prepare(base, input_path):
         'proof_grade': 'reviewed-editorial', 'does_not_preserve_old_ratings': True}
     plan = {
         'schema': SCHEMA, 'mode': MODE, 'season': base.season, 'release_id': base.release_id,
-        'source_input': {'path': registry.relative_workspace_path(p), 'sha256': digest(p.read_bytes())},
+        'source_input': {'path': registry.relative_workspace_path(p), 'sha256': digest(storage_io.read_bytes(p))},
         'request': request,
         'parent': request['parent'],
         'web_text_source': {'path': registry.relative_workspace_path(webp), 'sha256': digest(webbytes),
@@ -260,7 +261,7 @@ def verify(base, plan):
     if plan.get('schema') != SCHEMA or plan.get('mode') != MODE:
         raise ValueError('Evers unique schema/mode mismatch')
     source = _safe_input(registry.ROOT / plan['source_input']['path'])
-    if digest(source.read_bytes()) != plan['source_input']['sha256'] or prepare(base, source) != plan:
+    if digest(storage_io.read_bytes(source)) != plan['source_input']['sha256'] or prepare(base, source) != plan:
         raise ValueError('Evers request, source or native preimage no longer reproduces')
 
 
@@ -286,7 +287,7 @@ def bind(package, plan):
         'shirt_number': copy.deepcopy(mc['facts']['shirt_number']), 'weight_kg': 65}
     from scripts import season_rating_calibration_v3 as rating_v3
     model_path = registry.ROOT / 'scripts/season_rating_calibration_v3.py'
-    if digest(model_path.read_bytes()) != plan['rating_model']['sha256']:
+    if digest(storage_io.read_bytes(model_path)) != plan['rating_model']['sha256']:
         raise ValueError('McClune editorial rating model changed after prepare')
     strength = median(p['ratings']['values']['quality'] for p in result['players']
         if p['club_id'] == clubs[1261]['id'] and p['carrier_id'] != 29917)
@@ -339,8 +340,8 @@ def source_artifact(plan):
 def apply(jug, eq, plan):
     base = registry.load_registered_release(plan['season'], plan['release_id'])
     verify(base, plan)
-    oldj = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    olde = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    oldj = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    olde = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     if (digest(oldj), digest(olde)) != (plan['parent']['jug_sha256'], plan['parent']['eq_sha256']):
         raise ValueError('current registered native pair differs from bound parent')
     input_pair = (digest(jug), digest(eq))
@@ -408,16 +409,16 @@ def reconstruction(previous, release_id):
     relative = getattr(previous, 'locator', {}).get('sourced_profile_assignment_plan_path')
     if not relative:
         raise ValueError('Evers SOURCE receipt lacks assignment-plan locator')
-    path = (registry.ROOT / relative).resolve()
-    if not path.is_relative_to(registry.ROOT.resolve()):
+    path = storage_io.resolve(registry.ROOT / relative)
+    if not path.is_relative_to(storage_io.resolve(registry.ROOT)):
         raise ValueError('Evers SOURCE plan escaped workspace')
     plan = pipeline.read_json_file(path)
     if plan.get('schema') != SCHEMA or plan.get('mode') != MODE:
         raise ValueError('Evers SOURCE points to another plan schema/mode')
     base = registry.load_registered_release('2000-01', plan['release_id'])
     verify(base, plan)
-    expected_path = (previous.package_path.parent / filename(plan)).resolve()
-    if path != expected_path or digest(path.read_bytes()) != receipt.get('original_profile_assignment_plan_sha256'):
+    expected_path = storage_io.resolve(previous.package_path.parent / filename(plan))
+    if path != expected_path or digest(storage_io.read_bytes(path)) != receipt.get('original_profile_assignment_plan_sha256'):
         raise ValueError('Evers SOURCE plan path/SHA differs from compiler receipt')
     if pipeline.read_json_file(previous.package_path) != bind(pipeline.read_json_file(base.package_path), plan):
         raise ValueError('Evers SOURCE recipe does not reproduce bound postimage')
@@ -432,7 +433,7 @@ def reconstruction(previous, release_id):
         source_release_id=base.release_id, profile_assignment_plan_path=path)
     rebuilt = registry.load_registered_release('2000-01', release_id)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path, pipeline.read_json_file(previous.inventory_path))
-    if rebuilt.package_path.read_bytes() != previous.package_path.read_bytes():
+    if storage_io.read_bytes(rebuilt.package_path) != storage_io.read_bytes(previous.package_path):
         raise ValueError('Evers SOURCE complete recipe replay differs')
     return {'season': '2000-01', 'release_id': release_id,
         'complete_game_inventory_identical': True, 'complete_recipe_identical': True,

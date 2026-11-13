@@ -1,6 +1,7 @@
 """Build coupled club/coach fixes without rewriting any player or assets."""
 import argparse
 import shutil
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_period_cohort_coach_v3 as source
 from scripts import publish_historical_role_delta_v1 as publisher
 from scripts import build_registered_quality_release_v1 as reconstruction
@@ -14,7 +15,7 @@ REPLAY='replayed-hertha-dated-cohort-coach-20261017-r142b'
 
 def verify_native(base,actual,plan):
     source.verify(base,plan)
-    eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes();after_eq=(actual.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI');after_eq=storage_io.read_bytes(actual.game_path / 'DBDAT/EQ98030.FDI')
     expected,changes=source.prior.labels.rewrite_club_labels(eq,plan['updates'])
     if expected!=after_eq or len(changes)!=1:raise ValueError('coupled native club labels differ')
     before_index={e.record_id:e for e in source.prior.IndexedFDIFile.from_bytes(eq).entries}
@@ -26,7 +27,7 @@ def verify_native(base,actual,plan):
             if source.prior.labels.prefix_parts(before)[2]!=source.prior.labels.prefix_parts(after)[2]:
                 raise ValueError('club names changed ground/manager link/roster/tactics/unknown tail')
         elif before!=after:raise ValueError('another native club changed')
-    ent=(base.game_path/'DBDAT/ENT98030.FDI').read_bytes();after_ent=(actual.game_path/'DBDAT/ENT98030.FDI').read_bytes()
+    ent=storage_io.read_bytes(base.game_path / 'DBDAT/ENT98030.FDI');after_ent=storage_io.read_bytes(actual.game_path / 'DBDAT/ENT98030.FDI')
     old={e.record_id:e for e in source.prior.IndexedFDIFile.from_bytes(ent).entries}
     new={e.record_id:e for e in source.prior.IndexedFDIFile.from_bytes(after_ent).entries}
     if old.keys()!=new.keys():raise ValueError('manager directory IDs changed')
@@ -54,7 +55,7 @@ def verify_native(base,actual,plan):
 def main(season):
     folder=ROOT/season;folder.mkdir(parents=True,exist_ok=True)
     path=folder/'club-plan.json'
-    if path.exists() or source.registry.locator_path(season,RELEASE).exists():
+    if storage_io.exists(path) or storage_io.exists(source.registry.locator_path(season, RELEASE)):
         raise ValueError('existing coupled build must be inspected, not regenerated')
     base=source.registry.load_preferred_release(season)
     if base.release_id!='sourced-kiraly-period-profiles-20261017-r141a':

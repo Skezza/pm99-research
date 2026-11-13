@@ -10,6 +10,7 @@ import re
 from collections import defaultdict
 from functools import lru_cache
 from statistics import median
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_rating_calibration_v1 as old
 
 registry=old.registry;pipeline=old.pipeline;roster=old.roster;model=old.model
@@ -38,7 +39,7 @@ def subsequence(needle,haystack):
 @lru_cache(maxsize=2)
 def by_dob(file_sha):
     result=defaultdict(list)
-    for row in csv.DictReader(old.FIFA.open(newline='')):
+    for row in csv.DictReader(storage_io.open_file(old.FIFA, newline='')):
         if not row.get('dob') or any(not row.get(col) for col in old.MAPPING.values()):continue
         result[(int(row['fifa_version']),row['dob'])].append(dict(player_id=row['player_id'],edition=int(row['fifa_version']),
             date=row['fifa_update_date'],dob=row['dob'],positions=row['player_positions'],long_name=row['long_name'],

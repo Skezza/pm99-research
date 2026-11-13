@@ -1,6 +1,7 @@
 """Select ten incremental birthday fixes only after actual final-game evidence."""
 import copy
 from datetime import UTC, datetime
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import build_registered_quality_release_v1 as builder
 from scripts import attest_registered_season_runtime_v1 as runtime
@@ -15,7 +16,7 @@ from scripts.build_additional_original_person_years_20261010 import ROOT, RELEAS
 def run():
     prior = ROOT.parent / 'release-delivery-checklist-v23.json'
     output = ROOT.parent / 'release-delivery-checklist-v24.json'
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('completed incremental checkpoint must not repeat')
     result = copy.deepcopy(pipeline.read_json_file(prior))
     old = {r['season']: r for r in result['current_release_bindings']}
@@ -75,7 +76,7 @@ def run():
             + s.replace('-', '_') + '_20261010')
         path = ROOT / (s + '-final-attestation.json')
         attestation = runtime.attest(season=s, evidence_dir=evidence_dir)
-        if path.exists():
+        if storage_io.exists(path):
             if pipeline.read_json_file(path) != attestation:
                 raise ValueError('retained incremental attestation differs')
         else:

@@ -26,6 +26,7 @@ for candidate in (ROOT, EDITOR):
         sys.path.insert(0, str(candidate))
 
 from app.fdi_indexed import IndexedFDIFile  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts import reconcile_mode1_roster_base_v1 as base_rows  # noqa: E402
 from scripts import reconcile_stale_mode1_source_candidates_v1 as stale  # noqa: E402
 from scripts import season_package_v2 as package_v2  # noqa: E402
@@ -42,11 +43,11 @@ class OpeningDateCandidateError(ValueError):
 
 
 def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def _read_canonical(path: Path, *, label: str) -> dict[str, Any]:
-    raw = path.read_bytes()
+    raw = storage_io.read_bytes(path)
     value = json.loads(raw.decode("utf-8"))
     if not isinstance(value, dict) or raw != package_v2.canonical_json_bytes(value):
         raise OpeningDateCandidateError(f"{label} is not canonical JSON: {path}")
@@ -124,12 +125,12 @@ def reconcile(
     loser_club = clubs.get(str(loser["club_id"]))
     if loser_club is None or loser["id"] not in loser_club["roster_player_ids"]:
         raise OpeningDateCandidateError("losing player is not in its declared club roster")
-    eq_data = (base_tree / "DBDAT" / "EQ98030.FDI").read_bytes()
+    eq_data = storage_io.read_bytes(base_tree / 'DBDAT' / 'EQ98030.FDI')
     _owners, _rosters, modes = compiler_v2._source_roster_owners(eq_data)
     if modes.get(int(loser_club["carrier_id"])) != 1:
         raise OpeningDateCandidateError("losing player does not belong to a mode-1 club")
     jug_path = base_tree / "DBDAT" / "JUG98030.FDI"
-    jug_data = jug_path.read_bytes()
+    jug_data = storage_io.read_bytes(jug_path)
     entries = {int(entry.record_id): entry for entry in IndexedFDIFile.from_bytes(jug_data).entries}
     carrier = int(loser["carrier_id"])
     if carrier not in entries:
@@ -198,11 +199,11 @@ def reconcile(
 
 
 def _write_new(path: Path, value: Any) -> str:
-    if path.exists() or path.is_symlink():
+    if storage_io.exists(path) or path.is_symlink():
         raise OpeningDateCandidateError(f"refusing to replace existing output: {path}")
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = package_v2.canonical_json_bytes(value)
-    path.write_bytes(payload)
+    storage_io.write_bytes(path, payload)
     return hashlib.sha256(payload).hexdigest()
 
 
@@ -218,13 +219,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         output, audit = reconcile(
-            package_path=args.package.resolve(), opening_evidence_path=args.opening_evidence.resolve(),
-            candidate_name=args.candidate, base_tree=args.base_tree.resolve(),
-            verified_base_path=args.verified_base.resolve(),
+            package_path=storage_io.resolve(args.package), opening_evidence_path=storage_io.resolve(args.opening_evidence),
+            candidate_name=args.candidate, base_tree=storage_io.resolve(args.base_tree),
+            verified_base_path=storage_io.resolve(args.verified_base),
         )
-        output_hash = _write_new(args.output_package.resolve(), output)
+        output_hash = _write_new(storage_io.resolve(args.output_package), output)
         audit["output"] = {"package_path": str(args.output_package), "package_sha256": output_hash}
-        audit_hash = _write_new(args.output_audit.resolve(), audit)
+        audit_hash = _write_new(storage_io.resolve(args.output_audit), audit)
     except (OpeningDateCandidateError, OSError, ValueError, json.JSONDecodeError) as exc:
         parser.error(str(exc))
     print(json.dumps({

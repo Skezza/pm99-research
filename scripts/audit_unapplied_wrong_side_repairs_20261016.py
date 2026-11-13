@@ -4,6 +4,7 @@ Discovery only: does not certify whole rosters or mutate any season. Reuses
 original reports and independently reparses every recorded source-side repair.
 """
 from datetime import UTC, datetime
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_published_person_identity_v1 as people_source
 from scripts import season_historical_transfer_review_v1 as identities
@@ -43,8 +44,8 @@ def main():
         if not repairs:continue
         release=registry.load_preferred_release(season)
         players={p['carrier_id']:p for _,package,_ in layers.package_layers(release) for p in package['players']}
-        jug=(release.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-        eq=native.payloads((release.game_path/'DBDAT/EQ98030.FDI').read_bytes())
+        jug=storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
+        eq=native.payloads(storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI'))
         for row in repairs:
             path=registry.ROOT/row['repair_path'];repair=pipeline.read_json_file(path)
             original=registry.ROOT/repair['original_capture_path']

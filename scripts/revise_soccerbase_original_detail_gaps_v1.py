@@ -14,6 +14,7 @@ from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import replay_original_soccerbase_openings_v1 as replay
 from scripts import season_historical_transfer_review_v1 as transfer
 from scripts import season_public_identity_and_history_inputs_v1 as public
@@ -26,7 +27,7 @@ def rehash_retained(row):
     for source in row['raw_sources']:
         if (registry.sha256_file(ROOT/source['path'])!=source['sha256'] or
                 registry.sha256_file(ROOT/source['source_receipt_path'])!=source['source_receipt_sha256']
-                or json.loads((ROOT/source['source_receipt_path']).read_text())!=
+                or json.loads(storage_io.read_text(ROOT / source['source_receipt_path']))!=
                     {'url':source['url'],'sha256':source['sha256']}):
             raise ValueError('previously reparsed original Soccerbase evidence changed')
 
@@ -39,7 +40,7 @@ def revise(document,people):
         pin=section['capture_input'];source=ROOT/pin['path']
         if registry.sha256_file(source)!=pin['sha256']:
             raise ValueError('original Soccerbase capture changed during continued review')
-        capture=json.loads(source.read_text())
+        capture=json.loads(storage_io.read_text(source))
         for i,row in enumerate(section['clubs']):
             if row['status']=='original-first-fixture-reparsed':
                 rehash_retained(row)
@@ -87,8 +88,8 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--prior',type=Path,required=True);p.add_argument('--output',type=Path,required=True)
     args=p.parse_args()
-    if args.output.exists():raise ValueError('continued source review is immutable')
-    doc=json.loads(args.prior.read_text())
+    if storage_io.exists(args.output):raise ValueError('continued source review is immutable')
+    doc=json.loads(storage_io.read_text(args.prior))
     if doc['policy']!=replay.POLICY:raise ValueError('unsupported original provider bridge policy')
     pin=doc['snapshot_binding'];people,_,_,actualpin=transfer.load_snapshot(ROOT/pin['path'],ROOT/pin['pinned_receipt_path'])
     if pin!=actualpin:raise ValueError('source review snapshot binding changed')

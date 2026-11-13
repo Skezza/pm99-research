@@ -1,4 +1,5 @@
 """Bind the dated launch/ground to the private complete Eastleigh squad."""
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry,season_pipeline_v2 as pipeline
 from scripts import season_kit_render_bindings_v1 as render
 from scripts import prepare_paired_club_assets_v1 as assets
@@ -15,7 +16,7 @@ SPECS={3322:('Eastleigh','Silverlake Stadium','ground-original-3322.html',
 
 
 def main():
-    if (ROOT/'kit-catalogue.json').exists():raise ValueError('completed asset preparation must not repeat')
+    if storage_io.exists(ROOT / 'kit-catalogue.json'):raise ValueError('completed asset preparation must not repeat')
     capture=pipeline.read_json_file(ROOT/'capture-summary.json')
     evidence=[]
     for name in ('kit-launch.html','home-2014-15.jpg'):

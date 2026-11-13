@@ -1,5 +1,6 @@
 """Record built, SOURCE-reproduced games separately from runtime delivery."""
 from datetime import UTC, datetime
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import build_remaining_manager_tenures_20261016 as batch
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
@@ -8,7 +9,7 @@ from scripts.checkpoint_reserve_assignment_delivery_20261010 import binding
 
 def main():
     output=batch.ROOT/'all25-private-builds-complete.json'
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('completed build summary must not repeat')
     path=batch.ROOT/'source-admission-summary.json'
     admission=pipeline.read_json_file(path); rows=[]

@@ -1,5 +1,6 @@
 """Build the proved donor-role fix, starting with the actual City/Rangers game."""
 import argparse
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_donor_keeper_role_delta_v1 as source
 from scripts.advance_exact_fifa_roles_20261015 import build
@@ -14,7 +15,7 @@ REPLAY='replayed-donor-role-safety-20261016-r108b'
 def main(seasons, *, prepare_only=False):
     ROOT.mkdir(parents=True,exist_ok=True)
     pin=ROOT/'baseline.json'
-    if not pin.exists():
+    if not storage_io.exists(pin):
         preferred={s:registry.load_preferred_release(s).release_id for s in registry.supported_seasons()}
         retained(ROOT/'preferred-before-batch.json',preferred)
         retained(pin,[dict(season=s,release_id=CITY_PARENT if s=='2000-01' else preferred[s])
@@ -25,7 +26,7 @@ def main(seasons, *, prepare_only=False):
             path=folder/'role-plan.json'
             baseline=next(r for r in pipeline.read_json_file(pin) if r['season']==season)
             base=registry.load_registered_release(season,baseline['release_id'])
-            if path.exists():
+            if storage_io.exists(path):
                 existing=pipeline.read_json_file(path)
                 if (existing['release_id'],existing['package_sha256'],existing['jug_sha256'])!=(
                         base.release_id,registry.sha256_file(base.package_path),

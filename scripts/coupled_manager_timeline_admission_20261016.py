@@ -6,6 +6,7 @@ retain compatible coaches unchanged and leave missing/overlapping dates open.
 """
 from datetime import date
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import capture_coupled_manager_club_histories_20261016 as captures
 from scripts import remaining_manager_source_package_20261016 as sources
@@ -86,7 +87,7 @@ def original_roster_owner(base, package, source_id, clubs):
             verified.append((row, proof))
     players = {p['id']: p for p in package['players']}
     matches = []
-    eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     entries = {e.record_id: e for e in roster.IndexedFDIFile.from_bytes(eq).entries}
     for club in clubs:
         members = [players[pid] for pid in club['roster_player_ids']]
@@ -131,7 +132,7 @@ def claims_for(base, package, native_names, already_selected, display_name):
         if not clubs:
             continue
         club = clubs[0]; manager = managers[club['manager_id']]
-        raw = (registry.ROOT / source['path']).read_bytes()
+        raw = storage_io.read_bytes(registry.ROOT / source['path'])
         page = BeautifulSoup(raw, 'html.parser')
         if page.title is None or _normalise(TITLES[sid]) not in _normalise(page.title.get_text(' ', strip=True)):
             raise ValueError('reviewed original first-team club heading differs')

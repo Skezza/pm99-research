@@ -7,6 +7,7 @@ precede deletion. Current releases and required source caches are out of scope.
 import argparse
 from pathlib import Path
 import time
+from scripts import json_storage_io_v1 as storage_io
 from scripts import archive_superseded_2004_probes_20261017 as archive
 from scripts import season_release_registry_v1 as registry,season_pipeline_v2 as pipeline
 
@@ -15,8 +16,8 @@ def main(previous_pid):
     root=registry.ROOT/'.local/consolidated-audit-20261009'
     summary=root/'country-policy-v2-cohort-20261017/2010-11/final-delivery-summary.json'
     checkpoint=root/'release-delivery-checklist-v78.json'
-    while not (summary.exists() and checkpoint.exists()):
-        try:command=Path(f'/proc/{previous_pid}/cmdline').read_bytes()
+    while not (storage_io.exists(summary) and storage_io.exists(checkpoint)):
+        try:command=storage_io.read_bytes(Path(f'/proc/{previous_pid}/cmdline'))
         except FileNotFoundError as exc:
             raise ValueError('country publication stopped without final proof; inspect before archive') from exc
         if b'scripts.deliver_country_policy_v2_cohort_20261017' not in command or b'2010-11' not in command:

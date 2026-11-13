@@ -3,6 +3,7 @@ from datetime import datetime, date
 import re
 from urllib.parse import urlsplit
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_opening_identity_exchange_v1 as exchange
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_historical_roster_audit_v1 as roster
@@ -32,7 +33,7 @@ def verify_sky(selection, evidence, *, season=None, club=None):
             or not re.fullmatch(r'/football/[a-z0-9-]+/teams/[1-9][0-9]*/?', url.path)
             or url.query or url.fragment or fixture.get('date') != anchor.isoformat()):
         raise ValueError('exact Sky fixture origin/ID/date required')
-    page = BeautifulSoup(exchange.original(fixture).read_bytes(), 'lxml')
+    page = BeautifulSoup(storage_io.read_bytes(exchange.original(fixture)), 'lxml')
     canonical = page.select_one('link[rel="canonical"]')
     if canonical is None or canonical.get('href', '').rstrip('/') != fixture['url'].rstrip('/'):
         raise ValueError('Sky original canonical fixture differs')
@@ -80,7 +81,7 @@ def verify_sky(selection, evidence, *, season=None, club=None):
             or requested.netloc not in ('www.transfermarkt.co.uk', 'www.transfermarkt.com', 'www.transfermarkt.us')
             or not re.fullmatch(r'/[^/]+/kader/verein/' + str(cid) + '/saison_id/' + str(anchor.year) + r'(?:/plus/1)?/?', requested.path)):
         raise ValueError('exact target-year independent squad origin/club required')
-    annual = BeautifulSoup(exchange.original(squad).read_bytes(), 'lxml')
+    annual = BeautifulSoup(storage_io.read_bytes(exchange.original(squad)), 'lxml')
     canon = annual.select_one('link[rel="canonical"]')
     declared = urlsplit(canon.get('href', '') if canon else '')
     title = annual.title.get_text(' ', strip=True) if annual.title else ''
@@ -140,7 +141,7 @@ def verify(selection, evidence, *, season=None, club=None):
     if club is not None and (claim['source_selector']['club_name'] not in (club['name'], club.get('full_name'))
             or roster.source_group(claim['source_selector']['country_catalog']) != roster.club_group(club)):
         raise ValueError('dated reserve source mapping identifies another native club/country')
-    page = BeautifulSoup(exchange.original(entry).read_bytes(), 'lxml')
+    page = BeautifulSoup(storage_io.read_bytes(exchange.original(entry)), 'lxml')
     canonical = page.select_one('link[rel="canonical"]')
     declared = urlsplit(canonical.get('href', '') if canonical else '')
     if (canonical is None or (declared.scheme, declared.netloc) != (parsed.scheme, parsed.netloc)

@@ -2,6 +2,7 @@
 import argparse
 from pathlib import Path
 import time
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_cached_manager_repairs_20261016 as source
 from scripts.build_cached_manager_repairs_20261016 import build, ROOT
@@ -20,9 +21,9 @@ def main(build_pid):
                 reason='legacy2015 needs separate original-source replay; no generic capture binding'))
             continue
         deadline=time.monotonic()+14400
-        while not (ROLE_ROOT/season/'complete-SOURCE-replay.json').exists():
+        while not storage_io.exists(ROLE_ROOT / season / 'complete-SOURCE-replay.json'):
             proc=Path('/proc')/str(build_pid)/'cmdline'
-            if not proc.exists() or b'scripts.build_donor_role_safety_20261016' not in proc.read_bytes():
+            if not storage_io.exists(proc) or b'scripts.build_donor_role_safety_20261016' not in storage_io.read_bytes(proc):
                 raise ValueError('own parent builder stopped; inspect its terminal state')
             if time.monotonic()>deadline:raise ValueError('bounded own parent build wait expired')
             time.sleep(10)

@@ -15,6 +15,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import compact_superseded_kit_experiments_v1 as compact
 from scripts import season_release_registry_v1 as registry
 from scripts.season_art_transaction_v1 import _active_game, atomic_bytes
@@ -60,16 +61,16 @@ def save(path, value):
 
 
 def guard(source):
-    if source.name not in TARGETS or source.is_symlink() or source.resolve().parent != WORKSPACE.resolve():
+    if source.name not in TARGETS or source.is_symlink() or storage_io.resolve(source).parent != storage_io.resolve(WORKSPACE):
         raise ValueError('not an exact allowlisted test installation')
-    preferred = {registry.load_preferred_release(s).game_path.resolve()
+    preferred = {storage_io.resolve(registry.load_preferred_release(s).game_path)
                  for s in registry.supported_seasons()}
-    if source.resolve() in preferred or _active_game(source):
+    if storage_io.resolve(source) in preferred or _active_game(source):
         raise ValueError('test installation is current or running')
     # None of these experimental trees should be a registered playable release.
-    for path in (registry.LOCAL_ROOT / 'releases').glob('*/*/locator.json'):
-        value = json.loads(path.read_text()).get('game_path')
-        if value and (ROOT / value).resolve() == source.resolve():
+    for path in storage_io.glob(registry.LOCAL_ROOT / 'releases', '*/*/locator.json'):
+        value = json.loads(storage_io.read_text(path)).get('game_path')
+        if value and storage_io.resolve(ROOT / value) == storage_io.resolve(source):
             raise ValueError('registered historical release needs separate archival handling')
 
 
@@ -81,7 +82,7 @@ def seed_common_archive_files():
     and dry-run checks still gate every local deletion.
     """
     receipt = RECEIPTS / TARGETS[0] / 'receipt.json'
-    row = json.loads(receipt.read_text())
+    row = json.loads(storage_io.read_text(receipt))
     base = REMOTE + '/' + TARGETS[0]
     if not row.get('archive_verified') or not row.get('local_removed') or row['remote'] != base:
         raise ValueError('first archive is not complete and verified')
@@ -100,7 +101,7 @@ def verify_archives():
         raise ValueError('Pi archive is not on the expected mounted disk')
     checked = 0
     for name in TARGETS:
-        row = json.loads((RECEIPTS / name / 'receipt.json').read_text())
+        row = json.loads(storage_io.read_text(RECEIPTS / name / 'receipt.json'))
         if not row.get('archive_verified') or not row.get('local_removed'):
             raise ValueError('archive has not completed: ' + name)
         if row['remote'] != REMOTE + '/' + name:
@@ -117,8 +118,8 @@ def verify_archives():
 def archive(name, delete=False):
     source = WORKSPACE / name
     receipt = RECEIPTS / name / 'receipt.json'
-    if not source.exists():
-        if receipt.exists() and json.loads(receipt.read_text()).get('local_removed'):
+    if not storage_io.exists(source):
+        if storage_io.exists(receipt) and json.loads(storage_io.read_text(receipt)).get('local_removed'):
             return {'name': name, 'status': 'already-archived'}
         raise ValueError('source missing without a completed archive receipt')
     guard(source)
@@ -128,7 +129,7 @@ def archive(name, delete=False):
     if uuid != DISK_UUID:
         raise ValueError('Pi archive is not on the expected mounted disk')
     files, directories = compact.inventory(source)
-    allocated = sum(p.stat().st_blocks * 512 for p in source.rglob('*') if p.is_file())
+    allocated = sum(storage_io.stat_result(p).st_blocks * 512 for p in storage_io.glob(source, '*', recursive=True) if storage_io.is_file(p))
     destination = REMOTE + '/' + name
     remote('mkdir -p ' + shlex.quote(destination) + ' ' + shlex.quote(REMOTE_RECEIPTS))
     row = {'schema_version': 'pm99-verified-test-archive-v1', 'source': str(source),

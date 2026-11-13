@@ -1,5 +1,6 @@
 """Capture the exact corrected Genoa profile and ordinary Stoke startup."""
 import os
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry, season_pipeline_v2 as pipeline
 # Existing renderer establishes the canonical upstream library import path.
 from scripts import season_kit_render_bindings_v1
@@ -11,7 +12,7 @@ TAG = 'genoa_period_kit_2021_22_r113a_20261016'
 
 
 def main():
-    if not all((ROOT / n).exists() for n in ('native-byte-proof.json', 'complete-SOURCE-replay.json')):
+    if not all(storage_io.exists(ROOT / n) for n in ('native-byte-proof.json', 'complete-SOURCE-replay.json')):
         raise ValueError('native and complete SOURCE proofs required before runner')
     release = registry.load_registered_release(SEASON, RELEASE)
     package = pipeline.read_json_file(release.package_path)

@@ -1,5 +1,6 @@
 """Literal fixture labels, never guessed family names or cross-provider IDs."""
 import hashlib
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import hajduk_2002_original_opening_v1 as opening
 from scripts import season_august_source_fallback_v1 as fallback
@@ -16,7 +17,7 @@ def reparse(bindings):
         path=registry.ROOT/binding['path'];registry.relative_workspace_path(path)
         if registry.sha256_file(path)!=binding['sha256']:
             raise ValueError('original fixture display source changed')
-        originals.append(path.read_bytes())
+        originals.append(storage_io.read_bytes(path))
     return opening.parse(*originals)
 
 

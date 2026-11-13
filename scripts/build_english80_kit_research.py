@@ -3,6 +3,14 @@
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import collections
 import csv
@@ -51,7 +59,7 @@ def normalize_name(value: str) -> str:
 
 
 def read_json(path: Path) -> Any:
-    return json.loads(path.read_text(encoding="utf-8"))
+    return json.loads(storage_io.read_text(path, encoding='utf-8'))
 
 
 def team_name(team: dict[str, Any] | None) -> str:
@@ -117,7 +125,7 @@ def kit_preview_rel(output_dir: Path, eq_id: int) -> str:
         per_team / f"{eq_id:04d}_datpal.png",
     ]
     for candidate in candidates:
-        if candidate.exists():
+        if storage_io.exists(candidate):
             return candidate.relative_to(output_dir).as_posix()
     return ""
 
@@ -182,7 +190,7 @@ def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
         "current_kit_archives",
         "desired_kit_archives",
     ]
-    with path.open("w", newline="", encoding="utf-8") as handle:
+    with storage_io.open_file(path, 'w', newline='', encoding='utf-8') as handle:
         writer = csv.DictWriter(handle, fieldnames=fields)
         writer.writeheader()
         for row in rows:
@@ -346,7 +354,7 @@ small { display: block; color: var(--muted); margin-top: 4px; }
             "</body></html>",
         ]
     )
-    path.write_text(html_doc, encoding="utf-8")
+    storage_io.write_text(path, html_doc, encoding='utf-8')
 
 
 def build_report(args: argparse.Namespace) -> dict[str, Any]:
@@ -416,10 +424,7 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
     }
 
     matrix = {"summary": summary, "rows": rows}
-    (output_dir / "english80_identity_kit_matrix.json").write_text(
-        json.dumps(matrix, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
+    storage_io.write_text(output_dir / 'english80_identity_kit_matrix.json', json.dumps(matrix, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
     write_csv(output_dir / "english80_identity_kit_matrix.csv", rows)
     write_html(output_dir / "index.html", rows, summary)
     return summary

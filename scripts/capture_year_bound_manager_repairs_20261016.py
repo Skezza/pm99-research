@@ -1,6 +1,7 @@
 """Capture the selected exact coach game, reusing only bound safe evidence."""
 import argparse
 import os
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import capture_registered_season_runtime_v1 as capture
 from scripts import season_cached_manager_repairs_v2_20261016 as source
@@ -27,7 +28,7 @@ def selection(season):
     if pipeline.read_json_file(expected_root/'manager-plan.json')!=decision['selected_plan']:
         raise ValueError('selected actual build uses another source plan')
     for name in ('native-byte-proof.json','complete-SOURCE-replay.json'):
-        if not (expected_root/name).exists():raise ValueError('selected manager game not complete')
+        if not storage_io.exists(expected_root / name):raise ValueError('selected manager game not complete')
     run_tag=prior_tag(season) if reused else 'year_bound_managers_'+season.replace('-','_')+'_r110a_20261016'
     return expected_root,expected_release,run_tag,decision
 
@@ -38,7 +39,7 @@ def main(seasons):
         root,release_id,run_tag,_=selection(season)
         release=registry.load_registered_release(season,release_id)
         receipt=root/'startup-transport.json'
-        if receipt.exists():
+        if storage_io.exists(receipt):
             saved=pipeline.read_json_file(receipt)
             if (saved['exit_code']!=0 or saved['release_manifest_sha256']!=release.manifest_sha256
                 or saved['evidence']!=registry.relative_workspace_path(registry.ROOT/'.local/runlogs/pm99_runner'/run_tag)):

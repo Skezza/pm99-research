@@ -6,6 +6,7 @@ This module authorises no native write and does not approve global ownership.
 import copy
 from datetime import date
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_source_verified_player_changes_v1 as fields
 from scripts import season_soccerbase_original_opening_v1 as original
 from scripts import season_original_soccerbase_reserves_v1 as reserves
@@ -25,7 +26,7 @@ def body(binding):
     if (fields.registry.sha256_file(path)!=binding['sha256']
             or receipt!={'url':binding['url'],'sha256':binding['sha256']}):
         raise ValueError('retained original roster source changed')
-    return path.read_bytes()
+    return storage_io.read_bytes(path)
 
 
 def profile(binding,person_id):

@@ -3,6 +3,14 @@
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import html
 import json
@@ -27,32 +35,32 @@ def _parse_args() -> argparse.Namespace:
 
 
 def _load_json(path: Path) -> dict[str, Any]:
-    return json.loads(path.read_text(encoding="utf-8"))
+    return json.loads(storage_io.read_text(path, encoding='utf-8'))
 
 
 def _rel_path(from_dir: Path, target: Path) -> str:
-    return Path(Path(target).resolve().relative_to(Path(from_dir).resolve().anchor)).as_posix()
+    return Path(storage_io.resolve(Path(target)).relative_to(storage_io.resolve(Path(from_dir)).anchor)).as_posix()
 
 
 def _safe_rel(from_dir: Path, target: Path) -> str:
     try:
-        return Path(target).resolve().relative_to(from_dir.resolve()).as_posix()
+        return storage_io.resolve(Path(target)).relative_to(storage_io.resolve(from_dir)).as_posix()
     except Exception:
         try:
-            return Path(target).resolve().relative_to(Path.cwd().resolve()).as_posix()
+            return storage_io.resolve(Path(target)).relative_to(storage_io.resolve(Path.cwd())).as_posix()
         except Exception:
-            return str(target.resolve())
+            return str(storage_io.resolve(target))
 
 
 def main() -> int:
     args = _parse_args()
-    prepare_manifest_path = Path(args.prepare_manifest).expanduser().resolve()
-    runner_artifacts_dir = Path(args.runner_artifacts_dir).expanduser().resolve()
+    prepare_manifest_path = storage_io.resolve(Path(args.prepare_manifest).expanduser())
+    runner_artifacts_dir = storage_io.resolve(Path(args.runner_artifacts_dir).expanduser())
     prepare_manifest = _load_json(prepare_manifest_path)
     runner_summary = _load_json(runner_artifacts_dir / "summary.json")
 
     output_html = (
-        Path(args.output_html).expanduser().resolve()
+        storage_io.resolve(Path(args.output_html).expanduser())
         if args.output_html
         else prepare_manifest_path.parent / "stoke_2015_face_gallery.html"
     )
@@ -75,12 +83,12 @@ def main() -> int:
         capture = captures_by_slot.get(slot, {})
         screenshot_path = runner_artifacts_dir / "profiles" / f"{slot:02d}.png"
         screenshot_rel = _safe_rel(output_html.parent, screenshot_path)
-        screenshot_exists = screenshot_path.is_file()
+        screenshot_exists = storage_io.is_file(screenshot_path)
 
         preview_path = Path(str(entry.get("preview_path") or "")).expanduser() if entry.get("preview_path") else None
-        preview_rel = _safe_rel(output_html.parent, preview_path) if preview_path and preview_path.exists() else ""
+        preview_rel = _safe_rel(output_html.parent, preview_path) if preview_path and storage_io.exists(preview_path) else ""
         source_image_path = Path(str(entry.get("source_image_path") or "")).expanduser() if entry.get("source_image_path") else None
-        source_image_rel = _safe_rel(output_html.parent, source_image_path) if source_image_path and source_image_path.exists() else ""
+        source_image_rel = _safe_rel(output_html.parent, source_image_path) if source_image_path and storage_io.exists(source_image_path) else ""
 
         image_lookup = dict(entry.get("image_lookup") or {})
         image_url = str(image_lookup.get("image_url") or "")
@@ -157,7 +165,7 @@ def main() -> int:
             "</html>",
         ]
     )
-    output_html.write_text(html_text + "\n", encoding="utf-8")
+    storage_io.write_text(output_html, html_text + '\n', encoding='utf-8')
 
     print(
         json.dumps(

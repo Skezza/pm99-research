@@ -3,6 +3,7 @@ import argparse
 import os
 import shutil
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_kit_render_bindings_v1
 from app.fdi_indexed import IndexedFDIFile
 from scripts import season_source_bound_birthday_disagreements_v1 as source
@@ -16,9 +17,9 @@ REPLAY = 'replayed-original-birthday-disagreements-20261016-r114b'
 
 
 def proof(base, actual, plan, root):
-    before = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    after = (actual.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    before = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    after = storage_io.read_bytes(actual.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     if source.apply(before, eq, plan) != (after, eq):
         raise ValueError('actual birthday bytes differ from exact source-bound delta')
     index = {e.record_id: e for e in IndexedFDIFile.from_bytes(before).entries}
@@ -51,25 +52,25 @@ def build(season):
     candidate = next(r for r in candidates if r['season'] == season)
     base = registry.load_registered_release(season, candidate['release_id'])
     path = root / 'birthday-plan.json'
-    if path.exists():
+    if storage_io.exists(path):
         plan = pipeline.read_json_file(path); source.verify(base, plan)
     else:
         plan = source.prepare(base)
         source.bind(pipeline.read_json_file(base.package_path), plan)
-        source.apply((base.game_path / 'DBDAT/JUG98030.FDI').read_bytes(),
-                     (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes(), plan)
+        source.apply(storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI'),
+                     storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI'), plan)
         retained(path, plan)
     descriptor = root / 'inert.json'
     retained(descriptor, dict(season=season, release_id=base.release_id,
         package_sha256=plan['package_sha256'], jug_sha256=plan['jug_sha256'], updates=[], unresolved=[]))
-    if not registry.locator_path(season, RELEASE).exists():
+    if not storage_io.exists(registry.locator_path(season, RELEASE)):
         publisher.publish(season, descriptor, release_id=RELEASE, source_release_id=base.release_id,
                           profile_assignment_plan_path=path)
     actual = registry.load_registered_release(season, RELEASE)
-    if not (root / 'native-byte-proof.json').exists():
+    if not storage_io.exists(root / 'native-byte-proof.json'):
         proof(base, actual, plan, root)
-    if not (root / 'complete-SOURCE-replay.json').exists():
-        if registry.locator_path(season, REPLAY).exists():
+    if not storage_io.exists(root / 'complete-SOURCE-replay.json'):
+        if storage_io.exists(registry.locator_path(season, REPLAY)):
             raise ValueError('unreceipted birthday replay exists; inspect before proceeding')
         retained(root / 'complete-SOURCE-replay.json', source.reconstruction(actual, REPLAY))
     # Existing manager delivery uses this same verified immutable sharing.
@@ -79,11 +80,11 @@ def build(season):
                  (actual.game_path / 'DBDAT/JUG98030.FDI', rebuilt.game_path / 'DBDAT/JUG98030.FDI')):
         if registry.sha256_file(a) != registry.sha256_file(b):
             raise ValueError('completed birthday replay sharing has different bytes')
-        if a.stat().st_ino != b.stat().st_ino:
+        if (storage_io.stat_result(a).st_ino != storage_io.stat_result(b).st_ino) and not storage_io.is_compressed(a) and not storage_io.is_compressed(b):
             temporary = b.with_name(b.name + '.verified-birthday-link')
-            if temporary.exists():
+            if storage_io.exists(temporary):
                 raise ValueError('unreceipted birthday sharing temporary')
-            os.link(a, temporary); os.replace(temporary, b)
+            storage_io.link(a, temporary); storage_io.replace_file(temporary, b)
     print(dict(season=season, actual_game_built=True, literal_birthday=plan['updates'][0]['birth_date'],
         complete_SOURCE_game_and_recipe_exact=True, preferred_unchanged=True), flush=True)
 

@@ -27,6 +27,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts.audit_world_2015_source_coverage import strict_club_key  # noqa: E402
 from scripts.prepare_2015_world_fifa16_carrier_allocation import group_for_carrier  # noqa: E402
 from scripts.prepare_2015_world_source_carrier_drafts import (  # noqa: E402
@@ -152,14 +153,14 @@ def canonical_bytes(value: Any) -> bytes:
 
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
 
 
 def read_json(path: Path, label: str) -> tuple[dict[str, Any], str]:
-    raw = path.read_bytes()
+    raw = storage_io.read_bytes(path)
     value = json.loads(raw.decode("utf-8"))
     if not isinstance(value, dict) or raw != canonical_bytes(value):
         raise ValueError(f"{label} must be canonical JSON")
@@ -375,7 +376,7 @@ def main(argv: list[str] | None = None) -> int:
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         parser.error(str(exc))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_bytes(result))
+    storage_io.write_bytes(args.output, canonical_bytes(result))
     print(json.dumps({"output": str(args.output), **result["coverage"]}, ensure_ascii=False, sort_keys=True))
     return 0
 

@@ -1,12 +1,20 @@
 #!/usr/bin/env python3
 """Build a disposable null-lookup guard for the observed spare-player crash."""
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
 from pathlib import Path
 import sys
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = storage_io.resolve(Path(__file__)).parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 from pm99_calendar_patcher import PEImage
 
@@ -32,9 +40,9 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=lambda value: int(value, 0))
     parser.add_argument("--control", action="store_true", help="Keep the bug; only pin the random seed")
     args = parser.parse_args()
-    if args.output.exists() or not args.output.resolve().is_relative_to(ROOT / ".local/crash04-diagnostics-v1"):
+    if storage_io.exists(args.output) or not storage_io.resolve(args.output).is_relative_to(ROOT / ".local/crash04-diagnostics-v1"):
         parser.error("requires fresh diagnostic output")
-    source = args.source.read_bytes()
+    source = storage_io.read_bytes(args.source)
     candidate = source if args.control else guard(source)
     if args.seed is not None:
         import struct
@@ -45,6 +53,6 @@ if __name__ == "__main__":
             image.write(va, b"\x68" + struct.pack("<I", args.seed) + b"\x90\x90")
         candidate = bytes(image.blob)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(candidate)
+    storage_io.write_bytes(args.output, candidate)
     print(json.dumps({"diagnostic_only": True, "source_sha256": hashlib.sha256(source).hexdigest(),
                       "candidate_sha256": hashlib.sha256(candidate).hexdigest()}))

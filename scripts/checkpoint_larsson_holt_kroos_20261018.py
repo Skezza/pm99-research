@@ -6,6 +6,7 @@ game, checked again before publication; unaffected defaults stay unchanged.
 import copy
 from datetime import UTC, datetime
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_source_verified_player_changes_v1 as fields
 from scripts import season_opening_identity_exchange_v1 as exchange
@@ -40,15 +41,15 @@ def source_step(season, child_id, replay_id, module):
     module.verify(parent, plan)
     if module.bind(pipeline.read_json_file(parent.package_path), plan) != pipeline.read_json_file(child.package_path):
         raise ValueError('actual correction recipe does not reproduce')
-    jug = (parent.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (parent.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
-    actual = ((child.game_path / 'DBDAT/JUG98030.FDI').read_bytes(),
-              (child.game_path / 'DBDAT/EQ98030.FDI').read_bytes())
+    jug = storage_io.read_bytes(parent.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(parent.game_path / 'DBDAT/EQ98030.FDI')
+    actual = (storage_io.read_bytes(child.game_path / 'DBDAT/JUG98030.FDI'),
+              storage_io.read_bytes(child.game_path / 'DBDAT/EQ98030.FDI'))
     if module.apply(jug, eq, plan) != actual or module.apply(*actual, plan) != actual:
         raise ValueError('actual native correction or idempotence differs')
     replay = registry.load_registered_release(season, replay_id)
     pipeline.assert_tree_matches_inventory(replay.game_path, pipeline.read_json_file(child.inventory_path))
-    if replay.package_path.read_bytes() != child.package_path.read_bytes():
+    if storage_io.read_bytes(replay.package_path) != storage_io.read_bytes(child.package_path):
         raise ValueError('complete SOURCE recipe replay differs')
     return dict(season=season, release_id=child_id, parent=parent.release_id,
         source_plan=binding(plan_path), native_exact=True, idempotent=True,
@@ -79,7 +80,7 @@ def startup_review(root, season, release_id):
 def run():
     previous = AUDIT / 'release-delivery-checklist-v119.json'
     output = AUDIT / 'release-delivery-checklist-v120.json'
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('v120 already completed; advance, do not repeat publication')
     OUT.mkdir(exist_ok=True)
     original = pipeline.read_json_file(previous)
@@ -129,7 +130,7 @@ def run():
         chain.append(release_id)
         publisher.register_completed_delta(season, release_id, verified_ancestor_chain=chain)
         final_path = roots[season] / 'final-attestation.json'
-        if final_path.exists():
+        if storage_io.exists(final_path):
             release = registry.load_preferred_release(season)
             if registry._validate_runtime_attestation(release):
                 raise ValueError('existing final runtime attestation no longer verifies')

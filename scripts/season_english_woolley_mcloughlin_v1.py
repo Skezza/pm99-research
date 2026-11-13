@@ -6,6 +6,7 @@ import copy, hashlib, json
 from pathlib import Path
 from bs4 import BeautifulSoup
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_duplicate_ownership_delta_v1 as delta
 from scripts import season_historical_roster_audit_v1 as roster
 from scripts import season_package_v2 as package_v2
@@ -24,12 +25,12 @@ CASES=(
 )
 
 def sha(b): return hashlib.sha256(b).hexdigest()
-def path_sha(p): return sha(Path(p).read_bytes())
+def path_sha(p): return sha(storage_io.read_bytes(Path(p)))
 def filename(plan):
     if plan.get('schema_version')!=SCHEMA or plan.get('mode')!=MODE: raise ValueError('wrong source plan schema/mode')
     return PREFIX+sha(package_v2.canonical_json_bytes(plan))[:12]+'.json'
 def _text(path):
-    page=BeautifulSoup(Path(path).read_bytes(),'lxml')
+    page=BeautifulSoup(storage_io.read_bytes(Path(path)),'lxml')
     return page, ' '.join(page.get_text(' ',strip=True).split())
 def verify_sources(root=registry.ROOT):
     out=[]
@@ -51,7 +52,7 @@ def verify_sources(root=registry.ROOT):
 
 def _owner_review(root=registry.ROOT):
     path=root/'.local/consolidated-audit-20261009/parallel-rc-20261023/resume-qa/dated-chronology-review-v1.json'
-    doc=json.loads(path.read_text()); rows={r['case_id']:r for r in doc.get('findings',[]) if r.get('case_id') in {c['case_id'] for c in CASES}}
+    doc=json.loads(storage_io.read_text(path)); rows={r['case_id']:r for r in doc.get('findings',[]) if r.get('case_id') in {c['case_id'] for c in CASES}}
     if set(rows)!={c['case_id'] for c in CASES}: raise ValueError('approved wrong-owner chronology review rows missing')
     by=[]
     for c in CASES:
@@ -66,11 +67,11 @@ def _read_parent(base):
     if base.season!='2000-01' or not base.release_id.startswith(PARENT_PREFIX): raise ValueError('requires exact current 2000-01 parent family')
     reg=registry.load_registered_release(base.season,base.release_id)
     if (reg.package_path!=base.package_path or reg.game_path!=base.game_path or reg.manifest_sha256!=base.manifest_sha256): raise ValueError('release object differs from registry')
-    package=json.loads(base.package_path.read_text()); game=base.game_path
+    package=json.loads(storage_io.read_text(base.package_path)); game=base.game_path
     return package,game
 
 def _native_preimage(base):
-    game=base.game_path; jug=(game/'DBDAT/JUG98030.FDI').read_bytes(); eq=(game/'DBDAT/EQ98030.FDI').read_bytes()
+    game=base.game_path; jug=storage_io.read_bytes(game / 'DBDAT/JUG98030.FDI'); eq=storage_io.read_bytes(game / 'DBDAT/EQ98030.FDI')
     idx=IndexedFDIFile.from_bytes(jug); es={e.record_id:e for e in idx.entries}; out=[]
     for c in CASES:
         payload=es[c['carrier']].decode_payload(jug); fact=roster.native_player(payload,c['carrier']); end=fact['name_end']
@@ -173,7 +174,7 @@ def verify(base,plan):
 def bind(package,plan):
     if not isinstance(package,dict): raise ValueError('package must be a dict')
     current=registry.load_registered_release(plan.get('season'),plan.get('release_id')); verify(current,plan)
-    parent=json.loads(current.package_path.read_text())
+    parent=json.loads(storage_io.read_text(current.package_path))
     if package==parent: return _postimage(parent,plan)
     post=_postimage(parent,plan)
     if package!=post: raise ValueError('bind accepts exact full parent package or exact postimage')
@@ -183,12 +184,12 @@ _NATIVE_CACHE={}
 def apply(jug,eq,plan):
     base=registry.load_registered_release(plan.get('season'),plan.get('release_id')); verify(base,plan)
     parent=base.game_path/'DBDAT/JUG98030.FDI'; eqp=base.game_path/'DBDAT/EQ98030.FDI'
-    old=parent.read_bytes(); oldeq=eqp.read_bytes()
+    old=storage_io.read_bytes(parent); oldeq=storage_io.read_bytes(eqp)
     if eq!=oldeq: raise ValueError('candidate apply accepts exact parent EQ bytes')
     nkey=(sha(old),sha(package_v2.canonical_json_bytes(plan)))
     if nkey in _NATIVE_CACHE and jug==_NATIVE_CACHE[nkey]: return jug,eq
     already_post=(jug!=old)
-    package=json.loads(base.package_path.read_text()); post=bind(package,plan)
+    package=json.loads(storage_io.read_text(base.package_path)); post=bind(package,plan)
     ids={p['id'] for p in post['players'] if p['carrier_id'] in {c['carrier'] for c in CASES}}
     codes=compiler._extract_country_codes_from_textos(base.game_path/'DBDAT/TEXTOS.PKF')
     result=delta.compile_planned_players(old,post,ids,codes,_delta_plan(plan))
@@ -217,12 +218,12 @@ def selected_carriers(plan):
     return {32952,33162}
 def apply_minifoto(archive,plan):
     base=registry.load_registered_release(plan['season'],plan['release_id']); verify(base,plan)
-    original=(base.game_path/'DBDAT/MINIFOTO.PKF').read_bytes()
+    original=storage_io.read_bytes(base.game_path / 'DBDAT/MINIFOTO.PKF')
     if archive!=original: raise ValueError('portrait API accepts exact pinned parent')
     result,offsets=delta.no_photo_archive(original,selected_carriers(plan))
     if result!=original or any(offsets.values()): raise ValueError('unexpected target photo requires explicit review')
     for c in CASES:
-        if (base.game_path/'DBDAT/MINIFOTO'/f'J96{c["carrier"]:05d}.BMP').exists(): raise ValueError('loose target portrait exists')
+        if storage_io.exists(base.game_path / 'DBDAT/MINIFOTO' / f'J96{c['carrier']:05d}.BMP'): raise ValueError('loose target portrait exists')
     return result
 
 def reject_factory_recipe(package):
@@ -235,26 +236,26 @@ def reconstruction(previous,release_id):
     if receipt.get('compilation_mode')!=MODE:return None
     loc=previous.locator or {}; relative=loc.get('sourced_profile_assignment_plan_path')
     if not relative: raise ValueError('SOURCE missing typed plan locator')
-    path=(registry.ROOT/relative).resolve()
-    if not path.is_relative_to(registry.ROOT.resolve()) or path.is_symlink(): raise ValueError('SOURCE plan locator escaped workspace or is a symlink')
+    path=storage_io.resolve(registry.ROOT / relative)
+    if not path.is_relative_to(storage_io.resolve(registry.ROOT)) or path.is_symlink(): raise ValueError('SOURCE plan locator escaped workspace or is a symlink')
     plan=pipeline.read_json_file(path)
-    expected_path=(previous.package_path.parent/filename(plan)).resolve()
+    expected_path=storage_io.resolve(previous.package_path.parent / filename(plan))
     if path!=expected_path or registry.sha256_file(path)!=receipt.get('original_profile_assignment_plan_sha256'): raise ValueError('SOURCE artifact receipt mismatch')
     artifact=source_artifact(plan); ap=previous.package_path.parent/artifact['filename']
-    if ap.is_symlink() or not ap.is_file() or registry.sha256_file(ap)!=artifact['sha256'] or ap.read_bytes()!=package_v2.canonical_json_bytes(plan): raise ValueError('SOURCE artifact bytes/hash mismatch')
+    if ap.is_symlink() or not storage_io.is_file(ap) or registry.sha256_file(ap)!=artifact['sha256'] or storage_io.read_bytes(ap)!=package_v2.canonical_json_bytes(plan): raise ValueError('SOURCE artifact bytes/hash mismatch')
     base=registry.load_registered_release(plan['season'],plan['parent']['release_id']); verify(base,plan)
-    expected=bind(json.loads(base.package_path.read_text()),plan)
-    previous_bytes=previous.package_path.read_bytes()
+    expected=bind(json.loads(storage_io.read_text(base.package_path)),plan)
+    previous_bytes=storage_io.read_bytes(previous.package_path)
     if pipeline.read_json_file(previous.package_path)!=expected or previous_bytes!=package_v2.canonical_json_bytes(expected): raise ValueError('SOURCE package does not replay exactly')
     descriptor=previous.package_path.parent/'role-delta-input.json'
     expected_descriptor={'season':plan['season'],'release_id':base.release_id,'package_sha256':plan['parent']['package_sha256'],'jug_sha256':plan['parent']['native_files']['JUG98030.FDI'],'updates':[],'unresolved':[]}
-    if descriptor.is_symlink() or not descriptor.is_file() or pipeline.read_json_file(descriptor)!=expected_descriptor: raise ValueError('SOURCE inert role descriptor differs from exact parent')
+    if descriptor.is_symlink() or not storage_io.is_file(descriptor) or pipeline.read_json_file(descriptor)!=expected_descriptor: raise ValueError('SOURCE inert role descriptor differs from exact parent')
     previous_inventory=pipeline.read_json_file(previous.inventory_path)
     pipeline.assert_tree_matches_inventory(previous.game_path,previous_inventory)
     from scripts import publish_historical_role_delta_v1 as publisher
     publisher.publish(previous.season,descriptor,release_id=release_id,source_release_id=base.release_id,profile_assignment_plan_path=path)
     rebuilt=registry.load_registered_release(previous.season,release_id)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path,previous_inventory)
-    rebuilt_bytes=rebuilt.package_path.read_bytes()
+    rebuilt_bytes=storage_io.read_bytes(rebuilt.package_path)
     if pipeline.read_json_file(rebuilt.package_path)!=expected or rebuilt_bytes!=previous_bytes: raise ValueError('complete SOURCE replay recipe differs')
     return {'season':previous.season,'release_id':release_id,'compilation_mode':MODE,'complete_game_inventory_identical':True,'complete_recipe_identical':True}

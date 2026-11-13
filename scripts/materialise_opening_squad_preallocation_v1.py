@@ -31,6 +31,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_source_club_selection_v1 as source_club_selection_v1  # noqa: E402
 from scripts import season_player_identity_v1 as identity_lib  # noqa: E402
 
@@ -49,7 +50,7 @@ def _sha(value: Any) -> str:
 
 def _load(path: Path, label: str) -> tuple[dict[str, Any], str]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise PreallocationError(f"cannot read {label}: {path}") from exc
@@ -463,7 +464,7 @@ def main(argv: list[str] | None = None) -> int:
     except PreallocationError as exc:
         parser.error(str(exc))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(_canonical_bytes(result))
+    storage_io.write_bytes(args.output, _canonical_bytes(result))
     print(json.dumps(result["summary"], sort_keys=True))
     incomplete_captured_xi = (
         result["summary"]["opening-lineup-captured-club-count"]

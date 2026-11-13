@@ -1,6 +1,7 @@
 """Build one sourced country byte, preserving the delivered opening repair."""
 import shutil
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_takano_period_country_v1 as source
 from scripts import publish_historical_role_delta_v1 as publisher
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
@@ -14,9 +15,9 @@ REPLAY='replayed-takano-period-country-20261017-r136b'
 
 
 def verify_native(base,actual,plan):
-    before=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    after=(actual.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    before=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    after=storage_io.read_bytes(actual.game_path / 'DBDAT/JUG98030.FDI')
+    eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     if source.apply(before,eq,plan)!=(after,eq) or source.apply(after,eq,plan)!=(after,eq):
         raise ValueError('actual Takano single-byte delta/idempotence differs')
     entry=next(e for e in IndexedFDIFile.from_bytes(after).entries if e.record_id==10992)
@@ -35,7 +36,7 @@ def verify_native(base,actual,plan):
 
 def main():
     ROOT.mkdir(exist_ok=True)
-    if (ROOT/'country-plan.json').exists() or source.registry.locator_path(SEASON,RELEASE).exists():
+    if storage_io.exists(ROOT / 'country-plan.json') or storage_io.exists(source.registry.locator_path(SEASON, RELEASE)):
         raise ValueError('existing Takano country build needs inspection, not regeneration')
     base=source.registry.load_registered_release(SEASON,BASE)
     plan=source.prepare(base);retained(ROOT/'country-plan.json',plan)

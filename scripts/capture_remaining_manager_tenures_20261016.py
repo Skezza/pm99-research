@@ -3,6 +3,7 @@ import argparse
 import os
 from pathlib import Path
 import time
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_kit_render_bindings_v1
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import capture_registered_season_runtime_v1 as capture
@@ -16,11 +17,11 @@ def tag(season):
 
 def wait_for_build(season, pids):
     deadline = time.monotonic() + 14400
-    while not (batch.ROOT / season / 'complete-SOURCE-replay.json').is_file():
+    while not storage_io.is_file(batch.ROOT / season / 'complete-SOURCE-replay.json'):
         live = []
         for pid in pids:
             try:
-                command = (Path('/proc') / str(pid) / 'cmdline').read_bytes()
+                command = storage_io.read_bytes(Path('/proc') / str(pid) / 'cmdline')
             except FileNotFoundError:
                 continue
             if b'scripts.build_remaining_manager_tenures_20261016' in command:

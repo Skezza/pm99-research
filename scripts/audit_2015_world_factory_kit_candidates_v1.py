@@ -19,6 +19,7 @@ for candidate in (ROOT, EDITOR):
         sys.path.insert(0, str(candidate))
 
 from app.minifoto_bitmap_archive import iter_obfuscated_bmp_records, validate_minifoto_bitmap  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts.materialise_2015_world_kits import ARCHIVES, canonical_json_bytes, sha256_bytes, sha256_file  # noqa: E402
 from scripts import pm99_factory_kit_renderer_v1 as factory_renderer  # noqa: E402
 from scripts.pm99_kit_palette_v1 import runtime_kit_palette  # noqa: E402
@@ -110,7 +111,7 @@ def audit(
                 if not isinstance(source_image, Mapping):
                     raise ValueError("missing source image")
                 source_path = Path(str(source_image.get("cache_path") or ""))
-                if not source_path.is_file() or sha256_file(source_path) != source_image.get("sha256"):
+                if not storage_io.is_file(source_path) or sha256_file(source_path) != source_image.get("sha256"):
                     raise ValueError("source image hash mismatch")
                 recipe = recipe_from_source(source_path)
             else:
@@ -132,10 +133,10 @@ def audit(
                 _error(errors, "candidate-asset-or-target-missing", carrier, archive)
                 continue
             candidate_path = Path(str(asset.get("path") or ""))
-            if not candidate_path.is_file() or sha256_file(candidate_path) != asset.get("sha256"):
+            if not storage_io.is_file(candidate_path) or sha256_file(candidate_path) != asset.get("sha256"):
                 _error(errors, "candidate-asset-hash-mismatch", carrier, archive)
                 continue
-            payload = candidate_path.read_bytes()
+            payload = storage_io.read_bytes(candidate_path)
             try:
                 shape, original = validate_minifoto_bitmap(payload), validate_minifoto_bitmap(target.raw_bitmap)
                 shape_ok = all(getattr(shape, name) == getattr(original, name) for name in ("width", "height", "bits_per_pixel", "pixel_offset", "bitmap_length"))
@@ -188,15 +189,15 @@ def main() -> int:
     args = parser.parse_args()
     try:
         result = audit(
-            source=json.loads(args.source_materialisation.read_text(encoding="utf-8")),
-            candidate=json.loads(args.candidate_materialisation.read_text(encoding="utf-8")),
+            source=json.loads(storage_io.read_text(args.source_materialisation, encoding='utf-8')),
+            candidate=json.loads(storage_io.read_text(args.candidate_materialisation, encoding='utf-8')),
             clean_dbdat=args.clean_dbdat,
         )
     except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
         parser.error(str(exc))
         return 2
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(args.output, json.dumps(result, indent=2, sort_keys=True) + '\n', encoding='utf-8')
     print(json.dumps({"result": result["result"], **result["coverage"]}, sort_keys=True))
     return 0 if result["result"] == "pass" else 1
 

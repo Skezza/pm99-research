@@ -2,6 +2,7 @@
 import os
 import subprocess
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import capture_registered_season_runtime_v1 as capture
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
@@ -13,7 +14,7 @@ RELEASE = 'sourced-biographic-birth-years-20261010-r67a'
 def main():
     env = dict(os.environ, PM99_RUNNER_ARCHIVE_COLD_RUNS='0',
                PM99_RUNNER_RUN_ROOT_BUDGET_ENFORCE='0')
-    for path in sorted(ROOT.glob('*-plan.json')):
+    for path in sorted(storage_io.glob(ROOT, '*-plan.json')):
         plan = pipeline.read_json_file(path)
         season = plan['season']
         # The builder must have finished both independent native readback and replay.
@@ -25,13 +26,13 @@ def main():
         command, evidence = capture.capture_command(season=season, worker='tiny-m73',
             run_tag=tag, compact_evidence=True, release_id=RELEASE)
         output = ROOT / (season + '-startup-transport.json')
-        if output.exists():
+        if storage_io.exists(output):
             previous = pipeline.read_json_file(output)
             if previous['release_manifest_sha256'] != release.manifest_sha256 or previous['exit_code']:
                 raise ValueError('retained capture binding differs or failed')
             print(dict(season=season, retained=True, visually_approved=False), flush=True)
             continue
-        if evidence.exists():
+        if storage_io.exists(evidence):
             raise ValueError('unreceipted runner evidence exists; inspect instead of overwrite')
         process = subprocess.run(command, env=env, check=False)
         pipeline.write_canonical_json(output, dict(season=season, release_id=RELEASE,

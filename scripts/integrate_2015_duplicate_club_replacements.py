@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts.reconcile_2015_world_source_player_facts import _read_fifa_rows, build_reconciliation
 
 GROUP_COUNTRY = {"english-non-league": "eng"}
@@ -53,8 +54,8 @@ def integrate(registry, capture, draft, replacements, fifa_csv):
 def main():
     ap=argparse.ArgumentParser();
     for n in ("registry","base-capture","base-draft","replacement-capture","fifa16-player-csv","capture-output","draft-output","reconciliation-output"): ap.add_argument("--"+n,type=Path,required=True)
-    a=ap.parse_args(); load=lambda p:json.loads(p.read_text()); vals=integrate(load(a.registry),load(a.base_capture),load(a.base_draft),load(a.replacement_capture),a.fifa16_player_csv)
-    for p,v in zip((a.capture_output,a.draft_output,a.reconciliation_output),vals): p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(canonical_bytes(v))
+    a=ap.parse_args(); load=lambda p:json.loads(storage_io.read_text(p)); vals=integrate(load(a.registry),load(a.base_capture),load(a.base_draft),load(a.replacement_capture),a.fifa16_player_csv)
+    for p,v in zip((a.capture_output,a.draft_output,a.reconciliation_output),vals): p.parent.mkdir(parents=True,exist_ok=True);storage_io.write_bytes(p, canonical_bytes(v))
     print(json.dumps({"draft":vals[1]["coverage"],"reconciliation":vals[2]["coverage"]},sort_keys=True)); return 0
 
 if __name__=="__main__": raise SystemExit(main())

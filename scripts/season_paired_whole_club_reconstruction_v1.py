@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_package_v2 as packages
 from scripts import prepare_paired_whole_club_native_v1 as native
@@ -51,7 +52,7 @@ def replay_assets(candidate, receipt, original_folder, output):
         raw = original_folder / filename
         if registry.sha256_file(raw) != ground['sha256']:
             raise ValueError('original complete-club ground evidence changed')
-        os.link(raw, cache / filename)
+        storage_io.link(raw, cache / filename)
         pipeline.write_canonical_json(cache / (filename + '.source.json'),
             dict(url=ground['url'], sha256=ground['sha256']))
         specs[carrier] = (ground['club'], ground['ground'], filename,
@@ -88,7 +89,7 @@ def reconstruction(previous, release_id):
     if registry.sha256_file(pair_path) != receipt['source_pair']['sha256']:
         raise ValueError('complete-club reconstruction original group changed')
     root = registry.ROOT / '.local/paired-whole-club-replays-v1' / previous.season / release_id
-    if root.exists() or registry.locator_path(previous.season, release_id).parent.exists():
+    if storage_io.exists(root) or storage_io.exists(registry.locator_path(previous.season, release_id).parent):
         raise ValueError('complete-club reconstruction release already exists')
     managers = {}
     for row in receipt['managers']:

@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import csv
 import json
 import os
@@ -25,7 +33,7 @@ HARDWARE_TTL_SECONDS = 3600
 STORAGE_TTL_SECONDS = 600
 PAYLOAD_CACHE_TTL_SECONDS = int(os.environ.get("TINY_M73_PAYLOAD_CACHE_TTL_SECONDS", "5"))
 MAX_PAYLOAD_SERIES_SAMPLES = int(os.environ.get("TINY_M73_MAX_PAYLOAD_SERIES_SAMPLES", "1440"))
-LOCAL_STATE_DIR = Path(__file__).resolve().parents[1] / ".local"
+LOCAL_STATE_DIR = storage_io.resolve(Path(__file__)).parents[1] / ".local"
 PRIMARY_QUEUE_LOCK_NAME = os.environ.get("TINY_M73_QUEUE_LOCK_NAME", "runner-host")
 PRIMARY_QUEUE_CAPACITY = int(os.environ.get("TINY_M73_QUEUE_CAPACITY", "4"))
 PRIMARY_QUEUE_SLOT_SECONDS = int(os.environ.get("TINY_M73_QUEUE_SLOT_SECONDS", "600"))
@@ -976,7 +984,7 @@ class HistoryStore:
 
     def _read_history_file(self, path: Path) -> list[RawSample]:
         samples: list[RawSample] = []
-        with path.open("r", newline="", encoding="utf-8") as handle:
+        with storage_io.open_file(path, 'r', newline='', encoding='utf-8') as handle:
             reader = csv.DictReader(handle)
             for row in reader:
                 try:
@@ -986,17 +994,17 @@ class HistoryStore:
         return samples
 
     def _write_all_samples(self, samples: list[RawSample]) -> None:
-        with self.history_file.open("w", newline="", encoding="utf-8") as handle:
+        with storage_io.open_file(self.history_file, 'w', newline='', encoding='utf-8') as handle:
             writer = csv.DictWriter(handle, fieldnames=RawSample.fieldnames())
             writer.writeheader()
             for sample in samples:
                 writer.writerow(sample.to_row())
 
     def _load_samples(self) -> list[RawSample]:
-        if self.history_file.exists():
+        if storage_io.exists(self.history_file):
             return self._read_history_file(self.history_file)
         for legacy_file in LEGACY_HISTORY_FILES:
-            if not legacy_file.exists():
+            if not storage_io.exists(legacy_file):
                 continue
             samples = self._read_history_file(legacy_file)
             if samples:
@@ -1010,8 +1018,8 @@ class HistoryStore:
                 self._last_poll_monotonic = time.monotonic()
                 self._last_error = None
                 return
-            new_file = not self.history_file.exists()
-            with self.history_file.open("a", newline="", encoding="utf-8") as handle:
+            new_file = not storage_io.exists(self.history_file)
+            with storage_io.open_file(self.history_file, 'a', newline='', encoding='utf-8') as handle:
                 writer = csv.DictWriter(handle, fieldnames=RawSample.fieldnames())
                 if new_file:
                     writer.writeheader()

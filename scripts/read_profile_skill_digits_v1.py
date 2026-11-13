@@ -8,6 +8,7 @@ accuracy or the identity/era of any portrait.
 import argparse
 from pathlib import Path
 from PIL import Image
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry,season_pipeline_v2 as pipeline
 
 FIELDS=('speed','stamina','aggression','quality','handling','passing','dribbling','heading','tackling','shooting')
@@ -89,6 +90,6 @@ if __name__=='__main__':
     parser.add_argument('--output',type=Path)
     args=parser.parse_args();result=read(args.screenshot)
     if args.output:
-        if args.output.exists():raise ValueError('original digit proof must not be overwritten')
+        if storage_io.exists(args.output):raise ValueError('original digit proof must not be overwritten')
         pipeline.write_canonical_json(args.output,result)
     print(result['observed_skills'],flush=True)

@@ -3,13 +3,14 @@ import os
 import subprocess
 import time
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import capture_registered_season_runtime_v1 as capture
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts.build_cross_period_birth_years_20261010 import ROOT, RELEASE
 
 
 def wait_for(path, deadline):
-    while not path.is_file():
+    while not storage_io.is_file(path):
         if time.monotonic() >= deadline:
             raise ValueError('bounded cross-period native proof wait expired: ' + str(path))
         time.sleep(10)
@@ -36,7 +37,7 @@ def main():
         command, evidence = capture.capture_command(season=season, worker='tiny-m73',
             run_tag=tag, compact_evidence=True, release_id=RELEASE)
         transport = ROOT / (season + '-startup-transport.json')
-        if transport.exists():
+        if storage_io.exists(transport):
             retained = pipeline.read_json_file(transport)
             if (retained['exit_code'] not in (0, None)
                     or retained['exit_code'] is None and not retained.get('completed_summary_recovery')
@@ -52,7 +53,7 @@ def main():
                         or summary.get('output_inventory_fingerprint') != release.locator['game_inventory_fingerprint']):
                     raise ValueError('recovered completed runner summary does not prove the exact candidate')
             continue
-        if evidence.exists():
+        if storage_io.exists(evidence):
             raise ValueError('unreceipted cross-period startup exists; inspect instead of overwrite')
         result = subprocess.run(command, check=False, env=env)
         pipeline.write_canonical_json(transport, dict(season=season, release_id=RELEASE,

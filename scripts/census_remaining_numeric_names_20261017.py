@@ -3,6 +3,7 @@
 Discovery only, not native approval or a second counting of the546 delivered
 name repairs. Existing source-bound name policy can prepare the actual fixes.
 """
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_number_label_names_v2 as names
 from scripts import season_duplicate_ownership_plan_v1 as layers
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
@@ -12,7 +13,7 @@ ROOT=names.registry.ROOT/'.local/consolidated-audit-20261009/remaining-numeric-n
 
 def main():
     output=ROOT/'explicit-release-recipe-census.json'
-    if output.exists():raise ValueError('existing numeric-name census must not repeat')
+    if storage_io.exists(output):raise ValueError('existing numeric-name census must not repeat')
     ROOT.mkdir(parents=True,exist_ok=True)
     releases=[names.registry.load_preferred_release(season) for season in names.registry.supported_seasons()]
     rows=[]

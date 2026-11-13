@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import csv
 import json
@@ -11,12 +19,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR_ROOT = REPO_ROOT / "upstream" / "pm99-skezmod-db-editor"
 if str(EDITOR_ROOT) not in sys.path:
     sys.path.insert(0, str(EDITOR_ROOT))
-if str(Path(__file__).resolve().parent) not in sys.path:
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
+if str(storage_io.resolve(Path(__file__)).parent) not in sys.path:
+    sys.path.insert(0, str(storage_io.resolve(Path(__file__)).parent))
 
 from assert_pm99_isolated_input import default_fixture_file, ensure_not_legacy_path, sha256  # noqa: E402
 from app.editor_helpers import _player_display_name  # noqa: E402
@@ -103,12 +111,12 @@ def _copy_file(source: Path, target: Path) -> None:
 
 
 def _ensure_user_writable(path: Path) -> None:
-    mode = path.stat().st_mode
+    mode = storage_io.stat_result(path).st_mode
     path.chmod(mode | 0o200)
 
 
 def _load_manifest_rows(manifest_path: Path, selected_slots: list[int]) -> list[dict[str, Any]]:
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest = json.loads(storage_io.read_text(manifest_path, encoding='utf-8'))
     rows = list(manifest.get("batch_rows") or [])
     by_slot = {int(row["slot"]): row for row in rows}
     return [by_slot[slot] for slot in selected_slots]
@@ -132,7 +140,7 @@ def _write_csv(csv_path: Path, *, manifest_rows: list[dict[str, Any]]) -> None:
         "weight",
     ]
     csv_path.parent.mkdir(parents=True, exist_ok=True)
-    with csv_path.open("w", newline="", encoding="utf-8") as handle:
+    with storage_io.open_file(csv_path, 'w', newline='', encoding='utf-8') as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()
         for row in manifest_rows:
@@ -158,7 +166,7 @@ def _write_csv(csv_path: Path, *, manifest_rows: list[dict[str, Any]]) -> None:
 
 def _load_indexed_entry_map(player_file: Path) -> tuple[dict[int, Any], bytes]:
     indexed = IndexedFDIFile.from_path(player_file)
-    return {int(entry.record_id): entry for entry in indexed.entries}, player_file.read_bytes()
+    return {int(entry.record_id): entry for entry in indexed.entries}, storage_io.read_bytes(player_file)
 
 
 def _payload_sha256(entry: Any, file_bytes: bytes) -> str:
@@ -247,27 +255,27 @@ def _suffix_signature(row: dict[str, Any]) -> dict[str, Any]:
 
 def main() -> int:
     args = _parse_args()
-    manifest_path = Path(args.manifest).expanduser().resolve()
+    manifest_path = storage_io.resolve(Path(args.manifest).expanduser())
     source_player_file = (
-        ensure_not_legacy_path(args.players, label="players file").resolve()
+        storage_io.resolve(ensure_not_legacy_path(args.players, label='players file'))
         if str(args.players).strip()
         else default_fixture_file("DBDAT/JUG98030.FDI")
     )
     compare_source_root = (
-        ensure_not_legacy_path(args.compare_source_game_root, label="compare source root").resolve()
+        storage_io.resolve(ensure_not_legacy_path(args.compare_source_game_root, label='compare source root'))
         if str(args.compare_source_game_root).strip()
         else None
     )
 
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest = json.loads(storage_io.read_text(manifest_path, encoding='utf-8'))
     known_slots = {int(row["slot"]) for row in list(manifest.get("batch_rows") or [])}
     selected_slots = _parse_slots(args.slots, known_slots=known_slots)
     manifest_rows = _load_manifest_rows(manifest_path, selected_slots)
 
     timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     bundle_id = args.bundle_id.strip() or f"indexed_name_rebuild_bug_{timestamp}"
-    bundle_root = Path(args.output_root).expanduser().resolve() / bundle_id
-    if bundle_root.exists():
+    bundle_root = storage_io.resolve(Path(args.output_root).expanduser()) / bundle_id
+    if storage_io.exists(bundle_root):
         raise RuntimeError(f"Output bundle already exists: {bundle_root}")
     bundle_root.mkdir(parents=True, exist_ok=False)
 
@@ -294,7 +302,7 @@ def main() -> int:
             "--json",
         ]
     )
-    (bundle_root / "player_batch_edit_result.json").write_text(json.dumps(batch_result, indent=2) + "\n", encoding="utf-8")
+    storage_io.write_text(bundle_root / 'player_batch_edit_result.json', json.dumps(batch_result, indent=2) + '\n', encoding='utf-8')
     if int(batch_result["returncode"]) != 0:
         raise RuntimeError(f"player-batch-edit failed for {bundle_id}")
 
@@ -356,7 +364,7 @@ def main() -> int:
         "compare_source_suffix_match_count": compare_suffix_match_count,
         "comparisons": comparisons,
     }
-    (bundle_root / "summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(bundle_root / 'summary.json', json.dumps(summary, indent=2, sort_keys=True) + '\n', encoding='utf-8')
     print(json.dumps({"success": True, "bundle_root": str(bundle_root), "summary_path": str(bundle_root / "summary.json")}, indent=2))
     return 0
 

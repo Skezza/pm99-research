@@ -29,6 +29,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2 as package_v2  # noqa: E402
 from scripts import season_pipeline_v2 as pipeline  # noqa: E402
 
@@ -60,11 +61,11 @@ def _normalise_season(package: Mapping[str, Any]) -> str:
 
 
 def _canonical_read(path: Path, *, label: str) -> dict[str, Any]:
-    path = path.expanduser().resolve()
-    if not path.is_file() or path.is_symlink():
+    path = storage_io.resolve(path.expanduser())
+    if not storage_io.is_file(path) or path.is_symlink():
         raise RuntimeEvidencePreflightError(f"{label} must be a regular file: {path}")
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise RuntimeEvidencePreflightError(f"cannot read {label}: {path}: {exc}") from exc
@@ -227,10 +228,10 @@ def _verify_release_binding(
         raise RuntimeEvidencePreflightError(f"game tree does not match release manifest: {exc}") from exc
     missing = [
         name for name in (*REQUIRED_DBDAT_FILES,)
-        if not (game_tree / "DBDAT" / name).is_file() or (game_tree / "DBDAT" / name).is_symlink()
+        if not storage_io.is_file(game_tree / 'DBDAT' / name) or (game_tree / "DBDAT" / name).is_symlink()
     ]
     executable = game_tree / "MANAGPRE.EXE"
-    if not executable.is_file() or executable.is_symlink():
+    if not storage_io.is_file(executable) or executable.is_symlink():
         missing.append("MANAGPRE.EXE")
     if missing:
         raise RuntimeEvidencePreflightError(
@@ -245,8 +246,8 @@ def build_preflight(
 ) -> dict[str, Any]:
     """Check one planned capture and return a non-runtime evidence plan."""
 
-    package_path = package_path.expanduser().resolve()
-    game_tree = game_tree.expanduser().resolve()
+    package_path = storage_io.resolve(package_path.expanduser())
+    game_tree = storage_io.resolve(game_tree.expanduser())
     if not game_tree.is_dir() or game_tree.is_symlink():
         raise RuntimeEvidencePreflightError(f"game tree must be a regular directory: {game_tree}")
     try:
@@ -291,12 +292,12 @@ def build_preflight(
         "release_eligible": False,
         "season": package_season,
         "release": {
-            "manifest_sha256": hashlib.sha256(release_manifest_path.read_bytes()).hexdigest(),
+            "manifest_sha256": hashlib.sha256(storage_io.read_bytes(release_manifest_path)).hexdigest(),
             "output_inventory_fingerprint": inventory["files_fingerprint"],
             "season_package_canonical_sha256": release_manifest["season_document"]["canonical_sha256"],
         },
         "runtime_profile": {
-            "sha256": hashlib.sha256(profile_path.read_bytes()).hexdigest(),
+            "sha256": hashlib.sha256(storage_io.read_bytes(profile_path)).hexdigest(),
             "club": selected["club"],
             "selector": profile["selector"],
             "capture": profile["capture"],

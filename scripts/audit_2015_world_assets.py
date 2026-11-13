@@ -16,6 +16,14 @@ contains hashes for all inputs so a later asset stage can be reproduced.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -25,7 +33,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR = ROOT / "upstream" / "pm99-skezmod-db-editor"
 for candidate in (ROOT, EDITOR):
     if str(candidate) not in sys.path:
@@ -55,7 +63,7 @@ def canonical_json_bytes(value: Any) -> bytes:
 
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
@@ -63,7 +71,7 @@ def sha256_file(path: Path) -> str:
 
 def _read_json(path: Path, label: str) -> tuple[dict[str, Any], str]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise AssetAuditError(f"cannot read {label}: {path}") from exc
@@ -73,10 +81,10 @@ def _read_json(path: Path, label: str) -> tuple[dict[str, Any], str]:
 
 
 def _relative_or_absolute(path: Path, root: Path | None) -> str:
-    resolved = path.resolve()
+    resolved = storage_io.resolve(path)
     if root is not None:
         try:
-            return resolved.relative_to(root.resolve()).as_posix()
+            return resolved.relative_to(storage_io.resolve(root)).as_posix()
         except ValueError:
             pass
     return str(resolved)
@@ -94,7 +102,7 @@ def load_kit_records(dbdat: Path) -> tuple[dict[str, dict[int, dict[str, Any]]],
     hashes: dict[str, str] = {}
     for archive_name in KIT_ARCHIVES:
         path = dbdat / archive_name
-        if not path.is_file():
+        if not storage_io.is_file(path):
             raise AssetAuditError(f"missing kit archive: {path}")
         hashes[archive_name] = sha256_file(path)
         by_id: dict[int, dict[str, Any]] = {}
@@ -124,7 +132,7 @@ def load_portrait_receipts(paths: Iterable[Path]) -> tuple[dict[str, dict[str, A
 
     indexed: dict[str, dict[str, Any]] = {}
     hashes: dict[str, str] = {}
-    for path in sorted({Path(item).resolve() for item in paths}, key=str):
+    for path in sorted({storage_io.resolve(Path(item)) for item in paths}, key=str):
         receipt, digest = _read_json(path, "portrait receipt")
         hashes[str(path)] = digest
         rows = receipt.get("rows")
@@ -379,11 +387,11 @@ def main(argv: list[str] | None = None) -> int:
     except AssetAuditError as exc:
         parser.error(str(exc))
     result["sources"] = {
-        "draft": {"path": str(args.draft.resolve()), "sha256": draft_hash},
-        "reconciliation": {"path": str(args.reconciliation.resolve()), "sha256": reconciliation_hash},
-        "recycle_allocation": {"path": str(args.recycle_allocation.resolve()), "sha256": recycle_allocation_hash},
+        "draft": {"path": str(storage_io.resolve(args.draft)), "sha256": draft_hash},
+        "reconciliation": {"path": str(storage_io.resolve(args.reconciliation)), "sha256": reconciliation_hash},
+        "recycle_allocation": {"path": str(storage_io.resolve(args.recycle_allocation)), "sha256": recycle_allocation_hash},
         "kit_archives": {
-            archive: {"path": str((args.kit_dbdat / archive).resolve()), "sha256": kit_hashes[archive]}
+            archive: {"path": str(storage_io.resolve(args.kit_dbdat / archive)), "sha256": kit_hashes[archive]}
             for archive in KIT_ARCHIVES
         },
         "portrait_receipts": {
@@ -391,7 +399,7 @@ def main(argv: list[str] | None = None) -> int:
         },
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_json_bytes(result))
+    storage_io.write_bytes(args.output, canonical_json_bytes(result))
     print(json.dumps({"output": str(args.output), **result["coverage"]}, sort_keys=True))
     return 0
 

@@ -1,5 +1,6 @@
 """Independently replay optional immutable public identity/history inputs."""
 import json
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 
 
@@ -17,7 +18,7 @@ def merge_bound(people, events, bindings):
         path = registry.ROOT / item['path']
         if registry.sha256_file(path) != item['sha256']:
             raise ValueError('immutable public source supplement changed: ' + key)
-        document = json.loads(path.read_text())
+        document = json.loads(storage_io.read_text(path))
         if key == 'published_person_supplement':
             from scripts import season_published_person_identity_v1 as source
             if item['policy'] != source.POLICY:

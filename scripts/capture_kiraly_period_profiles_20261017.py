@@ -2,6 +2,7 @@
 import argparse
 from pathlib import Path
 import time
+from scripts import json_storage_io_v1 as storage_io
 from scripts import build_kiraly_period_profiles_20261017 as build
 from scripts.capture_shinnie_country_20261017 import main as capture,wait_owned
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
@@ -16,10 +17,10 @@ def profile(season):
 
 def one(season,builder_pid):
     folder=build.ROOT/season;path=folder/'runtime-profile-spec.json'
-    if path.exists():raise ValueError('existing Kiraly capture must be inspected, not restarted')
-    while not (folder/'complete-SOURCE-replay.json').exists():
+    if storage_io.exists(path):raise ValueError('existing Kiraly capture must be inspected, not restarted')
+    while not storage_io.exists(folder / 'complete-SOURCE-replay.json'):
         command=Path('/proc')/str(builder_pid)/'cmdline'
-        try:raw=command.read_bytes()
+        try:raw=storage_io.read_bytes(command)
         except FileNotFoundError as exc:raise ValueError('builder not live and complete SOURCE missing; inspect partial state') from exc
         if b'scripts.build_kiraly_period_profiles_20261017' not in raw:
             raise ValueError('expected country builder PID identity changed')

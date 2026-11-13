@@ -36,6 +36,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts.audit_world_2015_source_coverage import strict_club_key  # noqa: E402
 from scripts.prepare_2015_world_fifa16_carrier_allocation import (  # noqa: E402
     FUT_LEAGUES,
@@ -59,7 +60,7 @@ def canonical_bytes(value: Any) -> bytes:
 
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
@@ -67,7 +68,7 @@ def sha256_file(path: Path) -> str:
 
 def _read_json(path: Path, label: str) -> dict[str, Any]:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(storage_io.read_text(path, encoding='utf-8'))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise ValueError(f"cannot read {label}: {path}") from exc
     if not isinstance(value, dict):
@@ -87,7 +88,7 @@ def _file_receipt(path: Path, *, role: str, data: Mapping[str, Any] | None = Non
 
 def _csv_rows(path: Path, label: str) -> tuple[list[dict[str, str]], list[str]]:
     try:
-        with path.open("r", encoding="utf-8-sig", newline="") as handle:
+        with storage_io.open_file(path, 'r', encoding='utf-8-sig', newline='') as handle:
             reader = csv.DictReader(handle)
             if reader.fieldnames is None:
                 raise ValueError(f"{label} has no header")
@@ -450,7 +451,7 @@ def main(argv: list[str] | None = None) -> int:
     except (OSError, ValueError, KeyError) as exc:
         parser.error(str(exc))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_bytes(result))
+    storage_io.write_bytes(args.output, canonical_bytes(result))
     print(json.dumps({"output": str(args.output), **result["candidate_summary"], **result["gap_scope"]}, sort_keys=True))
     return 0
 

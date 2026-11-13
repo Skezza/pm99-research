@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import reconcile_transfermarkt_opening_lineups_v1 as reconcile_v1  # noqa: E402
 from scripts import season_manager_overlay_v1 as baseline_v1  # noqa: E402
 
@@ -33,7 +34,7 @@ def _bytes(value: Any) -> bytes:
 
 def _read(path: Path, label: str) -> tuple[dict[str, Any], str]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise OpeningOverlayError(f"cannot read {label}: {path}") from exc
@@ -117,7 +118,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--output-root", required=True, type=Path)
     args = parser.parse_args(argv)
     try:
-        if args.output_root.exists():
+        if storage_io.exists(args.output_root):
             raise OpeningOverlayError(f"refusing to overwrite opening-lineup overlay root: {args.output_root}")
         baseline, baseline_sha = _read(args.baseline_index, "baseline index")
         source, source_sha = _read(args.source_capture, "source capture")
@@ -129,8 +130,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (OSError, OpeningOverlayError) as exc:
         parser.error(str(exc))
     args.output_root.mkdir(parents=True, exist_ok=False)
-    (args.output_root / "opening-lineup-reconciliation.json").write_bytes(_bytes(reconciliation))
-    (args.output_root / "opening-lineup-overlay-audit.json").write_bytes(_bytes(audit))
+    storage_io.write_bytes(args.output_root / 'opening-lineup-reconciliation.json', _bytes(reconciliation))
+    storage_io.write_bytes(args.output_root / 'opening-lineup-overlay-audit.json', _bytes(audit))
     print(json.dumps(audit["coverage"], sort_keys=True))
     return 0
 

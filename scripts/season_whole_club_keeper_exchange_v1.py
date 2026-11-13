@@ -12,6 +12,7 @@ sys.path.insert(0,str(ROOT/'upstream/pm99-skezmod-db-editor'))
 
 from app.player_initial_order import OrderReplacement, patch_owned_mode1_keeper_exchange, read_initial_order
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 
 
@@ -81,7 +82,7 @@ def replay(jug, eq, package, package_path):
             path=package_path.parent/rel
             if registry.sha256_file(path)!=artifact['sha256']:
                 raise ValueError('whole-club source artifact changed')
-            cache[identity]=json.loads(path.read_text())
+            cache[identity]=json.loads(storage_io.read_text(path))
         source=cache[identity].get('whole_club_original_source')
         if source is None or not source.get('allow_keeper_order_exchange'):
             continue

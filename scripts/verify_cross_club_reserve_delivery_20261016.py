@@ -2,6 +2,7 @@
 import hashlib
 from app.fdi_indexed import IndexedFDIFile
 from app.indexed_jug_roles import read_indexed_native_roles
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_duplicate_ownership_delta_v1 as delta
 from scripts import season_cross_club_reserve_repair_v1 as source
@@ -25,12 +26,12 @@ def verify():
     for key in ('clubs', 'managers', 'competitions'):
         if before.get(key) != after.get(key):
             raise ValueError('cross-club repair changed club/order/manager/competition declarations')
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    original = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
+    original = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
     from scripts.prepare_duplicate_whole_club_native_v1 import preserve_other_records
     preserve_other_records(original, jug, {9171})
-    eq = (release.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
-    if eq != (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes():
+    eq = storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
+    if eq != storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI'):
         raise ValueError('cross-club repair changed actual roster/order/tactic bytes')
     owners = ownership.native_owners(eq)
     if owners.get(9171) != {311} or owners.get(2774) != {1251}:

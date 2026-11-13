@@ -3,6 +3,7 @@ import shutil
 from datetime import date
 from app.fdi_indexed import IndexedFDIFile
 from app.player_initial_order import read_initial_order
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_morecambe_2000_owned_opening_v1 as source
 from scripts import publish_historical_role_delta_v1 as publisher
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
@@ -15,10 +16,10 @@ REPLAY='replayed-morecambe-owned-opening-20261017-r135b'
 
 
 def native_proof(base,actual,plan):
-    before=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
-    after=(actual.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    after_eq=(actual.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    before=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
+    after=storage_io.read_bytes(actual.game_path / 'DBDAT/JUG98030.FDI')
+    after_eq=storage_io.read_bytes(actual.game_path / 'DBDAT/EQ98030.FDI')
     if source.apply(before,eq,plan)!=(after,after_eq):raise ValueError('actual native Morecambe delta differs')
     package=source.pipeline.read_json_file(actual.package_path)
     if source.bind(source.pipeline.read_json_file(base.package_path),plan)!=package:
@@ -47,8 +48,8 @@ def native_proof(base,actual,plan):
                     or source.skills(before,carrier)!=source.skills(after,carrier)):
                 raise ValueError('retained Morecambe name/skills/secondary facts/opaque bytes changed')
             verified.append(carrier)
-    portraits,_=source.delta.no_photo_archive((base.game_path/'DBDAT/MINIFOTO.PKF').read_bytes(),{11002})
-    if portraits!=(actual.game_path/'DBDAT/MINIFOTO.PKF').read_bytes():raise ValueError('new keeper portrait clear differs')
+    portraits,_=source.delta.no_photo_archive(storage_io.read_bytes(base.game_path / 'DBDAT/MINIFOTO.PKF'),{11002})
+    if portraits!=storage_io.read_bytes(actual.game_path / 'DBDAT/MINIFOTO.PKF'):raise ValueError('new keeper portrait clear differs')
     left={r['path']:r['sha256'] for r in source.pipeline.read_json_file(base.inventory_path)['files']}
     right={r['path']:r['sha256'] for r in source.pipeline.read_json_file(actual.inventory_path)['files']}
     allowed={'DBDAT/JUG98030.FDI','DBDAT/EQ98030.FDI','DBDAT/MINIFOTO.PKF','DBDAT/MINIFOTO/J9611002.BMP'}
@@ -67,7 +68,7 @@ def main():
     base=source.registry.load_preferred_release(SEASON)
     if base.release_id!=source.admission.BASE:raise ValueError('Morecambe baseline advanced; preserve intervening changes')
     path=ROOT/'opening-ownership-plan.json'
-    if path.exists():raise ValueError('existing Morecambe native transaction requires inspection, not a rebuild')
+    if storage_io.exists(path):raise ValueError('existing Morecambe native transaction requires inspection, not a rebuild')
     plan=source.prepare(base);retained(path,plan)
     descriptor=ROOT/'inert.json'
     retained(descriptor,dict(season=SEASON,release_id=base.release_id,

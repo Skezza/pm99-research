@@ -10,6 +10,7 @@ from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts.season_art_transaction_v1 import atomic_bytes
 from scripts import season_pipeline_v2 as pipeline
@@ -21,7 +22,7 @@ def one(season,args):
     environment['PM99_RUNNER_WORKER_LANE_COUNT']=str(args.lanes)
     command=[str(ROOT/'pm99-season'),'prove',season,'--worker',args.worker,'--run-tag',
              f'real_photos_{season.replace("-","_")}_20261003_r9','--execute','--attest']
-    with log.open('w') as handle:
+    with storage_io.open_file(log, 'w') as handle:
         run=subprocess.run(command,cwd=ROOT,env=environment,stdout=handle,stderr=subprocess.STDOUT)
     result={'season':season,'returncode':run.returncode,'log':str(log)}
     print(json.dumps(result),flush=True)

@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2 as package_v2
 from scripts import season_pipeline_v2 as pipeline_v2
 from scripts import season_package_compiler_v2 as compiler_v2
@@ -33,7 +34,7 @@ class CleanBaseAuditError(ValueError):
 
 
 def _payloads(path: Path) -> dict[int, bytes]:
-    data = path.read_bytes()
+    data = storage_io.read_bytes(path)
     indexed = IndexedFDIFile.from_bytes(data)
     return {entry.record_id: entry.decode_payload(data) for entry in indexed.entries}
 
@@ -86,10 +87,10 @@ def _mode0_donor_removals(
 def audit(*, package_path: Path, base_tree: Path, output_tree: Path) -> dict[str, Any]:
     package = package_v2.read_canonical_package(package_path)
     package_v2.validate_package(package, strict=True)
-    base_tree, output_tree = base_tree.resolve(), output_tree.resolve()
+    base_tree, output_tree = storage_io.resolve(base_tree), storage_io.resolve(output_tree)
     if base_tree == output_tree:
         raise CleanBaseAuditError("base and output trees must be distinct")
-    base_eq_data = (base_tree / "DBDAT/EQ98030.FDI").read_bytes()
+    base_eq_data = storage_io.read_bytes(base_tree / 'DBDAT/EQ98030.FDI')
     donor_removals, base_rosters, base_modes = _mode0_donor_removals(
         package=package, base_eq_data=base_eq_data
     )
@@ -108,7 +109,7 @@ def audit(*, package_path: Path, base_tree: Path, output_tree: Path) -> dict[str
     output_hashes: dict[str, str] = {}
     for relative in DATABASE_RELATIVE_PATHS:
         base_path, output_path = base_tree / relative, output_tree / relative
-        if not base_path.is_file() or not output_path.is_file():
+        if not storage_io.is_file(base_path) or not storage_io.is_file(output_path):
             raise CleanBaseAuditError(f"missing database file {relative}")
         changed[relative] = _changed(
             _payloads(base_path), _payloads(output_path), label=relative,
@@ -117,10 +118,10 @@ def audit(*, package_path: Path, base_tree: Path, output_tree: Path) -> dict[str
         unexpected = sorted(set(changed[relative]) - declared[relative])
         if unexpected:
             raise CleanBaseAuditError(f"{relative} changed undeclared carriers: {unexpected[:20]}")
-        output_hashes[relative] = hashlib.sha256(output_path.read_bytes()).hexdigest()
+        output_hashes[relative] = hashlib.sha256(storage_io.read_bytes(output_path)).hexdigest()
 
     base_tails = _mode1_roster_tails(base_eq_data)
-    output_tails = _mode1_roster_tails((output_tree / "DBDAT/EQ98030.FDI").read_bytes())
+    output_tails = _mode1_roster_tails(storage_io.read_bytes(output_tree / 'DBDAT/EQ98030.FDI'))
     roster_mismatches = [
         int(club["carrier_id"])
         for club in package["clubs"]
@@ -131,7 +132,7 @@ def audit(*, package_path: Path, base_tree: Path, output_tree: Path) -> dict[str
             f"fixed foreign roster tails changed: {roster_mismatches[:20]}"
         )
     _after_owners, output_rosters, _after_modes = compiler_v2._source_roster_owners(
-        (output_tree / "DBDAT/EQ98030.FDI").read_bytes()
+        storage_io.read_bytes(output_tree / 'DBDAT/EQ98030.FDI')
     )
     donor_mismatches: list[int] = []
     for donor, removed in sorted(donor_removals.items()):
@@ -184,7 +185,7 @@ def main() -> int:
             output_tree=args.output_tree,
         )
         args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_bytes(package_v2.canonical_json_bytes(result))
+        storage_io.write_bytes(args.output, package_v2.canonical_json_bytes(result))
     except (CleanBaseAuditError, package_v2.PackageValidationError, OSError, ValueError) as exc:
         print(f"clean-base audit error: {exc}", file=sys.stderr)
         return 2

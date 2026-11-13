@@ -26,6 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in __import__("sys").path:
     __import__("sys").path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts.audit_world_2015_source_coverage import strict_club_key  # noqa: E402
 from scripts.reconcile_2015_world_source_player_facts import normalise_name  # noqa: E402
 
@@ -48,7 +49,7 @@ def canonical_json_bytes(value: Any) -> bytes:
 
 def _read_canonical(path: Path, *, label: str) -> tuple[dict[str, Any], str]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise JoinError(f"cannot read {label}: {path}") from exc
@@ -382,7 +383,7 @@ def main(argv: list[str] | None = None) -> int:
     except JoinError as exc:
         parser.error(str(exc))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_json_bytes(result))
+    storage_io.write_bytes(args.output, canonical_json_bytes(result))
     print(json.dumps(result["coverage"], ensure_ascii=False, sort_keys=True))
     return 0
 

@@ -23,6 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts.season_kit_catalogue_v1 import canonical_json_bytes
 
 
@@ -40,15 +41,15 @@ def _sha(payload: bytes) -> str:
 
 def _read_object(path: Path) -> tuple[Path, dict[str, Any], str]:
     try:
-        if path.is_symlink() or not stat.S_ISREG(path.stat().st_mode):
+        if path.is_symlink() or not stat.S_ISREG(storage_io.stat_result(path).st_mode):
             raise ChunkPlanError(f"allocation must be a regular non-symlink file: {path}")
-        payload = path.read_bytes()
+        payload = storage_io.read_bytes(path)
         value = json.loads(payload.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise ChunkPlanError(f"allocation is not valid JSON: {exc}") from exc
     if not isinstance(value, dict) or canonical_json_bytes(value) != payload:
         raise ChunkPlanError("allocation must be a canonical JSON object")
-    return path.resolve(), value, _sha(payload)
+    return storage_io.resolve(path), value, _sha(payload)
 
 
 def build_plan(*, allocation_path: Path, excluded_carrier_ids: list[int], limit: int) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -115,7 +116,7 @@ def main() -> int:
     parser.add_argument("--limit", type=int, default=25)
     parser.add_argument("--output-dir", required=True, type=Path, help="new, nonexistent chunk directory")
     args = parser.parse_args()
-    if args.output_dir.exists() or args.output_dir.is_symlink():
+    if storage_io.exists(args.output_dir) or args.output_dir.is_symlink():
         parser.error(f"refusing to replace chunk directory: {args.output_dir}")
     excluded = sorted(args.exclude_carrier)
     try:
@@ -124,12 +125,12 @@ def main() -> int:
         parser.error(str(exc))
     try:
         os.mkdir(args.output_dir)
-        (args.output_dir / "chunk-allocation.json").write_bytes(canonical_json_bytes(subset))
-        (args.output_dir / "kit-source-chunk-plan-v1.json").write_bytes(canonical_json_bytes(plan))
+        storage_io.write_bytes(args.output_dir / 'chunk-allocation.json', canonical_json_bytes(subset))
+        storage_io.write_bytes(args.output_dir / 'kit-source-chunk-plan-v1.json', canonical_json_bytes(plan))
     except Exception:
-        if args.output_dir.exists():
+        if storage_io.exists(args.output_dir):
             for child in args.output_dir.iterdir():
-                child.unlink()
+                storage_io.unlink(child)
             args.output_dir.rmdir()
         raise
     print(json.dumps({"selected_carrier_ids": plan["selection"]["selected_carrier_ids"], "subset_allocation_sha256": plan["subset_allocation"]["sha256"]}, sort_keys=True))

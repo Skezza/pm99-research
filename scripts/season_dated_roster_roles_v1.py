@@ -10,6 +10,7 @@ from urllib.parse import urlsplit, parse_qs
 from bs4 import BeautifulSoup
 from app.fdi_indexed import IndexedFDIFile
 from app.indexed_jug_roles import read_indexed_native_roles
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_opening_identity_exchange_v1 as exchange
 from scripts import season_opening_order_repair_v1 as ownership
 from scripts import season_package_compiler_v2 as compiler
@@ -35,7 +36,7 @@ def period_row(value, season, name, birthday, club):
     if (url.scheme != 'https' or url.hostname != 'datencenter.dfb.de'
             or f'/seasons/{year}-{year+1}/teams/' not in url.path):
         raise ValueError('dated roster origin and exact target season required')
-    page = BeautifulSoup(exchange.original(value).read_bytes(), 'lxml')
+    page = BeautifulSoup(storage_io.read_bytes(exchange.original(value)), 'lxml')
     headings = {' '.join(h.get_text(' ', strip=True).split()) for h in page.select('h3')}
     if not any(h.startswith('Kader ') and h.endswith(f'{year}/{year+1}') for h in headings):
         raise ValueError('original dated roster heading differs')
@@ -100,8 +101,8 @@ def prepare(base, path, request):
     package = pipeline.read_json_file(base.package_path)
     players = {p['carrier_id']: p for p in package['players']}
     clubs = {c['id']: c for c in package['clubs']}
-    jug = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(jug).entries}
     owners = ownership.native_owners(eq)
     updates, seen = [], set()

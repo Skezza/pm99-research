@@ -7,6 +7,7 @@ No network, regeneration or new historical facts are needed for this scan.
 from collections import Counter
 from datetime import UTC,datetime
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry,season_pipeline_v2 as pipeline
 from scripts import season_frozen_fixture_reserve_v1 as source
 from scripts import season_historical_roster_audit_v1 as roster
@@ -22,7 +23,7 @@ ROOT=registry.ROOT/'.local/consolidated-audit-20261009/frozen-fixture-next-batch
 
 
 def main():
-    if (ROOT/'discovery.json').exists():raise ValueError('completed bound discovery must not repeat')
+    if storage_io.exists(ROOT / 'discovery.json'):raise ValueError('completed bound discovery must not repeat')
     ROOT.mkdir(parents=True,exist_ok=True)
     ledger=registry.ROOT/'.local/consolidated-audit-20261009/release-delivery-checklist-v57.json'
     previous=pipeline.read_json_file(ledger);closed={r['case_id'] for r in previous['cross_club_dispositions']}
@@ -33,7 +34,7 @@ def main():
     for group in frozen['seasons']:
         season=group['season'];base=registry.load_preferred_release(season)
         saved=ROOT/(season+'.json')
-        if saved.exists():
+        if storage_io.exists(saved):
             row=pipeline.read_json_file(saved)
             if (row['release_id'],row['manifest_sha256'],row['package_sha256'])!=(
                     base.release_id,base.manifest_sha256,registry.sha256_file(base.package_path)):
@@ -48,7 +49,7 @@ def main():
             found=people.unique_person(dict(name=source.heading_name(actor.get('source_name') or actor['name']),facts=dict(birth_date=key[1])),index)
             if found is not None:represented_ids.add(found['source_player_id'])
         capture_path=registry.ROOT/f'.local/transfermarkt-opening-plans-current-v1/{season}/opening-lineups.json'
-        if not capture_path.is_file():
+        if not storage_io.is_file(capture_path):
             row=dict(season=season,release_id=base.release_id,manifest_sha256=base.manifest_sha256,
                 package_sha256=registry.sha256_file(base.package_path),candidates=[],
                 diagnostic_reasons={'separate-legacy-opening-source-route-needed':len(group['candidates'])},
@@ -57,7 +58,7 @@ def main():
             print(dict(season=season,source_route='separate-legacy-opening-source-route-needed'),flush=True);continue
         capture=pipeline.read_json_file(capture_path)
         captures={};annuals={};candidates=[];reasons=Counter();allocated=set()
-        jug=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+        jug=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
         entries={e.record_id:e for e in IndexedFDIFile.from_bytes(jug).entries}
         def original_capture(club):
             if club['id'] not in captures:captures[club['id']]=unique_capture(club,capture['clubs'])

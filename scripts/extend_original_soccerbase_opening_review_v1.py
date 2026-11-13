@@ -8,6 +8,7 @@ from pathlib import Path
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]; sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_duplicate_source_context_v1 as context
 from scripts import season_duplicate_ownership_plan_v1 as planner
 from scripts import season_public_identity_and_history_inputs_v1 as public
@@ -18,22 +19,22 @@ from scripts import prepare_duplicate_club_disposition_v1 as whole
 
 
 def extend(plan_path, capture_root, output):
-    if output.exists(): raise ValueError('source review is immutable; use a new output')
-    plan = json.loads(plan_path.read_text()); bindings = plan['bindings']; pin = bindings['snapshot']
+    if storage_io.exists(output): raise ValueError('source review is immutable; use a new output')
+    plan = json.loads(storage_io.read_text(plan_path)); bindings = plan['bindings']; pin = bindings['snapshot']
     people, events, actual_pin = context.load_snapshot(ROOT/pin['path'], ROOT/pin['pinned_receipt_path'])
     if actual_pin != pin: raise ValueError('original person snapshot binding changed')
     people, events, _ = public.merge_bound(people, events, bindings)
     previous = bindings['soccerbase_opening_sources']['review']
     path = ROOT/previous['path']
     if registry.sha256_file(path) != previous['sha256']: raise ValueError('original source review changed')
-    document = copy.deepcopy(json.loads(path.read_text()))
+    document = copy.deepcopy(json.loads(storage_io.read_text(path)))
     if (document['snapshot_binding'] != pin
             or document['published_person_binding'] != bindings['published_person_supplement']):
         raise ValueError('original review uses different person inputs')
     by_season = {s['season']: s for s in document['seasons']}
     clubs_by_season = {}; added = []; refused = []
     # Snapshot completed files now: later collector writes do not alter this review.
-    selected = sorted(capture_root.glob('*/*/capture.json'))
+    selected = sorted(storage_io.glob(capture_root, '*/*/capture.json'))
     for path in selected:
         binding = {'path': registry.relative_workspace_path(path),
             'sha256': registry.sha256_file(path), 'policy': targeted.POLICY}

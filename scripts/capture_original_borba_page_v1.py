@@ -10,6 +10,7 @@ from urllib.request import Request, urlopen
 
 from bs4 import BeautifulSoup
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts.capture_tachira_2014_original_people_v1 import source_rows
 from scripts.capture_stock_replacement_sources_20261010 import ROOT
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
@@ -43,7 +44,7 @@ def capture(key):
     url=original_download_url(raw)
     destination=ROOT.parent/'borba-original-scans'/f'{key}.jpg'
     receipt=destination.with_name(destination.name+'.source.json')
-    if destination.exists():
+    if storage_io.exists(destination):
         previous=pipeline.read_json_file(receipt)
         if (previous['source_binding']!=binding or previous['url']!=url
                 or previous['sha256']!=registry.sha256_file(destination)):

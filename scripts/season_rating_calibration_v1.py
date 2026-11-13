@@ -11,6 +11,7 @@ import hashlib
 from collections import defaultdict
 from functools import lru_cache
 from statistics import median
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry,season_pipeline_v2 as pipeline
 from scripts import season_package_v2 as packages,season_historical_roster_audit_v1 as roster
 from scripts import season_editorial_ratings_v1 as model
@@ -36,7 +37,7 @@ def sha(value):return hashlib.sha256(packages.canonical_json_bytes(value)).hexdi
 @lru_cache(maxsize=2)
 def fifa_index(file_sha):
     result=defaultdict(dict)
-    for row in csv.DictReader(FIFA.open(newline='')):
+    for row in csv.DictReader(storage_io.open_file(FIFA, newline='')):
         edition=int(row['fifa_version'])
         if not row.get('dob') or any(not row.get(col) for col in MAPPING.values()):continue
         compact=dict(player_id=row['player_id'],edition=edition,date=row['fifa_update_date'],dob=row['dob'],

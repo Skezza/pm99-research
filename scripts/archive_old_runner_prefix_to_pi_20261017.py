@@ -9,6 +9,7 @@ import json
 import shlex
 import subprocess
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import archive_rejected_rating_recovery_to_pi_20261011 as pi
 from scripts import season_release_registry_v1 as registry
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
@@ -51,7 +52,7 @@ def inventory():
 
 def main():
     ROOT.mkdir(parents=True,exist_ok=True)
-    if (ROOT/'members.json').exists():
+    if storage_io.exists(ROOT / 'members.json'):
         raise ValueError('existing runner prefix archive needs inspection, never blind rerun')
     if pi.ssh('findmnt -n -o UUID --target /srv/hdd').strip()!=pi.UUID:
         raise ValueError('Pi archive volume missing or changed')

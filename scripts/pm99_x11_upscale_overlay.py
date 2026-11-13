@@ -3,6 +3,14 @@
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import ctypes
 import hashlib
@@ -560,9 +568,7 @@ def write_menu_comparison(source: np.ndarray, source_kind: str, args: argparse.N
         "assets_modified": False,
         "input_coordinates_modified": False,
     }
-    (args.menu_comparison_dir / "menu_ab_manifest.json").write_text(
-        json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
-    )
+    storage_io.write_text(args.menu_comparison_dir / 'menu_ab_manifest.json', json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
 
 
 def main() -> int:
@@ -659,7 +665,7 @@ def main() -> int:
                 print("frame source=directdraw-export", flush=True)
                 using_native_capture = False
             try:
-                frame = args.frame_path.read_bytes()
+                frame = storage_io.read_bytes(args.frame_path)
             except FileNotFoundError:
                 frame = b""
             if len(frame) == SOURCE_BYTES:

@@ -1,5 +1,6 @@
 """Capture the actual delivered Woking/Oxford players and normal startup."""
 import os
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import capture_registered_season_runtime_v1 as capture
 from scripts.capture_city_opening_exchange_20261011 import captured
@@ -12,7 +13,7 @@ TAG='woking_owned_2003_r98a_20261011'
 
 
 def main():
-    if not (ROOT/'native-byte-proof.json').exists():
+    if not storage_io.exists(ROOT / 'native-byte-proof.json'):
         raise ValueError('actual native proof required before runner')
     # Runtime can run alongside the non-mutating-source replay build. Both
     # independent results remain mandatory before preferred promotion.

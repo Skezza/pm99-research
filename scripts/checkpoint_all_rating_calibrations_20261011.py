@@ -3,6 +3,7 @@ import copy
 import gzip
 import hashlib
 from datetime import UTC,datetime
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import publish_historical_role_delta_v1 as publisher,attest_registered_season_runtime_v1 as runtime
 from scripts import season_quality_only_delta_v1 as layer
@@ -18,7 +19,7 @@ from scripts.build_savio_bobb_alias_reserve_20261011 import retained
 
 def run():
     prior=ROOT.parent/'release-delivery-checklist-v42.json';output=ROOT.parent/'release-delivery-checklist-v43.json'
-    if output.exists():raise ValueError('completed26 rating checkpoint must not repeat')
+    if storage_io.exists(output):raise ValueError('completed26 rating checkpoint must not repeat')
     result=copy.deepcopy(pipeline.read_json_file(prior));baselines=pipeline.read_json_file(ROOT/'pinned-baselines.json')
     if {r['season'] for r in baselines}!=set(registry.supported_seasons()) or len(baselines)!=26:
         raise ValueError('rating baseline scope not exactly26')
@@ -44,7 +45,7 @@ def run():
                     'non_rating_recipe_fields_identical','outfield_handling_guard_passed'))):raise ValueError('actual26 native/full replay proof incomplete')
         detail=registry.ROOT/native['players_path']
         if (registry.sha256_file(detail)!=native['players_gzip_sha256']
-                or hashlib.sha256(gzip.decompress(detail.read_bytes())).hexdigest()!=native['players_sha256']):
+                or hashlib.sha256(gzip.decompress(storage_io.read_bytes(detail))).hexdigest()!=native['players_sha256']):
             raise ValueError('compressed full native readback detail hash differs')
         visual=pipeline.read_json_file(root/'startup-visual-review.json');check_visual(visual)
         transport=pipeline.read_json_file(root/'startup-transport.json')

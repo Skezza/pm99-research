@@ -7,6 +7,14 @@ applies it through the upstream editor CLI, and writes evidence artifacts.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import csv
 import json
@@ -20,12 +28,12 @@ from typing import Any
 
 import requests
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR_ROOT = REPO_ROOT / "upstream" / "pm99-skezmod-db-editor"
 if str(EDITOR_ROOT) not in sys.path:
     sys.path.insert(0, str(EDITOR_ROOT))
-if str(Path(__file__).resolve().parent) not in sys.path:
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
+if str(storage_io.resolve(Path(__file__)).parent) not in sys.path:
+    sys.path.insert(0, str(storage_io.resolve(Path(__file__)).parent))
 
 from assert_pm99_isolated_input import resolve_game_root, sha256  # noqa: E402
 from app.fdi_indexed import IndexedFDIFile  # noqa: E402
@@ -129,7 +137,7 @@ def _api_get(session: requests.Session, *, endpoint: str, params: dict[str, Any]
 
 
 def _extract_nationality_codes(textos_pkf: Path) -> dict[str, int]:
-    xor_bytes = bytes(b ^ 0x61 for b in textos_pkf.read_bytes())
+    xor_bytes = bytes(b ^ 0x61 for b in storage_io.read_bytes(textos_pkf))
     pos = xor_bytes.find(b"GERMANY")
     if pos < 0:
         raise RuntimeError("Could not find English country table anchor (GERMANY) in XOR-decoded TEXTOS.PKF")
@@ -412,7 +420,7 @@ def _write_batch_csv(csv_path: Path, rows: list[dict[str, Any]]) -> None:
         "weight",
     ]
     csv_path.parent.mkdir(parents=True, exist_ok=True)
-    with csv_path.open("w", newline="", encoding="utf-8") as handle:
+    with storage_io.open_file(csv_path, 'w', newline='', encoding='utf-8') as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()
         for row in rows:
@@ -445,13 +453,13 @@ def _parse_player_at_offset(player_file: Path, offset: int, record_id: int) -> P
         raise RuntimeError(
             f"Offset mismatch for record id {record_id}: expected {offset}, indexed has {entry.payload_offset}"
         )
-    decoded = entry.decode_payload(player_file.read_bytes())
+    decoded = entry.decode_payload(storage_io.read_bytes(player_file))
     return PlayerRecord.from_bytes(decoded, int(entry.payload_offset))
 
 
 def _verify_rows(player_file: Path, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     verification: list[dict[str, Any]] = []
-    player_bytes = player_file.read_bytes()
+    player_bytes = storage_io.read_bytes(player_file)
     indexed = IndexedFDIFile.from_bytes(player_bytes)
     entry_by_id = {int(entry.record_id): entry for entry in indexed.entries}
     for row in rows:
@@ -508,7 +516,7 @@ def main() -> int:
         require_writable=not bool(args.dry_run),
         default_to_fixture=bool(args.dry_run),
     )
-    output_dir = Path(args.output_dir).resolve()
+    output_dir = storage_io.resolve(Path(args.output_dir))
     output_dir.mkdir(parents=True, exist_ok=True)
 
     team_file = game_dir / "DBDAT" / "EQ98030.FDI"
@@ -516,7 +524,7 @@ def main() -> int:
     coach_file = game_dir / "DBDAT" / "ENT98030.FDI"
     textos_pkf = game_dir / "DBDAT" / "TEXTOS.PKF"
     for path in (team_file, player_file, coach_file, textos_pkf):
-        if not path.is_file():
+        if not storage_io.is_file(path):
             raise SystemExit(f"Required file missing: {path}")
 
     session = requests.Session()
@@ -582,7 +590,7 @@ def main() -> int:
         },
     }
     manifest_path = output_dir / "stoke_2015_metadata_manifest.json"
-    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    storage_io.write_text(manifest_path, json.dumps(manifest, indent=2), encoding='utf-8')
 
     result: dict[str, Any] = {
         "manifest_path": str(manifest_path),
@@ -607,7 +615,7 @@ def main() -> int:
         result["player_batch_edit"] = batch_result
         if batch_result["returncode"] != 0:
             result_path = output_dir / "stoke_2015_metadata_apply_result.json"
-            result_path.write_text(json.dumps(result, indent=2), encoding="utf-8")
+            storage_io.write_text(result_path, json.dumps(result, indent=2), encoding='utf-8')
             raise SystemExit(
                 f"player-batch-edit failed (exit {batch_result['returncode']}), see {result_path}"
             )
@@ -631,7 +639,7 @@ def main() -> int:
 
         verification_rows = _verify_rows(player_file, batch_rows)
         verification_path = output_dir / "stoke_2015_metadata_verification.json"
-        verification_path.write_text(json.dumps(verification_rows, indent=2), encoding="utf-8")
+        storage_io.write_text(verification_path, json.dumps(verification_rows, indent=2), encoding='utf-8')
         result["verification_path"] = str(verification_path)
         result["verification_ok"] = all(bool(item.get("matches")) for item in verification_rows)
 
@@ -642,7 +650,7 @@ def main() -> int:
         "ENT98030.FDI": sha256(coach_file),
         "TEXTOS.PKF": sha256(textos_pkf),
     }
-    result_path.write_text(json.dumps(result, indent=2), encoding="utf-8")
+    storage_io.write_text(result_path, json.dumps(result, indent=2), encoding='utf-8')
     print(json.dumps({"result_path": str(result_path), "manifest_path": str(manifest_path), "csv_path": str(csv_path)}, indent=2))
     if not args.dry_run and not result.get("verification_ok", False):
         raise SystemExit(f"Verification failed, see {result_path}")

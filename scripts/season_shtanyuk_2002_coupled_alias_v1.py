@@ -6,6 +6,7 @@ or a claim of a complete first-fixture XI. All native orders/tactics stay exact.
 """
 import copy
 from pathlib import Path
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_historical_roster_audit_v1 as roster
 from scripts import season_duplicate_ownership_plan_v1 as planner
@@ -56,8 +57,8 @@ def prepare(base):
         for k in ('source_name','name'))]
     if set(found) != {10542,10580,7972} or len(found) != 3:
         raise ValueError('coupled correction must account for every represented alias owner')
-    jug = (base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     fields = {c:native.native_facts(jug,c) for c in found}
     Stoke_XI,_ = starting.native_starters(base,clubs[348])
     Shinnik_XI,_ = starting.native_starters(base,clubs[757])
@@ -120,9 +121,9 @@ def reconstruction(previous,release_id):
     from scripts import publish_historical_role_delta_v1 as publisher
     from scripts.build_savio_bobb_alias_reserve_20261011 import retained
     base=registry.load_registered_release(plan['season'],plan['release_id']);verify_plan(base,plan)
-    if path.resolve()!=(previous.package_path.parent/delta.plan_filename(plan)).resolve():
+    if storage_io.resolve(path)!=storage_io.resolve(previous.package_path.parent / delta.plan_filename(plan)):
         raise ValueError('coupled SOURCE input is not release-local')
-    expected,english,_,_=layered.prepare(base,plan,(base.game_path/'DBDAT/JUG98030.FDI').read_bytes())
+    expected,english,_,_=layered.prepare(base,plan,storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI'))
     if english is not None or expected!=pipeline.read_json_file(previous.package_path):
         raise ValueError('edited coupled recipe cannot silently discard changes')
     descriptor=path.with_name('coupled-alias-SOURCE-inert.json')

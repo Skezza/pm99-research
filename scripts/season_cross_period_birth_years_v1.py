@@ -11,6 +11,7 @@ import hashlib
 import sys
 
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import audit_compiled_player_birth_dates_v1 as readback
 from scripts import season_historical_roster_audit_v1 as audit
 from scripts import season_number_label_names_v2 as names
@@ -26,9 +27,9 @@ apply = old.apply
 
 def prepare(release):
     package = pipeline.read_json_file(release.package_path)
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (release.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
-    exe = (release.game_path / 'MANAGPRE.EXE').read_bytes()
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
+    exe = storage_io.read_bytes(release.game_path / 'MANAGPRE.EXE')
     sys.path.insert(0, str(registry.ROOT / 'upstream/pm99-skezmod-patcher'))
     from player_birth_year_guard import patch_native_birth_year_guard
     if patch_native_birth_year_guard(exe)[0] != exe:
@@ -140,7 +141,7 @@ def reconstruction(previous, release_id):
     plan = pipeline.read_json_file(path)
     if plan.get('policy') != POLICY:
         return None
-    if path.resolve() != (previous.package_path.parent / FILENAME).resolve() or registry.sha256_file(path) != receipt['birth_year_plan_sha256']:
+    if storage_io.resolve(path) != storage_io.resolve(previous.package_path.parent / FILENAME) or registry.sha256_file(path) != receipt['birth_year_plan_sha256']:
         raise ValueError('cross-period birthday replay source path/hash differs')
     from scripts import publish_historical_role_delta_v1 as publisher
     baseline = registry.load_registered_release(previous.season, plan['release_id'])

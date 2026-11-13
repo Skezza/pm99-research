@@ -3,6 +3,7 @@ import argparse
 import copy
 from datetime import UTC, datetime
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import build_original_carrier_label_20261017 as build
 from scripts.capture_original_carrier_label_20261017 import TAG, PROFILE
 from scripts.verify_original_carrier_label_20261017 import verify
@@ -26,7 +27,7 @@ def main(previous_version):
     folder = build.ROOT/build.SEASON
     previous_path = build.ROOT.parent/f'release-delivery-checklist-v{previous_version}.json'
     output = build.ROOT.parent/f'release-delivery-checklist-v{previous_version+1}.json'
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('completed club-name publication must not repeat')
     previous = pipeline.read_json_file(previous_path); initial = bindings()
     if initial != previous['current_release_bindings']:
@@ -43,7 +44,7 @@ def main(previous_version):
         raise ValueError('club label full SOURCE proof incomplete')
     for release in (actual, rebuilt):
         pipeline.assert_tree_matches_inventory(release.game_path, pipeline.read_json_file(actual.inventory_path))
-    if actual.package_path.read_bytes() != rebuilt.package_path.read_bytes():
+    if storage_io.read_bytes(actual.package_path) != storage_io.read_bytes(rebuilt.package_path):
         raise ValueError('club label SOURCE recipe differs')
     evidence = registry.ROOT/'.local/runlogs/pm99_runner'/TAG
     transport = pipeline.read_json_file(folder/'startup-transport.json')

@@ -14,6 +14,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_historical_roster_audit_v1 as roster
 from scripts import season_historical_transfer_review_v1 as transfer
 from scripts import season_duplicate_ownership_plan_v1 as planner
@@ -59,7 +60,7 @@ def attribution(club, players, sources, verifier):
 
 
 def run(seasons, source_root, output):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('attribution audit is immutable')
     results = []
     for season in seasons:
@@ -75,9 +76,9 @@ def run(seasons, source_root, output):
             grouped[p['club_id']].append(p)
         captures, bindings = roster.load_sources(season)
         path = source_root / 'reviews' / season / 'report.json'
-        if not path.exists():
+        if not storage_io.exists(path):
             path = source_root / 'reviews' / season / 'roster-audit.json'
-        verifier = roster.SourceVerifier(season, json.loads(path.read_text()), bindings)
+        verifier = roster.SourceVerifier(season, json.loads(storage_io.read_text(path)), bindings)
         rows = [dict(attribution(c, grouped[c['id']], captures, verifier),
             club_id=c['id'], carrier_id=c['carrier_id'], club=c['name'],
             playable=c['id'].startswith(('english-club-', 'legacy-english-club-')))

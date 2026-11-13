@@ -15,6 +15,14 @@ intended division.  Ambiguous or weak matches fail closed.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import json
 import re
@@ -174,11 +182,11 @@ def main() -> int:
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
     result = audit_runtime_picker(
-        season_manifest=json.loads(args.season_manifest.read_text(encoding="utf-8")),
-        selector_capture=json.loads(args.selector_capture.read_text(encoding="utf-8")),
+        season_manifest=json.loads(storage_io.read_text(args.season_manifest, encoding='utf-8')),
+        selector_capture=json.loads(storage_io.read_text(args.selector_capture, encoding='utf-8')),
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(args.output, json.dumps(result, indent=2, sort_keys=True) + '\n', encoding='utf-8')
     print(json.dumps({"result": result["result"], "output": str(args.output), "failures": len(result["failures"])}))
     return 0 if result["result"] == "pass" else 1
 

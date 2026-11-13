@@ -12,6 +12,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import prepare_duplicate_club_disposition_v1 as whole
 
 
@@ -54,7 +55,7 @@ def candidates(clubs, captures):
 
 
 def inventory(output):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('whole-club inventory is immutable; never overwrite')
     seasons = []
     for season in whole.registry.supported_seasons():

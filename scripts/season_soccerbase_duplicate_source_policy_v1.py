@@ -9,6 +9,7 @@ import copy
 import collections
 import json
 import re
+from scripts import json_storage_io_v1 as storage_io
 from scripts import replay_original_soccerbase_openings_v1 as replay
 from scripts import season_soccerbase_original_opening_v1 as original
 from scripts import season_english_result_date_binding_v1 as club_entities
@@ -131,8 +132,8 @@ def native_starters(release, club, native=None):
     from scripts import season_contextual_tactics_v1 as tactics
     from app.fdi_indexed import IndexedFDIFile
     if native is None:
-        eq=(release.game_path/'DBDAT/EQ98030.FDI').read_bytes()
-        jug=(release.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+        eq=storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
+        jug=storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
         native=(eq,jug,{e.record_id:e for e in IndexedFDIFile.from_bytes(eq).entries},
                       {e.record_id:e for e in IndexedFDIFile.from_bytes(jug).entries})
     eq,jug,eqs,jugs=native
@@ -182,9 +183,9 @@ def extend_original_people(people, document):
             receipt=registry.ROOT/source['source_receipt_path']
             if (registry.sha256_file(path)!=source['sha256']
                     or registry.sha256_file(receipt)!=source['source_receipt_sha256']
-                    or json.loads(receipt.read_text())!={'url':source['url'],'sha256':source['sha256']}):
+                    or json.loads(storage_io.read_text(receipt))!={'url':source['url'],'sha256':source['sha256']}):
                 raise ValueError('original Soccerbase identity biography URL/SHA changed')
-            actual=original.profile(path.read_bytes(),{'source_player_id':id,
+            actual=original.profile(storage_io.read_bytes(path),{'source_player_id':id,
                 'provider_player_id':person['provider_player_id']},source['url'])
             if actual!=person:raise ValueError('Soccerbase identity does not reproduce from original full biography')
         person=aliases[sorted(aliases)[0]][0]
@@ -228,7 +229,7 @@ def person_id(person):
         registry.relative_workspace_path(path)
         if registry.sha256_file(path) != expected['sha256']:
             raise ValueError('retained 11v11 Carter profile changed')
-        page = BeautifulSoup(path.read_bytes(), 'lxml')
+        page = BeautifulSoup(storage_io.read_bytes(path), 'lxml')
         title = page.title.get_text(' ', strip=True) if page.title else ''
         text = ' '.join(page.get_text(' ', strip=True).split())
         if (title != 'Alfie Carter Football Player Statistics | 11v11.com'
@@ -401,7 +402,7 @@ def attach(bindings, season, clubs, captures, people, events, existing, raw_iden
         bound=item[key]
         if registry.sha256_file(registry.ROOT/bound['path'])!=bound['sha256']:
             raise ValueError('immutable Soccerbase source-policy input changed')
-    document=json.loads((registry.ROOT/item['review']['path']).read_text())
+    document=json.loads(storage_io.read_text(registry.ROOT / item['review']['path']))
     if document.get('policy')!=replay.POLICY:
         raise ValueError('unsupported original Soccerbase provider bridge review')
     if (document['snapshot_binding']!=bindings['snapshot'] or
@@ -464,7 +465,7 @@ def bound_people(people, bindings):
     bound=item['review'];path=registry.ROOT/bound['path']
     if registry.sha256_file(path)!=bound['sha256']:
         raise ValueError('immutable Soccerbase identity input changed')
-    doc=json.loads(path.read_text())
+    doc=json.loads(storage_io.read_text(path))
     if (doc['policy']!=replay.POLICY or doc['snapshot_binding']!=bindings['snapshot']
             or doc['published_person_binding']!=bindings.get('published_person_supplement')):
         raise ValueError('Soccerbase original identity inputs differ from bound snapshot/public identities')

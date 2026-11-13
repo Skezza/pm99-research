@@ -15,6 +15,7 @@ from bs4 import BeautifulSoup
 from app.eq_roster_pruning import prune_visible_mode1_roster_payload
 from app.fdi_indexed import IndexedFDIFile
 from app.player_initial_order import OrderReplacement, patch_owned_mode1_complete_orders
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_historical_opening_review_v1 as opening
 from scripts import season_historical_roster_audit_v1 as annual
 from scripts import season_italian_opening_layer_v1 as native
@@ -90,12 +91,12 @@ def profiles():
         url = 'https://www.tff.org/Default.aspx?kisiId=' + id + '&pageId=30'
         cache = registry.ROOT / '.local/consolidated-audit-20261009/tff-source-cache'
         path = cache / (hashlib.sha256(url.encode()).hexdigest() + '.html')
-        receipt = json.loads(path.with_suffix('.source.json').read_text())
+        receipt = json.loads(storage_io.read_text(path.with_suffix('.source.json')))
         if receipt != {'url': url, 'sha256': sha} or registry.sha256_file(path) != sha:
             raise ValueError('original TFF person receipt/preimage changed')
         binding = {'url': url, 'path': registry.relative_workspace_path(path), 'sha256': sha}
         tff.require_tff_binding(binding, 30, 'kisiid', id)
-        parsed = tff.profile(path.read_bytes(), name)
+        parsed = tff.profile(storage_io.read_bytes(path), name)
         if parsed['birth_date'] != birthday:
             raise ValueError('original TFF birthday differs')
         rows.append({'person_id': id, **parsed, 'source': binding})
@@ -106,12 +107,12 @@ def prepare(release=None):
     release = release or registry.load_preferred_release('2000-01')
     if release.season != '2000-01':
         raise ValueError('this source policy is explicitly limited to 2000/01')
-    package = json.loads(release.package_path.read_text())
+    package = json.loads(storage_io.read_text(release.package_path))
     club = next(c for c in package['clubs'] if c['carrier_id'] == 1002)
     if club['name'] != 'Trabzonspor':
         raise ValueError('native club identity changed')
     capture_path = registry.ROOT / CACHE / 'opening-lineups.json'
-    capture = json.loads(capture_path.read_text())
+    capture = json.loads(storage_io.read_text(capture_path))
     rows = [c for c in capture['clubs'] if c['source_selector'].get('transfermarkt_club_id') == 449]
     if len(rows) != 1:
         raise ValueError('ambiguous original club capture')
@@ -126,8 +127,8 @@ def prepare(release=None):
     slugs = original_person_links(raw, {**starters, **bench})
     annual_capture, annual_proof = facts.annual_capture('2000-01', club)
     people = [p for p in package['players'] if p['id'] in club['roster_player_ids']]
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (release.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
     natives = {p['carrier_id']: facts.native_facts(jug, p['carrier_id']) for p in people}
     _, _, roster = native.roster_rows(eq, 1002)
     if [id for id, _ in roster] != [next(p['carrier_id'] for p in people if p['id'] == id) for id in club['roster_player_ids']]:
@@ -182,8 +183,8 @@ def test_candidate(release, plan):
     """Exercise canonical native APIs in memory, no binary files emitted."""
     if prepare(release) != plan:
         raise ValueError('source-derived plan does not independently reproduce')
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (release.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
     index, raw, rows = native.roster_rows(eq, 1002)
     changed = prune_visible_mode1_roster_payload(raw, expected_rows=rows, removed_player_ids=[32505])
     candidate_eq = compiler._rebuild_indexed(eq, index, {1002: compiler.xor_decode(changed)})
@@ -214,7 +215,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
-    if args.output.exists():
+    if storage_io.exists(args.output):
         raise ValueError('source reviews are immutable; choose a new output directory')
     from scripts import consolidated_season_discovery_v1 as discovery
     before = discovery.bindings()

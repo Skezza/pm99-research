@@ -16,6 +16,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_exact_primary_position_delta_v2 as native_writer
 from scripts import season_historical_roster_audit_v1 as roster
 from scripts import season_opening_order_repair_v1 as owners
@@ -59,7 +60,7 @@ def _sha(data: bytes) -> str:
 
 
 def _file_sha(path: Path) -> str:
-    return _sha(Path(path).read_bytes())
+    return _sha(storage_io.read_bytes(Path(path)))
 
 
 def _canon(value) -> bytes:
@@ -82,7 +83,7 @@ class _Text(HTMLParser):
 
 def _html(path: Path) -> str:
     parser = _Text()
-    parser.feed(path.read_text(encoding="utf-8", errors="replace"))
+    parser.feed(storage_io.read_text(path, encoding='utf-8', errors='replace'))
     return " ".join(parser.parts).casefold()
 
 
@@ -92,7 +93,7 @@ def _source_evidence(season: str) -> dict:
     for key, row in SOURCES.items():
         if _file_sha(row["path"]) != row["sha256"]:
             raise ValueError(f"Coady source body changed: {key}")
-    receipt = json.loads(CAPTURE_RECEIPT.read_text(encoding="utf-8"))
+    receipt = json.loads(storage_io.read_text(CAPTURE_RECEIPT, encoding='utf-8'))
     if receipt.get("schema") != "pm99-coady-source-capture-receipt-v1":
         raise ValueError("Coady capture receipt schema differs")
     captured = {row.get("path"): row for row in receipt.get("sources", [])}
@@ -119,7 +120,7 @@ def _source_evidence(season: str) -> dict:
     )):
         raise ValueError("official Wolves 2017/18-onwards history or identity is missing")
 
-    with SOURCES["fifa19_identity_crosscheck"]["path"].open(newline="", encoding="utf-8-sig") as stream:
+    with storage_io.open_file(SOURCES['fifa19_identity_crosscheck']['path'], newline='', encoding='utf-8-sig') as stream:
         matches = [row for row in csv.DictReader(stream) if row.get("sofifa_id") == "202048"]
     if len(matches) != 1:
         raise ValueError("unique FIFA19 Coady identity row is missing or ambiguous")
@@ -133,7 +134,7 @@ def _source_evidence(season: str) -> dict:
         annual_path = ROOT / ".local/external-sources/cache.footballsquads/eng/2019-2020/engprem/wolves.txt"
         if _file_sha(annual_path) != "5ccbadbf860209c53764bb4b1a268f605246ecc8278b752fa586092b948a9bb6":
             raise ValueError("2019/20 FootballSquads annual bytes changed")
-        rows = [(i, line) for i, line in enumerate(annual_path.read_text(encoding="utf-8").splitlines(), 1) if "Conor Coady" in line]
+        rows = [(i, line) for i, line in enumerate(storage_io.read_text(annual_path, encoding='utf-8').splitlines(), 1) if "Conor Coady" in line]
         if rows != [(12, "16, Conor Coady, ENG, M, 1.85, 75, 25-02-93, Liverpool, Huddersfield T")]:
             raise ValueError("2019/20 annual M conflict row changed")
         annual = {"path": str(annual_path.relative_to(ROOT)), "sha256": _file_sha(annual_path), "line": 12,
@@ -160,8 +161,8 @@ def _base_exact(base):
     if not target or base.release_id != target["release_id"]:
         raise ValueError("Coady cascade requires one of the two exact current parent releases")
     registered = registry.load_registered_release(base.season, base.release_id)
-    if (Path(base.package_path).resolve() != Path(registered.package_path).resolve()
-            or Path(base.game_path).resolve() != Path(registered.game_path).resolve()
+    if (storage_io.resolve(Path(base.package_path)) != storage_io.resolve(Path(registered.package_path))
+            or storage_io.resolve(Path(base.game_path)) != storage_io.resolve(Path(registered.game_path))
             or base.manifest_sha256 != registered.manifest_sha256):
         raise ValueError("Coady cascade base is not the exact registered release")
     return target
@@ -185,8 +186,8 @@ def prepare(base):
             or player["id"] not in club.get("roster_player_ids", [])):
         raise ValueError("exact Coady package identity/owner/role preimage differs")
     db = Path(base.game_path) / "DBDAT"
-    jug = (db / "JUG98030.FDI").read_bytes()
-    eq = (db / "EQ98030.FDI").read_bytes()
+    jug = storage_io.read_bytes(db / 'JUG98030.FDI')
+    eq = storage_io.read_bytes(db / 'EQ98030.FDI')
     index = IndexedFDIFile.from_bytes(jug)
     entries = {entry.record_id: entry for entry in index.entries}
     if target["carrier_id"] not in entries:
@@ -298,7 +299,7 @@ def apply(jug, eq, plan):
     verify(base, plan)
     if _sha(eq) != plan["parent"]["native_files"]["EQ98030.FDI"]:
         raise ValueError("Coady cascade exact EQ parent differs")
-    original_jug = (base.game_path / "DBDAT/JUG98030.FDI").read_bytes()
+    original_jug = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
     update = {"carrier_id": plan["target"]["carrier_id"], "before_player": plan["target"]["before_player"],
               "before_native": plan["target"]["before_native"], "primary_position": "D", "fine_roles": [4]}
     lower = {"schema": native_writer.SCHEMA, "season": plan["season"], "release_id": plan["release_id"],
@@ -329,12 +330,12 @@ def reconstruction(previous, release_id):
     relative = getattr(previous, "locator", {}).get("sourced_profile_assignment_plan_path")
     if not relative:
         raise ValueError("Coady cascade SOURCE receipt has no typed plan path")
-    path = (ROOT / relative).resolve(strict=True)
+    path = storage_io.resolve(ROOT / relative, strict=True)
     plan = pipeline.read_json_file(path)
     _check_plan(plan)
     base = registry.load_registered_release(plan["season"], plan["release_id"])
     verify(base, plan)
-    if path != (previous.package_path.parent / filename(plan)).resolve() or _file_sha(path) != receipt.get("original_profile_assignment_plan_sha256"):
+    if path != storage_io.resolve(previous.package_path.parent / filename(plan)) or _file_sha(path) != receipt.get("original_profile_assignment_plan_sha256"):
         raise ValueError("Coady cascade SOURCE plan path/hash differs from compiler receipt")
     expected = bind(pipeline.read_json_file(base.package_path), plan)
     if _canon(pipeline.read_json_file(previous.package_path)) != _canon(expected):

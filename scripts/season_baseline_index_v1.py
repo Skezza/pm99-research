@@ -24,6 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2 as package_v2  # noqa: E402
 
 
@@ -36,12 +37,12 @@ class BaselineIndexError(ValueError):
 
 
 def _sha256_file(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def _read_json(path: Path, label: str) -> dict[str, Any]:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(storage_io.read_text(path, encoding='utf-8'))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise BaselineIndexError(f"cannot read {label}: {path}") from exc
     if not isinstance(value, dict):
@@ -51,9 +52,9 @@ def _read_json(path: Path, label: str) -> dict[str, Any]:
 
 def _relative(path: Path) -> str:
     try:
-        return path.resolve().relative_to(ROOT).as_posix()
+        return storage_io.resolve(path).relative_to(ROOT).as_posix()
     except ValueError:
-        return str(path.resolve())
+        return str(storage_io.resolve(path))
 
 
 def _sha256(value: Any, label: str) -> str:
@@ -75,7 +76,7 @@ def _season_from_package(package: Mapping[str, Any], *, expected: str) -> None:
 
 def build_index(*, calendar_bound_root: Path, baseline_id: str) -> dict[str, Any]:
     """Return a baseline index without recomputing its established hashes."""
-    calendar_bound_root = calendar_bound_root.resolve()
+    calendar_bound_root = storage_io.resolve(calendar_bound_root)
     if not calendar_bound_root.is_dir() or calendar_bound_root.is_symlink():
         raise BaselineIndexError(f"calendar-bound root must be an ordinary directory: {calendar_bound_root}")
     if not package_v2.ID_RE.fullmatch(baseline_id):
@@ -109,7 +110,7 @@ def build_index(*, calendar_bound_root: Path, baseline_id: str) -> dict[str, Any
             raise BaselineIndexError(f"{season}: baseline may contain only provisional calendar-bound drafts")
         package_path = calendar_bound_root / season / "draft-season-package.calendar-bound.json"
         audit_path = calendar_bound_root / season / "calendar-binding-audit.json"
-        if not package_path.is_file() or package_path.is_symlink() or not audit_path.is_file() or audit_path.is_symlink():
+        if not storage_io.is_file(package_path) or package_path.is_symlink() or not storage_io.is_file(audit_path) or audit_path.is_symlink():
             raise BaselineIndexError(f"{season}: calendar-bound package or audit is missing")
         package = _read_json(package_path, f"{season} calendar-bound package")
         _season_from_package(package, expected=season)
@@ -157,12 +158,12 @@ def build_index(*, calendar_bound_root: Path, baseline_id: str) -> dict[str, Any
 
 def write_index(*, calendar_bound_root: Path, baseline_id: str, output: Path) -> dict[str, Any]:
     """Create one index once; never overwrite a prior baseline selection."""
-    output = output.resolve()
-    if output.exists():
+    output = storage_io.resolve(output)
+    if storage_io.exists(output):
         raise BaselineIndexError(f"refusing to overwrite baseline index: {output}")
     index = build_index(calendar_bound_root=calendar_bound_root, baseline_id=baseline_id)
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_bytes(package_v2.canonical_json_bytes(index))
+    storage_io.write_bytes(output, package_v2.canonical_json_bytes(index))
     return index
 
 

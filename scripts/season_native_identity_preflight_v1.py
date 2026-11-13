@@ -18,6 +18,7 @@ for location in (ROOT, ROOT / "upstream/pm99-skezmod-db-editor"):
         sys.path.insert(0, str(location))
 
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_historical_roster_audit_v1 as roster
 from scripts import season_package_compiler_v2 as compiler
 from scripts import season_pipeline_v2 as pipeline
@@ -49,7 +50,7 @@ def audit(season, release_id, child_path):
             owners.setdefault(player_id, []).append(
                 dict(carrier=club["carrier_id"], name=club["name"]))
     jug_path = release.game_path / "DBDAT/JUG98030.FDI"
-    raw = jug_path.read_bytes()
+    raw = storage_io.read_bytes(jug_path)
     identities, failures = {}, []
     parsed_count = 0
     for entry in IndexedFDIFile.from_bytes(raw).entries:
@@ -107,7 +108,7 @@ def main():
     parser.add_argument("child_recipe", type=Path)
     parser.add_argument("output", type=Path)
     args = parser.parse_args()
-    if args.output.exists():
+    if storage_io.exists(args.output):
         parser.error("existing evidence must not be overwritten")
     result = audit(args.season, args.parent_release, args.child_recipe)
     pipeline.write_canonical_json(args.output, result)

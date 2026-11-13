@@ -38,6 +38,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2 as package_v2
 
 
@@ -214,10 +215,10 @@ def _require_sorted_unique_rows(
 
 
 def _read_canonical(path: Path, *, label: str) -> tuple[dict[str, Any], str]:
-    path = path.expanduser().resolve()
-    if path.is_symlink() or not path.is_file():
+    path = storage_io.resolve(path.expanduser())
+    if path.is_symlink() or not storage_io.is_file(path):
         raise IntakePackageError(f"{label} must be a regular file: {path}")
-    raw = path.read_bytes()
+    raw = storage_io.read_bytes(path)
     try:
         value = json.loads(raw.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
@@ -519,14 +520,14 @@ def project_package(
             "kit_declaration_count": len(package["assets"]["kits"]),
             "portrait_declaration_count": len(package["assets"]["portraits"]),
         },
-        "implementation_sha256": package_v2.sha256_file(Path(__file__).resolve()),
+        "implementation_sha256": package_v2.sha256_file(storage_io.resolve(Path(__file__))),
     }
     return package, receipt
 
 
 def _write_canonical(path: Path, value: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(_canonical_bytes(dict(value)))
+    storage_io.write_bytes(path, _canonical_bytes(dict(value)))
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -547,15 +548,15 @@ def _parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
-        intake_path = args.intake.resolve()
+        intake_path = storage_io.resolve(args.intake)
         intake, _intake_digest = _read_canonical(intake_path, label="source intake")
         overlays = [
-            _read_canonical(path.resolve(), label="editorial overlay")
+            _read_canonical(storage_io.resolve(path), label="editorial overlay")
             for path in args.editorial_overlay
         ]
-        output_package = args.output_package.resolve()
-        output_receipt = args.output_receipt.resolve()
-        inputs = {intake_path, *(path.resolve() for path in args.editorial_overlay)}
+        output_package = storage_io.resolve(args.output_package)
+        output_receipt = storage_io.resolve(args.output_receipt)
+        inputs = {intake_path, *(storage_io.resolve(path) for path in args.editorial_overlay)}
         if output_package in inputs or output_receipt in inputs or output_package == output_receipt:
             raise IntakePackageError("package and receipt outputs must be distinct from all source documents")
         package, receipt = project_package(intake=intake, overlays=overlays)

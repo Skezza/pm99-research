@@ -21,6 +21,7 @@ from app.player_initial_order import (
     patch_owned_mode1_complete_orders,
     read_initial_order,
 )
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_compiler_v2 as compiler
 from scripts import season_package_v2 as package_v2
 from scripts import season_release_registry_v1 as registry
@@ -50,8 +51,8 @@ def _safe_workspace_path(raw: Any, label: str) -> Path:
     path = Path(raw)
     if path.is_absolute() or not path.parts or ".." in path.parts:
         raise CohortDeltaError(f"{label} path escapes the workspace")
-    root = registry.ROOT.resolve()
-    resolved = (root / path).resolve(strict=False)
+    root = storage_io.resolve(registry.ROOT)
+    resolved = storage_io.resolve(root / path, strict=False)
     try:
         resolved.relative_to(root)
     except ValueError as exc:
@@ -139,7 +140,7 @@ def validate_plan(plan: Mapping[str, Any], *, verify_source_files: bool = True) 
         expected = _require_sha(row.get("sha256"), f"source {row['id']}.sha256")
         path = _safe_workspace_path(row.get("path"), f"source {row['id']}")
         if verify_source_files:
-            if not path.is_file() or _sha_bytes(path.read_bytes()) != expected:
+            if not storage_io.is_file(path) or _sha_bytes(storage_io.read_bytes(path)) != expected:
                 raise CohortDeltaError(f"source bytes differ for {row['id']}")
         if not isinstance(row.get("claim"), str) or not row["claim"].strip():
             raise CohortDeltaError(f"source {row['id']} needs a bounded claim")
@@ -296,7 +297,7 @@ def validate_plan(plan: Mapping[str, Any], *, verify_source_files: bool = True) 
             if verify_source_files:
                 source_path = _safe_workspace_path(source_by_id[correction["source_binding_id"]]["path"],
                                                    f"source {correction['source_binding_id']}")
-                if correction["source_row_text"].encode("utf-8") not in source_path.read_bytes():
+                if correction["source_row_text"].encode("utf-8") not in storage_io.read_bytes(source_path):
                     raise CohortDeltaError(f"actor {aid} exact correction row is absent from its bound source")
             parsed = _parse_footballsquads_row(correction["source_row_text"],
                 season_start_year=int(parent['season'][:4]))

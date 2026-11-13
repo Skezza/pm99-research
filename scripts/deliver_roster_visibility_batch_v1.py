@@ -10,6 +10,7 @@ from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_roster_visibility_v1 as visibility
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
@@ -24,16 +25,16 @@ PILOT = ROOT/'.local/runlogs/pm99_runner/prove_2007_08_stoke_roster_flags_202610
 
 def write_once(path, document):
     path.parent.mkdir(parents=True,exist_ok=True)
-    if path.exists():
-        if json.loads(path.read_text()) != document: raise ValueError('immutable batch input changed: '+str(path))
+    if storage_io.exists(path):
+        if json.loads(storage_io.read_text(path)) != document: raise ValueError('immutable batch input changed: '+str(path))
     else: pipeline.write_canonical_json(path,document)
 
 
 def build_one(season, root):
     locator = registry.locator_path(season, RELEASE)
-    if locator.exists():
+    if storage_io.exists(locator):
         built = registry.load_registered_release(season,RELEASE)
-        layer = json.loads((built.package_path.parent/'roster-visibility.json').read_text())
+        layer = json.loads(storage_io.read_text(built.package_path.parent / 'roster-visibility.json'))
         source = registry.load_registered_release(season,layer['source_release_id'])
     else:
         source = registry.load_preferred_release(season)
@@ -53,17 +54,17 @@ def build_one(season, root):
     # Reproduce independently from the exact immutable original, not the
     # publisher's claimed byte count. Recheck every original recipe binding.
     visibility.verify_bound(source,layer)
-    before = (source.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    before = storage_io.read_bytes(source.game_path / 'DBDAT/EQ98030.FDI')
     expected, changes = visibility.apply(before,layer,exact_before=True)
-    if expected != (built.game_path/'DBDAT/EQ98030.FDI').read_bytes():
+    if expected != storage_io.read_bytes(built.game_path / 'DBDAT/EQ98030.FDI'):
         raise ValueError('visibility delta differs from independently reproduced bytes')
-    pipeline.assert_tree_matches_inventory(source.game_path,json.loads(source.inventory_path.read_text()))
-    pipeline.assert_tree_matches_inventory(built.game_path,json.loads(built.inventory_path.read_text()))
-    difference = pipeline.inventory_difference(json.loads(source.inventory_path.read_text()),
-        json.loads(built.inventory_path.read_text()))
+    pipeline.assert_tree_matches_inventory(source.game_path,json.loads(storage_io.read_text(source.inventory_path)))
+    pipeline.assert_tree_matches_inventory(built.game_path,json.loads(storage_io.read_text(built.inventory_path)))
+    difference = pipeline.inventory_difference(json.loads(storage_io.read_text(source.inventory_path)),
+        json.loads(storage_io.read_text(built.inventory_path)))
     if difference['only_left'] or difference['only_right'] or [r['path'] for r in difference['changed']] != ['DBDAT/EQ98030.FDI']:
         raise ValueError('visibility delta changed players, assets, executable or other files')
-    if json.loads(built.package_path.read_text()) != visibility.bind(json.loads(source.package_path.read_text()),layer):
+    if json.loads(storage_io.read_text(built.package_path)) != visibility.bind(json.loads(storage_io.read_text(source.package_path)),layer):
         raise ValueError('visibility recipe changed beyond exact policy binding')
     proof = {'season':season,'source_release_id':source.release_id,'release_id':RELEASE,
         'changed_flags':len(changes),'intended_starters':sum(p['declared_starter'] for c in layer['clubs'] for p in c['players']),
@@ -78,7 +79,7 @@ def build_one(season, root):
 
 def run(root):
     root.mkdir(parents=True,exist_ok=True)
-    if (root/'closeout.json').exists(): raise ValueError('closed batch must not be repeated')
+    if storage_io.exists(root / 'closeout.json'): raise ValueError('closed batch must not be repeated')
     os.environ.update(PM99_RUNNER_WORKER_LANE_COUNT='3',PM99_RUNNER_HOST_LOCK_CONCURRENCY='3',
         PM99_RUNNER_WORKER_DISPLAY_BASE='90')
     options = SimpleNamespace(expect_release_id=RELEASE,execute=True,attest=True,worker='tiny-m73',
@@ -99,7 +100,7 @@ def run(root):
             result = task.result();runtime_rows.append({'season':runtimes[task],'result':result})
             print(json.dumps({'stage':'fresh-runtime-complete','season':runtimes[task]}),flush=True)
     after_path = root/'after-visibility-audit.json'
-    after = json.loads(after_path.read_text()) if after_path.exists() else inventory.audit(after_path)
+    after = json.loads(storage_io.read_text(after_path)) if storage_io.exists(after_path) else inventory.audit(after_path)
     if after['nonzero_flag_rows']:
         raise ValueError('authored English exclusions remain; cannot close visibility batch')
     validations = [registry.validate_preferred_release(s,level='release') for s in registry.supported_seasons()]

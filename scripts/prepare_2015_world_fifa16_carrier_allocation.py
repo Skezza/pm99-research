@@ -14,6 +14,14 @@ proposal explicit for review before it becomes a season ledger row.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import csv
 import hashlib
@@ -129,7 +137,7 @@ def canonical_bytes(value: Any) -> bytes:
 
 def sha256(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
@@ -148,7 +156,7 @@ def group_for_carrier(carrier_id: int) -> str | None:
 
 
 def read_csv(path: Path) -> list[dict[str, str]]:
-    with path.open(encoding="utf-8-sig", newline="") as handle:
+    with storage_io.open_file(path, encoding='utf-8-sig', newline='') as handle:
         return [dict(row) for row in csv.DictReader(handle)]
 
 
@@ -308,14 +316,14 @@ def main() -> int:
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
 
-    registry = json.loads(args.registry.read_text(encoding="utf-8"))
+    registry = json.loads(storage_io.read_text(args.registry, encoding='utf-8'))
     stats = read_csv(args.player_stats_csv)
     fut = read_csv(args.fut_source_csv)
     report = build_report(registry=registry, stats=stats, fut=fut)
     report["sources"]["fifa16_player_stats_sha256"] = sha256(args.player_stats_csv)
     report["sources"]["fifa16_fut_source_sha256"] = sha256(args.fut_source_csv)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_bytes(report))
+    storage_io.write_bytes(args.output, canonical_bytes(report))
     print(json.dumps(report["coverage"], sort_keys=True))
     return 0
 

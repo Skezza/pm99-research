@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import csv
 import hashlib
@@ -11,12 +19,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR_ROOT = REPO_ROOT / "upstream" / "pm99-skezmod-db-editor"
 if str(EDITOR_ROOT) not in sys.path:
     sys.path.insert(0, str(EDITOR_ROOT))
-if str(Path(__file__).resolve().parent) not in sys.path:
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
+if str(storage_io.resolve(Path(__file__)).parent) not in sys.path:
+    sys.path.insert(0, str(storage_io.resolve(Path(__file__)).parent))
 
 from assert_pm99_isolated_input import core_file_hashes, resolve_fixture_root, resolve_game_root, sha256  # noqa: E402
 from app.editor_helpers import _player_display_name  # noqa: E402
@@ -86,7 +94,7 @@ def _parse_args() -> argparse.Namespace:
 
 def _copy_game_tree(source_game_root: Path, target_game_root: Path) -> None:
     target_game_root.parent.mkdir(parents=True, exist_ok=True)
-    if target_game_root.exists():
+    if storage_io.exists(target_game_root):
         raise RuntimeError(f"Target game root already exists: {target_game_root}")
     target_game_root.mkdir(parents=True, exist_ok=False)
     subprocess.run(
@@ -174,7 +182,7 @@ def _parse_payload_summary(payload: bytes, payload_offset: int) -> dict[str, Any
 
 def _load_player_view(player_file: Path) -> dict[int, dict[str, Any]]:
     entries = _indexed_entry_by_id(player_file)
-    player_bytes = player_file.read_bytes()
+    player_bytes = storage_io.read_bytes(player_file)
     out: dict[int, dict[str, Any]] = {}
     for record_id, entry in entries.items():
         decoded = entry.decode_payload(player_bytes)
@@ -194,7 +202,7 @@ def _load_player_view(player_file: Path) -> dict[int, dict[str, Any]]:
 
 def _load_payload_hash_view(player_file: Path) -> dict[int, str]:
     entries = _indexed_entry_by_id(player_file)
-    player_bytes = player_file.read_bytes()
+    player_bytes = storage_io.read_bytes(player_file)
     out: dict[int, str] = {}
     for record_id, entry in entries.items():
         decoded = entry.decode_payload(player_bytes)
@@ -284,7 +292,7 @@ def _write_revert_csv(
     ]
     csv_path.parent.mkdir(parents=True, exist_ok=True)
     rows_out: list[dict[str, Any]] = []
-    with csv_path.open("w", newline="", encoding="utf-8") as handle:
+    with storage_io.open_file(csv_path, 'w', newline='', encoding='utf-8') as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()
         for row in manifest_rows:
@@ -329,9 +337,9 @@ def _restore_exact_payloads(
     manifest_rows: list[dict[str, Any]],
     report_path: Path,
 ) -> list[dict[str, Any]]:
-    source_bytes = source_player_file.read_bytes()
-    baseline_bytes = baseline_player_file.read_bytes()
-    target_input_bytes = target_player_file.read_bytes()
+    source_bytes = storage_io.read_bytes(source_player_file)
+    baseline_bytes = storage_io.read_bytes(baseline_player_file)
+    target_input_bytes = storage_io.read_bytes(target_player_file)
 
     source_entries = _indexed_entry_by_id(source_player_file)
     baseline_entries = _indexed_entry_by_id(baseline_player_file)
@@ -387,9 +395,9 @@ def _restore_exact_payloads(
             }
         )
 
-    target_player_file.write_bytes(bytes(patched))
+    storage_io.write_bytes(target_player_file, bytes(patched))
 
-    target_output_bytes = target_player_file.read_bytes()
+    target_output_bytes = storage_io.read_bytes(target_player_file)
     target_output_entries = _indexed_entry_by_id(target_player_file)
     for payload_row in row_reports:
         pid = int(payload_row["pid"])
@@ -404,7 +412,7 @@ def _restore_exact_payloads(
         )
 
     report_path.parent.mkdir(parents=True, exist_ok=True)
-    report_path.write_text(json.dumps({"rows": row_reports}, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(report_path, json.dumps({'rows': row_reports}, indent=2, sort_keys=True) + '\n', encoding='utf-8')
     return row_reports
 
 
@@ -426,8 +434,8 @@ def main() -> int:
         if str(args.baseline_game_root).strip()
         else resolve_fixture_root()
     )
-    manifest_path = Path(args.manifest).expanduser().resolve()
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest_path = storage_io.resolve(Path(args.manifest).expanduser())
+    manifest = json.loads(storage_io.read_text(manifest_path, encoding='utf-8'))
     manifest_rows = list(manifest.get("batch_rows") or [])
     if not manifest_rows:
         raise RuntimeError(f"Manifest has no batch_rows: {manifest_path}")
@@ -443,7 +451,7 @@ def main() -> int:
 
     timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     variant_id = args.variant_id.strip() or f"stoke_2015_jug_bisect_{args.slots}_{timestamp}"
-    variant_root = Path(args.output_root).expanduser().resolve() / variant_id
+    variant_root = storage_io.resolve(Path(args.output_root).expanduser()) / variant_id
     game_root = variant_root / "game"
     patch_dir = variant_root / "patches" / "jug_bisect"
     patch_dir.mkdir(parents=True, exist_ok=True)
@@ -517,7 +525,7 @@ def main() -> int:
                 "--json",
             ]
         )
-        (patch_dir / "player_batch_edit_result.json").write_text(json.dumps(apply_result, indent=2) + "\n", encoding="utf-8")
+        storage_io.write_text(patch_dir / 'player_batch_edit_result.json', json.dumps(apply_result, indent=2) + '\n', encoding='utf-8')
         if int(apply_result["returncode"]) != 0:
             raise RuntimeError(f"player-batch-edit failed for variant {variant_id}")
 
@@ -529,10 +537,7 @@ def main() -> int:
             "stderr": "",
             "skipped": True,
         }
-        (patch_dir / "validate_database.json").write_text(
-            json.dumps(validate_result, indent=2, sort_keys=True) + "\n",
-            encoding="utf-8",
-        )
+        storage_io.write_text(patch_dir / 'validate_database.json', json.dumps(validate_result, indent=2, sort_keys=True) + '\n', encoding='utf-8')
     else:
         validate_result = _run_editor_cli(
             [
@@ -550,10 +555,7 @@ def main() -> int:
                 "--json",
             ]
         )
-        (patch_dir / "validate_database.json").write_text(
-            validate_result["stdout"] if validate_result["stdout"] else json.dumps(validate_result, indent=2) + "\n",
-            encoding="utf-8",
-        )
+        storage_io.write_text(patch_dir / 'validate_database.json', validate_result['stdout'] if validate_result['stdout'] else json.dumps(validate_result, indent=2) + '\n', encoding='utf-8')
         if int(validate_result["returncode"]) != 0:
             raise RuntimeError(f"validate-database failed for variant {variant_id}")
     if "payload" in selected_surfaces:
@@ -602,7 +604,7 @@ def main() -> int:
         },
     }
     manifest_out_path = patch_dir / "variant_manifest.json"
-    manifest_out_path.write_text(json.dumps(manifest_out, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(manifest_out_path, json.dumps(manifest_out, indent=2, sort_keys=True) + '\n', encoding='utf-8')
     print(
         json.dumps(
             {

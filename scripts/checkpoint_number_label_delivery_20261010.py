@@ -2,6 +2,7 @@
 import copy
 from datetime import UTC, datetime
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import build_registered_quality_release_v1 as builder
 from scripts import attest_registered_season_runtime_v1 as runtime
@@ -14,7 +15,7 @@ from scripts.build_original_number_labels_20261010 import ROOT, RELEASE
 def run():
     audit_root = ROOT.parent
     output = audit_root / 'release-delivery-checklist-v15.json'
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('completed release checkpoint must not be repeated')
     prior = audit_root / 'release-delivery-checklist-v14.json'
     result = copy.deepcopy(pipeline.read_json_file(prior))
@@ -63,7 +64,7 @@ def run():
         evidence_dir = registry.ROOT / (f'.local/runlogs/pm99_runner/number_labels_r69a_{season.replace("-", "_")}_20261010')
         attestation = runtime.attest(season=season, evidence_dir=evidence_dir)
         path = ROOT / (season + '-final-attestation.json')
-        if path.exists():
+        if storage_io.exists(path):
             if pipeline.read_json_file(path) != attestation:
                 raise ValueError('retained R69 attestation belongs to another runtime')
         else:

@@ -4,6 +4,7 @@ from pathlib import Path
 import tempfile
 
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import prepare_ofk_2004_source_allocation_v1 as source
 from scripts import prepare_ofk_2015_source_allocation_v1 as allocation2015
 from scripts import ofk_2004_original_secondary_facts_v1 as secondary
@@ -19,7 +20,7 @@ from scripts import season_duplicate_ownership_plan_v1 as planner
 
 
 def prepare(output):
-    if output.exists(): raise ValueError('verified2015 source inputs are immutable')
+    if storage_io.exists(output): raise ValueError('verified2015 source inputs are immutable')
     path=source.AUDIT/'ofk-2015-fixed18-source-feasibility-v1.json'
     proposal=pipeline.read_json_file(path)
     with tempfile.TemporaryDirectory(prefix='pm99-ofk2015-facts-') as temporary:
@@ -82,7 +83,7 @@ def prepare(output):
     before=next(p for p in package['players'] if p['carrier_id']==5468)
     if before!=review['native_slot_to_review']['native_recipe_player']:
         raise ValueError('coupled Celta slot has changed since review')
-    jug=(release.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    jug=storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     # Keep both fixed capacities, rather than grow a short record or shorten
     # a published surname. Exchange the already-known Drazic carrier with the
     # larger OFK carrier independently allocated to that same sourced person.

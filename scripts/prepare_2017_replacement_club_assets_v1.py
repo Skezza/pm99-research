@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_kit_render_bindings_v1 as render
 from scripts import prepare_paired_club_assets_v1 as assets
@@ -29,18 +30,18 @@ SPECS = {
 
 def original(filename):
     path = CACHE / filename
-    receipt = json.loads(path.with_name(filename + '.source.json').read_text())
+    receipt = json.loads(storage_io.read_text(path.with_name(filename + '.source.json')))
     if receipt['sha256'] != registry.sha256_file(path):
         raise ValueError('original kit evidence changed: ' + filename)
     return dict(path=registry.relative_workspace_path(path), **receipt)
 
 
 def catalogue():
-    history = BeautifulSoup((CACHE / 'wrexham-kit-history.html').read_bytes(), 'html.parser')
+    history = BeautifulSoup(storage_io.read_bytes(CACHE / 'wrexham-kit-history.html'), 'html.parser')
     image = history.find('img', src='/Wrexham/images/wrexham_2017-2018-1st.gif')
     if image is None or '2017-2018' not in image.parent.get_text(' ', strip=True):
         raise ValueError('Wrexham period image is not bound to 2017/18')
-    raw = (CACHE / 'chester-2017-official-trophy-highlight.html').read_text()
+    raw = storage_io.read_text(CACHE / 'chester-2017-official-trophy-highlight.html')
     if not ('Chester FC TV' in raw and 'CFC TV: Chester 2-2 AFC Fylde' in raw
             and re.search(r'datePublished" content="2017-12-17T', raw)):
         raise ValueError('Chester original video lacks its publisher and target-season date')
@@ -80,7 +81,7 @@ def catalogue():
 
 
 def prepare():
-    if OUTPUT.exists():
+    if storage_io.exists(OUTPUT):
         raise ValueError('asset source/render workspace is immutable')
     doc = catalogue()
     for carrier in SPECS:
@@ -91,7 +92,7 @@ def prepare():
     (OUTPUT / 'source-cache').mkdir()
     for value in SPECS.values():
         for name in (value[2], value[2] + '.source.json'):
-            os.link(CACHE / name, OUTPUT / 'source-cache' / name)
+            storage_io.link(CACHE / name, OUTPUT / 'source-cache' / name)
     pipeline.write_canonical_json(OUTPUT / 'kit-catalogue.json', doc)
     pipeline.write_canonical_json(OUTPUT / 'ground-specs.json', SPECS)
     bindings, receipt = render.render_catalogue(doc,

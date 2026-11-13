@@ -9,6 +9,14 @@ Contract:
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -19,7 +27,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
@@ -95,8 +103,8 @@ def apply_restore(
     dry_run: bool,
     make_backup: bool,
 ) -> dict[str, Any]:
-    target_bytes = target_jug.read_bytes()
-    source_bytes = source_jug.read_bytes()
+    target_bytes = storage_io.read_bytes(target_jug)
+    source_bytes = storage_io.read_bytes(source_jug)
 
     target_idx = IndexedFDIFile.from_bytes(target_bytes)
     source_idx = IndexedFDIFile.from_bytes(source_bytes)
@@ -129,8 +137,8 @@ def apply_restore(
         if in_place and make_backup:
             stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             backup_path = target_jug.with_name(f"{target_jug.name}.bak_valderrama_restore_single_{stamp}")
-            shutil.copy2(target_jug, backup_path)
-        out_path.write_bytes(output_bytes)
+            storage_io.copy_file(target_jug, backup_path, metadata=True)
+        storage_io.write_bytes(out_path, output_bytes)
 
     return {
         "target_jug": str(target_jug),
@@ -196,7 +204,7 @@ def main() -> int:
     if args.json_output:
         out = Path(args.json_output)
         out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(text + "\n", encoding="utf-8")
+        storage_io.write_text(out, text + '\n', encoding='utf-8')
     return 0
 
 

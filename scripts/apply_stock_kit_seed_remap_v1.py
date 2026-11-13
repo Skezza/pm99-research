@@ -23,6 +23,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from app.minifoto_bitmap_archive import iter_obfuscated_bmp_records_from_bytes  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts import patch_carrier_kit_art as carrier_kit  # noqa: E402
 from scripts import season_pipeline_v2 as pipeline  # noqa: E402
 from scripts import season_release_registry_v1 as registry  # noqa: E402
@@ -224,12 +225,12 @@ def _root_path(value: str | Path, *, label: str, must_exist: bool = True) -> Pat
     path = Path(value)
     if not path.is_absolute():
         path = registry.ROOT / path
-    path = path.resolve()
+    path = storage_io.resolve(path)
     try:
-        path.relative_to(registry.ROOT.resolve())
+        path.relative_to(storage_io.resolve(registry.ROOT))
     except ValueError as exc:
         raise StockKitRemapError(f"{label} escapes the workspace") from exc
-    if must_exist and not path.exists():
+    if must_exist and not storage_io.exists(path):
         raise StockKitRemapError(f"{label} does not exist: {path}")
     return path
 
@@ -246,7 +247,7 @@ def _check_stock_map(checklist: Mapping[str, Any], row: Mapping[str, Any], sourc
     path, expected_sha = _seed_map_for(checklist, row)
     if sha256_file(path) != expected_sha:
         raise StockKitRemapError("fixed stock carrier map no longer matches the checklist hash")
-    carriers = json.loads(path.read_text()).get("carriers", [])
+    carriers = json.loads(storage_io.read_text(path)).get("carriers", [])
     matches = [c for c in carriers if int(c.get("carrier_id", -1)) == source_id]
     if len(matches) != 1:
         raise StockKitRemapError("source carrier does not resolve uniquely in the sealed stock map")
@@ -298,7 +299,7 @@ def _verify_original_audit(checklist: Mapping[str, Any], row: Mapping[str, Any])
     path = _root_path(inputs[key_path], label="original candidate audit")
     if sha256_file(path) != inputs[key_sha]:
         raise StockKitRemapError("original candidate audit changed since combined checklist review")
-    original_doc = json.loads(path.read_text())
+    original_doc = json.loads(storage_io.read_text(path))
     if legacy_row:
         matches = [r for r in original_doc.get("candidates", [])
                    if int(r.get("current_carrier_id", -1)) == int(row["current_carrier_id"])
@@ -338,7 +339,7 @@ def _protected_legacy_carriers(checklist: Mapping[str, Any]) -> set[int]:
         expected = protected.get(key.replace("_path", "_sha256"))
         if not isinstance(expected, str) or sha256_file(receipt_path) != expected:
             raise StockKitRemapError("protected legacy kit receipt changed")
-        document = json.loads(receipt_path.read_text())
+        document = json.loads(storage_io.read_text(receipt_path))
         for row in document.get(fields, []):
             carrier = row.get("carrier_id", row.get("team_id"))
             if carrier is not None:
@@ -351,8 +352,8 @@ def _normalize_row_records(release, source_dir: Path, rows: Sequence[Mapping[str
     """Validate all selected bitmaps from one parse of each archive."""
     result: dict[str, dict[str, Any]] = {}
     for archive in ARCHIVES:
-        source_bytes = (source_dir / archive).read_bytes()
-        parent_bytes = (release.game_path / "DBDAT" / archive).read_bytes()
+        source_bytes = storage_io.read_bytes(source_dir / archive)
+        parent_bytes = storage_io.read_bytes(release.game_path / 'DBDAT' / archive)
         if sha256_bytes(source_bytes) != expected_source_hashes[archive]:
             raise StockKitRemapError(f"sealed source archive changed: {archive}")
         expected_current = rows[0]["current_archive_sha256s"][archive]
@@ -400,7 +401,7 @@ def _validate_live_binding(checklist: Mapping[str, Any], rows: Sequence[Mapping[
         if row["parent_package_sha256"] != package_sha:
             raise StockKitRemapError("candidate row package preimage differs from the explicit parent")
     source_cases = {str(c["case_id"]): c for c in checklist.get("cases", [])}
-    package = json.loads(release.package_path.read_text())
+    package = json.loads(storage_io.read_text(release.package_path))
     clubs = {str(c["id"]): c for c in package.get("clubs", [])}
     clubs_by_carrier = {int(c["carrier_id"]): c for c in package.get("clubs", [])}
     kits = {str(k["club_id"]): k for k in package.get("assets", {}).get("kits", [])}
@@ -440,14 +441,14 @@ def _validate_live_binding(checklist: Mapping[str, Any], rows: Sequence[Mapping[
             raise StockKitRemapError("legacy palette binding differs from source and parent runtime palettes")
     else:
         audit_path = _root_path(checklist["source_inputs"]["main_audit_path"], label="main stock-kit audit")
-        audit = json.loads(audit_path.read_text())
+        audit = json.loads(storage_io.read_text(audit_path))
         binding = audit.get("palette_binding", {})
         season_rows = [r for r in binding.get("seasons", []) if r.get("season") == release.season]
         if binding.get("all_25_current_preferred_DAT_palettes_match_the_sealed_clean_render_source") is not True or len(season_rows) != 1:
             raise StockKitRemapError("main audit lacks one sealed palette binding for this season")
         palette_row = season_rows[0]
-        source_dat_path = Path(palette_row["source_palette_path"]).resolve()
-        if source_dat_path != Path(source_palette_info["path"]).resolve():
+        source_dat_path = storage_io.resolve(Path(palette_row['source_palette_path']))
+        if source_dat_path != storage_io.resolve(Path(source_palette_info['path'])):
             raise StockKitRemapError("palette audit source path differs from explicit clean source DBDAT")
         if (sha256_file(source_dat_path), sha256_file(release.game_path / "DAT.PKF"),
             palette_row["source_palette_sha256"], palette_row["preferred_palette_sha256"]) != (
@@ -472,7 +473,7 @@ def _validate_live_binding(checklist: Mapping[str, Any], rows: Sequence[Mapping[
 
 def _approved_case_ids(path: Path, *, checklist_sha: str, season: str, parent_release_id: str,
                        parent_manifest_sha: str, source_hashes: Mapping[str, str]) -> set[str]:
-    document = json.loads(path.read_text())
+    document = json.loads(storage_io.read_text(path))
     if document.get("schema") != APPROVAL_SCHEMA:
         raise StockKitRemapError("materialisation requires an explicit stock-kit remap approval receipt")
     if (document.get("checklist_sha256"), document.get("season"), document.get("parent_release_id"),
@@ -494,7 +495,7 @@ def prepare(
     case_ids: Sequence[str] = (),
 ) -> dict[str, Any]:
     checklist_path = _root_path(checklist_path, label="combined-26 checklist")
-    checklist_bytes = checklist_path.read_bytes()
+    checklist_bytes = storage_io.read_bytes(checklist_path)
     checklist, rows = validate_checklist_bytes(checklist_bytes,
         expected_checklist_sha256=checklist_sha256, season=season,
         parent_release_id=parent_release_id, parent_manifest_sha256=parent_manifest_sha256,
@@ -537,7 +538,7 @@ def _materialisation_parent(plan, approval_path, allow_registered_parent):
     if release.manifest_sha256 != plan['parent_manifest_sha256']:
         raise StockKitRemapError('registered parent manifest changed')
     if allow_registered_parent:
-        if json.loads(approval_path.read_text()).get('allow_registered_parent') is not True:
+        if json.loads(storage_io.read_text(approval_path)).get('allow_registered_parent') is not True:
             raise StockKitRemapError('unpromoted registered parent requires explicit bound approval')
     else:
         preferred = registry.load_preferred_release(plan['season'])
@@ -555,12 +556,12 @@ def materialise(*, plan: Mapping[str, Any], approval_path: Path, output_root: Pa
         raise StockKitRemapError("no candidate mappings selected")
     approval_path = _root_path(approval_path, label="approval receipt")
     output_root = _root_path(output_root, label="output root", must_exist=False)
-    local_root = (registry.ROOT / ".local/season-stock-kit-seed-remaps-v1").resolve()
+    local_root = storage_io.resolve(registry.ROOT / '.local/season-stock-kit-seed-remaps-v1')
     try:
         output_root.relative_to(local_root)
     except ValueError as exc:
         raise StockKitRemapError("materialisation output must be a new directory under the local kit-remap root") from exc
-    if output_root.exists():
+    if storage_io.exists(output_root):
         raise StockKitRemapError("refusing to overwrite an existing output root")
     source_hashes = _archive_hashes(plan["source_archive_sha256s"], label="plan source archives")
     approved = _approved_case_ids(approval_path, checklist_sha=plan["checklist_sha256"],
@@ -582,7 +583,7 @@ def materialise(*, plan: Mapping[str, Any], approval_path: Path, output_root: Pa
     output_root.mkdir(parents=True)
     plan_path = output_root / "plan.json"
     plan_file_sha256 = pipeline.write_canonical_json(plan_path, dict(fresh))
-    shutil.copyfile(approval_path, output_root / "approval.json")
+    storage_io.copy_file(approval_path, output_root / 'approval.json')
     probe_root = output_root / "kit-probe"
     scratch = probe_root / "game" / "DBDAT"
     scratch.mkdir(parents=True)
@@ -590,11 +591,11 @@ def materialise(*, plan: Mapping[str, Any], approval_path: Path, output_root: Pa
     for name in ARCHIVES:
         source_path = release.game_path / "DBDAT" / name
         dest_path = scratch / name
-        shutil.copyfile(source_path, dest_path)
-        st, source_st, seed_st = dest_path.stat(), source_path.stat(), (source_dbdat / name).stat()
+        storage_io.copy_file(source_path, dest_path)
+        st, source_st, seed_st = storage_io.stat_result(dest_path), storage_io.stat_result(source_path), storage_io.stat_result(source_dbdat / name)
         if st.st_nlink != 1 or (st.st_dev, st.st_ino) in {(source_st.st_dev, source_st.st_ino), (seed_st.st_dev, seed_st.st_ino)}:
             raise StockKitRemapError("scratch target archive is not detached from parent and clean source")
-        parent_archive_bytes[name] = dest_path.read_bytes()
+        parent_archive_bytes[name] = storage_io.read_bytes(dest_path)
 
     api_events = []
     for row in plan["selected_cases"]:
@@ -603,7 +604,7 @@ def materialise(*, plan: Mapping[str, Any], approval_path: Path, output_root: Pa
             archive_set="foreign-ui"))
     archive_results = {}
     for name in ARCHIVES:
-        before, after = parent_archive_bytes[name], (scratch / name).read_bytes()
+        before, after = parent_archive_bytes[name], storage_io.read_bytes(scratch / name)
         parsed_before = {r.file_name: r for r in iter_obfuscated_bmp_records_from_bytes(name, before, file_name_pattern=BMP_RE)}
         parsed_after = {r.file_name: r for r in iter_obfuscated_bmp_records_from_bytes(name, after, file_name_pattern=BMP_RE)}
         if len(before) != len(after) or set(parsed_before) != set(parsed_after):

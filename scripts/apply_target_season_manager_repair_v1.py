@@ -29,6 +29,7 @@ for candidate in (ROOT, EDITOR):
         sys.path.insert(0, str(candidate))
 
 from app.fdi_indexed import IndexedFDIFile  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts import apply_target_season_manager_ledger_v1 as ledger_v1  # noqa: E402
 from scripts import season_package_compiler_v2 as compiler  # noqa: E402
 from scripts import season_package_v2 as package_v2  # noqa: E402
@@ -44,14 +45,14 @@ class ManagerRepairError(ValueError):
 
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
 
 
 def _decoded_payloads(path: Path) -> dict[int, bytes]:
-    data = path.read_bytes()
+    data = storage_io.read_bytes(path)
     return {
         int(entry.record_id): entry.decode_payload(data)
         for entry in IndexedFDIFile.from_bytes(data).entries
@@ -67,9 +68,9 @@ def _changed_records(before: Path, after: Path) -> set[int]:
 
 def _stage_file(path: Path, payload: bytes, suffix: str) -> Path:
     staged = path.with_name(f".{path.name}.{suffix}.tmp")
-    if staged.exists() or staged.is_symlink():
+    if storage_io.exists(staged) or staged.is_symlink():
         raise ManagerRepairError(f"stale temporary output exists: {staged}")
-    staged.write_bytes(payload)
+    storage_io.write_bytes(staged, payload)
     return staged
 
 
@@ -79,7 +80,7 @@ def _derive(
     package = package_v2.read_canonical_package(package_path)
     return ledger_v1.apply_ledger(
         package, ledger,
-        ledger_path=ledger_path.resolve().relative_to(ROOT).as_posix(),
+        ledger_path=storage_io.resolve(ledger_path).relative_to(ROOT).as_posix(),
         ledger_sha256=ledger_sha256,
     )
 
@@ -88,21 +89,21 @@ def repair(
     *, package_paths: Sequence[Path], compile_package_path: Path, ledger_path: Path,
     base_tree: Path, runtime_game: Path, receipt_path: Path, apply: bool,
 ) -> dict[str, Any]:
-    package_paths = [path.resolve() for path in package_paths]
+    package_paths = [storage_io.resolve(path) for path in package_paths]
     if len(package_paths) != len(set(package_paths)):
         raise ManagerRepairError("each recipe mirror must be supplied once")
-    compile_package_path = compile_package_path.resolve()
+    compile_package_path = storage_io.resolve(compile_package_path)
     if compile_package_path not in package_paths:
         raise ManagerRepairError("--compile-package must also be supplied through --package")
-    ledger_path, base_tree = ledger_path.resolve(), base_tree.resolve()
-    runtime_game, receipt_path = runtime_game.resolve(), receipt_path.resolve()
-    if not ledger_path.is_file() or not base_tree.is_dir() or not runtime_game.is_dir():
+    ledger_path, base_tree = storage_io.resolve(ledger_path), storage_io.resolve(base_tree)
+    runtime_game, receipt_path = storage_io.resolve(runtime_game), storage_io.resolve(receipt_path)
+    if not storage_io.is_file(ledger_path) or not base_tree.is_dir() or not runtime_game.is_dir():
         raise ManagerRepairError("manager ledger, clean base or runtime game is missing")
     try:
         ledger_path.relative_to(ROOT)
     except ValueError as exc:
         raise ManagerRepairError("manager ledger must be inside the workspace") from exc
-    ledger_raw = ledger_path.read_bytes()
+    ledger_raw = storage_io.read_bytes(ledger_path)
     ledger = json.loads(ledger_raw.decode("utf-8"))
     if not isinstance(ledger, dict):
         raise ManagerRepairError("manager ledger must be a JSON object")
@@ -129,7 +130,7 @@ def repair(
     live_eq = runtime_game / "DBDAT/EQ98030.FDI"
     live_ent = runtime_game / "DBDAT/ENT98030.FDI"
     for path in (live_jug, live_eq, live_ent):
-        if not path.is_file() or path.is_symlink():
+        if not storage_io.is_file(path) or path.is_symlink():
             raise ManagerRepairError(f"live database input is missing or unsafe: {path}")
     live_jug_before_sha256 = _sha256(live_jug)
     live_eq_before_sha256 = _sha256(live_eq)
@@ -141,7 +142,7 @@ def repair(
         receipts = []
         for index in (1, 2):
             derived_path = temporary_root / f"season-package-{index}.json"
-            derived_path.write_bytes(package_v2.canonical_json_bytes(compile_plan["package"]))
+            storage_io.write_bytes(derived_path, package_v2.canonical_json_bytes(compile_plan['package']))
             game = temporary_root / f"game-{index}"
             # The compiler touches only its three database files and reads the
             # country table.  A minimal clean materialisation avoids copying
@@ -149,7 +150,7 @@ def repair(
             for relative in (*compiler.DATABASE_RELATIVE_PATHS, compiler.COUNTRY_TABLE_RELATIVE_PATH):
                 source, target = base_tree / relative, game / relative
                 target.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copyfile(source, target)
+                storage_io.copy_file(source, target)
             receipts.append(compiler.compile_package_to_tree(
                 package_path=derived_path, base_tree=base_tree, materialisation_tree=game,
             ))
@@ -207,21 +208,21 @@ def repair(
             ))
             for plan in plans
         ]
-        staged_eq = _stage_file(live_eq, (first / "DBDAT/EQ98030.FDI").read_bytes(), "manager-repair")
-        staged_ent = _stage_file(live_ent, (first / "DBDAT/ENT98030.FDI").read_bytes(), "manager-repair")
+        staged_eq = _stage_file(live_eq, storage_io.read_bytes(first / 'DBDAT/EQ98030.FDI'), "manager-repair")
+        staged_ent = _stage_file(live_ent, storage_io.read_bytes(first / 'DBDAT/ENT98030.FDI'), "manager-repair")
         try:
             if apply:
                 for target, staged in staged_packages:
-                    os.replace(staged, target)
-                os.replace(staged_eq, live_eq)
-                os.replace(staged_ent, live_ent)
+                    storage_io.replace_file(staged, target)
+                storage_io.replace_file(staged_eq, live_eq)
+                storage_io.replace_file(staged_ent, live_ent)
         finally:
             for _target, staged in staged_packages:
-                if staged.exists() or staged.is_symlink():
-                    staged.unlink()
+                if storage_io.exists(staged) or staged.is_symlink():
+                    storage_io.unlink(staged)
             for staged in (staged_eq, staged_ent):
-                if staged.exists() or staged.is_symlink():
-                    staged.unlink()
+                if storage_io.exists(staged) or staged.is_symlink():
+                    storage_io.unlink(staged)
 
     receipt = {
         "schema_version": SCHEMA,
@@ -263,7 +264,7 @@ def repair(
     }
     if apply:
         receipt_path.parent.mkdir(parents=True, exist_ok=True)
-        receipt_path.write_bytes(package_v2.canonical_json_bytes(receipt))
+        storage_io.write_bytes(receipt_path, package_v2.canonical_json_bytes(receipt))
     return receipt
 
 

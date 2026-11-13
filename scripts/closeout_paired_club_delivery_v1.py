@@ -8,12 +8,13 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
 
 
 def read(path):
-    return json.loads(path.read_text())
+    return json.loads(storage_io.read_text(path))
 
 
 def binding(path):
@@ -26,14 +27,14 @@ def identity_keys(audit):
 
 
 def closeout(args):
-    if args.output.exists():
+    if storage_io.exists(args.output):
         raise ValueError('paired delivery closeout is immutable')
     receipt_path = args.candidate / 'candidate-receipt.json'
     receipt = read(receipt_path)
     season = receipt['season']
     release = registry.load_preferred_release(season)
     if (registry.sha256_file(release.package_path) != registry.sha256_file(args.candidate / 'season-package.json')
-            or release.game_path.resolve() != (args.candidate / 'game').resolve()):
+            or storage_io.resolve(release.game_path) != storage_io.resolve(args.candidate / 'game')):
         raise ValueError('paired game is not the installed preferred release')
     native, identity = read(args.native_proof), read(args.identity_proof)
     digest = registry.sha256_file(receipt_path)

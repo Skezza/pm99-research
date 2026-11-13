@@ -14,6 +14,14 @@ another club or a native saved-tactics file.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -197,11 +205,11 @@ def main() -> int:
     args = parse_args()
     if args.allow_mode1_candidate:
         raise ValueError('mode-1 byte split is unproven; use a separately reviewed research probe')
-    source = args.input_eq.resolve()
-    target = args.output_eq.resolve()
+    source = storage_io.resolve(args.input_eq)
+    target = storage_io.resolve(args.output_eq)
     if source == target:
         raise ValueError("--output-eq must be a different, disposable file")
-    data = source.read_bytes()
+    data = storage_io.read_bytes(source)
     entries = parse_index(data)
     target_entry = entries.get(args.team_record_id)
     if target_entry is None:
@@ -251,8 +259,8 @@ def main() -> int:
         result[grid_start:grid_end] = data[source_grid_start : source_grid_start + TACTICS_GRID_BYTES]
         detail = {"kind": "copy_grid", "source_team_record_id": source_entry.record_id}
     elif args.copy_grid_from_tactic_file is not None:
-        tactic_file = args.copy_grid_from_tactic_file.resolve()
-        tactic_bytes = tactic_file.read_bytes()
+        tactic_file = storage_io.resolve(args.copy_grid_from_tactic_file)
+        tactic_bytes = storage_io.read_bytes(tactic_file)
         if len(tactic_bytes) < TACTICS_GRID_BYTES:
             raise ValueError(
                 f"Native tactics file {tactic_file} is shorter than the {TACTICS_GRID_BYTES}-byte tactical grid"
@@ -323,7 +331,7 @@ def main() -> int:
         raise AssertionError("Mutation escaped the 1,760-byte candidate interior")
 
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_bytes(result)
+    storage_io.write_bytes(target, result)
     print(json.dumps({
         "success": True,
         "input_sha256": sha256(data),

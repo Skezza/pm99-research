@@ -15,6 +15,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_historical_roster_audit_v1 as roster
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
@@ -63,10 +64,10 @@ def seed(cache, season):
     locations = [ROOT / '.local' / ('season-' + season),
                  ROOT / '.local/external-sources/historical-ntf-audit-v1' / season]
     for location in locations:
-        if not location.exists():
+        if not storage_io.exists(location):
             continue
-        for receipt_path in location.rglob('*.html.source.json'):
-            receipt = json.loads(receipt_path.read_text())
+        for receipt_path in storage_io.glob(location, '*.html.source.json', recursive=True):
+            receipt = json.loads(storage_io.read_text(receipt_path))
             url = receipt.get('url', '')
             club = re.fullmatch(re.escape(BASE_URL) + r'/club/(\d+)/(\d{4}(?:_1)?)/[^/]+\.html', url)
             index = re.fullmatch(re.escape(BASE_URL) + r'/leagues/59/(\d{4}(?:_1)?)/England\.html', url)
@@ -77,22 +78,22 @@ def seed(cache, season):
             else:
                 continue
             source = receipt_path.with_name(receipt_path.name.removesuffix('.source.json'))
-            if not source.exists():
+            if not storage_io.exists(source):
                 continue
-            raw = source.read_bytes()
+            raw = storage_io.read_bytes(source)
             if hashlib.sha256(raw).hexdigest() != receipt.get('sha256'):
                 raise ValueError('old URL-bound source snapshot changed')
             destination = cache.root / key
-            if destination.exists():
+            if storage_io.exists(destination):
                 continue
             destination.parent.mkdir(parents=True, exist_ok=True)
-            destination.write_bytes(raw)
-            destination.with_suffix('.html.source.json').write_bytes(pipeline.canonical_json_bytes(receipt))
+            storage_io.write_bytes(destination, raw)
+            storage_io.write_bytes(destination.with_suffix('.html.source.json'), pipeline.canonical_json_bytes(receipt))
 
 
 def capture(season, cache, club_filter=()):
     release = registry.load_preferred_release(season)
-    package = json.loads(release.package_path.read_text())
+    package = json.loads(storage_io.read_text(release.package_path))
     clubs, _, _ = roster.add_legacy_english(package, season)
     targets = [c for c in clubs if roster.club_group(c) == 'england' and
                (not club_filter or any(english_legal_name(c['name']) == english_legal_name(n) for n in club_filter))]
@@ -139,7 +140,7 @@ def capture(season, cache, club_filter=()):
 
 
 def verified_rows(season, path):
-    document = json.loads(path.read_text())
+    document = json.loads(storage_io.read_text(path))
     if (document['schema_version'], document['season']) != (SCHEMA, season):
         raise ValueError('wrong NTF review capture')
     cache = registry._workspace_path(document['cache_root'], label='NTF review cache')
@@ -151,9 +152,9 @@ def verified_rows(season, path):
     if registry.sha256_file(raw_index) != index['source_sha256']:
         raise ValueError('NTF dated index changed')
     expected_title = f'Leagues of England ({season[:4]}/{season[-2:]}) | National Football Teams'
-    if roster.original_html_title(raw_index.read_bytes()) != expected_title:
+    if roster.original_html_title(storage_io.read_bytes(raw_index)) != expected_title:
         raise ValueError('NTF index season changed')
-    indexed = {(name, BASE_URL + href) for name, href in parse_league_links(raw_index.read_bytes())}
+    indexed = {(name, BASE_URL + href) for name, href in parse_league_links(storage_io.read_bytes(raw_index))}
     rows = []
     for club in document['clubs']:
         if (club['source_club_name'], club['source_url']) not in indexed:
@@ -162,11 +163,11 @@ def verified_rows(season, path):
         if relative.is_absolute() or '..' in relative.parts:
             raise ValueError('unsafe NTF source path')
         raw = cache / relative
-        receipt = json.loads(raw.with_suffix('.html.source.json').read_text())
+        receipt = json.loads(storage_io.read_text(raw.with_suffix('.html.source.json')))
         if registry.sha256_file(raw) != club['source_sha256'] or receipt != {'url': club['source_url'], 'sha256': club['source_sha256']}:
             raise ValueError('NTF source URL/hash binding changed')
-        name, _ = roster.historical_html_title(raw.read_bytes(), 'ntf', season, 'england', allow_calendar_ending_year=False)
-        if english_legal_name(name) != english_legal_name(club['source_club_name']) or parse_players(raw.read_bytes(), season) != club['players']:
+        name, _ = roster.historical_html_title(storage_io.read_bytes(raw), 'ntf', season, 'england', allow_calendar_ending_year=False)
+        if english_legal_name(name) != english_legal_name(club['source_club_name']) or parse_players(storage_io.read_bytes(raw), season) != club['players']:
             raise ValueError('NTF original source reparse disagrees')
         for player in club['players']:
             rows.append({'facts': player, 'club': club['club_name'], 'club_id': club['club_id'], 'group': 'england',
@@ -183,7 +184,7 @@ def main():
     args = parser.parse_args()
     for season in registry.supported_seasons() if args.season == 'all' else [args.season]:
         path = args.output / season / 'ntf-review-capture.json'
-        if path.exists():
+        if storage_io.exists(path):
             raise ValueError('capture exists; choose fresh report root and reuse cache')
         document = capture(season, Cache(args.cache_root / season, offline=args.offline, delay=args.delay,
                             stop_on_http_block=True), args.club)

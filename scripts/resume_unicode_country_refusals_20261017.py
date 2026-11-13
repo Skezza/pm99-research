@@ -1,4 +1,5 @@
 """Resume only two inspected pre-plan refusals; never rerun completed games."""
+from scripts import json_storage_io_v1 as storage_io
 from scripts import build_original_country_defaults_20261017 as build
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
@@ -12,7 +13,7 @@ def main():
         old=pipeline.read_json_file(failure)
         if old.get('error')!='ValueError: an intervening identity repair changes country target; do not write another person':
             raise ValueError('country recovery requires the exact inspected pre-plan refusal')
-        if (folder/'country-plan.json').exists() or registry.locator_path(season,build.RELEASE).exists():
+        if storage_io.exists(folder / 'country-plan.json') or storage_io.exists(registry.locator_path(season, build.RELEASE)):
             raise ValueError('country recovery refuses existing plan/native release; inspect partial state')
         row=next(r for r in inputs['rows'] if r['season']==season)
         retained(folder/'unicode-guard-recovery-input.json',dict(
@@ -24,7 +25,7 @@ def main():
         # Any retained admission is a candidate, not a trusted write approval.
         # Native publisher still independently reparses and compares the exact
         # selected plan before writing. Never repeat an existing game.
-        result=build.build_one(row,prepared_admission=pipeline.read_json_file(admission) if admission.exists() else None)
+        result=build.build_one(row,prepared_admission=pipeline.read_json_file(admission) if storage_io.exists(admission) else None)
         retained(folder/'unicode-guard-recovery-result.json',result)
 
 

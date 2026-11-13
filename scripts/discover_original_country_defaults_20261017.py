@@ -8,6 +8,7 @@ actual native readback, whole SOURCE and runner evidence before promotion.
 from collections import defaultdict
 from datetime import UTC, datetime
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_original_secondary_facts_v1 as repair
 from scripts import season_historical_roster_audit_v1 as roster
@@ -21,7 +22,7 @@ PEOPLE = registry.ROOT/'.local/duplicate-ownership-v3/published-person-identitie
 
 def main():
     ROOT.mkdir(parents=True, exist_ok=True)
-    if (ROOT/'discovery.json').exists():
+    if storage_io.exists(ROOT / 'discovery.json'):
         raise ValueError('completed country discovery must not repeat')
     doc = pipeline.read_json_file(PEOPLE)
     biographies.merge({}, doc)
@@ -32,7 +33,7 @@ def main():
     results = []
     for season in registry.supported_seasons():
         saved = ROOT/(season+'.json')
-        if saved.exists():
+        if storage_io.exists(saved):
             results.append(pipeline.read_json_file(saved))
             continue
         release = registry.load_preferred_release(season)

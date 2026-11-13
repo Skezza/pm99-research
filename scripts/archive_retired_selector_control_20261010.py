@@ -5,6 +5,7 @@ import sys
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import archive_retired_season_tests_20261004 as archive
 from scripts.archive_retired_compile_tests_20261007 import check_references
 
@@ -23,9 +24,9 @@ def run():
         check_references(source)
         if not (source/'game').is_dir() or (source/'game').is_symlink() or archive._active_game(source/'game'):
             raise ValueError('old selector game missing, symlinked or active')
-        for path in (archive.registry.LOCAL_ROOT/'releases').glob('*/*/locator.json'):
-            value=json.loads(path.read_text()).get('game_path')
-            if value and (ROOT/value).resolve().is_relative_to(source.resolve()):
+        for path in storage_io.glob(archive.registry.LOCAL_ROOT / 'releases', '*/*/locator.json'):
+            value=json.loads(storage_io.read_text(path)).get('game_path')
+            if value and storage_io.resolve(ROOT / value).is_relative_to(storage_io.resolve(source)):
                 raise ValueError('registered historical game lies inside selector test')
     archive.guard=guard
     try:

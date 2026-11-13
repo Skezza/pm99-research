@@ -32,6 +32,7 @@ for candidate in (ROOT, EDITOR):
         sys.path.insert(0, str(candidate))
 
 from app.fdi_indexed import IndexedFDIFile  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts import reconcile_mode1_roster_base_v1 as base_rows  # noqa: E402
 from scripts import season_package_compiler_v2 as compiler_v2  # noqa: E402
 from scripts import season_package_v2 as package_v2  # noqa: E402
@@ -53,12 +54,12 @@ def _canonical_bytes(value: Any) -> bytes:
 
 
 def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def _read_verified_base(path: Path) -> dict[str, Any]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise StaleCandidateReconciliationError(f"cannot read verified base descriptor: {path}: {exc}") from exc
@@ -93,8 +94,8 @@ def reconcile_stale_candidates(
         )
     eq_path = base_tree / "DBDAT" / "EQ98030.FDI"
     jug_path = base_tree / "DBDAT" / "JUG98030.FDI"
-    _owners, _rosters, modes = compiler_v2._source_roster_owners(eq_path.read_bytes())
-    jug_data = jug_path.read_bytes()
+    _owners, _rosters, modes = compiler_v2._source_roster_owners(storage_io.read_bytes(eq_path))
+    jug_data = storage_io.read_bytes(jug_path)
     entries = {int(entry.record_id): entry for entry in IndexedFDIFile.from_bytes(jug_data).entries}
     output = copy.deepcopy(package)
     players_by_id = {str(player["id"]): player for player in output["players"]}
@@ -169,7 +170,7 @@ def reconcile_stale_candidates(
             "package_sha256": _sha256(package_path),
             "verified_base_sha256": _sha256(verified_base_path),
             "base_inventory_fingerprint": base["inventory"]["files_fingerprint"],
-            "base_eq98030_sha256": hashlib.sha256(eq_path.read_bytes()).hexdigest(),
+            "base_eq98030_sha256": hashlib.sha256(storage_io.read_bytes(eq_path)).hexdigest(),
             "base_jug98030_sha256": hashlib.sha256(jug_data).hexdigest(),
         },
         "reconciliation": {
@@ -197,11 +198,11 @@ def reconcile_stale_candidates(
 
 
 def _write_new(path: Path, value: Any) -> str:
-    if path.exists() or path.is_symlink():
+    if storage_io.exists(path) or path.is_symlink():
         raise StaleCandidateReconciliationError(f"refusing to replace existing output: {path}")
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = _canonical_bytes(value)
-    path.write_bytes(payload)
+    storage_io.write_bytes(path, payload)
     return hashlib.sha256(payload).hexdigest()
 
 
@@ -213,22 +214,22 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--output-package", required=True, type=Path)
     parser.add_argument("--output-audit", required=True, type=Path)
     args = parser.parse_args(argv)
-    if args.output_package.resolve() == args.output_audit.resolve():
+    if storage_io.resolve(args.output_package) == storage_io.resolve(args.output_audit):
         print("stale candidate reconciliation error: output package and audit must differ", file=sys.stderr)
         return 2
-    if args.output_package.exists() or args.output_audit.exists():
-        existing = args.output_package if args.output_package.exists() else args.output_audit
-        print(f"stale candidate reconciliation error: refusing to replace existing output: {existing.resolve()}", file=sys.stderr)
+    if storage_io.exists(args.output_package) or storage_io.exists(args.output_audit):
+        existing = args.output_package if storage_io.exists(args.output_package) else args.output_audit
+        print(f"stale candidate reconciliation error: refusing to replace existing output: {storage_io.resolve(existing)}", file=sys.stderr)
         return 2
     try:
         output, audit = reconcile_stale_candidates(
-            package_path=args.package.resolve(),
-            base_tree=args.base_tree.resolve(),
-            verified_base_path=args.verified_base.resolve(),
+            package_path=storage_io.resolve(args.package),
+            base_tree=storage_io.resolve(args.base_tree),
+            verified_base_path=storage_io.resolve(args.verified_base),
         )
-        output_sha256 = _write_new(args.output_package.resolve(), output)
+        output_sha256 = _write_new(storage_io.resolve(args.output_package), output)
         audit["output"] = {"package_path": str(args.output_package), "package_sha256": output_sha256}
-        _write_new(args.output_audit.resolve(), audit)
+        _write_new(storage_io.resolve(args.output_audit), audit)
     except (
         StaleCandidateReconciliationError,
         base_rows.ReconciliationError,

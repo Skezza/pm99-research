@@ -15,6 +15,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_source_package_builder_v1 as builder
@@ -72,25 +73,25 @@ def unanimous_claim(club, players, artifact_id, index, sources):
 def review(season, source_root, opening_root, reused_root, output, *, source_release_id=None, carrier_ids=None, full_cohort_witness_path=None):
     release = (registry.load_registered_release(season, source_release_id)
         if source_release_id is not None else registry.load_preferred_release(season))
-    package = json.loads(release.package_path.read_text())
+    package = json.loads(storage_io.read_text(release.package_path))
     selected = set(carrier_ids) if carrier_ids is not None else None
     if selected is not None and (not selected or selected - {c['carrier_id'] for c in package['clubs']}):
         raise ValueError('label review requires nonempty existing selected carriers')
     artifact_id = 'opening-squad-preallocation-' + season
     descriptor = next((a for a in package['artifacts'] if a['id'] == artifact_id), None)
     preallocation_path = source_root / season / 'opening-squad-preallocation.json'
-    if descriptor is None or not preallocation_path.exists():
+    if descriptor is None or not storage_io.exists(preallocation_path):
         result = {'schema_version': SCHEMA, 'season': season, 'summary': {'supported_label_mismatches': 0, 'source_unavailable': True},
             'historical_verification_complete': False, 'clubs': [], 'bindings': {'release_id': release.release_id,
                 'package_sha256': registry.sha256_file(release.package_path)}}
     else:
         if registry.sha256_file(preallocation_path) != descriptor['sha256']:
             raise ValueError('club source-row recovery does not bind the current recipe artifact')
-        preallocation = json.loads(preallocation_path.read_text())
+        preallocation = json.loads(storage_io.read_text(preallocation_path))
         capture_path = opening_root / season / 'opening-lineups.json'
         if registry.sha256_file(capture_path) != preallocation['sources']['opening_lineup_sha256']:
             raise ValueError('original fixture capture differs from authored preallocation')
-        capture = json.loads(capture_path.read_text()); index, sources = indexed_claims(preallocation)
+        capture = json.loads(storage_io.read_text(capture_path)); index, sources = indexed_claims(preallocation)
         # The capture's selector omits the CSV path/hash. Compare those via
         # the separately bound preallocation, and compare fixture selectors
         # by the exact declared country, competition and historical name.
@@ -98,7 +99,7 @@ def review(season, source_root, opening_root, reused_root, output, *, source_rel
         for row in capture['clubs']:
             captured[selector_key(row['source_selector'])[:3]].append(row)
         reused_path = reused_root / season / 'opening-review.json'
-        previous = json.loads(reused_path.read_text()) if reused_path.exists() else None
+        previous = json.loads(storage_io.read_text(reused_path)) if storage_io.exists(reused_path) else None
         verified = {}
         if previous and previous['bindings'].get('opening_capture_sha256') == registry.sha256_file(capture_path):
             for row in previous['clubs']:
@@ -110,7 +111,7 @@ def review(season, source_root, opening_root, reused_root, output, *, source_rel
         native_managers = {c['carrier_id']: (id, names.get(id), len(owned)) for id, owned in holders.items() for c in owned}
         full_cohort_rows = {}
         if full_cohort_witness_path is not None:
-            optin_doc = json.loads(full_cohort_witness_path.read_text())
+            optin_doc = json.loads(storage_io.read_text(full_cohort_witness_path))
             if optin_doc.get('schema_version') != 'pm99-private-full-cohort-label-manager-optin-candidates-v2':
                 raise ValueError('wrong explicit full-cohort opt-in document')
             for candidate in optin_doc.get('candidates', []):

@@ -12,6 +12,7 @@ import sys
 import unicodedata
 from pathlib import Path
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_disk_budget_v1 as disk_budget
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts.capture_registered_season_runtime_v1 import _selector
@@ -153,12 +154,12 @@ def _workspace_path(season, release_id, runtime_workspace_root=None):
         return registry.ROOT / '.local/local-runner-v1' / season / release_id
     root = Path(runtime_workspace_root)
     expected = Path('/run/user') / str(os.getuid()) / 'pm99-registered-season-captures'
-    if root != expected or root.resolve() != root:
+    if root != expected or storage_io.resolve(root) != root:
         raise ValueError('alternate workspace must be the real per-user runtime capture directory')
     workspace = root / season / release_id
     if (Path(season).name != season or Path(release_id).name != release_id
             or season in ('.', '..') or release_id in ('.', '..')
-            or workspace.resolve() != workspace):
+            or storage_io.resolve(workspace) != workspace):
         raise ValueError('runtime workspace must use real season and release directories')
     return workspace
 
@@ -174,29 +175,29 @@ def capture(season, release_id, tag, *, carrier=None, label=None, token=None, se
     # Release inputs and all evidence retain their normal persistent locations.
     workspace = _workspace_path(season, release_id, runtime_workspace_root)
     evidence = registry.ROOT / '.local/runlogs/pm99_runner' / tag
-    if evidence.exists():
+    if storage_io.exists(evidence):
         raise ValueError('existing evidence must never be overwritten')
     marker = dict(season=season, release_id=release_id,
                   release_manifest_sha256=release.manifest_sha256)
-    first = not (workspace / 'wine-prefix/.pm99_runner_initialized').exists()
+    first = not storage_io.exists(workspace / 'wine-prefix/.pm99_runner_initialized')
     game = workspace / 'game'
-    copy_budget = sum((release.game_path / row['path']).stat().st_size
-                      for row in inventory['files']) if not game.exists() else 0
+    copy_budget = sum(storage_io.size(release.game_path / row['path'])
+                      for row in inventory['files']) if not storage_io.exists(game) else 0
     budget = max(INITIAL_BUDGET if first else 0, copy_budget + 128 * 1024 ** 2)
     capacity = disk_budget.require_space(registry.ROOT, budget,
         minimum_free_bytes=minimum_free_bytes, context="local capture")
     workspace.mkdir(parents=True, exist_ok=True)
     retained(workspace / 'release-binding.json', marker)
-    if not game.exists():
+    if not storage_io.exists(game):
         shutil.copytree(release.game_path, game, copy_function=shutil.copy2)
     pipeline.assert_tree_matches_inventory(game, inventory)
     for name in ('wine-prefix', 'home', 'support'):
         (workspace / name).mkdir(exist_ok=True)
     evidence.mkdir(parents=True)
-    shutil.copy2(release.compiler_receipt_path, evidence / 'input-provenance.json')
+    storage_io.copy_file(release.compiler_receipt_path, evidence / 'input-provenance.json', metadata=True)
     hashes = ''.join(registry.sha256_file(game / row['path']) + '  ' + row['path'] + '\n'
                      for row in inventory['files'] if row['path'].startswith('DBDAT/'))
-    (evidence / 'dbdat_override.sha256').write_text(hashes)
+    storage_io.write_text(evidence / 'dbdat_override.sha256', hashes)
     retained(evidence / 'local-input-binding.json', dict(**marker,
         sealed_source=str(release.game_path), disposable_copy=str(game),
         complete_input_inventory_verified=True, uses_source_hardlinks=False))
@@ -226,7 +227,7 @@ def capture(season, release_id, tag, *, carrier=None, label=None, token=None, se
     completed = subprocess.run(command, env=dict(os.environ, DOCKER_HOST='unix:///var/run/docker.sock'))
     pipeline.assert_tree_matches_inventory(release.game_path, inventory)
     summary_path = evidence / 'summary.json'
-    summary = pipeline.read_json_file(summary_path) if summary_path.exists() else {}
+    summary = pipeline.read_json_file(summary_path) if storage_io.exists(summary_path) else {}
     passed = completed.returncode == 0 and summary_matches(summary, release, profile=carrier is not None, selector=selector)
     retained(evidence / 'local-transport.json', dict(**marker, exit_code=completed.returncode,
         evidence=registry.relative_workspace_path(evidence), source_inventory_preserved=True,

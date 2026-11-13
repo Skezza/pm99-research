@@ -3,6 +3,7 @@ import copy
 from datetime import UTC,datetime
 from pathlib import Path
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import season_historical_roster_audit_v1 as roster
 from scripts import season_duplicate_ownership_delta_v1 as delta
@@ -34,7 +35,7 @@ def profile(release,root,label,carrier,club,age,nationality,player,native):
     proof_path=root/(label+'-profile-runtime-proof.json');proof=pipeline.read_json_file(proof_path)
     transport=pipeline.read_json_file(root/(label+'-profile-transport.json'))
     evidence=registry.ROOT/proof['evidence']
-    if not evidence.resolve().is_relative_to((root/'runtime'/label).resolve()):
+    if not storage_io.resolve(evidence).is_relative_to(storage_io.resolve(root / 'runtime' / label)):
         raise ValueError('profile evidence is outside its owned actor root')
     summary_path=evidence/'summary.json';summary=pipeline.read_json_file(summary_path)
     actual=summary.get('player_profile',{})
@@ -62,7 +63,7 @@ def profile(release,root,label,carrier,club,age,nationality,player,native):
         raise ValueError('profile exact-name proof changed')
     if registry.sha256_file(evidence/'input-provenance.json')!=registry.sha256_file(release.compiler_receipt_path):
         raise ValueError('profile launched another compiler provenance')
-    launched={line.split()[1]:line.split()[0] for line in (evidence/'dbdat_override.sha256').read_text().splitlines()
+    launched={line.split()[1]:line.split()[0] for line in storage_io.read_text(evidence / 'dbdat_override.sha256').splitlines()
         if line and not line.startswith('#')}
     for name in ('JUG98030.FDI','EQ98030.FDI','ENT98030.FDI','MINIFOTO.PKF','RIDIESC.PKF','MINIESC.PKF','NANOESC.PKF'):
         if launched.get('DBDAT/'+name)!=registry.sha256_file(release.game_path/'DBDAT'/name):
@@ -79,9 +80,9 @@ def verify(season):
         raise ValueError('country release does not bind its exact source plan')
     if countries.bind(pipeline.read_json_file(country_parent.package_path),country)!=pipeline.read_json_file(release.package_path):
         raise ValueError('entire final alias recipe does not reproduce')
-    native=(release.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    eq=(release.game_path/'DBDAT/EQ98030.FDI').read_bytes()
-    if countries.apply((country_parent.game_path/'DBDAT/JUG98030.FDI').read_bytes(),eq,country)!=(native,eq):
+    native=storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
+    eq=storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
+    if countries.apply(storage_io.read_bytes(country_parent.game_path / 'DBDAT/JUG98030.FDI'),eq,country)!=(native,eq):
         raise ValueError('final country byte delta differs')
     alias_release=country_parent
     if season=='2001-02':
@@ -89,7 +90,7 @@ def verify(season):
         shirt_parent=registry.load_registered_release(season,shirt['release_id']);shirts.verify(shirt_parent,shirt)
         if shirts.bind(pipeline.read_json_file(shirt_parent.package_path),shirt)!=pipeline.read_json_file(country_parent.package_path):
             raise ValueError('Commons entire shirt-layer recipe differs')
-        if shirts.apply((shirt_parent.game_path/'DBDAT/JUG98030.FDI').read_bytes(),eq,shirt)!=((country_parent.game_path/'DBDAT/JUG98030.FDI').read_bytes(),eq):
+        if shirts.apply(storage_io.read_bytes(shirt_parent.game_path / 'DBDAT/JUG98030.FDI'),eq,shirt)!=(storage_io.read_bytes(country_parent.game_path / 'DBDAT/JUG98030.FDI'),eq):
             raise ValueError('Commons source-number-only native layer differs')
         alias_release=shirt_parent
     alias=pipeline.read_json_file(registry.ROOT/alias_release.locator['ownership_plan_path'])
@@ -97,18 +98,18 @@ def verify(season):
     if (alias_parent.release_id,alias_parent.manifest_sha256)!=(parent.release_id,parent.manifest_sha256):
         raise ValueError('composed alias chain does not descend from the published manager parent')
     (first_alias if season=='2001-02' else second_alias).verify_plan(alias_parent,alias)
-    expected,english,_,_=layered.prepare(alias_parent,alias,(alias_parent.game_path/'DBDAT/JUG98030.FDI').read_bytes())
+    expected,english,_,_=layered.prepare(alias_parent,alias,storage_io.read_bytes(alias_parent.game_path / 'DBDAT/JUG98030.FDI'))
     if english is not None or expected!=pipeline.read_json_file(alias_release.package_path):
         raise ValueError('entire underlying source alias recipe differs')
     selected={r['carrier_id'] for r in alias['updates']}
     if selected!=({27013} if season=='2001-02' else {10580,7972}):raise ValueError('selected alias scope differs')
-    original=(parent.game_path/'DBDAT/JUG98030.FDI').read_bytes();preserve_other_records(original,native,selected)
+    original=storage_io.read_bytes(parent.game_path / 'DBDAT/JUG98030.FDI');preserve_other_records(original,native,selected)
     for name in ('EQ98030.FDI','ENT98030.FDI'):
-        if (parent.game_path/'DBDAT'/name).read_bytes()!=(release.game_path/'DBDAT'/name).read_bytes():
+        if storage_io.read_bytes(parent.game_path / 'DBDAT' / name)!=storage_io.read_bytes(release.game_path / 'DBDAT' / name):
             raise ValueError('alias correction changed source manager/club/order/tactics files')
-    archive,_=delta.no_photo_archive((parent.game_path/'DBDAT/MINIFOTO.PKF').read_bytes(),selected)
-    if archive!=(release.game_path/'DBDAT/MINIFOTO.PKF').read_bytes():raise ValueError('displaced portrait removal differs')
-    if any((release.game_path/f'DBDAT/MINIFOTO/J96{c:05d}.BMP').exists() for c in selected):
+    archive,_=delta.no_photo_archive(storage_io.read_bytes(parent.game_path / 'DBDAT/MINIFOTO.PKF'),selected)
+    if archive!=storage_io.read_bytes(release.game_path / 'DBDAT/MINIFOTO.PKF'):raise ValueError('displaced portrait removal differs')
+    if any(storage_io.exists(release.game_path / f'DBDAT/MINIFOTO/J96{c:05d}.BMP') for c in selected):
         raise ValueError('displaced actor retains a loose portrait override')
     old={r['path']:r['sha256'] for r in pipeline.read_json_file(parent.inventory_path)['files']}
     new={r['path']:r['sha256'] for r in pipeline.read_json_file(release.inventory_path)['files']}
@@ -167,7 +168,7 @@ def check_bindings(originals,selected):
 
 def run():
     previous=batch.ROOT.parent/'release-delivery-checklist-v55.json';output=batch.ROOT.parent/'release-delivery-checklist-v56.json'
-    if output.exists():raise ValueError('completed alias publication must not repeat')
+    if storage_io.exists(output):raise ValueError('completed alias publication must not repeat')
     result=copy.deepcopy(pipeline.read_json_file(previous));old={r['season']:r for r in result['current_release_bindings']}
     # Both complete source/native/runtime gates run before the first mutation.
     rows=[verify(s) for s in SEASONS];selected={r['season']:r for r in rows}
@@ -176,7 +177,7 @@ def run():
     for row in rows:
         season=row['season'];root=batch.ROOT/season;retained(root/'prepublication-proof-v2.json',row)
         publisher.register_completed_delta(season,batch.RELEASE,verified_ancestor_chain=row['ancestry_release_ids'])
-        if not (root/'final-attestation.json').exists():
+        if not storage_io.exists(root / 'final-attestation.json'):
             retained(root/'final-attestation.json',runtime.attest(season=season,evidence_dir=registry.ROOT/'.local/runlogs/pm99_runner'/
                 ('original_alias_countries_'+season.replace('-','_')+'_r120a_20261016')))
         valid=registry.validate_preferred_release(season,level='playable')

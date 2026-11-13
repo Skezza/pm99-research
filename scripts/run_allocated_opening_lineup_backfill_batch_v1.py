@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import capture_allocated_opening_lineups_v1 as xi  # noqa: E402
 from scripts import capture_transfermarkt_opening_lineups_v1 as opening  # noqa: E402
 from scripts import run_allocated_manager_backfill_batch_v1 as common  # noqa: E402
@@ -34,7 +35,7 @@ def _bytes(value: Any) -> bytes:
 
 
 def _latest_output(operations_root: Path, season: str) -> Path | None:
-    candidates = list((operations_root / season).glob("opening-lineups.allocated-historic-id*.json"))
+    candidates = list(storage_io.glob(operations_root / season, 'opening-lineups.allocated-historic-id*.json'))
     if not candidates:
         return None
     def version(path: Path) -> int:
@@ -46,7 +47,7 @@ def _latest_output(operations_root: Path, season: str) -> Path | None:
 def run_batch(*, current_root: Path, opening_root: Path, operations_root: Path, cache_dir: Path,
               seasons: Sequence[str] | None, offline: bool, delay: float) -> dict[str, Any]:
     requested = set(seasons or ())
-    pointers = sorted(current_root.glob("*/current.json"))
+    pointers = sorted(storage_io.glob(current_root, '*/current.json'))
     if requested:
         pointers = [path for path in pointers if path.parent.name in requested]
         missing = requested - {path.parent.name for path in pointers}
@@ -84,10 +85,10 @@ def run_batch(*, current_root: Path, opening_root: Path, operations_root: Path, 
             raise LineupBatchError(f"{season}: {exc}") from exc
         output = operations_root / season / "opening-lineups.allocated-historic-id-v1.json"
         output.parent.mkdir(parents=True, exist_ok=True)
-        if output.exists():
+        if storage_io.exists(output):
             raise LineupBatchError(f"{season}: refusing to overwrite {output}")
         payload = _bytes(result)
-        output.write_bytes(payload)
+        storage_io.write_bytes(output, payload)
         rows.append({"season": season, "state": "captured", "output": str(output),
                      "sha256": hashlib.sha256(payload).hexdigest(), "summary": result["summary"],
                      "source_capture": str(source_path), "carrier_allocation": str(allocation_path),
@@ -110,14 +111,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--delay", type=float, default=0.25)
     args = parser.parse_args(argv)
     try:
-        if args.receipt.exists():
+        if storage_io.exists(args.receipt):
             raise LineupBatchError(f"refusing to overwrite batch receipt: {args.receipt}")
         result = run_batch(current_root=args.current_root, opening_root=args.opening_root, operations_root=args.operations_root,
                            cache_dir=args.cache_dir, seasons=args.seasons, offline=args.offline, delay=args.delay)
     except (OSError, common.BatchError, LineupBatchError) as exc:
         parser.error(str(exc))
     args.receipt.parent.mkdir(parents=True, exist_ok=True)
-    args.receipt.write_bytes(_bytes(result))
+    storage_io.write_bytes(args.receipt, _bytes(result))
     print(json.dumps(result["summary"], sort_keys=True))
     return 0
 

@@ -9,6 +9,7 @@ from datetime import date
 from pathlib import Path
 
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_original_country_policy_v2 as v2
 from scripts import season_original_secondary_facts_v1 as v1
 from scripts import season_period_country_resolution_v3 as resolver
@@ -48,8 +49,8 @@ def prepare(base, original_plan_path, targets):
     package = pipeline.read_json_file(base.package_path)
     players = {p['carrier_id']: p for p in package['players']}
     clubs = {c['id']: c for c in package['clubs']}
-    jug = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(jug).entries}
     owners = original.order.native_owners(eq)
     codes = compiler._extract_country_codes_from_textos(base.game_path / 'DBDAT/TEXTOS.PKF')
@@ -154,7 +155,7 @@ def reconstruction(previous, release_id):
         return None
     receipt = pipeline.read_json_file(previous.compiler_receipt_path)
     if (receipt.get('compilation_mode') != MODE
-            or path.resolve() != (previous.package_path.parent / filename(plan)).resolve()
+            or storage_io.resolve(path) != storage_io.resolve(previous.package_path.parent / filename(plan))
             or registry.sha256_file(path) != receipt['original_profile_assignment_plan_sha256']):
         raise ValueError('resolved country original artifact/compiler binding differs')
     base = registry.load_registered_release(previous.season, plan['release_id'])
@@ -170,6 +171,6 @@ def reconstruction(previous, release_id):
         profile_assignment_plan_path=path)
     rebuilt = registry.load_registered_release(previous.season, release_id)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path, pipeline.read_json_file(previous.inventory_path))
-    if rebuilt.package_path.read_bytes() != previous.package_path.read_bytes():
+    if storage_io.read_bytes(rebuilt.package_path) != storage_io.read_bytes(previous.package_path):
         raise ValueError('resolved country whole SOURCE recipe differs')
     return dict(season=previous.season, complete_game_inventory_identical=True, complete_recipe_identical=True)

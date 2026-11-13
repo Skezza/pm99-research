@@ -5,6 +5,7 @@ Do not confuse unavailable authored provenance with a confirmed club bug.
 """
 from collections import defaultdict
 from datetime import UTC,datetime
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_original_carrier_label_restoration_v1 as policy
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
 
@@ -19,7 +20,7 @@ def scan():
         pre=policy.registry.ROOT/'.local/transfermarkt-opening-plans-current-v1'/season/'opening-squad-preallocation.json'
         fixed=policy.registry.ROOT/'seasons'/season/'fixed-carrier-registry.json'
         releases.append(dict(season=season,release_id=base.release_id,manifest_sha256=base.manifest_sha256))
-        if len(descriptors)!=1 or not pre.exists() or not fixed.exists():
+        if len(descriptors)!=1 or not storage_io.exists(pre) or not storage_io.exists(fixed):
             rows.append(dict(season=season,state='source-or-registry-unavailable-not-confirmed-fault'));continue
         if policy.registry.sha256_file(pre)!=descriptors[0]['sha256']:
             raise ValueError('current recipe and source preallocation differ: '+season)
@@ -56,6 +57,6 @@ def scan():
 
 if __name__=='__main__':
     destination=policy.registry.ROOT/'.local/consolidated-audit-20261009/original-carrier-label-restoration-20261017/all26-cohort-label-candidates-v90.json'
-    if destination.exists():raise ValueError('existing discovery needs inspection, not regeneration')
+    if storage_io.exists(destination):raise ValueError('existing discovery needs inspection, not regeneration')
     result=scan();retained(destination,result)
     print(dict(seasons=len(result['bindings']),candidates=result['nominated_label_candidates'],native_writes=0),flush=True)

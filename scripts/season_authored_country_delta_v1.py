@@ -11,6 +11,7 @@ from app.fdi_indexed import IndexedFDIFile
 from app.player_initial_order import OrderReplacement, read_initial_order, patch_owned_mode1_complete_orders
 from app.ent_manager_profiles import parse_indexed_ent_manager_profile, replace_indexed_ent_manager_names
 from app.xor import xor_decode
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as p, season_package_v2 as packages, season_release_registry_v1 as r
 from scripts import season_package_compiler_v2 as compiler
 from scripts import season_opening_cohort_delta_core_v1 as cohort
@@ -147,7 +148,7 @@ def _reconstruct(base, request):
         return copy.deepcopy(_CACHE[key])
     before=p.read_json_file(base.package_path);after=p.read_json_file(childpath)
     selected,people,managers=verify_recipe_mask(before,after,request)
-    oldeq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes();oldjug=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes();oldent=(base.game_path/'DBDAT/ENT98030.FDI').read_bytes()
+    oldeq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI');oldjug=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI');oldent=storage_io.read_bytes(base.game_path / 'DBDAT/ENT98030.FDI')
     if request.get('selection_kind') in ('players-only','players-and-openings'):
         from scripts import season_duplicate_ownership_delta_v1 as native_players
         from scripts.season_opening_order_repair_v1 import native_owners
@@ -199,7 +200,7 @@ def _reconstruct(base, request):
     if request.get('name_capacity'):
         from scripts import season_same_carrier_name_capacity_v1 as capacity
         from app.player_name_capacity import recover_compact_name_window
-        binding=request['name_capacity'];factory=capacity.verify_bundle(binding['bundle']).read_bytes()
+        binding=request['name_capacity'];factory=storage_io.read_bytes(capacity.verify_bundle(binding['bundle']))
         originals={e.record_id:e for e in IndexedFDIFile.from_bytes(factory).entries}
         current={e.record_id:e for e in IndexedFDIFile.from_bytes(oldjug).entries};recovered={}
         for claim in binding['claims']:
@@ -267,7 +268,7 @@ def _reconstruct(base, request):
 
 
 def prepare(base,input_path):
-    path=paths._source_path(r.relative_workspace_path(Path(input_path).resolve()));request=p.read_json_file(path);_reconstruct(base,request)
+    path=paths._source_path(r.relative_workspace_path(storage_io.resolve(Path(input_path))));request=p.read_json_file(path);_reconstruct(base,request)
     plan=dict(schema=SCHEMA,season=base.season,release_id=base.release_id,parent=request['parent'],source_input=dict(path=r.relative_workspace_path(path),sha256=r.sha256_file(path)),package_sha256=r.sha256_file(base.package_path),jug_sha256=r.sha256_file(base.game_path/'DBDAT/JUG98030.FDI'),scope='Reviewed country recipe only: fixed country carrier totals and club capacities, explicit selected-country carrier exchanges, selected facts/skills/names and startup orders; selected club/coach names, grounds and contextual tactics; all other native records, memberships and kits preserved.')
     if request.get('selection_kind') == 'clubs':
         plan['scope']='Reviewed explicit clubs within one existing country only; fixed selected club capacities and carrier partition; selected actors, exclusive coaches and metadata; every unselected same-country or foreign club, player, coach and all kits preserved.'
@@ -301,7 +302,7 @@ def bind(package,plan):
 
 
 def apply(jug,eq,plan):
-    base=r.load_registered_release(plan['season'],plan['release_id']);out=_outputs(plan);before=((base.game_path/'DBDAT/JUG98030.FDI').read_bytes(),(base.game_path/'DBDAT/EQ98030.FDI').read_bytes());after=(out['jug'],out['eq'])
+    base=r.load_registered_release(plan['season'],plan['release_id']);out=_outputs(plan);before=(storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI'),storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI'));after=(out['jug'],out['eq'])
     if (jug,eq) not in (before,after):
         raise ValueError('country writer accepts complete parent or complete postimage only')
     return after
@@ -309,7 +310,7 @@ def apply(jug,eq,plan):
 
 def apply_ent(ent,plan):
     base=r.load_registered_release(plan['season'],plan['release_id']);after=_outputs(plan)['ent']
-    if ent not in ((base.game_path/'DBDAT/ENT98030.FDI').read_bytes(),after):
+    if ent not in (storage_io.read_bytes(base.game_path / 'DBDAT/ENT98030.FDI'),after):
         raise ValueError('country ENT preimage differs')
     return after
 
@@ -317,7 +318,7 @@ def apply_ent(ent,plan):
 def apply_minifoto(archive,plan):
     from scripts.season_duplicate_ownership_delta_v1 import no_photo_archive
     after=_outputs(plan)['package'];base=r.load_registered_release(plan['season'],plan['release_id']);before=p.read_json_file(base.package_path);old={x['player_id']:x for x in before['assets']['portraits']};actors={a['id']:a['carrier_id'] for a in after['players']};clear={actors[x['player_id']] for x in after['assets']['portraits'] if x!=old[x['player_id']] and x['status']=='native-no-photo'}
-    parent_archive=(base.game_path/'DBDAT/MINIFOTO.PKF').read_bytes()
+    parent_archive=storage_io.read_bytes(base.game_path / 'DBDAT/MINIFOTO.PKF')
     expected, offsets=no_photo_archive(parent_archive,clear)
     if archive not in (parent_archive,expected):
         raise ValueError('country portrait archive differs from the complete parent/postimage')
@@ -333,13 +334,13 @@ def reconstruction(previous,release_id,*,minimum_free_bytes=8*1024**3):
     from scripts import publish_historical_role_delta_v1 as publisher
     path=r.ROOT/previous.locator['sourced_profile_assignment_plan_path'];plan=p.read_json_file(path);base=r.load_registered_release(plan['season'],plan['release_id']);verify(base,plan)
     receipt=p.read_json_file(previous.compiler_receipt_path)
-    if path.resolve()!=(previous.package_path.parent/filename(plan)).resolve() or r.sha256_file(path)!=receipt.get('original_profile_assignment_plan_sha256'):
+    if storage_io.resolve(path)!=storage_io.resolve(previous.package_path.parent / filename(plan)) or r.sha256_file(path)!=receipt.get('original_profile_assignment_plan_sha256'):
         raise ValueError('country SOURCE child-owned plan hash/path differs')
     if p.read_json_file(previous.package_path)!=bind(p.read_json_file(base.package_path),plan):
         raise ValueError('country SOURCE recipe differs from its reviewed input')
     publisher.publish(base.season,previous.package_path.parent/'role-delta-input.json',release_id=release_id,source_release_id=base.release_id,profile_assignment_plan_path=path,minimum_free_bytes=minimum_free_bytes)
     child=r.load_registered_release(base.season,release_id);p.assert_tree_matches_inventory(child.game_path,p.read_json_file(previous.inventory_path))
-    if child.package_path.read_bytes()!=previous.package_path.read_bytes():
+    if storage_io.read_bytes(child.package_path)!=storage_io.read_bytes(previous.package_path):
         raise ValueError('country SOURCE recipe bytes differ')
     return dict(complete_recipe_identical=True,complete_game_inventory_identical=True)
 
@@ -350,7 +351,7 @@ def copy_new_inputs(workspace,plan):
         relative=Path(row['relative_path'])
         if relative.is_absolute() or '..' in relative.parts or artifacts.get(str(relative),{}).get('sha256')!=row['sha256']:
             raise ValueError('new country artifact is not an exact confined child recipe input')
-        raw=_bound(row).read_bytes();target=Path(workspace)/relative
-        if target.exists():
+        raw=storage_io.read_bytes(_bound(row));target=Path(workspace)/relative
+        if storage_io.exists(target):
             raise ValueError('new country source input would overwrite an existing file')
-        target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(raw)
+        target.parent.mkdir(parents=True,exist_ok=True);storage_io.write_bytes(target, raw)

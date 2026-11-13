@@ -16,6 +16,7 @@ import sys
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_duplicate_source_context_v1 as context
 from scripts import season_duplicate_ownership_plan_v1 as planner
 from scripts import season_duplicate_ownership_delta_v1 as delta
@@ -37,7 +38,7 @@ def fitted(ctx, loser, replacement):
     key=(loser['carrier_id'],person['source_player_id'])
     if key in cache: return copy.deepcopy(cache[key])
     if 'native_index' not in ctx:
-        raw=(ctx['release'].game_path/'DBDAT/JUG98030.FDI').read_bytes()
+        raw=storage_io.read_bytes(ctx['release'].game_path / 'DBDAT/JUG98030.FDI')
         ctx['native_original']=raw
         ctx['native_index']={e.record_id:e for e in IndexedFDIFile.from_bytes(raw).entries}
     raw=ctx['native_index'][loser['carrier_id']].decode_payload(ctx['native_original'])
@@ -122,8 +123,8 @@ def path(ctx, loser, visited_slots, visited_people, remaining):
 
 
 def review(plan_path,people,events,binding,output,max_depth=3):
-    if output.exists(): raise ValueError('chain feasibility evidence is immutable')
-    plan=json.loads(plan_path.read_text())
+    if storage_io.exists(output): raise ValueError('chain feasibility evidence is immutable')
+    plan=json.loads(storage_io.read_text(plan_path))
     progress=lambda stage:print(json.dumps({'season':plan['season'],'source_only_stage':stage}),flush=True)
     ctx=context.context(plan,people,events,binding,progress)
     ctx['display_claims']=aliases.claims(ROOT/plan['bindings']['published_person_supplement']['path'])
@@ -165,9 +166,9 @@ def review(plan_path,people,events,binding,output,max_depth=3):
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--plan-root',type=Path,required=True)
     p.add_argument('--output-root',type=Path,required=True);p.add_argument('--season',default='all')
-    args=p.parse_args();paths=sorted(args.plan_root.glob('*/ownership-plan.json'))
+    args=p.parse_args();paths=sorted(storage_io.glob(args.plan_root, '*/ownership-plan.json'))
     if args.season!='all': paths=[p for p in paths if p.parent.name==args.season]
     if not paths: raise ValueError('no completed source-bound ownership plans')
-    pin=json.loads(paths[0].read_text())['bindings']['snapshot']
+    pin=json.loads(storage_io.read_text(paths[0]))['bindings']['snapshot']
     people,events,binding=context.load_snapshot(ROOT/pin['path'],ROOT/pin['pinned_receipt_path'])
     for plan_path in paths: review(plan_path,people,events,binding,args.output_root/plan_path.parent.name/'chains.json')

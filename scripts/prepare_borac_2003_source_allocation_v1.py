@@ -1,6 +1,7 @@
 """Propose a source-bound fixed18 repair; never build or promote a game."""
 import copy
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import borac_2003_original_opening_v1 as opening
 from scripts.capture_stock_replacement_sources_20261010 import ROOT
 from scripts.capture_tachira_2014_original_people_v1 import source_rows
@@ -70,11 +71,11 @@ def source18():
 
 
 def prepare(output, baseline_release_id=None):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('source allocation evidence is immutable')
     actual, matched, persons, combined, bindings = source18()
     biography = ROOT.parent / 'borac-2003-combined-original-identities-v1.json'
-    if biography.exists():
+    if storage_io.exists(biography):
         if pipeline.read_json_file(biography) != combined:
             raise ValueError('retained combined original biography changed')
     else:
@@ -95,7 +96,7 @@ def prepare(output, baseline_release_id=None):
     slots = [p for p in package['players'] if p['club_id'] == club['id']]
     if len(slots) != 18:
         raise ValueError('fixed native roster capacity changed')
-    native = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    native = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     desired = []
     for row in matched:
         person = {k: copy.deepcopy(v) for k, v in persons[row['source_player_id']].items() if k != 'published_name_variants'}

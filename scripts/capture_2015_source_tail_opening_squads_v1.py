@@ -31,6 +31,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import capture_2015_source_tail_squads_v1 as tail_squads  # noqa: E402
 from scripts import capture_transfermarkt_lineup_person_evidence_v1 as profiles  # noqa: E402
 from scripts import capture_transfermarkt_opening_lineups_v1 as opening  # noqa: E402
@@ -67,7 +68,7 @@ def canonical_bytes(value: Any) -> bytes:
 
 def _load(path: Path, *, label: str) -> tuple[dict[str, Any], str]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise OpeningSquadError(f"cannot read {label}: {path}") from exc
@@ -259,9 +260,9 @@ def _pinned_squad_players(
     club_id = int(scope["club_id"])
     relative = Path("squads") / "squad" / "2015" / f"{carrier_id}-{club_id}.html"
     path = source_cache_root / relative
-    if not path.is_file():
+    if not storage_io.is_file(path):
         raise OpeningSquadError(f"pinned-short-squad-cache-is-missing:{relative}")
-    payload = path.read_bytes()
+    payload = storage_io.read_bytes(path)
     return squads.parse_squad(payload), {
         "cache_path": relative.as_posix(),
         "sha256": hashlib.sha256(payload).hexdigest(),
@@ -393,7 +394,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--delay", type=float, default=0.25)
     parser.add_argument("--strict", action="store_true")
     args = parser.parse_args(argv)
-    if args.output.exists():
+    if storage_io.exists(args.output):
         parser.error(f"refusing to overwrite source receipt: {args.output}")
     try:
         plan, plan_sha = _load(args.plan, label="tail plan")
@@ -409,7 +410,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     result["source"]["tail_plan_sha256"] = plan_sha
     result["source"]["tail_squad_receipt_sha256"] = tail_sha
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_bytes(result))
+    storage_io.write_bytes(args.output, canonical_bytes(result))
     print(json.dumps(result["coverage"], sort_keys=True))
     return 1 if args.strict and result["gaps"] else 0
 

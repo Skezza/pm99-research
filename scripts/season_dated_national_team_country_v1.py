@@ -10,6 +10,7 @@ import re
 from urllib.parse import urlsplit
 from bs4 import BeautifulSoup
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_opening_identity_exchange_v1 as exchange
 from scripts import season_compatible_primary_role_v1 as identities
 from scripts import season_original_country_policy_v2 as countries
@@ -27,7 +28,7 @@ def national_row(source, season, name, birthday):
             or not match or int(match[1]) != year or source['year'] != year
             or exchange.published_name_key(match[2].replace('-', ' ')) != exchange.published_name_key(source['country_label'])):
         raise ValueError('exact official national competition/country/starting year required')
-    page = BeautifulSoup(exchange.original(source).read_bytes(), 'lxml')
+    page = BeautifulSoup(storage_io.read_bytes(exchange.original(source)), 'lxml')
     canonical = page.select_one('link[rel="canonical"]')
     if canonical is None or canonical.get('href', '').rstrip('/') != source['url'].rstrip('/'):
         raise ValueError('official national roster canonical origin differs')
@@ -70,8 +71,8 @@ def prepare(base, path, request):
     package = changes.pipeline.read_json_file(base.package_path)
     players = {p['carrier_id']: p for p in package['players']}
     clubs = {c['id']: c for c in package['clubs']}
-    jug = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(jug).entries}
     owners = changes.ownership.native_owners(eq)
     codes = changes.compiler._extract_country_codes_from_textos(base.game_path / 'DBDAT/TEXTOS.PKF')

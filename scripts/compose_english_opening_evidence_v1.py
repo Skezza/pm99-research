@@ -10,6 +10,14 @@ minimal source-backed row; secondary facts remain explicit gaps.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import copy
 import hashlib
@@ -49,7 +57,7 @@ def digest(value: Any) -> str:
 
 
 def read_json(path: Path) -> tuple[dict[str, Any], str]:
-    raw = path.read_bytes()
+    raw = storage_io.read_bytes(path)
     value = json.loads(raw.decode("utf-8"))
     if not isinstance(value, dict):
         raise CompositionError(f"input must be a JSON object: {path}")
@@ -372,7 +380,7 @@ def main() -> int:
         outputs,
     ):
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(canonical_json_bytes(value))
+        storage_io.write_bytes(path, canonical_json_bytes(value))
     print(json.dumps(outputs[-1]["coverage"], sort_keys=True))
     return 0
 

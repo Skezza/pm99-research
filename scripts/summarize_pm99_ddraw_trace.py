@@ -3,6 +3,14 @@
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import json
 import re
@@ -24,9 +32,9 @@ def parse_args() -> argparse.Namespace:
 
 
 def read_text(path: Path) -> str:
-    if not path.is_file():
+    if not storage_io.is_file(path):
         return ""
-    return path.read_text(encoding="utf-8", errors="replace")
+    return storage_io.read_text(path, encoding='utf-8', errors='replace')
 
 
 def find_trace_lines(text: str) -> list[dict[str, Any]]:
@@ -74,9 +82,9 @@ def classify_trace(events: list[dict[str, Any]]) -> dict[str, Any]:
 def load_runner_summary(artifact_dir: Path) -> dict[str, Any]:
     for name in ("summary.json", "result.json", "native_runner_summary.json"):
         path = artifact_dir / name
-        if path.is_file():
+        if storage_io.is_file(path):
             try:
-                return json.loads(path.read_text(encoding="utf-8"))
+                return json.loads(storage_io.read_text(path, encoding='utf-8'))
             except json.JSONDecodeError:
                 return {"unparsed_json": str(path)}
     return {}
@@ -123,9 +131,9 @@ def main() -> int:
     summary = {
         "artifact_dir": str(artifact_dir),
         "trace_log": str(trace_path),
-        "trace_log_present": trace_path.is_file(),
+        "trace_log_present": storage_io.is_file(trace_path),
         "wine_log": str(wine_path),
-        "wine_log_present": wine_path.is_file(),
+        "wine_log_present": storage_io.is_file(wine_path),
         "modal_text": modal_matches,
         "trace": classify_trace(trace_events),
         "runner_summary": runner_summary,
@@ -134,7 +142,7 @@ def main() -> int:
     rendered = json.dumps(summary, indent=2, sort_keys=True) + "\n"
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(rendered, encoding="utf-8")
+        storage_io.write_text(args.output, rendered, encoding='utf-8')
     else:
         print(rendered, end="")
     return 0

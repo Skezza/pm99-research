@@ -32,6 +32,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import materialise_opening_manager_ledger_v1 as manager_v1  # noqa: E402
 from scripts import reconcile_transfermarkt_opening_lineups_v1 as opening_v1  # noqa: E402
 from scripts import season_carrier_allocation_v1 as allocation_v1  # noqa: E402
@@ -447,7 +448,7 @@ def integrate(
 
 
 def _read(path: Path) -> dict[str, Any]:
-    raw = path.read_bytes()
+    raw = storage_io.read_bytes(path)
     value = json.loads(raw.decode("utf-8"))
     if not isinstance(value, dict):
         raise LayerIntegrationError(f"input must be a JSON object: {path}")
@@ -456,7 +457,7 @@ def _read(path: Path) -> dict[str, Any]:
 
 def _write(path: Path, value: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(_bytes(dict(value)))
+    storage_io.write_bytes(path, _bytes(dict(value)))
 
 
 def main(argv: Sequence[str] | None = None) -> int:

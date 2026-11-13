@@ -17,6 +17,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2 as package_v2
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
@@ -90,8 +91,8 @@ def align_package(package, holders, names, source_plan, *, native_aliases=None):
 
 
 def checked_inputs(release):
-    plan = json.loads(SOURCE_PLAN.read_text())
-    receipt = json.loads(APPLICATION.read_text())
+    plan = json.loads(storage_io.read_text(SOURCE_PLAN))
+    receipt = json.loads(storage_io.read_text(APPLICATION))
     if plan.get('schema_version') != 'pm99-world-2015-manager-graph-repair-plan-v1':
         raise ValueError('unexpected original repair plan')
     if (receipt.get('schema_version') != 'pm99-world-2015-manager-graph-repair-application-v1'
@@ -106,8 +107,8 @@ def checked_inputs(release):
         if registry.sha256_file(path) != row['sha256']:
             raise ValueError('original dated repair input changed: ' + key)
         bindings.append(dict(row))
-    original_package = json.loads((ROOT / plan['inputs']['foreign_package']['path']).read_text())
-    current = json.loads(release.package_path.read_text())
+    original_package = json.loads(storage_io.read_text(ROOT / plan['inputs']['foreign_package']['path']))
+    current = json.loads(storage_io.read_text(release.package_path))
     old_clubs = {club['id']: club for club in original_package['clubs']}
     for club in current['clubs']:
         old = old_clubs.get(club['id'])
@@ -133,7 +134,7 @@ def recipe_native_aliases(release, package):
         path = release.package_path.parent / relative
         if registry.sha256_file(path) != artifact['sha256']:
             raise ValueError('English manager recipe hash changed')
-        layers.append(json.loads(path.read_text()))
+        layers.append(json.loads(storage_io.read_text(path)))
     aliases = {}
     for layer in layers:
         for manager in layer['managers']:
@@ -151,8 +152,8 @@ def publish(release_id, *, register=False):
     release = registry.load_preferred_release('2015-16')
     if release.release_id == release_id:
         plan_path = ROOT / release.locator['manager_graph_reconciliation_path']
-        plan = json.loads(plan_path.read_text())
-        package = json.loads(release.package_path.read_text())
+        plan = json.loads(storage_io.read_text(plan_path))
+        package = json.loads(storage_io.read_text(release.package_path))
         artifact = next(a for a in package['artifacts'] if a['id'] == ARTIFACT)
         if hashlib.sha256(pipeline.canonical_json_bytes(plan)).hexdigest() != artifact['sha256']:
             raise ValueError('completed reconciliation evidence changed')
@@ -160,11 +161,11 @@ def publish(release_id, *, register=False):
                 'validation': registry.validate_preferred_release('2015-16')}
     workspace = ROOT / '.local/recipe-manager-reconciliations-v1/2015-16' / release_id
     destination = registry.locator_path('2015-16', release_id).parent
-    if workspace.exists() or destination.exists():
+    if storage_io.exists(workspace) or storage_io.exists(destination):
         raise ValueError('publication already exists; never overwrite an immutable release')
     inventory = pipeline.read_json_file(release.inventory_path)
     pipeline.assert_tree_matches_inventory(release.game_path, inventory)
-    original_package = json.loads(release.package_path.read_text())
+    original_package = json.loads(storage_io.read_text(release.package_path))
     source_plan, bindings = checked_inputs(release)
     holders, names = _manager_graph(eq_path=release.game_path / 'DBDAT/EQ98030.FDI',
                                     ent_path=release.game_path / 'DBDAT/ENT98030.FDI')
@@ -209,11 +210,11 @@ def publish(release_id, *, register=False):
         if rel.is_absolute() or '..' in rel.parts:
             raise ValueError('unsafe inherited evidence path')
         source, target = release.package_path.parent / rel, workspace / rel
-        if source.is_file() and not target.exists():
+        if storage_io.is_file(source) and not storage_io.exists(target):
             target.parent.mkdir(parents=True, exist_ok=True)
-            os.link(source, target)
+            storage_io.link(source, target)
     outputs = [{'path': name, 'sha256': registry.sha256_file(release.game_path / name),
-                'size': (release.game_path / name).stat().st_size}
+                'size': storage_io.size(release.game_path / name)}
                for name in ('DBDAT/JUG98030.FDI', 'DBDAT/EQ98030.FDI', 'DBDAT/ENT98030.FDI')]
     receipt = {'schema': 'pm99-recipe-only-reconciliation-receipt-v1', 'season': '2015-16',
         'season_package_sha256': registry.canonical_document_sha256(package_path),

@@ -2,6 +2,7 @@
 import os
 import json
 from pathlib import Path
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry,season_pipeline_v2 as pipeline
 from scripts import season_contextual_tactics_v1 as tactics
 from scripts.verify_contextual_tactics_runtime_v1 import verify
@@ -17,10 +18,10 @@ def main():
     candidate=ROOT/'tactics-verification-input-v2';(candidate/'DBDAT').mkdir(parents=True,exist_ok=True)
     for name in ('JUG98030.FDI','EQ98030.FDI'):
         original=release.game_path/'DBDAT'/name;target=candidate/'DBDAT'/name
-        if target.exists():
+        if storage_io.exists(target):
             if target.is_symlink() or registry.sha256_file(target)!=registry.sha256_file(original):
                 raise ValueError('Arsenal tactics verification input changed')
-        else:os.link(original,target)
+        else:storage_io.link(original, target)
     retained(candidate/'contextual-tactics.json',dict(schema_version=tactics.SCHEMA,season=SEASON,
         clubs=[dict(carrier_id=309,name='Arsenal',formation='4-2-3-1',context=club['opening']['tactics_context'])]))
     run=registry.ROOT/'.local/runlogs/pm99_runner'/TAG
@@ -32,7 +33,7 @@ def main():
         or summary.get('output_inventory_fingerprint')!=release.locator['game_inventory_fingerprint']):
         raise ValueError('actual Arsenal runner transport not bound to exact game')
     proof=verify(candidate,run,309,header_review=ROOT/'Arsenal-header-visual-review.json'
-        if (ROOT/'Arsenal-header-visual-review.json').exists() else None)
+        if storage_io.exists(ROOT / 'Arsenal-header-visual-review.json') else None)
     # The pixel verifier returns coordinate tuples; stored JSON contains
     # lists. Compare the same JSON-native representation on repeat checks.
     proof=json.loads(pipeline.canonical_json_bytes(proof))

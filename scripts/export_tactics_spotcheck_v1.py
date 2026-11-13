@@ -18,6 +18,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT), str(ROOT / 'upstream/pm99-skezmod-db-editor')]
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_tactics_formation_runtime_v1 as runtime
 
@@ -32,25 +33,25 @@ def checked_frame(proof, phase):
     if len(rows) != 11 or len(bindings) != 1:
         raise ValueError('sample needs all eleven players on one phase frame')
     path_text, digest = next(iter(bindings))
-    path = Path(path_text).resolve()
-    if not path.is_relative_to((ROOT / '.local/runlogs/pm99_runner').resolve()):
+    path = storage_io.resolve(Path(path_text))
+    if not path.is_relative_to(storage_io.resolve(ROOT / '.local/runlogs/pm99_runner')):
         raise ValueError('frame is outside the runner artifact tree')
-    if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+    if hashlib.sha256(storage_io.read_bytes(path)).hexdigest() != digest:
         raise ValueError('runner frame changed since verification')
     return path, digest
 
 
 def export(root, output):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('output already exists; never overwrite a review pack')
     coverage = runtime.verify_coverage(root, root)
     rows = []
     for number, formation in enumerate(SELECTION, 1):
         proof_path = root / 'formation-runtime-proofs-v2' / (formation + '.json')
-        proof = json.loads(proof_path.read_text())
+        proof = json.loads(storage_io.read_text(proof_path))
         row = {'number': number, 'club': proof['club'], 'season': proof['season'],
                'formation': formation, 'run_path': proof['run_path'],
-               'proof_path': str(proof_path), 'proof_sha256': hashlib.sha256(proof_path.read_bytes()).hexdigest(),
+               'proof_path': str(proof_path), 'proof_sha256': hashlib.sha256(storage_io.read_bytes(proof_path)).hexdigest(),
                'frames': {}}
         for phase in ('attack', 'defend'):
             path, digest = checked_frame(proof, phase)
@@ -61,7 +62,7 @@ def export(root, output):
     cards = []
     for row in rows:
         for frame in row['frames'].values():
-            shutil.copy2(frame['original_path'], output / frame['file'])
+            storage_io.copy_file(frame['original_path'], output / frame['file'], metadata=True)
         title = f'{row["number"]:02d}. {row["club"]} — {row["season"]} — {row["formation"]}'
         images = ''.join(f'<figure><a href="{html.escape(row["frames"][phase]["file"])}">'
                          f'<img src="{html.escape(row["frames"][phase]["file"])}" '
@@ -80,7 +81,7 @@ def export(root, output):
         'They are not 15 newly launched published games and do not prove every club has been played. '
         'The rollout changes English playable tactics only; foreign mode-1 tactics are preserved.</p>'
         + ''.join(cards) + '</html>')
-    (output / 'index.html').write_text(document, encoding='utf-8')
+    storage_io.write_text(output / 'index.html', document, encoding='utf-8')
     manifest = {'schema': 'pm99-tactics-spotcheck-v1', 'sample_count': len(rows),
                 'scope': 'genuine sampled formation frames; exact-grid/XI transfer, not all-club gameplay',
                 'coverage': coverage, 'examples': rows}
@@ -112,4 +113,4 @@ if __name__ == '__main__':
     parser.add_argument('--root', type=Path, default=ROOT / '.local/contextual-tactics-v1')
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
-    print(json.dumps(export(args.root.resolve(), args.output.resolve())))
+    print(json.dumps(export(storage_io.resolve(args.root), storage_io.resolve(args.output))))

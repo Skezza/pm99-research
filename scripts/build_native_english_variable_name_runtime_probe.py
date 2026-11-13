@@ -8,6 +8,14 @@ club and writes a lean hardlink-based full game root for PM99 runner proof.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import csv
 import difflib
@@ -21,12 +29,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR_ROOT = REPO_ROOT / "upstream" / "pm99-skezmod-db-editor"
 if str(EDITOR_ROOT) not in sys.path:
     sys.path.insert(0, str(EDITOR_ROOT))
-if str(Path(__file__).resolve().parent) not in sys.path:
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
+if str(storage_io.resolve(Path(__file__)).parent) not in sys.path:
+    sys.path.insert(0, str(storage_io.resolve(Path(__file__)).parent))
 
 from app.editor_actions import (  # noqa: E402
     _IndexedRawStageRecord,
@@ -104,7 +112,7 @@ def _parse_args() -> argparse.Namespace:
 
 def _json_dump(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(path, json.dumps(payload, indent=2, sort_keys=True) + '\n', encoding='utf-8')
 
 
 def _normalized(value: str) -> str:
@@ -118,19 +126,19 @@ def _should_skip_file(path: Path) -> bool:
 
 def _copy_or_link_file(source: Path, destination: Path, *, copy: bool) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
-    if destination.exists():
-        destination.unlink()
+    if storage_io.exists(destination):
+        storage_io.unlink(destination)
     if copy:
-        shutil.copy2(source, destination)
+        storage_io.copy_file(source, destination, metadata=True)
         return
     try:
-        os.link(source, destination)
+        storage_io.link(source, destination)
     except OSError:
-        shutil.copy2(source, destination)
+        storage_io.copy_file(source, destination, metadata=True)
 
 
 def _copy_lean_game_root(base_game: Path, output_game: Path) -> None:
-    if output_game.exists():
+    if storage_io.exists(output_game):
         shutil.rmtree(output_game)
     output_game.mkdir(parents=True)
     for dirpath, dirnames, filenames in os.walk(base_game):
@@ -302,7 +310,7 @@ def _select_native_clubs(
 
 
 def _patch_selected_names(player_file: Path, selections: list[NativeClubSelection]) -> list[dict[str, Any]]:
-    file_data = player_file.read_bytes()
+    file_data = storage_io.read_bytes(player_file)
     indexed = IndexedFDIFile.from_bytes(file_data)
     entries_by_id = {int(entry.record_id): entry for entry in indexed.entries}
     stages: list[tuple[int, _IndexedRawStageRecord]] = []
@@ -338,7 +346,7 @@ def _readback_selected_names(
 ) -> list[dict[str, Any]]:
     player_file = game_dir / "DBDAT" / "JUG98030.FDI"
     team_file = game_dir / "DBDAT" / "EQ98030.FDI"
-    file_data = player_file.read_bytes()
+    file_data = storage_io.read_bytes(player_file)
     indexed = IndexedFDIFile.from_bytes(file_data)
     entries_by_id = {int(entry.record_id): entry for entry in indexed.entries}
     rosters = list(load_eq_linked_team_rosters(team_file=str(team_file), player_file=str(player_file)))
@@ -371,14 +379,14 @@ def _readback_selected_names(
 def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     if not rows:
-        path.write_text("", encoding="utf-8")
+        storage_io.write_text(path, '', encoding='utf-8')
         return
     fieldnames: list[str] = []
     for row in rows:
         for key in row:
             if key not in fieldnames:
                 fieldnames.append(key)
-    with path.open("w", newline="", encoding="utf-8") as handle:
+    with storage_io.open_file(path, 'w', newline='', encoding='utf-8') as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(rows)
@@ -432,16 +440,7 @@ def _write_runner_batches(
         }
         batches.append(payload)
         script_path = output_dir / f"run_native_batch_{batch_no:02d}.sh"
-        script_path.write_text(
-            "#!/usr/bin/env bash\n"
-            "set -euo pipefail\n"
-            "cd \"$(dirname \"$0\")/../..\"\n"
-            "PM99_RUNNER_WORKER_LANE_COUNT=${PM99_RUNNER_WORKER_LANE_COUNT:-2} \\\n"
-            "PM99_RUNNER_DOCKER_TIMEOUT_SECONDS=${PM99_RUNNER_DOCKER_TIMEOUT_SECONDS:-1800} \\\n"
-            + " ".join(_shell_quote(part) for part in command)
-            + "\n",
-            encoding="utf-8",
-        )
+        storage_io.write_text(script_path, '#!/usr/bin/env bash\nset -euo pipefail\ncd "$(dirname "$0")/../.."\nPM99_RUNNER_WORKER_LANE_COUNT=${PM99_RUNNER_WORKER_LANE_COUNT:-2} \\\nPM99_RUNNER_DOCKER_TIMEOUT_SECONDS=${PM99_RUNNER_DOCKER_TIMEOUT_SECONDS:-1800} \\\n' + ' '.join((_shell_quote(part) for part in command)) + '\n', encoding='utf-8')
         script_path.chmod(0o755)
     return batches
 
@@ -454,18 +453,18 @@ def _shell_quote(value: object) -> str:
 
 
 def build(args: argparse.Namespace) -> dict[str, Any]:
-    base_game = Path(args.base_game).expanduser().resolve()
-    world_state = Path(args.world_state).expanduser().resolve()
-    selector_map = Path(args.selector_map).expanduser().resolve()
-    output_dir = Path(args.output_dir).expanduser().resolve()
-    if output_dir.exists():
+    base_game = storage_io.resolve(Path(args.base_game).expanduser())
+    world_state = storage_io.resolve(Path(args.world_state).expanduser())
+    selector_map = storage_io.resolve(Path(args.selector_map).expanduser())
+    output_dir = storage_io.resolve(Path(args.output_dir).expanduser())
+    if storage_io.exists(output_dir):
         if not args.force:
             raise FileExistsError(output_dir)
         shutil.rmtree(output_dir)
     output_dir.mkdir(parents=True)
 
-    world = json.loads(world_state.read_text(encoding="utf-8"))
-    selector_payload = json.loads(selector_map.read_text(encoding="utf-8"))
+    world = json.loads(storage_io.read_text(world_state, encoding='utf-8'))
+    selector_payload = json.loads(storage_io.read_text(selector_map, encoding='utf-8'))
     clubs = [item for item in list(world.get("clubs") or []) if isinstance(item, dict)]
     selectors = {
         str(item.get("club_key") or ""): item

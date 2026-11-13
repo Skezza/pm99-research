@@ -2,6 +2,7 @@
 import copy
 from datetime import UTC, datetime
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_kit_render_bindings_v1
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_source_bound_birthday_disagreements_v1 as source
@@ -20,7 +21,7 @@ from scripts.review_rating_frames_20261011 import lineup_frame
 def run():
     prior = ROOT.parent / 'release-delivery-checklist-v52.json'
     output = ROOT.parent / 'release-delivery-checklist-v53.json'
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('completed nine-birthday publication must not repeat')
     result = copy.deepcopy(pipeline.read_json_file(prior))
     old = {r['season']: r for r in result['current_release_bindings']}
@@ -115,7 +116,7 @@ def run():
     builder.register(promotions)
     for season in sorted(selected):
         root = ROOT / season
-        if not (root / 'final-attestation.json').exists():
+        if not storage_io.exists(root / 'final-attestation.json'):
             retained(root / 'final-attestation.json', runtime.attest(season=season,
                 evidence_dir=registry.ROOT / '.local/runlogs/pm99_runner' / (tag(season) + '_stoke')))
         validation = registry.validate_preferred_release(season, level='playable')

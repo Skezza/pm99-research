@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 import re
 import shutil
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts.share_verified_r70_source_copies_20261016 import share_identical
 from scripts.archive_rejected_role_trials_20261016 import active
@@ -18,13 +19,13 @@ ROOT = registry.ROOT/'.local/cleanup-20261017/shared-old-recipe-metadata'
 
 def main():
     ROOT.mkdir(parents=True,exist_ok=True)
-    if (ROOT/'analysis.json').exists():
+    if storage_io.exists(ROOT / 'analysis.json'):
         raise ValueError('existing metadata sharing run needs inspection, not repetition')
     catalog=registry.sha256_file(registry.CATALOG_PATH)
     groups=defaultdict(list)
     for season in registry.supported_seasons():
         preferred=registry.load_preferred_release(season).release_id
-        for path in (registry.locator_path(season,'unused').parent.parent).glob('*/locator.json'):
+        for path in storage_io.glob(registry.locator_path(season, 'unused').parent.parent, '*/locator.json'):
             rid=path.parent.name;version=re.search(r'-r([0-9]+)[ab]$',rid)
             if version is None or not 58<=int(version[1])<=116 or rid==preferred:
                 continue
@@ -32,20 +33,20 @@ def main():
             workspace=release.package_path.parent
             if workspace!=registry.ROOT/'.local/historical-role-deltas-v1'/season/rid or active(workspace):
                 continue
-            for item in workspace.glob('*.json'):
-                if item.is_symlink() or not item.is_file() or item.stat().st_size<65536:
+            for item in storage_io.glob(workspace, '*.json'):
+                if item.is_symlink() or not storage_io.is_file(item) or storage_io.size(item)<65536:
                     continue
-                groups[(item.name,item.stat().st_size,registry.sha256_file(item))].append(item)
+                groups[(item.name,storage_io.size(item),registry.sha256_file(item))].append(item)
     targets=[]
     for key,paths in groups.items():
-        unique={p.stat().st_ino:p for p in sorted(paths)}
+        unique={storage_io.stat_result(p).st_ino:p for p in sorted(paths)}
         if len(unique)<2:
             continue
         paths=list(unique.values());original=paths[0]
-        targets.extend((original,p) for p in paths[1:] if p.stat().st_nlink==1)
+        targets.extend((original,p) for p in paths[1:] if storage_io.stat_result(p).st_nlink==1)
     retained(ROOT/'analysis.json',dict(utc=datetime.now(UTC).isoformat(),catalog_sha256=catalog,
         pairs=[dict(original=registry.relative_workspace_path(a),duplicate=registry.relative_workspace_path(b),
-                    sha256=registry.sha256_file(a),bytes=b.stat().st_size) for a,b in targets],
+                    sha256=registry.sha256_file(a),bytes=storage_io.size(b)) for a,b in targets],
         removed_paths=[],current_preferred_metadata_not_targeted=True))
     before=shutil.disk_usage(registry.ROOT).free
     rows=[]

@@ -10,6 +10,7 @@ import hashlib
 import tempfile
 from pathlib import Path
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import prepare_ofk_2004_source_allocation_v1 as source
 from scripts import prepare_duplicate_whole_club_native_v1 as native
 from scripts import season_duplicate_ownership_delta_v1 as delta
@@ -114,7 +115,7 @@ def compile_files(release, proposal, package, *, original_dated=None):
                 or registry.sha256_file(registry.ROOT / report_binding['path']) != report_binding['sha256']):
             raise ValueError('foreign dated original input differs from source allocation')
     carrier = proposal['before_club']['carrier_id']
-    before = {name: (release.game_path / 'DBDAT' / name).read_bytes()
+    before = {name: storage_io.read_bytes(release.game_path / 'DBDAT' / name)
         for name in ('JUG98030.FDI', 'EQ98030.FDI', 'ENT98030.FDI', 'MINIFOTO.PKF')}
     codes = delta.compiler._extract_country_codes_from_textos(release.game_path / 'DBDAT/TEXTOS.PKF')
     jug = delta.compile_players(before['JUG98030.FDI'], result, set(slots), codes)
@@ -173,7 +174,7 @@ def compile_files(release, proposal, package, *, original_dated=None):
 
 
 def prepare(output, *, proposal_path=None):
-    if output.exists(): raise ValueError('foreign native candidate is immutable')
+    if storage_io.exists(output): raise ValueError('foreign native candidate is immutable')
     proposal_path = proposal_path or source.AUDIT / 'ofk-2004-fixed18-private-allocation-v1.json'
     proposal = pipeline.read_json_file(proposal_path)
     with tempfile.TemporaryDirectory(prefix='pm99-ofk-replay-') as temporary:
@@ -194,7 +195,7 @@ def prepare(output, *, proposal_path=None):
     if (recipe, composition, before, after, details) != repeated:
         raise ValueError('foreign native transaction is not deterministic')
     if registry.sha256_file(release.package_path) != proposal['baseline_package']['sha256'] or any(
-            (release.game_path / 'DBDAT' / n).read_bytes() != raw for n, raw in before.items()):
+            storage_io.read_bytes(release.game_path / 'DBDAT' / n) != raw for n, raw in before.items()):
         raise ValueError('foreign immutable baseline changed during compilation')
     output.mkdir(parents=True)
     for name, data in after.items(): atomic_bytes(output / 'DBDAT' / name, data)

@@ -25,6 +25,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import capture_2015_world_manager_transfermarkt_snapshot_v5 as manager_snapshot  # noqa: E402
 from scripts import capture_opening_manager_history_supplements_v1 as manager_history  # noqa: E402
 from scripts import capture_transfermarkt_opening_lineups_v1 as opening  # noqa: E402
@@ -58,7 +59,7 @@ def canonical_json_bytes(value: Any) -> bytes:
 
 def _load(path: Path) -> tuple[dict[str, Any], str]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise SourceTailManagerError(f"cannot read selected source-tail package: {path}") from exc
@@ -225,7 +226,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--strict", action="store_true")
     args = parser.parse_args(argv)
     try:
-        if args.output.exists():
+        if storage_io.exists(args.output):
             raise SourceTailManagerError(f"refusing to overwrite source receipt: {args.output}")
         source_tail, source_tail_sha256 = _load(args.source_tail_selected_package)
         result = capture(
@@ -236,7 +237,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (OSError, SourceTailManagerError, opening.CaptureError) as exc:
         parser.error(str(exc))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_json_bytes(result))
+    storage_io.write_bytes(args.output, canonical_json_bytes(result))
     print(json.dumps(result["coverage"], sort_keys=True))
     return 1 if args.strict and result["gaps"] else 0
 

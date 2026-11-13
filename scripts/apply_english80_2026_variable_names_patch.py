@@ -9,6 +9,14 @@ payloads where the compact name region needs more room.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import csv
 import json
@@ -20,12 +28,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR_ROOT = REPO_ROOT / "upstream" / "pm99-skezmod-db-editor"
 if str(EDITOR_ROOT) not in sys.path:
     sys.path.insert(0, str(EDITOR_ROOT))
-if str(Path(__file__).resolve().parent) not in sys.path:
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
+if str(storage_io.resolve(Path(__file__)).parent) not in sys.path:
+    sys.path.insert(0, str(storage_io.resolve(Path(__file__)).parent))
 
 from app.editor_actions import _IndexedRawStageRecord, write_player_staged_records  # noqa: E402
 from app.editor_helpers import _player_display_name  # noqa: E402
@@ -204,7 +212,7 @@ def _patch_physical_variable_payload(decoded: bytes, source_row: dict[str, Any])
 
 
 def _load_sources(path: Path) -> dict[tuple[str, int], dict[str, Any]]:
-    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload = json.loads(storage_io.read_text(path, encoding='utf-8'))
     rows: dict[tuple[str, int], dict[str, Any]] = {}
     for club in payload.get("clubs", []):
         club_key = str(club["club_key"])
@@ -272,7 +280,7 @@ def _write_readback_csv(path: Path, rows: list[dict[str, Any]]) -> None:
         "name_end_delta",
         "source_url",
     ]
-    with path.open("w", newline="", encoding="utf-8") as handle:
+    with storage_io.open_file(path, 'w', newline='', encoding='utf-8') as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()
         for row in rows:
@@ -280,7 +288,7 @@ def _write_readback_csv(path: Path, rows: list[dict[str, Any]]) -> None:
 
 
 def _resolve_base_build(path: str) -> Path:
-    base = Path(path).expanduser().resolve()
+    base = storage_io.resolve(Path(path).expanduser())
     if not base.is_dir():
         raise FileNotFoundError(base)
     return base
@@ -289,12 +297,12 @@ def _resolve_base_build(path: str) -> Path:
 def build(args: argparse.Namespace) -> dict[str, Any]:
     base_build = _resolve_base_build(args.input_build)
     output_dir = (
-        Path(args.output_dir).expanduser().resolve()
+        storage_io.resolve(Path(args.output_dir).expanduser())
         if args.output_dir
-        else Path(args.output_root).expanduser().resolve()
+        else storage_io.resolve(Path(args.output_root).expanduser())
         / f"english80_2026_variable_names_{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}"
     )
-    if output_dir.exists():
+    if storage_io.exists(output_dir):
         if not args.force:
             raise FileExistsError(output_dir)
         shutil.rmtree(output_dir)
@@ -309,26 +317,26 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
     world_path = base_build / "world_english80_2026_division_structured.json"
     repointed_manifest_path = out_game / "repointed_roster_manifest.json"
     for path in (source_ledger_path, assignment_path, world_path, repointed_manifest_path):
-        if not path.is_file():
+        if not storage_io.is_file(path):
             raise RuntimeError(f"Missing required input: {path}")
 
     source_rows = _load_sources(source_ledger_path)
-    assignment = _updated_assignment(json.loads(assignment_path.read_text(encoding="utf-8")), source_rows)
-    world = _updated_world(json.loads(world_path.read_text(encoding="utf-8")), source_rows)
+    assignment = _updated_assignment(json.loads(storage_io.read_text(assignment_path, encoding='utf-8')), source_rows)
+    world = _updated_world(json.loads(storage_io.read_text(world_path, encoding='utf-8')), source_rows)
     output_assignment_path = output_dir / "slot_assignment_english80_2026_variable_names.json"
     output_world_path = output_dir / "world_english80_2026_variable_names.json"
     output_source_path = output_dir / "football_squads_source_ledger.json"
     _json_dump(output_assignment_path, assignment)
     _json_dump(output_world_path, world)
-    shutil.copy2(source_ledger_path, output_source_path)
+    storage_io.copy_file(source_ledger_path, output_source_path, metadata=True)
 
     player_file = out_game / "DBDAT" / "JUG98030.FDI"
     team_file = out_game / "DBDAT" / "EQ98030.FDI"
     coach_file = out_game / "DBDAT" / "ENT98030.FDI"
-    file_data = player_file.read_bytes()
+    file_data = storage_io.read_bytes(player_file)
     indexed = IndexedFDIFile.from_bytes(file_data)
     entries_by_id = {int(entry.record_id): entry for entry in indexed.entries}
-    repointed = json.loads(repointed_manifest_path.read_text(encoding="utf-8"))
+    repointed = json.loads(storage_io.read_text(repointed_manifest_path, encoding='utf-8'))
 
     stages: list[tuple[int, _IndexedRawStageRecord]] = []
     readback_rows: list[dict[str, Any]] = []
@@ -375,7 +383,7 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
 
     backup_path = write_player_staged_records(str(player_file), stages, create_backup_before_write=True)
 
-    post_data = player_file.read_bytes()
+    post_data = storage_io.read_bytes(player_file)
     post_index = IndexedFDIFile.from_bytes(post_data)
     post_by_id = {int(entry.record_id): entry for entry in post_index.entries}
     post_failures: list[dict[str, Any]] = []
@@ -437,7 +445,7 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
 
     payload_deltas = Counter(int(row["payload_length_delta"]) for row in readback_rows)
     name_end_deltas = Counter(int(row["name_end_delta"]) for row in readback_rows)
-    source_payload = json.loads(source_ledger_path.read_text(encoding="utf-8"))
+    source_payload = json.loads(storage_io.read_text(source_ledger_path, encoding='utf-8'))
     source_urls = sorted({str(club.get("source_url") or "") for club in source_payload.get("clubs", []) if club.get("source_url")})
     manifest = {
         "schema": "pm99-english80-2026-variable-player-names-v1",

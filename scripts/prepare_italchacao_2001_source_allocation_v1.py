@@ -8,6 +8,7 @@ import re
 from pathlib import Path
 from bs4 import BeautifulSoup
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import italchacao_2001_original_august_v1 as opening
 from scripts import bidoglio_original_birthday_resolution_v1 as birthday
 from scripts import season_august_source_fallback_v1 as fallback
@@ -63,7 +64,7 @@ def original_club_id():
 
 
 def prepare(output, baseline_release_id=None):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('source-only allocation is immutable')
     actual, joined, document, persons, biography, bindings, resolved, resolution_bindings, policy = original_people()
     club_id, club_binding = original_club_id()
@@ -100,7 +101,7 @@ def prepare(output, baseline_release_id=None):
                 exact_fine_position_sourced=False, current_roles_imported=False),
             secondary_facts_status='unconfirmed-log-not-inherit-as-source-fact'))
     allocation.validate_opening_birth_dates(desired, actual['cup_date'])
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     fitted = allocation.allocate(jug, slots, desired, display.claims(biography),
         published_families=families.claims(biography, selected),
         opening_slot_orders=allocation.startup_orders(jug, slots), allow_keeper_order_exchange=True)

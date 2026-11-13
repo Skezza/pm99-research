@@ -7,6 +7,7 @@ the same carrier. This is not an invented detailed historical position review.
 from collections import Counter
 from app.fdi_indexed import IndexedFDIFile
 from app.indexed_jug_roles import read_indexed_native_roles
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_duplicate_ownership_plan_v1 as layers
 from scripts import season_historical_roster_audit_v1 as roster
@@ -29,15 +30,15 @@ def selected(player, native, roles, factory):
 
 
 def main():
-    if OUTPUT.exists():
+    if storage_io.exists(OUTPUT):
         raise ValueError('completed discovery must not repeat')
-    original = (DEFAULT_BASE / 'DBDAT/JUG98030.FDI').read_bytes()
+    original = storage_io.read_bytes(DEFAULT_BASE / 'DBDAT/JUG98030.FDI')
     factory = {e.record_id: roster.native_player(e.decode_payload(original), e.record_id)
         for e in IndexedFDIFile.from_bytes(original).entries}
     reports = []
     for season in registry.supported_seasons():
         release = registry.load_preferred_release(season)
-        data = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+        data = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
         entries = {e.record_id:e for e in IndexedFDIFile.from_bytes(data).entries}
         candidates, conflicts = [], []
         for label, package, path in layers.package_layers(release):

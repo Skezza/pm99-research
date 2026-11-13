@@ -8,6 +8,7 @@ is temporarily replaced, so concurrent callers cannot observe this policy.
 from types import FunctionType
 from pathlib import Path
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_original_carrier_label_restoration_v1 as v1
 
 SCHEMA = 'pm99-unanimous-source-original-carrier-label-restoration-v2-exact-page'
@@ -42,7 +43,7 @@ def _qualified_reader(kind, binding, native_name, club, year):
             or receipt.get('sha256') != binding['sha256']
             or receipt.get('raw_body_path') != binding['path']):
         raise ValueError('receipt does not bind the exact canonical URL and original body')
-    raw = body_path.read_bytes()
+    raw = storage_io.read_bytes(body_path)
     if v1.registry.sha256_file(body_path) != binding['sha256']:
         raise ValueError('raw source body changed')
     _require_page_identity(raw, expected)
@@ -71,7 +72,7 @@ def _workspace_file(value, label):
     if unresolved.is_symlink():
         raise ValueError(label + ' path must not be a symlink')
     path = v1.registry._workspace_path(value, label=label)
-    if v1.registry.relative_workspace_path(path) != value or not path.is_file():
+    if v1.registry.relative_workspace_path(path) != value or not storage_io.is_file(path):
         raise ValueError(label + ' path is not a canonical workspace file')
     return path
 

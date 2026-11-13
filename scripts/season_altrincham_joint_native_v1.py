@@ -19,6 +19,7 @@ from app.eq_jug_linked import parse_eq_external_team_roster_payload
 from app.fdi_indexed import IndexedFDIFile
 from app.player_initial_order import OrderReplacement, read_initial_order, patch_initial_orders
 from app.indexed_jug_roles import rewrite_indexed_native_roles
+from scripts import json_storage_io_v1 as storage_io
 from scripts import prepare_duplicate_whole_club_native_v1 as whole
 from scripts import season_duplicate_ownership_delta_v1 as delta
 from scripts import season_editorial_ratings_v1 as ratings
@@ -33,7 +34,7 @@ from scripts import season_duplicate_ownership_delta_v1 as ownership_delta
 from scripts import season_package_compiler_v2 as compiler
 from app.eq_jug_linked import parse_eq_external_team_roster_payload
 
-HERE = Path(__file__).resolve().parent
+HERE = storage_io.resolve(Path(__file__)).parent
 PROTOTYPE = registry.ROOT / "scripts/season_altrincham_source_reader_v1.py"
 SPEC = importlib.util.spec_from_file_location("alty_prepare_private", PROTOTYPE)
 assert SPEC is not None and SPEC.loader is not None
@@ -62,21 +63,21 @@ def _sha(raw: bytes) -> str:
 
 def _source(path: str, digest: str, receipt_path: str, receipt_digest: str) -> bytes:
     body_path = registry.ROOT / path
-    if _sha(body_path.read_bytes()) != digest:
+    if _sha(storage_io.read_bytes(body_path)) != digest:
         raise ValueError(f"source body digest changed: {path}")
     receipt_file = registry.ROOT / receipt_path
-    receipt_raw = receipt_file.read_bytes()
+    receipt_raw = storage_io.read_bytes(receipt_file)
     if _sha(receipt_raw) != receipt_digest:
         raise ValueError(f"source receipt digest changed: {receipt_path}")
     receipt = json.loads(receipt_raw)
     if (receipt.get("body_sha256") != digest
             or receipt.get("body_path") not in (path, Path(path).name)):
         raise ValueError(f"receipt does not bind source body: {path}")
-    return body_path.read_bytes()
+    return storage_io.read_bytes(body_path)
 
 
 def _verify_bettney() -> dict:
-    request_raw = BETTNEY_REQUEST.read_bytes()
+    request_raw = storage_io.read_bytes(BETTNEY_REQUEST)
     if _sha(request_raw) != BETTNEY_REQUEST_SHA256:
         raise ValueError("Bettney typed request bytes changed")
     request = json.loads(request_raw)
@@ -125,8 +126,8 @@ def _parent():
             or registry.sha256_file(paths["ENT98030.FDI"]) != R210_ENT_SHA256
             or registry.sha256_file(paths["MINIFOTO.PKF"]) != R210_MINIFOTO_SHA256):
         raise ValueError("r210a package or native input file digest changed")
-    package = json.loads(package_path.read_text())
-    return release, package, {k: v.read_bytes() for k, v in paths.items()}
+    package = json.loads(storage_io.read_text(package_path))
+    return release, package, {k: storage_io.read_bytes(v) for k, v in paths.items()}
 
 
 def _indexes(package, files):
@@ -348,11 +349,11 @@ def _compile_changed_players(original: bytes, package: dict, changed_ids: set[st
 
 def _postimages():
     release, package, files = _parent()
-    data = json.loads(typed.DATA_INPUT.read_text())
-    nat = json.loads(typed.NATIONALITY_INPUT.read_text())
+    data = json.loads(storage_io.read_text(typed.DATA_INPUT))
+    nat = json.loads(storage_io.read_text(typed.NATIONALITY_INPUT))
     source_proof = typed._verify_source_and_report(data, nat)
     ground_source = registry.ROOT / data["source_bindings"]["2000_01_altrincham_profiles"]["path"]
-    ground_text = " ".join(BeautifulSoup(ground_source.read_bytes(), "lxml").get_text(" ", strip=True).split())
+    ground_text = " ".join(BeautifulSoup(storage_io.read_bytes(ground_source), "lxml").get_text(" ", strip=True).split())
     if "Moss Lane" not in ground_text:
         raise ValueError("retained Altrincham period source lacks the Moss Lane ground context")
     claim = _verify_bettney()
@@ -397,7 +398,7 @@ def _postimages():
         roster_player_ids=[alloc["player_id"] for alloc in allocation])
     manager = next(m for m in result["managers"] if m["id"] == source_club["manager_id"])
     manager_source = data["source_bindings"]["mark_ward_wikipedia_revision"]
-    manager_source_raw = (registry.ROOT / manager_source["path"]).read_bytes()
+    manager_source_raw = storage_io.read_bytes(registry.ROOT / manager_source['path'])
     if _sha(manager_source_raw) != manager_source["sha256"]:
         raise ValueError("Mark Ward exact Wikipedia API source changed")
     native_manager_name, _ = manager_display.short_name("Mark Ward")
@@ -481,11 +482,11 @@ def _postimages():
     # Exact temporary-file API clears only flag byte 10958, slot 9, from this bound preimage.
     with tempfile.TemporaryDirectory(prefix="alty-eq-flag-") as tmp:
         t=Path(tmp); eqp=t/"EQ98030.FDI"; jugp=t/"JUG98030.FDI"
-        eqp.write_bytes(files["EQ98030.FDI"]); jugp.write_bytes(files["JUG98030.FDI"])
+        storage_io.write_bytes(eqp, files['EQ98030.FDI']); storage_io.write_bytes(jugp, files['JUG98030.FDI'])
         from app.editor_actions import edit_team_roster_eq_jug_linked
         edit_team_roster_eq_jug_linked(team_file=str(eqp),player_file=str(jugp),eq_record_id=3310,
             slot_number=9,flag=0,write_changes=True)
-        eq_cleared=eqp.read_bytes()
+        eq_cleared=storage_io.read_bytes(eqp)
     old_entry=eentries[3310]
     differences=[i for i,(x,y) in enumerate(zip(files["EQ98030.FDI"],eq_cleared)) if x!=y]
     if differences != [old_entry.payload_offset+repairs[0][0].raw_row_offset]:
@@ -547,7 +548,7 @@ def _postimages():
     # Verify manager readback on in-memory postimage.
     with tempfile.TemporaryDirectory(prefix="alty-manager-readback-") as tmp:
         temp_eq, temp_ent = Path(tmp)/"EQ98030.FDI", Path(tmp)/"ENT98030.FDI"
-        temp_eq.write_bytes(eq); temp_ent.write_bytes(ent)
+        storage_io.write_bytes(temp_eq, eq); storage_io.write_bytes(temp_ent, ent)
         after_holders, after_names=whole._manager_graph(eq_path=temp_eq,ent_path=temp_ent)
     if after_names.get(807)!="Ward" or [c["carrier_id"] for c in after_holders.get(807,[])] != [3310]:
         raise ValueError("native Mark Ward manager name/owner readback failed")

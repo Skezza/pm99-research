@@ -28,6 +28,7 @@ for candidate in (ROOT, ROOT / "scripts", ROOT / "upstream/pm99-skezmod-db-edito
 
 from app.minifoto_bitmap_archive import discover_riff_palette_resource, iter_minifoto_records, load_riff_palette
 from prepare_stoke_2015_face_dbdat import _build_palette_image, _build_replacement_bitmap
+from scripts import json_storage_io_v1 as storage_io
 from scripts.season_pipeline_v2 import write_canonical_json
 
 API = "https://commons.wikimedia.org/w/api.php"
@@ -136,7 +137,7 @@ def main() -> int:
     parser.add_argument("--cascade", type=Path, required=True)
     parser.add_argument("--output-root", type=Path, required=True)
     args = parser.parse_args()
-    source = json.loads(args.portrait_manifest.read_text(encoding="utf-8"))
+    source = json.loads(storage_io.read_text(args.portrait_manifest, encoding='utf-8'))
     players = [row for row in source["players"] if row.get("target_club") == args.club]
     # Commons asks API clients to keep request rates modest. Discovery is
     # intentionally serial; the small delay avoids burst throttling.
@@ -187,11 +188,11 @@ def main() -> int:
             for path in (source_path, preview_path, bitmap_path): path.parent.mkdir(parents=True, exist_ok=True)
             cropped.save(source_path, "JPEG", quality=92)
             preview.save(preview_path, "PNG")
-            bitmap_path.write_bytes(bitmap)
+            storage_io.write_bytes(bitmap_path, bitmap)
             accepted.append({**selected, "name": result["name"], "club": args.club, "carrier_id": carrier,
                 "face_detection": face, "source_sha256": hashlib.sha256(payload).hexdigest(),
-                "source_path": str(source_path.resolve()), "preview_path": str(preview_path.resolve()),
-                "bitmap_path": str(bitmap_path.resolve()), "review_status": "automatic-candidate-needs-visual-review"})
+                "source_path": str(storage_io.resolve(source_path)), "preview_path": str(storage_io.resolve(preview_path)),
+                "bitmap_path": str(storage_io.resolve(bitmap_path)), "review_status": "automatic-candidate-needs-visual-review"})
         except Exception as exc:
             result["conversion_error"] = f"{type(exc).__name__}: {exc}"
     tiles = []
@@ -214,7 +215,7 @@ def main() -> int:
         "season": source.get("season"), "club": args.club, "target_year": args.target_year,
         "policy": "dated Wikimedia Commons photograph within declared year window; visual approval still required",
         "coverage": {"players": len(players), "dated_licensed_candidates": len(accepted), "no_candidate": len(players) - len(accepted)},
-        "players": rows, "accepted_candidates": accepted, "sample_sheet": str(sheet_path.resolve())}
+        "players": rows, "accepted_candidates": accepted, "sample_sheet": str(storage_io.resolve(sheet_path))}
     write_canonical_json(args.output_root / "historical-photo-receipt.json", receipt)
     print(json.dumps(receipt["coverage"], sort_keys=True))
     return 0

@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts.capture_transfermarkt_historical_squads_v1 import canonical_bytes
 from scripts.season_carrier_allocation_v1 import ENGLISH_NON_LEAGUE_CARRIER_IDS, group_for_carrier
 
@@ -59,14 +60,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--coverage-matrix", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args(argv)
-    raw = args.coverage_matrix.read_bytes()
+    raw = storage_io.read_bytes(args.coverage_matrix)
     matrix = json.loads(raw)
     registries = {
-        row["season"]: json.loads((ROOT / "seasons" / row["season"] / "fixed-carrier-registry.json").read_text())
+        row["season"]: json.loads(storage_io.read_text(ROOT / 'seasons' / row['season'] / 'fixed-carrier-registry.json'))
         for row in matrix["seasons"]
     }
     result = build(matrix, registries, hashlib.sha256(raw).hexdigest())
-    args.output.write_bytes(canonical_bytes(result))
+    storage_io.write_bytes(args.output, canonical_bytes(result))
     print(json.dumps(result["summary"], sort_keys=True))
     return 0
 

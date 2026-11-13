@@ -6,6 +6,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import archive_retired_season_tests_20261004 as archive
 from scripts.archive_retired_compile_tests_20261007 import check_references
 from scripts.archive_superseded_ingress_games_20261004 import nested_strings
@@ -28,11 +29,11 @@ def run(name=NAME):
         inherited(source)
         check_references(source)
         suffixes = ('.json', '.csv') if name.startswith('historical-roster-audit-') else ('.json',)
-        if any(p.is_symlink() or (p.is_file() and p.suffix not in suffixes)
-               for p in source.rglob('*')):
+        if any(p.is_symlink() or (storage_io.is_file(p) and p.suffix not in suffixes)
+               for p in storage_io.glob(source, '*', recursive=True)):
             raise ValueError('superseded report tree contains non-report data or symlinks')
-        for loc in (archive.registry.LOCAL_ROOT / 'releases').glob('*/*/locator.json'):
-            if any(name in v for v in nested_strings(json.loads(loc.read_text()))):
+        for loc in storage_io.glob(archive.registry.LOCAL_ROOT / 'releases', '*/*/locator.json'):
+            if any(name in v for v in nested_strings(json.loads(storage_io.read_text(loc)))):
                 raise ValueError('registered historical release references these reports')
         roots = [ROOT / '.local' / name for name in (
             'historical-role-deltas-v1', 'season-release-registry-v1',

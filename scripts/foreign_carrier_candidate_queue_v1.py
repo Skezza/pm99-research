@@ -28,6 +28,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import foreign_carrier_assignment_v1 as assignment_lib  # noqa: E402
 from scripts import world_fixed_carrier_ledger_v2 as registry_lib  # noqa: E402
 

@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from urllib.request import Request, urlopen
 import time
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
 
@@ -26,18 +27,18 @@ MAX_BYTES = 2 * 1024 * 1024
 
 def main():
     ROOT.mkdir(parents=True, exist_ok=True); rows = []
-    if (ROOT / 'capture-summary.json').exists():
+    if storage_io.exists(ROOT / 'capture-summary.json'):
         raise ValueError('completed conflict article capture must not repeat')
     for key, url in SOURCES:
         path = ROOT / (key + '.html'); outcome = ROOT / (key + '.json')
-        if outcome.exists():
+        if storage_io.exists(outcome):
             row = pipeline.read_json_file(outcome)
             if row['url'] != url:
                 raise ValueError('retained source URL changed')
             if row['status'] == 'public-original-captured' and registry.sha256_file(path) != row['raw_sha256']:
                 raise ValueError('retained original article bytes changed')
         else:
-            if path.exists():
+            if storage_io.exists(path):
                 raise ValueError('unreceipted original article; inspect before retry')
             try:
                 request = Request(url, headers={'User-Agent': 'PM99HistoricalResearch/1.0', 'Accept-Language': 'en-GB,en;q=0.9'})
@@ -54,7 +55,7 @@ def main():
                 title = page.title.get_text(' ', strip=True) if page.title else None
                 if not title:
                     raise ValueError('source lacks original document title')
-                path.write_bytes(raw)
+                storage_io.write_bytes(path, raw)
                 row = dict(status='public-original-captured', url=url, final_url=final_url,
                     raw_path=registry.relative_workspace_path(path), raw_sha256=registry.sha256_file(path),
                     bytes=len(raw), title=title, retrieved_utc=datetime.now(UTC).isoformat(),

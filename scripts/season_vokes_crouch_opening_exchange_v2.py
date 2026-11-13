@@ -14,6 +14,7 @@ from app.eq_jug_linked import load_eq_linked_team_rosters, parse_eq_external_tea
 from app.fdi_indexed import IndexedFDIFile
 from app.player_initial_order import OrderReplacement, patch_initial_orders, read_initial_order
 from app.indexed_jug_shirt_number import rewrite_indexed_native_shirt_numbers
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2 as packages, season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
 from scripts.season_opening_order_repair_v1 import native_owners
@@ -34,17 +35,17 @@ def sha(data: bytes) -> str: return hashlib.sha256(data).hexdigest()
 def filename(plan): return PREFIX + plan['transaction_id'] + '.json'
 def artifact_id(plan): return PREFIX + plan['transaction_id']
 def _binding(path, url=None):
-    p=Path(path).resolve(); rel=registry.relative_workspace_path(p)
-    if p.is_symlink() or not p.is_file(): raise ValueError('source binding must be a retained regular file')
+    p=storage_io.resolve(Path(path)); rel=registry.relative_workspace_path(p)
+    if p.is_symlink() or not storage_io.is_file(p): raise ValueError('source binding must be a retained regular file')
     out={'path':rel,'sha256':registry.sha256_file(p)}
     if url is not None: out['url']=url
     return out
 
 def _read_binding(ref):
-    p=(registry.ROOT/ref['path']).resolve(); registry.relative_workspace_path(p)
-    if p.is_symlink() or not p.is_file() or registry.sha256_file(p)!=ref['sha256']:
+    p=storage_io.resolve(registry.ROOT / ref['path']); registry.relative_workspace_path(p)
+    if p.is_symlink() or not storage_io.is_file(p) or registry.sha256_file(p)!=ref['sha256']:
         raise ValueError('bound source file changed or escaped workspace')
-    return p.read_bytes()
+    return storage_io.read_bytes(p)
 
 class _CapturedHtml(HTMLParser):
     def __init__(self):
@@ -179,8 +180,8 @@ def _native_order(jug,cid):
 def _source_request(path):
     p=Path(path)
     if not p.is_absolute(): p=registry.ROOT/p
-    p=p.resolve(); registry.relative_workspace_path(p)
-    if p.is_symlink() or not p.is_file(): raise ValueError('input must be retained regular file inside workspace')
+    p=storage_io.resolve(p); registry.relative_workspace_path(p)
+    if p.is_symlink() or not storage_io.is_file(p): raise ValueError('input must be retained regular file inside workspace')
     x=pipeline.read_json_file(p)
     if x.get('schema')!=INPUT_SCHEMA or x.get('mode')!=MODE: raise ValueError('unique Vokes/Crouch schema and mode required')
     return p,x
@@ -188,7 +189,7 @@ def _source_request(path):
 def prepare(base,input_path,*,_return_native=False):
     path,request=_source_request(input_path); parent=_parent(base,request)
     evidence=_source_membership(request)
-    pkg=pipeline.read_json_file(base.package_path); jug=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes(); eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    pkg=pipeline.read_json_file(base.package_path); jug=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI'); eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     if sha(jug)!=parent['jug_sha256'] or sha(eq)!=parent['eq_sha256']: raise ValueError('native full-file parent SHA changed')
     actors={x['carrier_id']:x for x in pkg['players']}; clubs={x['carrier_id']:x for x in pkg['clubs']}
     for person,info in (('vokes',V),('crouch',C)):
@@ -282,10 +283,10 @@ def prepare(base,input_path,*,_return_native=False):
 def _native_apply_cached(jug: bytes,eq: bytes):
     parsed=_rosters(eq,jug)
     with tempfile.TemporaryDirectory(prefix='vokes-crouch-exchange-') as td:
-        eqp=Path(td)/'EQ98030.FDI'; jp=Path(td)/'JUG98030.FDI'; eqp.write_bytes(eq); jp.write_bytes(jug)
+        eqp=Path(td)/'EQ98030.FDI'; jp=Path(td)/'JUG98030.FDI'; storage_io.write_bytes(eqp, eq); storage_io.write_bytes(jp, jug)
         edit_team_roster_eq_jug_linked(team_file=str(eqp),player_file=str(jp),eq_record_id=351,slot_number=13,player_record_id=7942,write_changes=True)
         edit_team_roster_eq_jug_linked(team_file=str(eqp),player_file=str(jp),eq_record_id=304,slot_number=17,player_record_id=10744,write_changes=True)
-        out_eq=eqp.read_bytes()
+        out_eq=storage_io.read_bytes(eqp)
     shirt_updates={10744:{'native_name':'Sam VOKES','before_number':10,'number':9},
                    7942:{'native_name':'Peter CROUCH','before_number':15,'number':25}}
     out_jug,shirt_changes=rewrite_indexed_native_shirt_numbers(jug,shirt_updates)
@@ -379,7 +380,7 @@ def validate_plan(plan):
 
 def apply(jug,eq,plan):
     validate_plan(plan); base=registry.load_registered_release(plan['season'],plan['release_id'])
-    base_jug=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes(); base_eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    base_jug=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI'); base_eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     if sha(base_jug)!=plan['jug_preimage_sha256'] or sha(base_eq)!=plan['eq_preimage_sha256']:
         raise ValueError('registered whole-file native preimage changed')
     expected_jug,expected_eq=verify(base,plan)
@@ -402,10 +403,10 @@ def reconstruction(previous,release_id):
     loc=getattr(previous,'locator',{})
     rel=loc.get('sourced_profile_assignment_plan_path')
     if not rel: raise ValueError('Vokes/Crouch SOURCE receipt lacks assignment-plan path')
-    plan_path=(registry.ROOT/rel).resolve(); plan=pipeline.read_json_file(plan_path)
+    plan_path=storage_io.resolve(registry.ROOT / rel); plan=pipeline.read_json_file(plan_path)
     if plan.get('schema')!=SCHEMA or plan.get('mode')!=MODE: raise ValueError('SOURCE artifact points to wrong unique schema/mode')
     base=registry.load_registered_release(plan['season'],plan['release_id']); verify(base,plan)
-    if plan_path!=(previous.package_path.parent/filename(plan)).resolve() or registry.sha256_file(plan_path)!=receipt.get('original_profile_assignment_plan_sha256'):
+    if plan_path!=storage_io.resolve(previous.package_path.parent / filename(plan)) or registry.sha256_file(plan_path)!=receipt.get('original_profile_assignment_plan_sha256'):
         raise ValueError('SOURCE receipt assignment artifact path/SHA mismatch')
     package=pipeline.read_json_file(base.package_path)
     expected_package=bind(package,plan)

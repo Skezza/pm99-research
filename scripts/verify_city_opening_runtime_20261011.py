@@ -1,5 +1,6 @@
 """Bind independently inspected six-person profiles to the exact actual game."""
 from pathlib import Path
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import season_kit_render_bindings_v1 as kits
 from scripts.verify_paired_profile_runtime_v1 import profile_name_method,compare
@@ -26,7 +27,7 @@ def verify_profiles(root=ROOT,season=SEASON,release_id=RELEASE,profiles=PROFILES
     kit_records=kits._record_index(dbdat/'RIDIESC.PKF')
     for carrier,label,_,_ in profiles:
         output=root/(label+'-native-runtime-proof.json')
-        if output.exists():
+        if storage_io.exists(output):
             cached=pipeline.read_json_file(output)
             visual_path=root/(label+'-profile-visual-review.json')
             if (cached.get('season')!=season or cached.get('release_id')!=release_id
@@ -35,7 +36,7 @@ def verify_profiles(root=ROOT,season=SEASON,release_id=RELEASE,profiles=PROFILES
                 raise ValueError('saved native runtime proof binds another release/review; preserve it before re-verifying')
         transport=pipeline.read_json_file(root/(label+'-profile-transport.json'))
         target=registry.ROOT/transport['evidence']
-        summaries=list(target.rglob('summary.json'))
+        summaries=list(storage_io.glob(target, 'summary.json', recursive=True))
         if len(summaries)!=1:raise ValueError('one exact actual profile summary required')
         evidence=summaries[0].parent;summary=pipeline.read_json_file(summaries[0])
         profile=summary['player_profile'];player=players[carrier];club=player_clubs[carrier]
@@ -65,7 +66,7 @@ def verify_profiles(root=ROOT,season=SEASON,release_id=RELEASE,profiles=PROFILES
                 raise ValueError('recovered original remote child proof differs')
         elif registry.sha256_file(evidence/'input-provenance.json')!=registry.sha256_file(release.compiler_receipt_path):
             raise ValueError('actual profile compiler provenance differs')
-        hashes={line.split()[1]:line.split()[0] for line in (evidence/'dbdat_override.sha256').read_text().splitlines()
+        hashes={line.split()[1]:line.split()[0] for line in storage_io.read_text(evidence / 'dbdat_override.sha256').splitlines()
             if line and not line.startswith('#')}
         for name in ('JUG98030.FDI','EQ98030.FDI','ENT98030.FDI','MINIFOTO.PKF','RIDIESC.PKF','MINIESC.PKF','NANOESC.PKF'):
             if hashes.get('DBDAT/'+name)!=registry.sha256_file(dbdat/name):raise ValueError('actual native/asset input differs')
@@ -80,7 +81,7 @@ def verify_profiles(root=ROOT,season=SEASON,release_id=RELEASE,profiles=PROFILES
             name_method=profile_name_method(player['name'],profile['player_name_ocr_normalized'],visual))
         if age_basis['basis'] != 'recipe-birthday':
             result['age_comparison_basis']=age_basis
-        if output.exists():
+        if storage_io.exists(output):
             if pipeline.read_json_file(output)!=result:
                 raise ValueError('cached runtime proof differs from freshly verified original inputs/pixels')
         else:

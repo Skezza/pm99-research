@@ -19,6 +19,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'upstream/pm99-skezmod-db-editor'))
 
 from PIL import Image
+from scripts import json_storage_io_v1 as storage_io
 from scripts import apply_post1999_factory_kit_v5_overlay as old_overlay
 from scripts import pm99_factory_kit_renderer_v6 as factory
 from scripts import season_art_transaction_v1 as transaction
@@ -51,7 +52,7 @@ SUPPORTED_INSTALLED_RENDERERS = {
 
 
 def read(path):
-    return json.loads(path.read_text())
+    return json.loads(storage_io.read_text(path))
 
 
 def installed_contracts(season):
@@ -61,13 +62,13 @@ def installed_contracts(season):
     if not relative:
         return {}
     application_path = ROOT / relative
-    application_path.resolve().relative_to(ROOT.resolve())
+    storage_io.resolve(application_path).relative_to(storage_io.resolve(ROOT))
     application = read(application_path)
     material_path = application.get('materialisation_path')
     if not material_path:
         return {}
     material_path = Path(material_path)
-    material_path.resolve().relative_to(ROOT.resolve())
+    storage_io.resolve(material_path).relative_to(storage_io.resolve(ROOT))
     if visual.sha(material_path) != application['materialisation_sha256']:
         raise ValueError('installed kit materialisation changed')
     material = read(material_path)
@@ -76,17 +77,17 @@ def installed_contracts(season):
     manifest = read(release.release_manifest_path)
     descriptors = [r for r in manifest['external_artifacts'] if r['sha256'] == visual.sha(application_path)]
     if (visual.sha(release.release_manifest_path) != release.manifest_sha256
-            or len(descriptors) != 1 or descriptors[0]['size'] != application_path.stat().st_size):
+            or len(descriptors) != 1 or descriptors[0]['size'] != storage_io.size(application_path)):
         raise ValueError('installed kit application is not registered')
     complete_path = Path(material['complete_kit_receipt_path'])
-    complete_path.resolve().relative_to(ROOT.resolve())
+    storage_io.resolve(complete_path).relative_to(storage_io.resolve(ROOT))
     if visual.sha(complete_path) != material['complete_kit_receipt_sha256']:
         raise ValueError('installed complete kit receipt changed')
     complete = read(complete_path)
     if complete.get('renderer') not in SUPPORTED_INSTALLED_RENDERERS:
         return {}
     audit_path = Path(complete['audit_path'])
-    audit_path.resolve().relative_to(ROOT.resolve())
+    storage_io.resolve(audit_path).relative_to(storage_io.resolve(ROOT))
     if visual.sha(audit_path) != complete['audit_sha256']:
         raise ValueError('installed kit audit changed')
     audit = read(audit_path)
@@ -161,7 +162,7 @@ def source_contracts(season):
                         author_path=str(author), author_sha256=visual.sha(author))
         # Later source-projection patches take precedence only if their bytes
         # are still present. This protects the newer 2014/15 corrections.
-        for path in sorted((ROOT / f'.local/visual-quality-v1/{season}').glob('kit-patch*/patch/receipt.json')):
+        for path in sorted(storage_io.glob(ROOT / f'.local/visual-quality-v1/{season}', 'kit-patch*/patch/receipt.json')):
             doc = read(path)
             rows = {int(r['carrier_id']): r for r in doc.get('clubs', [])}
             for event in doc.get('events', []):
@@ -170,7 +171,7 @@ def source_contracts(season):
                     row = rows[c]
                     add(c, event['after_bitmap_sha256'], row['club'], row['render_contract'], path,
                         pattern_layers=row.get('pattern_layers'))
-        for path in sorted((ROOT / f'.local/season-visual-patches-v2/{season}').glob('*factory-probe*/receipt.json')):
+        for path in sorted(storage_io.glob(ROOT / f'.local/season-visual-patches-v2/{season}', '*factory-probe*/receipt.json')):
             doc = read(path)
             for event in doc.get('changes', []):
                 if event['archive'] == ARCHIVE:
@@ -256,12 +257,12 @@ def probe_dbdat(season, output):
     if visual.sha(release.game_path / 'DBDAT' / ARCHIVE) != receipt['kit_before_sha256s']['DBDAT/' + ARCHIVE]:
         raise ValueError('probe base changed')
     dbdat = output / 'probe/DBDAT'
-    if dbdat.exists():
+    if storage_io.exists(dbdat):
         raise ValueError('probe already exists')
     dbdat.mkdir(parents=True)
     # The route only displays club icons, never external portrait profiles.
     for path in (release.game_path / 'DBDAT').iterdir():
-        if path.is_file() and path.name != ARCHIVE:
+        if storage_io.is_file(path) and path.name != ARCHIVE:
             (dbdat / path.name).hardlink_to(path)
     (dbdat / ARCHIVE).hardlink_to(patch / 'DBDAT' / ARCHIVE)
     visual.save(output / 'probe/receipt.json', {'diagnostic_only': True, 'season': season,
@@ -271,15 +272,15 @@ def probe_dbdat(season, output):
 
 
 def prepare(season, output, *, audit_only=False):
-    if not audit_only and output.exists():
+    if not audit_only and storage_io.exists(output):
         report = output / 'audit.json'
-        if (not report.is_file() or not read(report).get('blockers')
+        if (not storage_io.is_file(report) or not read(report).get('blockers')
                 or any(p.name != 'audit.json' and not p.name.startswith('audit.blocked-')
                        for p in output.iterdir())):
             raise ValueError('use a fresh output directory; existing receipts are never overwritten')
         # Keep unsuccessful audits as evidence while retrying only that season.
-        report.rename(output / ('audit.blocked-' + visual.sha(report)[:16] + '.json'))
-    output.resolve().relative_to(ROOT / '.local')
+        storage_io.move(report, output / ('audit.blocked-' + visual.sha(report)[:16] + '.json'))
+    storage_io.resolve(output).relative_to(ROOT / '.local')
     release = registry.load_preferred_release(season)
     clubs = {int(c['carrier_id']): c['name'] for c in read(release.package_path)['clubs']}
     if season == '2015-16':
@@ -292,7 +293,7 @@ def prepare(season, output, *, audit_only=False):
                 raise ValueError('English and world kit carriers overlap')
             clubs[carrier] = LEGACY_ENGLISH_DISPLAY_ALIASES.get(c['name'], c['name'])
     source = release.game_path / 'DBDAT' / ARCHIVE
-    original = source.read_bytes()
+    original = storage_io.read_bytes(source)
     changed = bytearray(original)
     records = renderer._record_index(source)
     templates = renderer._record_index(BASE / ARCHIVE)
@@ -353,7 +354,7 @@ def prepare(season, output, *, audit_only=False):
     visual.save(output / 'plan.json', plan)
     target = output / 'patch/DBDAT' / ARCHIVE
     target.parent.mkdir(parents=True)
-    target.write_bytes(changed)
+    storage_io.write_bytes(target, changed)
     readback = renderer._record_index(target)
     if set(readback) != set(records) or any(renderer.sha256_bytes(readback[r['carrier_id']].raw_bitmap)
             != r['after_sha256'] for r in audit):
@@ -395,7 +396,7 @@ def main():
         try:
             if args.audit_only:
                 result = prepare(season, output, audit_only=True)
-            elif (output / 'patch/receipt.json').exists():
+            elif storage_io.exists(output / 'patch/receipt.json'):
                 result = {'season': season, 'status': 'prepared-reused'}
             else:
                 result = prepare(season, output)

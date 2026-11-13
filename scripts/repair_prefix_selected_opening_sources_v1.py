@@ -13,6 +13,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import capture_transfermarkt_opening_lineups_v1 as capture
 from scripts import season_historical_opening_review_v1 as independent
 from scripts import season_opening_used_substitutes_v2 as substitutes
@@ -61,11 +62,11 @@ def replay(row, document, cache):
 
 
 def run(source_root, output_root):
-    if output_root.exists():
+    if storage_io.exists(output_root):
         raise ValueError('corrected source review is immutable')
     for season in registry.supported_seasons():
         path = source_root / 'opening' / season / 'opening-review.json'
-        doc = json.loads(path.read_text())
+        doc = json.loads(storage_io.read_text(path))
         transfer.verify_opening_sources(doc)
         result = copy.deepcopy(doc)
         original_path = doc['bindings'].get('opening_capture_path')
@@ -74,7 +75,7 @@ def run(source_root, output_root):
             original_path = ROOT / original_path
             if registry.sha256_file(original_path) != doc['bindings']['opening_capture_sha256']:
                 raise ValueError('original opening capture changed')
-            original = json.loads(original_path.read_text())
+            original = json.loads(storage_io.read_text(original_path))
         clubs = {c['carrier_id']: c for _, p, _ in planner.package_layers(
             registry.load_preferred_release(season)) for c in p['clubs']}
         corrected_rows, gaps = [], []
@@ -121,10 +122,10 @@ def run(source_root, output_root):
         pipeline.write_canonical_json(review_path, result)
         for name in ('report.json', 'roster-audit.json'):
             prior = source_root / 'reviews' / season / name
-            if prior.is_file():
+            if storage_io.is_file(prior):
                 target = output_root / 'reviews' / season / name
                 target.parent.mkdir(parents=True, exist_ok=True)
-                os.link(prior, target)
+                storage_io.link(prior, target)
         print(json.dumps({'season': season, 'sources_corrected': len(corrected_rows), 'gaps': gaps}), flush=True)
 
 

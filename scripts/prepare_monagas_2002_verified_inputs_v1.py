@@ -6,6 +6,7 @@ import tempfile
 from pathlib import Path
 from bs4 import BeautifulSoup
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import prepare_monagas_2002_source_allocation_v1 as source
 from scripts import season_pipeline_v2 as pipeline
 from scripts.capture_tachira_2014_original_people_v1 import source_rows
@@ -15,7 +16,7 @@ POLICY = source.POLICY
 
 
 def prepare(output, baseline_release_id=None):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('verified opening evidence is immutable')
     with tempfile.TemporaryDirectory(prefix='pm99-monagas-original-') as temporary:
         proposal = source.prepare(Path(temporary) / 'allocation.json', baseline_release_id)

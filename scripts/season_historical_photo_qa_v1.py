@@ -22,6 +22,7 @@ for path in (ROOT, ROOT / "scripts", ROOT / "upstream/pm99-skezmod-db-editor"):
         sys.path.insert(0, str(path))
 from app.minifoto_bitmap_archive import discover_riff_palette_resource, iter_minifoto_records, load_riff_palette
 from prepare_stoke_2015_face_dbdat import _build_palette_image, _build_replacement_bitmap
+from scripts import json_storage_io_v1 as storage_io
 from scripts.season_pipeline_v2 import write_canonical_json
 
 UA = "PlayPM99/1.0 (historical football research; https://playpm99.com)"
@@ -51,23 +52,23 @@ def fifa_bytes(row, cache):
         return None
     key = sha(url.encode())
     path = cache / "url-payloads" / key[:2] / (key + ".bin")
-    if not path.is_file():
+    if not storage_io.is_file(path):
         return None
-    data = path.read_bytes()
+    data = storage_io.read_bytes(path)
     return data if sha(data) == row.get("source_sha256") else None
 
 
 def photo_bytes(url, cache):
     key = sha(url.encode())
     path = cache / key[:2] / (key + ".bin")
-    if path.is_file():
-        return path.read_bytes()
+    if storage_io.is_file(path):
+        return storage_io.read_bytes(path)
     response = requests.get(url, headers={"User-Agent": UA}, timeout=30)
     response.raise_for_status()
     data = response.content
     decode(data)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(data)
+    storage_io.write_bytes(path, data)
     return data
 
 
@@ -119,7 +120,7 @@ def make_sheet(rows, fifa, output):
             tile.paste(preview, (119, 30))
         else:
             path = fifa[row["carrier_id"]].get("preview_path")
-            if path and Path(path).is_file():
+            if path and storage_io.is_file(Path(path)):
                 tile.paste(Image.open(path).convert("RGB").resize((112, 112), Image.Resampling.NEAREST), (5, 5))
         draw = ImageDraw.Draw(tile)
         draw.text((5, 125), row["name"][:25], fill="white", font=font)
@@ -134,8 +135,8 @@ def make_sheet(rows, fifa, output):
 
 
 def run(args):
-    fifa_doc = json.loads(args.fifa_manifest.read_text())
-    discovery = json.loads(args.discovery_receipt.read_text())
+    fifa_doc = json.loads(storage_io.read_text(args.fifa_manifest))
+    discovery = json.loads(storage_io.read_text(args.discovery_receipt))
     fifa = {int(p["carrier_id"]): p for p in fifa_doc["players"] if p.get("target_club") == discovery["club"]}
     discovered = {p["name"]: p for p in discovery["players"]}
     detector = cv2.FaceDetectorYN_create(str(args.detector), "", (320, 320), score_threshold=.75)
@@ -190,12 +191,12 @@ def run(args):
                         path.parent.mkdir(parents=True, exist_ok=True)
                     crop.save(paths["crop"])
                     preview.save(paths["preview"])
-                    paths["bitmap"].write_bytes(bitmap)
+                    storage_io.write_bytes(paths['bitmap'], bitmap)
                     row["status"] = "photo-candidate"
                     row["reason"] = "identity-and-framing-pass"
                     row["selected"] = {**attempt, "source_sha256": sha(data),
                                        "bitmap_sha256": sha(bitmap),
-                                       **{key: str(path.resolve()) for key, path in paths.items()}}
+                                       **{key: str(storage_io.resolve(path)) for key, path in paths.items()}}
                     row["attempts"].append(attempt)
                     break
                 except (ValueError, OSError, requests.RequestException, cv2.error) as exc:
@@ -209,11 +210,11 @@ def run(args):
                "season": discovery["season"], "season_dates": [args.season_start, args.season_end],
                "thresholds": {"similarity": MIN_SIMILARITY, "margin": MIN_MARGIN,
                               "minimum_face_pixels": 65, "crop_multiplier": 1.65},
-               "input_hashes": {"fifa_manifest": sha(args.fifa_manifest.read_bytes()),
-                                "discovery_receipt": sha(args.discovery_receipt.read_bytes()),
-                                "detector": sha(args.detector.read_bytes()),
-                                "recognizer": sha(args.recognizer.read_bytes())},
-               "counts": counts, "players": outcomes, "sheet": str(sheet.resolve())}
+               "input_hashes": {"fifa_manifest": sha(storage_io.read_bytes(args.fifa_manifest)),
+                                "discovery_receipt": sha(storage_io.read_bytes(args.discovery_receipt)),
+                                "detector": sha(storage_io.read_bytes(args.detector)),
+                                "recognizer": sha(storage_io.read_bytes(args.recognizer))},
+               "counts": counts, "players": outcomes, "sheet": str(storage_io.resolve(sheet))}
     write_canonical_json(args.output_root / "historical-photo-qa.json", receipt)
     return counts
 

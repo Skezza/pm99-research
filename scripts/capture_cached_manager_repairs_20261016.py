@@ -1,6 +1,7 @@
 """Capture exact completed manager candidates without promoting them."""
 import argparse
 import os
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import capture_registered_season_runtime_v1 as capture
 from scripts.capture_city_opening_exchange_20261011 import captured
@@ -14,7 +15,7 @@ def main(seasons):
     env=dict(os.environ,PM99_RUNNER_ARCHIVE_COLD_RUNS='0',PM99_RUNNER_RUN_ROOT_BUDGET_ENFORCE='0')
     for season in seasons:
         root=ROOT/season
-        if not all((root/name).exists() for name in ('native-byte-proof.json','complete-SOURCE-replay.json')):
+        if not all(storage_io.exists(root / name) for name in ('native-byte-proof.json','complete-SOURCE-replay.json')):
             raise ValueError('actual manager candidate not complete')
         release=registry.load_registered_release(season,RELEASE)
         command,evidence=capture.capture_command(season=season,worker='default',run_tag=tag(season),

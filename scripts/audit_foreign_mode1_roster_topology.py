@@ -24,6 +24,7 @@ for candidate in (ROOT, EDITOR):
 
 from app.eq_jug_linked import parse_eq_external_team_roster_payload  # noqa: E402
 from app.fdi_indexed import IndexedFDIFile  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts import world_fixed_carrier_ledger_v2 as ledger  # noqa: E402
 
 
@@ -76,9 +77,9 @@ def audit(*, registry: Mapping[str, Any], dbdat: Path) -> dict[str, Any]:
 
     ledger.validate_registry(registry)
     eq_path = dbdat / "EQ98030.FDI"
-    if not eq_path.is_file() or eq_path.is_symlink():
+    if not storage_io.is_file(eq_path) or eq_path.is_symlink():
         raise ValueError(f"missing regular EQ98030.FDI under {dbdat}")
-    data = eq_path.read_bytes()
+    data = storage_io.read_bytes(eq_path)
     entries = {int(entry.record_id): entry for entry in IndexedFDIFile.from_bytes(data).entries}
     changed: list[dict[str, Any]] = []
     for carrier in registry["carriers"]:
@@ -117,9 +118,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args(argv)
     registry, _ = ledger.read_canonical_json(args.registry, label="fixed-carrier registry")
-    report = audit(registry=registry, dbdat=args.dbdat.resolve())
+    report = audit(registry=registry, dbdat=storage_io.resolve(args.dbdat))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(ledger.canonical_json_bytes(report))
+    storage_io.write_bytes(args.output, ledger.canonical_json_bytes(report))
     print(json.dumps({
         "result": report["result"],
         "foreign_carrier_count": report["foreign_carrier_count"],

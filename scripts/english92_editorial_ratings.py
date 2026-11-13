@@ -11,6 +11,14 @@ editorial cases; it is never presented as a historical fact.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import hashlib
 import json
 import unicodedata
@@ -147,7 +155,7 @@ class EditorialRatingBook:
             ):
                 raise ValueError(f"invalid editorial fine roles: {club} / {player}")
             self.players[key] = {"quality": quality, "style": style, **({"fine_roles": fine_roles} if fine_roles is not None else {})}
-        self.source_sha256 = hashlib.sha256(source_path.read_bytes()).hexdigest()
+        self.source_sha256 = hashlib.sha256(storage_io.read_bytes(source_path)).hexdigest()
 
     @property
     def version(self) -> str:
@@ -237,7 +245,7 @@ class EditorialRatingBook:
 
 
 def load_editorial_rating_book(path: Path) -> EditorialRatingBook:
-    return EditorialRatingBook(json.loads(path.read_text(encoding="utf-8")), path)
+    return EditorialRatingBook(json.loads(storage_io.read_text(path, encoding='utf-8')), path)
 
 
 def audit_editorial_distribution(rows: list[dict[str, Any]], book: EditorialRatingBook) -> dict[str, Any]:

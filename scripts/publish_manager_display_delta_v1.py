@@ -20,6 +20,7 @@ sys.path[:0] = [str(ROOT), str(ROOT / 'upstream/pm99-skezmod-db-editor')]
 from app.ent_manager_profiles import parse_indexed_ent_manager_profile
 from app.fdi_indexed import IndexedFDIFile
 from app.xor import xor_decode
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_package_v2 as packages
@@ -34,16 +35,16 @@ RELEASE = 'historical-manager-display-20261005-r22a'
 
 
 def gates(root):
-    proof = json.loads((root / 'championships-field-proof-v1.json').read_text())
+    proof = json.loads(storage_io.read_text(root / 'championships-field-proof-v1.json'))
     actual = verify(Path(proof['candidate']), Path(proof['run']), Path(proof['frame']),
                     visual_review=root / 'field-probe-image-review-v1.json')
     if actual != proof:
         raise ValueError('manager field proof changed')
     run = ROOT / '.local/runlogs/pm99_runner/manager_display_corrected_2016_17_20261005_a'
-    summary = json.loads((run / 'summary.json').read_text())
-    command = json.loads((run / 'control_launch.json').read_text())['child_command']
+    summary = json.loads(storage_io.read_text(run / 'summary.json'))
+    command = json.loads(storage_io.read_text(run / 'control_launch.json'))['child_command']
     candidate = root / '2016-17/candidate-v1'
-    receipt = json.loads((candidate / 'candidate-receipt.json').read_text())
+    receipt = json.loads(storage_io.read_text(candidate / 'candidate-receipt.json'))
     if (not summary.get('success') or summary.get('crash_detected') or summary.get('wine_debugger_detected') or
             Path(command[command.index('--dbdat-dir') + 1]) != candidate / 'DBDAT' or
             registry.sha256_file(candidate / 'DBDAT/ENT98030.FDI') != receipt['after_ent_sha256']):
@@ -54,7 +55,7 @@ def gates(root):
 
 
 def audit(candidate, source):
-    receipt = json.loads((candidate / 'candidate-receipt.json').read_text())
+    receipt = json.loads(storage_io.read_text(candidate / 'candidate-receipt.json'))
     if (receipt['field_probe'] or receipt['source_release_id'] != source.release_id or
             receipt['source_package_sha256'] != registry.canonical_document_sha256(source.package_path)):
         raise ValueError('candidate is not a normal delta of the current source')
@@ -62,8 +63,8 @@ def audit(candidate, source):
                       ('ENT98030.FDI', 'source_ent_sha256')]:
         if registry.sha256_file(source.game_path / 'DBDAT' / file) != receipt[key]:
             raise ValueError('source native input changed')
-    old = json.loads(source.package_path.read_text())
-    package = json.loads((candidate / 'season-package.json').read_text())
+    old = json.loads(storage_io.read_text(source.package_path))
+    package = json.loads(storage_io.read_text(candidate / 'season-package.json'))
     packages.validate_package(package)
     clean = copy.deepcopy(package)
     for manager in clean['managers']:
@@ -78,11 +79,11 @@ def audit(candidate, source):
         descriptor = english_artifacts[0]
         english_path = candidate / descriptor['relative_path']
         verify_recipe_artifact(english_path, descriptor['sha256'])
-        english = json.loads(english_path.read_text())
+        english = json.loads(storage_io.read_text(english_path))
         previous_descriptor = next(a for a in old['artifacts'] if a['id'] == descriptor['id'])
         previous_path = source.package_path.parent / previous_descriptor['relative_path']
         verify_recipe_artifact(previous_path, previous_descriptor['sha256'])
-        previous_english = json.loads(previous_path.read_text())
+        previous_english = json.loads(storage_io.read_text(previous_path))
         clean_english = copy.deepcopy(english)
         legacy = {row['manager_id']: row for row in receipt.get('legacy_english_bindings', [])}
         previous_managers = {m['id']: m for m in previous_english['managers']}
@@ -98,8 +99,8 @@ def audit(candidate, source):
                     manager.pop('policy', None)
         if clean_english != previous_english:
             raise ValueError('English candidate changed unrelated recipe data')
-    before = (source.game_path / 'DBDAT/ENT98030.FDI').read_bytes()
-    after = (candidate / 'DBDAT/ENT98030.FDI').read_bytes()
+    before = storage_io.read_bytes(source.game_path / 'DBDAT/ENT98030.FDI')
+    after = storage_io.read_bytes(candidate / 'DBDAT/ENT98030.FDI')
     if registry.sha256_file(candidate / 'DBDAT/ENT98030.FDI') != receipt['after_ent_sha256']:
         raise ValueError('candidate ENT changed')
     records = lambda data: {e.record_id: data[e.payload_offset:e.payload_offset + e.payload_length]
@@ -137,7 +138,7 @@ def audit(candidate, source):
                 raise ValueError('recipe layer does not match both native manager name fields')
     if receipt.get('legacy_english_bindings'):
         from scripts.reconcile_2015_recipe_manager_graph_v1 import checked_inputs
-        graph = json.loads((ROOT / '.local/operations/2015-16/manager-facts-manager-graph-application-v1-r2-20260913.json').read_text())
+        graph = json.loads(storage_io.read_text(ROOT / '.local/operations/2015-16/manager-facts-manager-graph-application-v1-r2-20260913.json'))
         if (receipt['season'] != '2015-16' or graph['readback_failure_count'] != 0 or
                 graph['byte_contract']['ent_after_sha256'] != receipt['source_ent_sha256']):
             raise ValueError('legacy bindings do not extend the proven native manager graph')
@@ -154,14 +155,14 @@ def refresh_unpublished_workspace(season, release_id, workspace, destination, be
     if registry.load_preferred_release(season).release_id == release_id:
         raise ValueError('cannot refresh a registered game')
     locator_path = destination / 'locator.json'
-    if locator_path.exists():
-        locator = json.loads(locator_path.read_text())
+    if storage_io.exists(locator_path):
+        locator = json.loads(storage_io.read_text(locator_path))
         if locator.get('attestation_path') or locator.get('runtime_evidence_path'):
             raise ValueError('cannot refresh an attested game')
-        if (ROOT / locator['game_path']).resolve() != (workspace / 'game').resolve():
+        if storage_io.resolve(ROOT / locator['game_path']) != storage_io.resolve(workspace / 'game'):
             raise ValueError('unpublished locator points to another game')
     old_candidate = root / season / 'candidate-v1/candidate-receipt.json'
-    old = json.loads(old_candidate.read_text())
+    old = json.loads(storage_io.read_text(old_candidate))
     if old['source_release_id'] != source.release_id or old['source_package_sha256'] != registry.canonical_document_sha256(source.package_path):
         raise ValueError('unpublished game does not extend this baseline')
     actual = pipeline.build_tree_inventory(workspace / 'game')
@@ -171,15 +172,15 @@ def refresh_unpublished_workspace(season, release_id, workspace, destination, be
             registry.sha256_file(workspace / 'game/DBDAT/ENT98030.FDI') != old['after_ent_sha256']):
         raise ValueError('unpublished game changed beyond the exact earlier ENT candidate')
     recovery = root / 'unpublished-recipe-binding-recovery' / season
-    if recovery.exists():
-        ledger = json.loads((recovery / 'ledger.json').read_text())
+    if storage_io.exists(recovery):
+        ledger = json.loads(storage_io.read_text(recovery / 'ledger.json'))
         if (ledger['season'], ledger['release_id'], ledger['preferred_source'], ledger['before_inventory_fingerprint']) != (
                 season, release_id, source.release_id, actual['files_fingerprint']):
             raise ValueError('existing unpublished recovery snapshot does not match this input')
         return {'metadata_recovery': str(recovery), 'independent_game_copy_reused': True, 'resumed_recovery': True}
     recovery.mkdir(parents=True)
     shutil.copytree(workspace, recovery / 'workspace-metadata', ignore=shutil.ignore_patterns('game'))
-    if destination.exists():
+    if storage_io.exists(destination):
         shutil.copytree(destination, recovery / 'registry-metadata')
     pipeline.write_canonical_json(recovery / 'ledger.json', {
         'schema': 'pm99-unpublished-manager-binding-recovery-v1', 'season': season,
@@ -202,11 +203,11 @@ def publish(season, root, runtime_gates, *, release_id=RELEASE, register=False,
     package, plan = audit(candidate, source)
     workspace = root / season / release_id
     destination = registry.locator_path(season, release_id).parent
-    if destination.exists() and not refresh_unpublished:
+    if storage_io.exists(destination) and not refresh_unpublished:
         if register:
             return register_completed_delta(season, release_id)
         raise ValueError('release already exists; inspect it, never overwrite')
-    if workspace.exists() and not refresh_unpublished:
+    if storage_io.exists(workspace) and not refresh_unpublished:
         raise ValueError('partial output exists; inspect it, never overwrite')
     before, drift = source_inventory(source)
     copies = {}
@@ -218,12 +219,12 @@ def publish(season, root, runtime_gates, *, release_id=RELEASE, register=False,
                 'season-package.json', 'manager-display-compiler.json', 'manager-display-runtime-gates.json'):
             raise ValueError('unsafe recipe input path')
         options = (candidate / rel, source.package_path.parent / rel, ROOT / rel)
-        path = next((p for p in options if p.is_file()), options[0])
+        path = next((p for p in options if storage_io.is_file(p)), options[0])
         verify_recipe_artifact(path, artifact['sha256'])
         copies[rel] = path
-    reuse = workspace.exists()
+    reuse = storage_io.exists(workspace)
     required_copy_bytes = 0 if reuse else before['total_bytes']
-    if shutil.disk_usage(root).free < required_copy_bytes + sum(p.stat().st_size for p in copies.values()) + 8 * 1024**3:
+    if shutil.disk_usage(root).free < required_copy_bytes + sum(storage_io.size(p) for p in copies.values()) + 8 * 1024**3:
         raise ValueError('retain 8 GiB free after the independent game copy')
     recovery = refresh_unpublished_workspace(season, release_id, workspace, destination, before, source, root) if reuse else None
     write = _atomic_replace_json if recovery else pipeline.write_canonical_json
@@ -232,12 +233,12 @@ def publish(season, root, runtime_gates, *, release_id=RELEASE, register=False,
     if not reuse:
         _copy_game_tree(source.game_path, game)
     temporary = workspace / 'ENT98030.FDI.partial'
-    shutil.copy2(candidate / 'DBDAT/ENT98030.FDI', temporary)
-    os.replace(temporary, game / 'DBDAT/ENT98030.FDI')
+    storage_io.copy_file(candidate / 'DBDAT/ENT98030.FDI', temporary, metadata=True)
+    storage_io.replace_file(temporary, game / 'DBDAT/ENT98030.FDI')
     for rel, path in copies.items():
         target = workspace / rel
         target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(path, target)
+        storage_io.copy_file(path, target, metadata=True)
     package_path = workspace / 'season-package.json'
     packages.write_canonical_package(package_path, package)
     write(workspace / 'manager-display-plan.json', plan)
@@ -246,7 +247,7 @@ def publish(season, root, runtime_gates, *, release_id=RELEASE, register=False,
     difference = pipeline.inventory_difference(before, after)
     if difference['only_left'] or difference['only_right'] or [r['path'] for r in difference['changed']] != ['DBDAT/ENT98030.FDI']:
         raise ValueError('manager display delta changed unrelated game files')
-    outputs = [{'path': p, 'sha256': registry.sha256_file(game / p), 'size': (game / p).stat().st_size}
+    outputs = [{'path': p, 'sha256': registry.sha256_file(game / p), 'size': storage_io.size(game / p)}
                for p in ('DBDAT/JUG98030.FDI', 'DBDAT/EQ98030.FDI', 'DBDAT/ENT98030.FDI')]
     receipt = {'schema': 'pm99-manager-display-delta-v1', 'season': season,
         'season_package_sha256': registry.canonical_document_sha256(package_path),
@@ -323,9 +324,9 @@ if __name__ == '__main__':
     parser.add_argument('--candidate-root', type=Path)
     parser.add_argument('--refresh-unpublished', action='store_true', help='archive metadata and reuse only our exact unregistered copies')
     args = parser.parse_args()
-    root = args.root.resolve()
+    root = storage_io.resolve(args.root)
     runtime_gates = gates(root)
     for season in registry.supported_seasons() if args.season == 'all' else [args.season]:
         print(json.dumps(publish(season, root, runtime_gates, release_id=args.release_id, register=args.register,
-                                candidate_root=args.candidate_root.resolve() if args.candidate_root else None,
+                                candidate_root=storage_io.resolve(args.candidate_root) if args.candidate_root else None,
                                 refresh_unpublished=args.refresh_unpublished)), flush=True)

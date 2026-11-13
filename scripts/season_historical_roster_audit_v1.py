@@ -27,6 +27,7 @@ from bs4 import BeautifulSoup
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_package_compiler_v2 as compiler
 from scripts import capture_footballsquads_season as csv_source
@@ -182,7 +183,7 @@ def add_legacy_english(package: dict[str, Any], season: str) -> tuple[list, list
     if season != '2015-16' or any(c['division'] != 'preserve-existing-mode1-membership' for c in clubs):
         return clubs, players, bindings
     path = ROOT / '.local/season-2015-16/english92-2015-16-build36-native-no-photo/2015-16-english92-manifest.json'
-    raw = path.read_bytes()
+    raw = storage_io.read_bytes(path)
     manifest = json.loads(raw)
     country_table = compiler._extract_country_codes_from_textos(
         registry.load_preferred_release(season).game_path / 'DBDAT/TEXTOS.PKF')
@@ -215,19 +216,19 @@ def add_legacy_english(package: dict[str, Any], season: str) -> tuple[list, list
 
 
 def load_sources(season: str) -> tuple[list[dict], list[dict]]:
-    paths = sorted((ROOT / 'seasons' / season / 'sources').glob('*.json'))
+    paths = sorted(storage_io.glob(ROOT / 'seasons' / season / 'sources', '*.json'))
     # Independently captured backfills live here, not in the original
     # FootballSquads directory. Only the exact capture schema/season passes.
-    paths += sorted((ROOT / '.local' / ('season-' + season)).glob('*.json'))
+    paths += sorted(storage_io.glob(ROOT / '.local' / ('season-' + season), '*.json'))
     if season == '2015-16':
         paths += [ROOT / '.local/season-sources/footballsquads-2015-world-hybrid.json',
                   ROOT / '.local/season-sources/footballsquads-2015-16.json']
     clubs, bindings, seen = [], [], set()
     label = f'{season[:4]}/{season[-2:]}'
     for path in paths:
-        if not path.is_file():
+        if not storage_io.is_file(path):
             continue
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         document = json.loads(raw)
         if document.get('schema_version') != 'pm99-footballsquads-season-capture-v1':
             continue
@@ -271,8 +272,8 @@ class SourceVerifier:
     def __init__(self, season: str, previous=None, source_bindings=None):
         self.season = season
         self.roots = [ROOT / '.local/external-sources/cache.footballsquads']
-        self.roots += sorted((ROOT / '.local/external-sources/footballsquads-web').glob(season + '-*'))
-        self.roots += sorted((ROOT / '.local' / ('season-' + season)).glob('*cache*'))
+        self.roots += sorted(storage_io.glob(ROOT / '.local/external-sources/footballsquads-web', season + '-*'))
+        self.roots += sorted(storage_io.glob(ROOT / '.local' / ('season-' + season), '*cache*'))
         self.results = {}
         self.previous = {}
         if previous is not None:
@@ -304,12 +305,12 @@ class SourceVerifier:
         result = {'status': 'raw-source-unavailable', 'source_path': key[0], 'source_sha256': key[1]}
         for root in self.roots:
             path = root / relative
-            if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != key[1]:
+            if not storage_io.is_file(path) or hashlib.sha256(storage_io.read_bytes(path)).hexdigest() != key[1]:
                 continue
             result['local_path'] = str(path.relative_to(ROOT))
             try:
                 if path.suffix == '.txt':
-                    title = next(line for line in path.read_text().splitlines() if line.strip())
+                    title = next(line for line in storage_io.read_text(path).splitlines() if line.strip())
                     matched = csv_source._TITLE.fullmatch(title)
                     if matched is None:
                         raise ValueError('not a dated squad title')
@@ -325,16 +326,16 @@ class SourceVerifier:
                 elif 'ntf' in root.name:
                     family = source_group(row['country_catalog'])
                     _, country = ntf_source.SOURCE_COUNTRIES[family]
-                    parsed_name, label = historical_html_title(path.read_bytes(), 'ntf', self.season, family)
+                    parsed_name, label = historical_html_title(storage_io.read_bytes(path), 'ntf', self.season, family)
                     parsed_players = [ntf_source.canonical_player(p) for p in ntf_source.parse_squad_page(
-                        path.read_bytes(), country_name=country.replace('_', ' '), season_label=label)]
+                        storage_io.read_bytes(path), country_name=country.replace('_', ' '), season_label=label)]
                 elif 'transfermarkt' in root.name:
-                    parsed_name, _ = historical_html_title(path.read_bytes(), 'transfermarkt', self.season,
+                    parsed_name, _ = historical_html_title(storage_io.read_bytes(path), 'transfermarkt', self.season,
                                                           source_group(row['country_catalog']))
-                    parsed_players = [tm_source.canonical_player(p) for p in tm_source.parse_squad(path.read_bytes())]
+                    parsed_players = [tm_source.canonical_player(p) for p in tm_source.parse_squad(storage_io.read_bytes(path))]
                 else:
                     parsed_name, parsed_players = web_source.parse_club_page(
-                        payload=path.read_bytes(), source_year=int(self.season[:4]), label=str(path))
+                        payload=storage_io.read_bytes(path), source_year=int(self.season[:4]), label=str(path))
                 if (normalise(parsed_name) not in club_names(source_group(row['country_catalog']), row['club_name'])
                         or not captured_players_match(parsed_players, row['players'],
                             allow_added_transfermarkt_identity='transfermarkt' in root.name)):
@@ -364,11 +365,11 @@ def source_matches(player: dict, candidates: list[dict]) -> tuple[str, list[dict
 
 def audit_season(season: str, output: Path, original_audit_path=None, *, compressed=False) -> dict:
     release = registry.load_preferred_release(season)
-    package = json.loads(release.package_path.read_text())
+    package = json.loads(storage_io.read_text(release.package_path))
     clubs, players, legacy_bindings = add_legacy_english(package, season)
     by_id = {p['id']: p for p in players}
     sources, source_bindings = load_sources(season)
-    prior = json.loads(original_audit_path.read_text()) if original_audit_path else None
+    prior = json.loads(storage_io.read_text(original_audit_path)) if original_audit_path else None
     verifier = SourceVerifier(season, prior, source_bindings)
     sources_by_club = collections.defaultdict(list)
     sources_by_name = collections.defaultdict(list)
@@ -382,8 +383,8 @@ def audit_season(season: str, output: Path, original_audit_path=None, *, compres
                    'raw_status': verified['status']}
             sources_by_club[key].append(row)
             sources_by_name[normalise(facts['name'])].append(row)
-    jug_data = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq_data = (release.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    jug_data = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
+    eq_data = storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
     jug_entries = {int(e.record_id): e for e in IndexedFDIFile.from_bytes(jug_data).entries}
     eq_entries = {int(e.record_id): e for e in IndexedFDIFile.from_bytes(eq_data).entries}
     native_cache, club_rows, player_rows = {}, [], []
@@ -486,14 +487,14 @@ def audit_season(season: str, output: Path, original_audit_path=None, *, compres
         destination = output / 'report.json.gz'
         # Compact evidence keeps the full individual findings, not just totals.
         # Exclusive creation prevents silently replacing a completed audit.
-        with destination.open('xb') as stream:
+        with storage_io.open_file(destination, 'xb') as stream:
             with gzip.GzipFile(fileobj=stream, mode='wb', mtime=0, filename='') as archive:
                 archive.write(json.dumps(report, ensure_ascii=False, sort_keys=True,
                                          separators=(',', ':')).encode('utf-8'))
         return {'season': season, **dict(counts)}
-    (output / 'report.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
+    storage_io.write_text(output / 'report.json', json.dumps(report, ensure_ascii=False, indent=2) + '\n')
     for name, rows in [('clubs', club_rows), ('players', player_rows)]:
-        with (output / (name + '.csv')).open('w', newline='') as handle:
+        with storage_io.open_file(output / (name + '.csv'), 'w', newline='') as handle:
             fields = list(rows[0]) if rows else []
             writer = csv.DictWriter(handle, fieldnames=fields)
             writer.writeheader()
@@ -513,7 +514,7 @@ def main() -> None:
         summaries.append(result)
         print(json.dumps(result), flush=True)
     totals = dict(sum((collections.Counter({k: v for k, v in row.items() if k != 'season'}) for row in summaries), collections.Counter()))
-    (args.output / 'summary.json').write_text(json.dumps({'schema_version': SCHEMA, 'seasons': summaries, 'totals': totals}, indent=2) + '\n')
+    storage_io.write_text(args.output / 'summary.json', json.dumps({'schema_version': SCHEMA, 'seasons': summaries, 'totals': totals}, indent=2) + '\n')
 
 
 if __name__ == '__main__':

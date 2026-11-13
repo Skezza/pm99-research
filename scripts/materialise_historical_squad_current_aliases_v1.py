@@ -22,6 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts.season_historical_squad_backfill_batch_v1 import CURRENT_SCHEMA
 from scripts.capture_transfermarkt_historical_squads_v1 import canonical_bytes
 
@@ -33,24 +34,24 @@ def _atomic_write(path: Path, payload: bytes) -> None:
     with tempfile.NamedTemporaryFile(prefix=f".{path.name}-", dir=path.parent, delete=False) as handle:
         handle.write(payload)
         temporary = Path(handle.name)
-    os.replace(temporary, path)
+    storage_io.replace_file(temporary, path)
 
 
 def materialise(season_dir: Path) -> dict[str, Any]:
-    root = season_dir.resolve()
-    manifest_raw = (root / "current.json").read_bytes()
+    root = storage_io.resolve(season_dir)
+    manifest_raw = storage_io.read_bytes(root / 'current.json')
     manifest = json.loads(manifest_raw)
     if not isinstance(manifest, Mapping) or manifest.get("schema_version") != CURRENT_SCHEMA:
         raise ValueError(f"current.json must use {CURRENT_SCHEMA}")
     rows: list[dict[str, str]] = []
     for name, declaration in sorted(manifest.get("artifacts", {}).items()):
         relative = Path(str(declaration.get("path") or ""))
-        source = (root / relative).resolve()
+        source = storage_io.resolve(root / relative)
         try:
             source.relative_to(root)
         except ValueError as exc:
             raise ValueError(f"revision artifact escapes season directory: {relative}") from exc
-        payload = source.read_bytes()
+        payload = storage_io.read_bytes(source)
         digest = hashlib.sha256(payload).hexdigest()
         if digest != declaration.get("sha256"):
             raise ValueError(f"revision artifact hash mismatch: {relative}")

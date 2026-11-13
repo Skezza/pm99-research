@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import compose_season_source_captures_v1 as compositor
 from scripts import season_carrier_allocation_v1 as allocator
 from scripts import season_historical_squad_backfill_batch_v1 as batch
@@ -28,7 +29,7 @@ def promote(*, season: str, capture_path: Path, gaps_path: Path, output_root: Pa
     def artifact(name: str) -> dict[str, Any]:
         row = current["artifacts"][name]
         path = local / row["path"]
-        if hashlib.sha256(path.read_bytes()).hexdigest() != row["sha256"]:
+        if hashlib.sha256(storage_io.read_bytes(path)).hexdigest() != row["sha256"]:
             raise ValueError(f"current artifact hash mismatch: {name}")
         return batch._read(path)
 

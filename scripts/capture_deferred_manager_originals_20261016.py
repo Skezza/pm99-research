@@ -12,6 +12,7 @@ from urllib.request import Request, urlopen
 import time
 
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import audit_deferred_manager_tenures_20261016 as old
 from scripts.capture_transfermarkt_opening_lineups_v1 import _validate_snapshot_payload
@@ -40,12 +41,12 @@ def history_url(case):
 def original_page(url, club_id):
     path = ROOT / 'raw' / (str(club_id) + '.html')
     receipt = path.with_suffix('.html.source.json')
-    if path.exists():
+    if storage_io.exists(path):
         saved = pipeline.read_json_file(receipt)
         if saved['url'] != url or saved['sha256'] != registry.sha256_file(path):
             raise ValueError('retained new original source URL/SHA changed')
         return path, receipt
-    if receipt.exists():
+    if storage_io.exists(receipt):
         raise ValueError('partial original download; inspect before retry')
     request = Request(url, headers={'User-Agent': 'PM99HistoricalResearch/1.0', 'Accept-Language': 'en-GB,en;q=0.9'})
     try:
@@ -63,7 +64,7 @@ def original_page(url, club_id):
     if match is None or int(match[1]) != club_id:
         raise ValueError('original canonical club ID differs')
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(raw)
+    storage_io.write_bytes(path, raw)
     retained(receipt, dict(url=url, final_url=final_url, sha256=registry.sha256_file(path),
         bytes=len(raw), retrieved_utc=datetime.now(UTC).isoformat()))
     return path, receipt
@@ -71,7 +72,7 @@ def original_page(url, club_id):
 
 def main():
     output = ROOT / 'capture-summary.json'
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('completed remaining32 capture must not repeat')
     audit = pipeline.read_json_file(AUDIT)
     cases = [r for r in audit['rows'] if r['status'] != 'unanimous-reparsed-August1-tenure-candidate'
@@ -84,7 +85,7 @@ def main():
         club_id = case['source_club_id']; url = history_url(case)
         if club_id not in captures:
             saved = ROOT / (str(club_id) + '-download.json')
-            if saved.exists():
+            if storage_io.exists(saved):
                 captures[club_id] = pipeline.read_json_file(saved)
             else:
                 try:
@@ -110,7 +111,7 @@ def main():
             if registry.sha256_file(path) != downloaded['raw_sha256'] or registry.sha256_file(receipt) != downloaded['receipt_sha256']:
                 raise ValueError('captured original source/receipt SHA changed')
             result.update(status='fresh-original-August1-tenure-reparsed',
-                claim=old.tenure(path.read_bytes(), club_id, date(int(case['season'][:4]), 8, 1)))
+                claim=old.tenure(storage_io.read_bytes(path), club_id, date(int(case['season'][:4]), 8, 1)))
         except (ValueError, old.history.ManagerHistoryError) as exc:
             result.update(status='source-case-remains-unresolved', reason=str(exc))
         rows.append(result)

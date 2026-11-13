@@ -8,6 +8,7 @@ from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 from PIL import Image, ImageDraw
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts.capture_italian_period_kits_20261010 import capture
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_kit_render_bindings_v1 as render
@@ -21,7 +22,7 @@ def main():
     primary = ROOT / 'source-cache/Kappa-launch.html'
     primary_url = 'https://media.basicpress.com/contenuti/media/resultMedia.asp?ID=160831'
     capture(primary_url, primary)
-    original = BeautifulSoup(primary.read_bytes(), 'html.parser')
+    original = BeautifulSoup(storage_io.read_bytes(primary), 'html.parser')
     original_text = original.get_text(' ', strip=True)
     original_photo_url = 'https://media.basicpress.com/media/media/160/160831_001.JPG'
     if ('16/07/2021' not in original_text or '2021-2022 sports season' not in original_text
@@ -30,7 +31,7 @@ def main():
     capture(original_photo_url, ROOT / 'source-cache/Kappa-original.jpg')
     page = ROOT / 'source-cache/launch.html'
     capture(URL, page)
-    soup = BeautifulSoup(page.read_bytes(), 'html.parser')
+    soup = BeautifulSoup(storage_io.read_bytes(page), 'html.parser')
     heading = soup.find('h1')
     text = soup.get_text(' ', strip=True)
     if (not heading or heading.get_text(strip=True) != 'Genoa 21-22 Home Kit Released'
@@ -69,9 +70,9 @@ def main():
         comparison_path=registry.relative_workspace_path(image_path),
         comparison_sha256=registry.sha256_file(image_path),
         source_visual_review_pending=True, game_modified=False)
-    if output.exists() and pipeline.read_json_file(output) != evidence:
+    if storage_io.exists(output) and pipeline.read_json_file(output) != evidence:
         raise ValueError('retained evidence belongs to different source/game bytes')
-    if not output.exists():
+    if not storage_io.exists(output):
         pipeline.write_canonical_json(output, evidence)
     print(dict(evidence=str(output), game_modified=False), flush=True)
 

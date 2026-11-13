@@ -5,6 +5,7 @@ import subprocess
 import tempfile
 
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import capture_stock_replacement_sources_20261010 as capture
 from scripts.season_art_transaction_v1 import atomic_bytes
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
@@ -17,7 +18,7 @@ BROWSER = Path('/home/joe/.cache/ms-playwright/chromium_headless_shell-1234/chro
 def main():
     body = capture.ROOT / (KEY + '.html')
     receipt = capture.ROOT / (KEY + '.source.json')
-    if receipt.exists() or body.exists():
+    if storage_io.exists(receipt) or storage_io.exists(body):
         raise ValueError('existing browser source needs inspection, not repeated acquisition')
     row = dict(url=URL, utc=datetime.now(UTC).isoformat(), native_writes=0,
         transport='ordinary-local-Chromium-dump-dom',

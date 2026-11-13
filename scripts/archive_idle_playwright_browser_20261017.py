@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import tarfile
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts.archive_rejected_rating_recovery_to_pi_20261011 import HOST, UUID, ssh
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
@@ -23,32 +24,32 @@ def idle():
         if not process.name.isdigit():
             continue
         try:
-            if (process / 'exe').resolve().is_relative_to(TARGET):
+            if storage_io.resolve(process / 'exe').is_relative_to(TARGET):
                 raise ValueError('browser build is running')
             for fd in (process / 'fd').iterdir():
-                if fd.resolve().is_relative_to(TARGET):
+                if storage_io.resolve(fd).is_relative_to(TARGET):
                     raise ValueError('browser build has an open file')
         except (FileNotFoundError, PermissionError, ProcessLookupError):
             continue
 
 
 def manifest():
-    if TARGET.resolve() != TARGET or TARGET.is_symlink() or not TARGET.is_dir():
+    if storage_io.resolve(TARGET) != TARGET or TARGET.is_symlink() or not TARGET.is_dir():
         raise ValueError('exact browser build must be an ordinary directory')
     rows = {}
-    for path in sorted(TARGET.rglob('*')):
-        if path.is_symlink() or not (path.is_file() or path.is_dir()):
+    for path in sorted(storage_io.glob(TARGET, '*', recursive=True)):
+        if path.is_symlink() or not (storage_io.is_file(path) or path.is_dir()):
             raise ValueError('unexpected browser-cache member')
-        if path.is_file():
+        if storage_io.is_file(path):
             rows[path.relative_to(TARGET.parent).as_posix()] = dict(
-                size=path.stat().st_size, sha256=registry.sha256_file(path))
+                size=storage_io.size(path), sha256=registry.sha256_file(path))
     if not rows:
         raise ValueError('browser package has no files')
     return rows
 
 
 def main():
-    if ROOT.exists():
+    if storage_io.exists(ROOT):
         raise ValueError('inspect existing archive attempt; never overwrite')
     idle()
     if ssh('findmnt -n -o UUID --target /srv/hdd').strip() != UUID:

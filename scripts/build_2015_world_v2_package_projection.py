@@ -17,6 +17,7 @@ from typing import Any, Mapping
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in __import__("sys").path:
     __import__("sys").path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts.season_package_v2 import canonical_json_bytes
 
 SCHEMA = "pm99-world-2015-v2-package-projection-v1"
@@ -106,10 +107,10 @@ def main() -> int:
     parser.add_argument("--portrait-materialisation", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
-    candidate = json.loads(args.candidate.read_text()); portraits = json.loads(args.portrait_materialisation.read_text())
+    candidate = json.loads(storage_io.read_text(args.candidate)); portraits = json.loads(storage_io.read_text(args.portrait_materialisation))
     try: output = build(candidate, portraits)
     except ProjectionError as exc: parser.error(str(exc))
-    args.output.parent.mkdir(parents=True, exist_ok=True); args.output.write_bytes(canonical_json_bytes(output))
+    args.output.parent.mkdir(parents=True, exist_ok=True); storage_io.write_bytes(args.output, canonical_json_bytes(output))
     print(json.dumps(output["coverage"], sort_keys=True)); return 0
 
 

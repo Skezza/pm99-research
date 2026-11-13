@@ -14,6 +14,7 @@ import shutil
 import subprocess
 import tarfile
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts.archive_rejected_rating_recovery_to_pi_20261011 import HOST,UUID,ssh
 from scripts.archive_rejected_role_trials_20261016 import active
@@ -45,50 +46,50 @@ def no_registered_references(*,extra_roots=()):
                 folders.remove('game')
             elif root in extra_roots and 'game' in folders:
                 native=path_root/'game'
-                if (native/'DBDAT').is_dir() and (native/'MANAGPRE.EXE').is_file():
+                if (native/'DBDAT').is_dir() and storage_io.is_file(native / 'MANAGPRE.EXE'):
                     folders.remove('game')
             for name in files:
-                if not name.endswith('.json'):continue
-                path=path_root/name;info=path.stat()
+                if not name.endswith(('.json','.json.zst')):continue
+                path=path_root/(name[:-4] if name.endswith('.json.zst') else name);info=storage_io.stat_result(path)
                 key=(info.st_dev,info.st_ino,info.st_size,info.st_mtime_ns)
                 # Immutable SOURCE artifacts are hardlinked across hundreds
                 # of releases. Inspect the same unchanged bytes once, without
                 # dropping any metadata path or source directory from scope.
                 if key in seen:continue
                 seen.add(key)
-                text=path.read_text()
+                text=storage_io.read_text(path)
                 if any(prefix in text for prefix in prefixes) and any(needle in text for needle in needles):
                     raise ValueError('registered release or retained SOURCE metadata references a probe: '+str(path))
 
 
 def main():
     ROOT.mkdir(parents=True,exist_ok=True)
-    if (ROOT/'members.json').exists():
+    if storage_io.exists(ROOT / 'members.json'):
         raise ValueError('existing probe archive ledger requires inspection, not blind repetition')
     if ssh('findmnt -n -o UUID --target /srv/hdd').strip()!=UUID:
         raise ValueError('Pi archive volume missing or changed')
     no_registered_references()
     targets=[SOURCE/name for name in NAMES]
     for path in targets:
-        if (path.parent!=SOURCE or path.resolve()!=path or path.is_symlink()
+        if (path.parent!=SOURCE or storage_io.resolve(path)!=path or path.is_symlink()
                 or not path.is_dir() or active(path)):
             raise ValueError('unexpected or active exact probe target')
     members=[]
     for target in targets:
-        for path in sorted(target.rglob('*')):
+        for path in sorted(storage_io.glob(target, '*', recursive=True)):
             if path.is_symlink():
                 raise ValueError('probe archive refuses symlinks')
-            if path.is_file():
+            if storage_io.is_file(path):
                 members.append((path,path.relative_to(SOURCE).as_posix()))
             elif not path.is_dir():
                 raise ValueError('probe archive refuses special non-directory files')
     if not members:
         raise ValueError('no original probe files to archive')
-    expected={name:dict(sha256=registry.sha256_file(path),size=path.stat().st_size) for path,name in members}
-    links=Counter((p.stat().st_dev,p.stat().st_ino) for p,_ in members)
+    expected={name:dict(sha256=registry.sha256_file(path),size=storage_io.size(path)) for path,name in members}
+    links=Counter((storage_io.stat_result(p).st_dev,storage_io.stat_result(p).st_ino) for p,_ in members)
     allocated={}
     for path,_ in members:
-        stat=path.stat();key=(stat.st_dev,stat.st_ino)
+        stat=storage_io.stat_result(path);key=(stat.st_dev,stat.st_ino)
         if links[key]==stat.st_nlink:
             allocated[key]=stat.st_blocks*512
     retained(ROOT/'members.json',dict(utc=datetime.now(UTC).isoformat(),remote_archive=REMOTE,
@@ -115,13 +116,13 @@ def main():
     checked=json.loads(ssh('python3 -c '+shlex.quote(code)+' '+shlex.quote(REMOTE),input=json.dumps(expected)))
     retained(ROOT/'pi-member-verification.json',dict(checked,host=HOST,volume_uuid=UUID,archive_path=REMOTE))
     for path,name in members:
-        if path.stat().st_size!=expected[name]['size'] or registry.sha256_file(path)!=expected[name]['sha256']:
+        if storage_io.size(path)!=expected[name]['size'] or registry.sha256_file(path)!=expected[name]['sha256']:
             raise ValueError('probe source changed during transfer; do not remove it')
     no_registered_references()
     if registry.sha256_file(registry.CATALOG_PATH)!=catalog:
         raise ValueError('preferred catalogue changed during archive; preserve originals and inspect')
     for target in targets:
-        if target.resolve()!=target or active(target):
+        if storage_io.resolve(target)!=target or active(target):
             raise ValueError('probe became active; originals retained')
     retained(ROOT/'pre-removal-proof.json',dict(local_sources_unchanged=True,pi_all_member_hashes_verified=True,
         catalogue_sha256=catalog,removed_paths=[]))

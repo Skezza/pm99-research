@@ -1,5 +1,6 @@
 """Independent exact readback of a club-name-only restoration."""
 import json
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_original_carrier_label_restoration_v1 as source
 from scripts import publish_historical_role_delta_v1 as publisher
 
@@ -10,8 +11,8 @@ def verify(base, actual, plan):
     if plan.get('schema_version') == exact_page.SCHEMA:
         policy = exact_page
     policy.verify(base, plan)
-    before = (base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
-    after = (actual.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    before = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
+    after = storage_io.read_bytes(actual.game_path / 'DBDAT/EQ98030.FDI')
     expected, changes = source.labels.rewrite_club_labels(before, plan['updates'])
     if expected != after or len(changes) != len(plan['updates']):
         raise ValueError('club label native delta differs from exact bound scope')

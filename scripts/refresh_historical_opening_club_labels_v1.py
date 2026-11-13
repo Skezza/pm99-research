@@ -15,6 +15,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_historical_opening_review_v1 as opening
@@ -61,11 +62,11 @@ def refreshed_rows(clubs, players, old_rows, updates, native_managers, check_sou
 
 
 def refresh(season, prior_path, destination):
-    release = registry.load_preferred_release(season); package = json.loads(release.package_path.read_text())
+    release = registry.load_preferred_release(season); package = json.loads(storage_io.read_text(release.package_path))
     clubs, players, legacy = roster.add_legacy_english(package, season)
-    previous = json.loads(prior_path.read_text()); plan_path = release.package_path.parent / 'club-plan.json'
+    previous = json.loads(storage_io.read_text(prior_path)); plan_path = release.package_path.parent / 'club-plan.json'
     descriptor = next(a for a in package['artifacts'] if a['id'] == 'historical-club-label-plan-' + season)
-    plan = json.loads(plan_path.read_text())
+    plan = json.loads(storage_io.read_text(plan_path))
     if hashlib.sha256(pipeline.canonical_json_bytes(plan)).hexdigest() != descriptor['sha256']:
         raise ValueError('current recipe does not bind its original club label plan')
     if plan['schema_version'] != labels.SCHEMA or previous['schema_version'] != opening.SCHEMA or previous['season'] != season:
@@ -95,7 +96,7 @@ def refresh(season, prior_path, destination):
             'club_plan_sha256': registry.sha256_file(plan_path),
             'scope': 'Original bytes rehashed; native coaches and current duplicate queues recomputed; no roster certification'}}
     destination.parent.mkdir(parents=True, exist_ok=True)
-    if destination.exists(): raise ValueError('completed opening refresh already exists')
+    if storage_io.exists(destination): raise ValueError('completed opening refresh already exists')
     pipeline.write_canonical_json(destination, result)
     return result['summary']
 
@@ -106,7 +107,7 @@ def main():
     parser.add_argument('--output', type=Path, required=True); args = parser.parse_args()
     for season in registry.supported_seasons() if args.season == 'all' else [args.season]:
         release = registry.load_preferred_release(season)
-        if not (release.package_path.parent / 'club-plan.json').exists(): continue
+        if not storage_io.exists(release.package_path.parent / 'club-plan.json'): continue
         print(json.dumps(refresh(season, args.prior_root / season / 'opening-review.json',
             args.output / season / 'opening-review.json')), flush=True)
 

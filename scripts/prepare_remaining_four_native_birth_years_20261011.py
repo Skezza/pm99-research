@@ -3,6 +3,7 @@
 Only year bytes change. Bloxham's competing Nov1/Nov2 publications are logged,
 not resolved by rewriting the supplied target-period recipe day/month.
 """
+from scripts import json_storage_io_v1 as storage_io
 from scripts import original_namesake_birthday_witness_v1 as witness
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts.capture_tachira_2014_original_people_v1 import source_rows
@@ -30,7 +31,7 @@ def main():
                 name=observed['name'],birth_date=observed['birth_date']))
         document=dict(schema=witness.SCHEMA,witnesses=witnesses)
         path=ROOT/(season+'-independent-period-witnesses.json')
-        if path.exists():
+        if storage_io.exists(path):
             if pipeline.read_json_file(path)!=document:raise ValueError('retained period witnesses differ')
         else:pipeline.write_canonical_json(path,document)
         # Freeze the actual before version. A subsequent preferred promotion

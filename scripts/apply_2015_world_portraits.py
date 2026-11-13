@@ -27,6 +27,7 @@ from app.minifoto_bitmap_archive import (  # noqa: E402
     iter_minifoto_records_from_bytes,
     validate_minifoto_bitmap,
 )
+from scripts import json_storage_io_v1 as storage_io
 from scripts.materialise_native_no_photo_v2 import _active_offsets_for_players  # noqa: E402
 
 SCHEMA = "pm99-world-2015-portrait-application-v1"
@@ -43,7 +44,7 @@ def _sha256_bytes(payload: bytes) -> str:
 
 
 def _sha256_file(path: Path) -> str:
-    return _sha256_bytes(path.read_bytes())
+    return _sha256_bytes(storage_io.read_bytes(path))
 
 
 def _selected_players(manifest: Mapping[str, Any]) -> list[dict[str, Any]]:
@@ -91,11 +92,11 @@ def apply_portraits(*, manifest: Mapping[str, Any], materialisation: Mapping[str
     if set(outcome_by_key) != expected_keys:
         raise PortraitApplicationError("portrait outcomes do not exactly cover every URL candidate")
 
-    game_tree = game_tree.resolve()
+    game_tree = storage_io.resolve(game_tree)
     archive_path = game_tree / "DBDAT" / "MINIFOTO.PKF"
-    if not archive_path.is_file() or archive_path.is_symlink():
+    if not storage_io.is_file(archive_path) or archive_path.is_symlink():
         raise PortraitApplicationError(f"missing regular MINIFOTO.PKF: {archive_path}")
-    original = archive_path.read_bytes()
+    original = storage_io.read_bytes(archive_path)
     archive = bytearray(original)
     records = {record.player_record_id: record for record in iter_minifoto_records_from_bytes(archive_path.name, original)}
     if not records:
@@ -117,7 +118,7 @@ def apply_portraits(*, manifest: Mapping[str, Any], materialisation: Mapping[str
         clone_ids.add(clone_id)
         source_id = row["player_carrier_id"]
         source_loose = loose_root / f"J96{source_id:05d}.BMP"
-        payload = source_loose.read_bytes() if source_loose.is_file() else records[source_id].raw_bitmap if source_id in records else None
+        payload = storage_io.read_bytes(source_loose) if storage_io.is_file(source_loose) else records[source_id].raw_bitmap if source_id in records else None
         if payload is None:
             clone_operations.append({"mode0_source_player_carrier_id": source_id, "appended_mode0_clone_carrier_id": clone_id, "resulting_state": "native-no-photo"})
         else:
@@ -132,9 +133,9 @@ def apply_portraits(*, manifest: Mapping[str, Any], materialisation: Mapping[str
         if outcome is None or outcome.get("status") != "approved-crop-conversion-candidate":
             continue
         path = Path(str(outcome.get("converted_path") or ""))
-        if not path.is_file() or _sha256_file(path) != outcome.get("converted_sha256"):
+        if not storage_io.is_file(path) or _sha256_file(path) != outcome.get("converted_sha256"):
             raise PortraitApplicationError(f"converted portrait hash mismatch for {key}")
-        payload = path.read_bytes()
+        payload = storage_io.read_bytes(path)
         validate_minifoto_bitmap(payload)
         prepared[row["player_carrier_id"]] = payload
 
@@ -176,17 +177,17 @@ def apply_portraits(*, manifest: Mapping[str, Any], materialisation: Mapping[str
     if residual:
         raise PortraitApplicationError(f"native no-photo archive rows remain active: {residual[:10]}")
 
-    archive_path.write_bytes(verified)
+    storage_io.write_bytes(archive_path, verified)
     loose_root.mkdir(parents=True, exist_ok=True)
     for path in sorted(loose_removals):
-        path.unlink(missing_ok=True)
+        storage_io.unlink(path, missing_ok=True)
     for path, payload in sorted(loose_writes.items(), key=lambda item: str(item[0])):
-        path.write_bytes(payload)
+        storage_io.write_bytes(path, payload)
     for clone_id, payload in sorted(clone_payloads.items()):
         clone_path = loose_root / f"J96{clone_id:05d}.BMP"
-        clone_path.write_bytes(payload)
+        storage_io.write_bytes(clone_path, payload)
     for path, payload in loose_writes.items():
-        if path.read_bytes() != payload:
+        if storage_io.read_bytes(path) != payload:
             raise PortraitApplicationError(f"loose portrait verification failed: {path}")
 
     applied = sum(row["resulting_state"] == "applied" for row in operations)
@@ -221,8 +222,8 @@ def main() -> int:
     parser.add_argument("--game-tree", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    manifest_raw = args.asset_manifest.read_bytes()
-    materialisation_raw = args.portrait_materialisation.read_bytes()
+    manifest_raw = storage_io.read_bytes(args.asset_manifest)
+    materialisation_raw = storage_io.read_bytes(args.portrait_materialisation)
     manifest = json.loads(manifest_raw)
     materialisation = json.loads(materialisation_raw)
     expected_hash = str((materialisation.get("source") or {}).get("candidate_manifest_file_sha256") or "")
@@ -237,7 +238,7 @@ def main() -> int:
         "portrait_materialisation_sha256": _sha256_bytes(materialisation_raw),
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(result, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+    storage_io.write_text(args.output, json.dumps(result, ensure_ascii=False, sort_keys=True, separators=(',', ':')) + '\n', encoding='utf-8')
     print(json.dumps(result["coverage"], sort_keys=True))
     return 0
 

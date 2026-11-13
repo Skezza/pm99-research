@@ -10,6 +10,14 @@ kits, or replace any existing build.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import concurrent.futures
 import hashlib
@@ -22,7 +30,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = storage_io.resolve(Path(__file__)).parents[1]
 SCHEMA = "pm99-season-preview-build-batch-v1"
 MANIFEST_SCHEMA = "pm99-season-preview-build-v1"
 LEGACY_SEASON = "2015-16"
@@ -33,10 +41,10 @@ class PreviewBuildError(ValueError):
 
 
 def sha256_file(path: Path) -> str:
-    if path.is_symlink() or not path.is_file():
+    if path.is_symlink() or not storage_io.is_file(path):
         raise PreviewBuildError(f"expected ordinary file: {path}")
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
@@ -50,22 +58,22 @@ def canonical_bytes(value: Any) -> bytes:
 
 
 def write_new_json(path: Path, value: Any) -> str:
-    if path.exists() or path.is_symlink():
+    if storage_io.exists(path) or path.is_symlink():
         raise PreviewBuildError(f"refusing to replace output: {path}")
     payload = canonical_bytes(value)
-    path.write_bytes(payload)
+    storage_io.write_bytes(path, payload)
     return hashlib.sha256(payload).hexdigest()
 
 
 def ordinary_directory(path: Path, *, label: str) -> Path:
-    path = path.expanduser().resolve()
+    path = storage_io.resolve(path.expanduser())
     if path.is_symlink() or not path.is_dir():
         raise PreviewBuildError(f"{label} must be an existing ordinary directory: {path}")
     return path
 
 
 def clone_tree(source: Path, target: Path) -> None:
-    if target.exists() or target.is_symlink():
+    if storage_io.exists(target) or target.is_symlink():
         raise PreviewBuildError(f"refusing to replace game tree: {target}")
     target.parent.mkdir(parents=True, exist_ok=True)
     target.mkdir()
@@ -86,7 +94,7 @@ def compile_one(
     game = season_root / "game"
     season_root.mkdir()
     clone_tree(base_tree, game)
-    shutil.copy2(calendar_exe, game / "MANAGPRE.EXE")
+    storage_io.copy_file(calendar_exe, game / 'MANAGPRE.EXE', metadata=True)
     receipt = season_root / "compiler-receipt.json"
     command = [
         sys.executable,
@@ -173,12 +181,12 @@ def run_batch(
     base_tree = ordinary_directory(base_tree, label="base tree")
     calendar_root = ordinary_directory(calendar_root, label="calendar root")
     legacy_game = ordinary_directory(legacy_game, label="legacy 2015 game")
-    output_root = output_root.expanduser().resolve()
-    if output_root.exists() or output_root.is_symlink():
+    output_root = storage_io.resolve(output_root.expanduser())
+    if storage_io.exists(output_root) or output_root.is_symlink():
         raise PreviewBuildError(f"output root must not exist: {output_root}")
     output_root.parent.mkdir(parents=True, exist_ok=True)
 
-    packages = sorted(package_root.glob("*/draft-season-package.json"))
+    packages = sorted(storage_io.glob(package_root, '*/draft-season-package.json'))
     if len(packages) != 25:
         raise PreviewBuildError(f"expected 25 non-2015 packages, found {len(packages)}")
     inputs: list[tuple[str, Path, Path]] = []
@@ -187,11 +195,11 @@ def run_batch(
         if season == LEGACY_SEASON:
             raise PreviewBuildError("the 25-package root must exclude legacy 2015-16")
         calendar = calendar_root / season / "MANAGPRE.EXE"
-        if calendar.is_symlink() or not calendar.is_file():
+        if calendar.is_symlink() or not storage_io.is_file(calendar):
             raise PreviewBuildError(f"missing target calendar for {season}: {calendar}")
         inputs.append((season, package, calendar))
 
-    base_bytes = sum(p.stat().st_size for p in base_tree.rglob("*") if p.is_file())
+    base_bytes = sum(storage_io.size(p) for p in storage_io.glob(base_tree, '*', recursive=True) if storage_io.is_file(p))
     free_bytes = shutil.disk_usage(output_root.parent).free
     required_bytes = base_bytes * 27 // 2
     if free_bytes < required_bytes:

@@ -15,6 +15,14 @@ can be traced and reproduced.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import copy
 import datetime as dt
@@ -329,12 +337,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args(argv)
     try:
-        payload = json.loads(args.input.read_text(encoding="utf-8"))
+        payload = json.loads(storage_io.read_text(args.input, encoding='utf-8'))
         output = build_rating_output(payload)
     except (OSError, UnicodeDecodeError, json.JSONDecodeError, EditorialRatingError) as exc:
         parser.error(str(exc))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_json_bytes(output))
+    storage_io.write_bytes(args.output, canonical_json_bytes(output))
     print(json.dumps(output["coverage"], sort_keys=True))
     return 0
 

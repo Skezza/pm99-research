@@ -3,6 +3,14 @@
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import html
 import json
@@ -17,7 +25,7 @@ except Exception:  # pragma: no cover - optional evidence hardening dependency
     ImageStat = None  # type: ignore[assignment]
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 DEFAULT_PROOF_ROOT = REPO_ROOT / "work" / "pm99" / "full_corpus_variable_name_proof" / "20260503T_full_closeout"
 DEFAULT_RUNNER_ARTIFACT_ROOT = REPO_ROOT / "upstream" / "pm99-runner" / "docs" / "artifacts" / "pm99_runner"
 
@@ -36,16 +44,16 @@ def _parse_args() -> argparse.Namespace:
 
 
 def _load_json(path: Path) -> dict[str, Any]:
-    return json.loads(path.read_text(encoding="utf-8"))
+    return json.loads(storage_io.read_text(path, encoding='utf-8'))
 
 
 def _json_dump(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(path, json.dumps(payload, indent=2, sort_keys=True) + '\n', encoding='utf-8')
 
 
 def _rel(path: Path, *, start: Path) -> str:
-    return os.path.relpath(path.resolve(), start=start.resolve()).replace(os.sep, "/")
+    return os.path.relpath(storage_io.resolve(path), start=storage_io.resolve(start)).replace(os.sep, "/")
 
 
 def _pick_squad_screenshot(case: dict[str, Any]) -> str:
@@ -69,7 +77,7 @@ def _ratio(pixels: list[tuple[int, int, int]], predicate: Any) -> float:
 
 def _looks_like_application_cannot_continue(path: Path) -> bool:
     """Detect the PM99 crash modal that otherwise fools screenshot-only runs."""
-    if Image is None or ImageStat is None or not path.is_file():
+    if Image is None or ImageStat is None or not storage_io.is_file(path):
         return False
     try:
         image = Image.open(path).convert("RGB")
@@ -92,7 +100,7 @@ def _looks_like_application_cannot_continue(path: Path) -> bool:
 
 
 def _looks_like_squad_management(path: Path) -> bool:
-    if Image is None or ImageStat is None or not path.is_file():
+    if Image is None or ImageStat is None or not storage_io.is_file(path):
         return False
     try:
         image = Image.open(path).convert("RGB")
@@ -125,7 +133,7 @@ def build(proof_root: Path, runner_artifact_root: Path, output: Path, *, rescan_
         artifact_dir = runner_artifact_root / run_tag
         summary_path = artifact_dir / "summary.json"
         batch_summary: dict[str, Any] | None = None
-        if summary_path.exists():
+        if storage_io.exists(summary_path):
             batch_summary = _load_json(summary_path)
         batch_success = bool(batch_summary and batch_summary.get("success"))
         batch_cases = list(batch_summary.get("cases") or []) if batch_summary else []
@@ -136,7 +144,7 @@ def build(proof_root: Path, runner_artifact_root: Path, output: Path, *, rescan_
                 "run_tag": run_tag,
                 "expected_clubs": list(batch.get("club_keys") or []),
                 "summary_path": str(summary_path),
-                "exists": summary_path.exists(),
+                "exists": storage_io.exists(summary_path),
                 "success": batch_success,
                 "case_count": len(batch_cases),
                 "ok_case_count": sum(1 for case in batch_cases if case.get("ok")),
@@ -150,7 +158,7 @@ def build(proof_root: Path, runner_artifact_root: Path, output: Path, *, rescan_
                 squad_screen = _looks_like_squad_management(shot_path) if shot_path else False
                 visual_ok = (
                     bool(case.get("process_ok", case.get("status") == 0))
-                    and bool(shot_path and shot_path.exists())
+                    and bool(shot_path and storage_io.exists(shot_path))
                     and not crash_dialog
                     and squad_screen
                 )
@@ -171,7 +179,7 @@ def build(proof_root: Path, runner_artifact_root: Path, output: Path, *, rescan_
                     "squad_management_screen": squad_screen,
                     "status": int(case.get("status") or 0),
                     "screenshot": str(shot_path) if shot_path else "",
-                    "screenshot_rel": _rel(shot_path, start=output.parent) if shot_path and shot_path.exists() else "",
+                    "screenshot_rel": _rel(shot_path, start=output.parent) if shot_path and storage_io.exists(shot_path) else "",
                     "summary_path": str(case.get("summary_path") or ""),
                     "screenshot_count": len(list(case.get("screenshots") or [])),
                 }
@@ -351,17 +359,17 @@ code {{ background:rgba(17,24,39,.08); padding:2px 5px; border-radius:5px; }}
 </body>
 </html>
 """
-    output.write_text(html_text, encoding="utf-8")
+    storage_io.write_text(output, html_text, encoding='utf-8')
     return evidence_summary
 
 
 def main() -> int:
     args = _parse_args()
-    proof_root = Path(args.proof_root).expanduser().resolve()
-    output = Path(args.output).expanduser().resolve() if args.output else proof_root / "evidence" / "full_corpus_variable_name_evidence.html"
+    proof_root = storage_io.resolve(Path(args.proof_root).expanduser())
+    output = storage_io.resolve(Path(args.output).expanduser()) if args.output else proof_root / "evidence" / "full_corpus_variable_name_evidence.html"
     summary = build(
         proof_root=proof_root,
-        runner_artifact_root=Path(args.runner_artifact_root).expanduser().resolve(),
+        runner_artifact_root=storage_io.resolve(Path(args.runner_artifact_root).expanduser()),
         output=output,
         rescan_images=bool(args.rescan_images),
     )

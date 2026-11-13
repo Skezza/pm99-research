@@ -15,6 +15,14 @@ portrait.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import json
 import re
@@ -34,7 +42,7 @@ DATE_PATTERN = re.compile(r"\b\d{2}/\d{2}/\d{4}\b")
 
 
 def _read(path: Path) -> Any:
-    return json.loads(path.read_text(encoding="utf-8"))
+    return json.loads(storage_io.read_text(path, encoding='utf-8'))
 
 
 def _expected_profile_date(iso_date: str) -> str:
@@ -93,10 +101,10 @@ def main() -> int:
     parser.add_argument("--delay-seconds", type=float, default=0.15)
     args = parser.parse_args()
 
-    build_dir = args.build_dir.resolve()
+    build_dir = storage_io.resolve(args.build_dir)
     faces = _read(build_dir / "face-stage-receipt.json")
     players = {int(row["record_id"]): row for row in _read(build_dir / "player-ledger.json")}
-    source_profiles = _source_profile_urls(_read(args.season_ledger.resolve()))
+    source_profiles = _source_profile_urls(_read(storage_io.resolve(args.season_ledger)))
     unresolved = [row for row in list(faces.get("rows") or []) if row.get("status") != "applied"]
     session = requests.Session()
     session.headers["User-Agent"] = "Mozilla/5.0 (PM99 historical database research)"
@@ -145,8 +153,8 @@ def main() -> int:
         "rows": accepted,
         "unresolved": rejected,
     }
-    args.output.resolve().write_text(json.dumps(output, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps({"accepted": len(accepted), "unresolved": len(rejected), "output": str(args.output.resolve())}))
+    storage_io.write_text(storage_io.resolve(args.output), json.dumps(output, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    print(json.dumps({"accepted": len(accepted), "unresolved": len(rejected), "output": str(storage_io.resolve(args.output))}))
     return 0 if not rejected else 2
 
 

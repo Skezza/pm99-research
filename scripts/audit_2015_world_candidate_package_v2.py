@@ -3,6 +3,14 @@
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -44,11 +52,11 @@ def build_report(candidate: Mapping[str, Any]) -> dict[str, Any]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__); parser.add_argument("--candidate", required=True, type=Path); parser.add_argument("--output", required=True, type=Path); args = parser.parse_args(argv)
-    raw = args.candidate.read_bytes(); candidate = json.loads(raw.decode("utf-8"))
+    raw = storage_io.read_bytes(args.candidate); candidate = json.loads(raw.decode("utf-8"))
     if raw != canonical_json_bytes(candidate): parser.error("candidate must be canonical JSON")
     try: report = build_report(candidate)
     except EligibilityError as exc: parser.error(str(exc))
-    args.output.parent.mkdir(parents=True, exist_ok=True); args.output.write_bytes(canonical_json_bytes(report)); print(json.dumps({"result": report["result"], "gap_count": len(report["package_v2_schema_gaps"])}, sort_keys=True)); return 0
+    args.output.parent.mkdir(parents=True, exist_ok=True); storage_io.write_bytes(args.output, canonical_json_bytes(report)); print(json.dumps({"result": report["result"], "gap_count": len(report["package_v2_schema_gaps"])}, sort_keys=True)); return 0
 
 
 if __name__ == "__main__": raise SystemExit(main())

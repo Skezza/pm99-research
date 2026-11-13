@@ -16,6 +16,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'upstream/pm99-skezmod-db-editor'))
 from app.editor_actions import _read_eq_inline_string, _patch_indexed_eq_team_string_payload
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_source_package_builder_v1 as builder
@@ -68,7 +69,7 @@ def rewrite_club_labels(data, updates):
 def plan(season, audit_path, *, source_release_id=None):
     release = (registry.load_registered_release(season, source_release_id)
         if source_release_id is not None else registry.load_preferred_release(season))
-    package = json.loads(release.package_path.read_text()); audit = json.loads(audit_path.read_text())
+    package = json.loads(storage_io.read_text(release.package_path)); audit = json.loads(storage_io.read_text(audit_path))
     binding = audit['bindings']
     if audit['schema_version'] != review.SCHEMA or audit['season'] != season:
         raise ValueError('wrong club label source audit')
@@ -122,7 +123,7 @@ def plan(season, audit_path, *, source_release_id=None):
             row = candidates.pop(id)
             unresolved.append({'club_id': id, 'before': row['before'], 'after': row['after'],
                 'reason': 'ambiguous target club/coach or non-exclusive native manager owner'})
-    data = (release.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    data = storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
     entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(data).entries}
     updates, paired = [], []
     for id, row in sorted(candidates.items()):
@@ -161,8 +162,8 @@ def plan(season, audit_path, *, source_release_id=None):
     # Retain valid existing coach evidence, rebased to this exact native recipe.
     prior_path = release.package_path.parent / 'manager-plan.json'
     paired_ids = {r['club_id'] for r in paired}
-    if prior_path.exists():
-        for old in json.loads(prior_path.read_text())['updates']:
+    if storage_io.exists(prior_path):
+        for old in json.loads(storage_io.read_text(prior_path))['updates']:
             if old['club_id'] in paired_ids: continue
             manager = managers.get(old['manager_id'])
             if manager is None or manager['name'] != old['after']: continue
@@ -186,16 +187,16 @@ def main():
     parser.add_argument('--output', type=Path, required=True); args = parser.parse_args()
     for season in registry.supported_seasons() if args.season == 'all' else [args.season]:
         audit = args.audit_root / season / 'club-label-review.json'
-        if json.loads(audit.read_text())['summary'].get('source_unavailable'): continue
-        binding = json.loads(audit.read_text())['bindings']
+        if json.loads(storage_io.read_text(audit))['summary'].get('source_unavailable'): continue
+        binding = json.loads(storage_io.read_text(audit))['bindings']
         if registry.load_preferred_release(season).release_id != binding['release_id']:
             print(json.dumps({'season': season, 'skipped': 'audit describes a superseded release; do not replay its repairs'}), flush=True)
             continue
         saved = args.output / season / 'club-plan.json'
-        if saved.exists():
-            existing = json.loads(saved.read_text())
+        if storage_io.exists(saved):
+            existing = json.loads(storage_io.read_text(saved))
             if (existing['source_bindings'] != binding or existing['audit_sha256'] != registry.sha256_file(audit) or
-                    not all((saved.parent / (name + '.json')).exists() for name in ('manager-plan', 'role-plan'))):
+                    not all(storage_io.exists(saved.parent / (name + '.json')) for name in ('manager-plan', 'role-plan'))):
                 raise ValueError('saved club plan is stale or incomplete')
             print(json.dumps({'season': season, 'existing_plan_reused': True, 'club_names': len(existing['updates'])}), flush=True)
             continue
@@ -208,7 +209,7 @@ def main():
         destination = args.output / season; destination.mkdir(parents=True, exist_ok=True)
         for name, document in [('club-plan', clubs), ('manager-plan', managers), ('role-plan', control)]:
             path = destination / (name + '.json')
-            if path.exists(): raise ValueError('plan already exists; never overwrite')
+            if storage_io.exists(path): raise ValueError('plan already exists; never overwrite')
             pipeline.write_canonical_json(path, document)
         print(json.dumps({'season': season, 'club_names': len(clubs['updates']),
             'manager_names': managers['summary']['native_name_corrections'], 'unresolved': len(clubs['unresolved'])}), flush=True)

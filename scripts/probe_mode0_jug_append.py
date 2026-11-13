@@ -29,6 +29,7 @@ from app.eq_team_indexed_metadata import extract_indexed_team_payload_metadata  
 from app.fdi_indexed import IndexedFDIFile  # noqa: E402
 from app.models import PlayerRecord  # noqa: E402
 from app.xor import xor_decode  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts.build_2015_english92_release import _rebuild_indexed, _rewrite_roster_tail  # noqa: E402
 from scripts.season_package_compiler_v2 import (  # noqa: E402
     _append_indexed_fdi_records,
@@ -40,7 +41,7 @@ from scripts.season_package_compiler_v2 import (  # noqa: E402
 
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
@@ -61,20 +62,20 @@ def _args() -> argparse.Namespace:
 
 def main() -> int:
     args = _args()
-    base_game = args.base_game.expanduser().resolve()
-    output_game = args.output_game.expanduser().resolve()
-    receipt_path = args.receipt.expanduser().resolve()
+    base_game = storage_io.resolve(args.base_game.expanduser())
+    output_game = storage_io.resolve(args.output_game.expanduser())
+    receipt_path = storage_io.resolve(args.receipt.expanduser())
     if not base_game.is_dir() or not (base_game / "DBDAT").is_dir():
         raise SystemExit("--base-game must contain DBDAT")
-    if output_game.exists():
+    if storage_io.exists(output_game):
         raise SystemExit("--output-game must not already exist")
     if output_game == base_game or output_game in base_game.parents:
         raise SystemExit("--output-game must be distinct from --base-game")
     if args.new_player_id < 1 or args.new_player_id > 0xFFFFFFFF:
         raise SystemExit("--new-player-id must fit uint32")
 
-    eq_base = (base_game / "DBDAT" / "EQ98030.FDI").read_bytes()
-    jug_base = (base_game / "DBDAT" / "JUG98030.FDI").read_bytes()
+    eq_base = storage_io.read_bytes(base_game / 'DBDAT' / 'EQ98030.FDI')
+    jug_base = storage_io.read_bytes(base_game / 'DBDAT' / 'JUG98030.FDI')
     eq_index = IndexedFDIFile.from_bytes(eq_base)
     jug_index = IndexedFDIFile.from_bytes(jug_base)
     entries = {entry.record_id: entry for entry in eq_index.entries}
@@ -129,9 +130,9 @@ def main() -> int:
     )
 
     shutil.copytree(base_game, output_game, symlinks=True, ignore=shutil.ignore_patterns("SAVE", "output", "wineprefix", "*.png", "*.log"))
-    (output_game / "DBDAT" / "JUG98030.FDI").write_bytes(appended_jug)
-    (output_game / "DBDAT" / "EQ98030.FDI").write_bytes(replaced_eq)
-    output_jug = (output_game / "DBDAT" / "JUG98030.FDI").read_bytes()
+    storage_io.write_bytes(output_game / 'DBDAT' / 'JUG98030.FDI', appended_jug)
+    storage_io.write_bytes(output_game / 'DBDAT' / 'EQ98030.FDI', replaced_eq)
+    output_jug = storage_io.read_bytes(output_game / 'DBDAT' / 'JUG98030.FDI')
     output_entry = next(entry for entry in IndexedFDIFile.from_bytes(output_jug).entries if entry.record_id == args.new_player_id)
     observed_name = PlayerRecord.from_bytes(output_entry.decode_payload(output_jug), output_entry.payload_offset).name
     if observed_name.casefold() != args.name.casefold():
@@ -158,7 +159,7 @@ def main() -> int:
         },
     }
     receipt_path.parent.mkdir(parents=True, exist_ok=True)
-    receipt_path.write_text(json.dumps(receipt, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+    storage_io.write_text(receipt_path, json.dumps(receipt, ensure_ascii=False, sort_keys=True, indent=2) + '\n', encoding='utf-8')
     print(json.dumps({"result": "pass", "receipt": str(receipt_path), "output_game": str(output_game)}, sort_keys=True))
     return 0
 

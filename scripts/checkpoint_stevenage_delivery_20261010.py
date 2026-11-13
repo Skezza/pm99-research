@@ -3,6 +3,7 @@ import copy
 from datetime import UTC, datetime
 from pathlib import Path
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
 from scripts.attest_registered_season_runtime_v1 import attest
@@ -38,7 +39,7 @@ def run():
     runtime = attest(season='2002-03', evidence_dir=registry.ROOT /
         '.local/runlogs/pm99_runner/stevenage_r63b_stoke_lineup_20261010')
     runtime_path = AUDIT / 'stevenage-2002-opening-manager-runtime-attestation-v1.json'
-    if runtime_path.exists():
+    if storage_io.exists(runtime_path):
         if pipeline.read_json_file(runtime_path) != runtime:
             raise ValueError('prior runtime receipt changed')
     else:

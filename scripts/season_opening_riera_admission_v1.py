@@ -13,6 +13,7 @@ from datetime import date
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_opening_identity_exchange_v1 as exchange
 from scripts import season_release_registry_v1 as registry
 from scripts import season_transfermarkt_squad_biography_v1 as biographies
@@ -30,12 +31,12 @@ def _receipt(value: dict) -> Path:
     claim = value.get("receipt")
     if not isinstance(claim, dict) or set(claim) != {"path", "sha256"}:
         raise ValueError("original squad/person source receipt binding required")
-    receipt_path = (registry.ROOT / claim["path"]).resolve()
-    if not receipt_path.is_relative_to(registry.ROOT.resolve()) or not receipt_path.is_file():
+    receipt_path = storage_io.resolve(registry.ROOT / claim['path'])
+    if not receipt_path.is_relative_to(storage_io.resolve(registry.ROOT)) or not storage_io.is_file(receipt_path):
         raise ValueError("source receipt must be a retained workspace file")
     if registry.sha256_file(receipt_path) != claim["sha256"]:
         raise ValueError("source receipt hash differs")
-    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    receipt = json.loads(storage_io.read_text(receipt_path, encoding='utf-8'))
     if receipt != {"sha256": value["sha256"], "url": value["url"]}:
         raise ValueError("source receipt URL/body hash differs")
     return body_path

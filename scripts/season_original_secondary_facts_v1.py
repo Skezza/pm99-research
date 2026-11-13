@@ -14,6 +14,7 @@ import sys
 from app.fdi_indexed import IndexedFDIFile
 from app.indexed_jug_birth_date import rewrite_indexed_native_birth_dates
 from app.indexed_jug_nationality import rewrite_indexed_native_nationalities
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_original_person_birth_years_v1 as original
 from scripts import season_historical_player_facts_audit_v1 as facts
 from scripts import season_package_v2 as packages
@@ -64,9 +65,9 @@ def prepare(release, person_document_path, targets, *, identity_document_path=No
     package = pipeline.read_json_file(release.package_path)
     players = {p['carrier_id']: p for p in package['players']}
     clubs = {c['id']: c for c in package['clubs']}
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (release.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
-    exe = (release.game_path / 'MANAGPRE.EXE').read_bytes()
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
+    exe = storage_io.read_bytes(release.game_path / 'MANAGPRE.EXE')
     sys.path.insert(0, str(registry.ROOT / 'upstream/pm99-skezmod-patcher'))
     from player_birth_year_guard import patch_native_birth_year_guard
     if patch_native_birth_year_guard(exe)[0] != exe:
@@ -261,7 +262,7 @@ def apply(jug, eq, plan):
     if plan.get('schema') != SCHEMA or digest(eq) != plan['eq_sha256']:
         raise ValueError('secondary-fact schema or whole-club preimage differs')
     baseline = registry.load_registered_release(plan['season'], plan['release_id'])
-    before = (baseline.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    before = storage_io.read_bytes(baseline.game_path / 'DBDAT/JUG98030.FDI')
     if digest(before) != plan['jug_sha256'] or not plan['updates']:
         raise ValueError('secondary-fact immutable baseline changed or empty update')
     dates = {r['carrier_id']: r for r in plan['updates']
@@ -323,7 +324,7 @@ def reconstruction(previous, release_id):
         return None
     path = registry.ROOT / locator
     plan = pipeline.read_json_file(path)
-    if (plan.get('schema') != SCHEMA or path.resolve() != (previous.package_path.parent / filename(plan)).resolve()
+    if (plan.get('schema') != SCHEMA or storage_io.resolve(path) != storage_io.resolve(previous.package_path.parent / filename(plan))
             or registry.sha256_file(path) != receipt['original_profile_assignment_plan_sha256']):
         raise ValueError('secondary-fact replay source binding differs')
     base = registry.load_registered_release(previous.season, plan['release_id'])

@@ -1,6 +1,7 @@
 """Apply one reviewed three-icon patch and replay exact SOURCE, not databases."""
 import shutil
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_visual_patch_v1 as art
 from scripts import season_visual_patch_reconstruction_v1 as replay
@@ -22,13 +23,13 @@ def main():
     if shutil.disk_usage(ROOT).free < 8 * 1024**3 + 2 * measured + 20 * 1024**2:
         raise ValueError('two bounded games would breach the 8GiB reserve')
     prepared = ROOT / 'prepared-v1'
-    if not (ROOT / 'candidate-visual-review.json').exists():
+    if not storage_io.exists(ROOT / 'candidate-visual-review.json'):
         raise ValueError('review the original source and all rendered icons before build')
     plan = prepared / 'delta/plan.json'
     patch = prepared / 'delta/complete-patch'
     destination = ROOT / 'candidate/game'
-    if not registry.locator_path(SEASON, RELEASE).exists():
-        if destination.exists():
+    if not storage_io.exists(registry.locator_path(SEASON, RELEASE)):
+        if storage_io.exists(destination):
             raise ValueError('unreceipted candidate exists; inspect rather than recopy')
         art.apply(plan, patch, destination, source_release=base)
         art.publish(SEASON, destination, RELEASE, source_release=base)
@@ -48,15 +49,15 @@ def main():
         if carriers != {207}:
             raise ValueError('kit patch changed another club icon')
         counts[archive] = len(before) - 1
-    if release.package_path.read_bytes() != base.package_path.read_bytes():
+    if storage_io.read_bytes(release.package_path) != storage_io.read_bytes(base.package_path):
         raise ValueError('kit patch changed the source recipe')
     retained(ROOT / 'native-byte-proof.json', dict(season=SEASON, release_id=RELEASE,
         manifest_sha256=release.manifest_sha256, only_changed_files=sorted(changed),
         only_changed_kit_carrier=207, unchanged_records_by_archive=counts,
         every_database_EXE_portrait_and_unselected_game_file_identical=True,
         complete_recipe_identical=True, plan_sha256=registry.sha256_file(plan)))
-    if not (ROOT / 'complete-SOURCE-replay.json').exists():
-        if registry.locator_path(SEASON, REPLAY).exists():
+    if not storage_io.exists(ROOT / 'complete-SOURCE-replay.json'):
+        if storage_io.exists(registry.locator_path(SEASON, REPLAY)):
             raise ValueError('unreceipted kit replay exists; inspect')
         retained(ROOT / 'complete-SOURCE-replay.json', replay.reconstruction(release, REPLAY))
     print(dict(release=RELEASE, actual_game_built=True, all_three_icons_only=True,

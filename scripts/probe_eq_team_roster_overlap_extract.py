@@ -30,6 +30,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from app.editor_helpers import team_query_matches  # type: ignore
 from app.loaders import load_teams  # type: ignore
+from scripts import json_storage_io_v1 as storage_io
 from scripts import probe_eq_roster_playerid_linkage as eq_link  # type: ignore
 
 
@@ -880,9 +881,9 @@ def extract_eq_team_rosters_same_entry_overlap(
     team_file_path = Path(team_file)
     requested_queries = [str(q).strip() for q in (team_queries or []) if str(q).strip()]
 
-    if not player_file_path.exists():
+    if not storage_io.exists(player_file_path):
         raise FileNotFoundError(f"Player file not found: {player_file_path}")
-    if not team_file_path.exists():
+    if not storage_io.exists(team_file_path):
         raise FileNotFoundError(f"Team file not found: {team_file_path}")
 
     dd6361_pid_to_name = _build_dd6361_pid_map(player_file_path)
@@ -1224,7 +1225,7 @@ def extract_eq_team_rosters_same_entry_overlap(
     if json_output:
         out_path = Path(json_output)
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        storage_io.write_text(out_path, json.dumps(payload, indent=2) + '\n', encoding='utf-8')
     return payload
 
 
@@ -1232,10 +1233,10 @@ def main(argv: list[str]) -> int:
     args = parse_args(argv)
     player_file = Path(args.player_file)
     team_file = Path(args.team_file)
-    if not player_file.exists():
+    if not storage_io.exists(player_file):
         print(json.dumps({"error": f"Player file not found: {player_file}"}, indent=2))
         return 2
-    if not team_file.exists():
+    if not storage_io.exists(team_file):
         print(json.dumps({"error": f"Team file not found: {team_file}"}, indent=2))
         return 2
 

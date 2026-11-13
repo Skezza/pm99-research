@@ -35,6 +35,7 @@ if str(ROOT) not in sys.path:
 
 from tools import season_manifest_amendments as amendments
 from tools import season_preset_spreadsheet as spreadsheet
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as release_registry
 from scripts import season_editorial_field_policy_v1 as field_policy
 from scripts import season_amendment_candidates_v1 as candidate_registry
@@ -58,7 +59,7 @@ SEASON_NAME = re.compile(r"^(?:1999|20[0-2][0-9])-[0-9]{2}$")
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
 MAX_PRESET_BYTES = 32 * 1024 * 1024
 IMAGE_SUFFIXES = {".bmp", ".png", ".jpg", ".jpeg", ".gif"}
-SPREADSHEET_PAGE = (Path(__file__).with_name("season_preset_spreadsheet.html")).read_text(encoding="utf-8")
+SPREADSHEET_PAGE = storage_io.read_text(Path(__file__).with_name('season_preset_spreadsheet.html'), encoding='utf-8')
 
 
 @dataclass(frozen=True)
@@ -95,7 +96,7 @@ class Preset:
 
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
@@ -105,15 +106,15 @@ def _safe_regular_file(path: Path, *, root: Path | None = None) -> Path | None:
     """Resolve one explicitly declared local file without following links."""
 
     try:
-        resolved = path.expanduser().resolve(strict=True)
+        resolved = storage_io.resolve(path.expanduser(), strict=True)
     except OSError:
         return None
     if root is not None:
         try:
-            resolved.relative_to(root.expanduser().resolve(strict=True))
+            resolved.relative_to(storage_io.resolve(root.expanduser(), strict=True))
         except ValueError:
             return None
-    if path.is_symlink() or resolved.is_symlink() or not resolved.is_file():
+    if path.is_symlink() or resolved.is_symlink() or not storage_io.is_file(resolved):
         return None
     return resolved
 
@@ -152,7 +153,7 @@ def _preset_from_file(
         role=role,
         title=title or discovered_title,
         schema=schema,
-        size=path.stat().st_size,
+        size=storage_io.size(path),
         sha256=locked_sha256 if isinstance(locked_sha256, str) and SHA256.fullmatch(locked_sha256) else sha256_file(path),
         path=path,
     )
@@ -160,7 +161,7 @@ def _preset_from_file(
 
 def _json_object(path: Path) -> dict[str, Any] | None:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(storage_io.read_text(path, encoding='utf-8'))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         return None
     return value if isinstance(value, dict) else None
@@ -172,12 +173,10 @@ def _json_summary(path: Path) -> tuple[str, str | None]:
     # Full season packages can be tens of megabytes.  Their canonical top-level
     # identity fields occur near the start, so avoid decoding the complete
     # player/club payload merely to populate the selector label.
-    if path.stat().st_size > 1024 * 1024:
+    if storage_io.size(path) > 1024 * 1024:
         try:
-            with path.open("rb") as handle:
-                prefix = handle.read(128 * 1024).decode("utf-8")
-                handle.seek(max(0, path.stat().st_size - 128 * 1024))
-                suffix = handle.read(128 * 1024).decode("utf-8")
+            prefix = storage_io.prefix(path).decode("utf-8")
+            suffix = storage_io.prefix(path, tail=True).decode("utf-8")
         except (OSError, UnicodeDecodeError):
             return path.stem.replace("-", " "), None
         fields: dict[str, str] = {}
@@ -192,7 +191,7 @@ def _json_summary(path: Path) -> tuple[str, str | None]:
         label = next((fields[key] for key in ("workspace_id", "package_id", "ledger_id", "registry_id", "audit_id") if key in fields), path.stem.replace("-", " "))
         return label, schema
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(storage_io.read_text(path, encoding='utf-8'))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         return path.stem.replace("-", " "), None
     if not isinstance(value, dict):
@@ -319,7 +318,7 @@ def _structured_summary(value: Any) -> dict[str, Any] | None:
 def discover_presets(seasons_root: Path, *, include_source_captures: bool = False) -> dict[str, list[Preset]]:
     """Discover regular JSON/Markdown season files without following links."""
 
-    seasons_root = seasons_root.expanduser().resolve()
+    seasons_root = storage_io.resolve(seasons_root.expanduser())
     if not seasons_root.is_dir() or seasons_root.is_symlink():
         raise ValueError(f"season root must be an ordinary directory: {seasons_root}")
     discovered: dict[str, list[Preset]] = {}
@@ -327,13 +326,15 @@ def discover_presets(seasons_root: Path, *, include_source_captures: bool = Fals
         if not season_dir.is_dir() or season_dir.is_symlink() or not SEASON_NAME.fullmatch(season_dir.name):
             continue
         presets: list[Preset] = []
-        for path in sorted(season_dir.rglob("*"), key=lambda item: item.as_posix()):
-            if path.is_symlink() or not path.is_file() or path.suffix not in {".json", ".md"}:
+        logical_entries = {p.with_suffix('') if p.name.endswith('.json.zst') else p
+                      for p in storage_io.glob(season_dir, '*', recursive=True)}
+        for path in sorted(logical_entries, key=lambda item: item.as_posix()):
+            if path.is_symlink() or not storage_io.is_file(path) or path.suffix not in {".json", ".md"}:
                 continue
             relative = path.relative_to(season_dir)
             if relative.parts and relative.parts[0] == "sources" and not include_source_captures:
                 continue
-            size = path.stat().st_size
+            size = storage_io.size(path)
             if size > MAX_PRESET_BYTES:
                 continue
             kind = _preset_kind(relative)
@@ -356,8 +357,8 @@ def discover_playtest_presets(playtests_root: Path) -> dict[str, list[Preset]]:
     the browser, grouped beside the matching season's source manifests.
     """
 
-    playtests_root = playtests_root.expanduser().resolve()
-    if not playtests_root.exists():
+    playtests_root = storage_io.resolve(playtests_root.expanduser())
+    if not storage_io.exists(playtests_root):
         return {}
     if playtests_root.is_symlink() or not playtests_root.is_dir():
         raise ValueError(f"playtest root must be an ordinary directory: {playtests_root}")
@@ -366,10 +367,10 @@ def discover_playtest_presets(playtests_root: Path) -> dict[str, list[Preset]]:
         if not directory.is_dir() or directory.is_symlink():
             continue
         path = directory / "provisional-playtest-manifest.json"
-        if path.is_symlink() or not path.is_file() or path.stat().st_size > MAX_PRESET_BYTES:
+        if path.is_symlink() or not storage_io.is_file(path) or storage_io.size(path) > MAX_PRESET_BYTES:
             continue
         try:
-            value = json.loads(path.read_text(encoding="utf-8"))
+            value = json.loads(storage_io.read_text(path, encoding='utf-8'))
         except (OSError, UnicodeDecodeError, json.JSONDecodeError):
             continue
         if not isinstance(value, dict):
@@ -405,8 +406,8 @@ def discover_current_authoring_presets(authoring_root: Path) -> dict[str, list[P
     immutable pointer, so it is the only cache entry used to admit its inputs.
     """
 
-    authoring_root = authoring_root.expanduser().resolve()
-    if not authoring_root.exists():
+    authoring_root = storage_io.resolve(authoring_root.expanduser())
+    if not storage_io.exists(authoring_root):
         return {}
     if authoring_root.is_symlink() or not authoring_root.is_dir():
         raise ValueError(f"authoring root must be an ordinary directory: {authoring_root}")
@@ -439,7 +440,7 @@ def discover_current_authoring_presets(authoring_root: Path) -> dict[str, list[P
                 if not isinstance(artifact_path, str):
                     continue
                 path = _safe_regular_file(season_dir / artifact_path, root=season_dir)
-                if path is None or path.stat().st_size > MAX_PRESET_BYTES:
+                if path is None or storage_io.size(path) > MAX_PRESET_BYTES:
                     continue
                 presets.append(_preset_from_file(
                     season=season_dir.name,
@@ -502,9 +503,9 @@ def discover_published_recipe_presets(
     selected deterministically.
     """
 
-    recipe_root = recipe_root.expanduser().resolve()
-    runtime_candidates_root = runtime_candidates_root.expanduser().resolve()
-    if not recipe_root.exists():
+    recipe_root = storage_io.resolve(recipe_root.expanduser())
+    runtime_candidates_root = storage_io.resolve(runtime_candidates_root.expanduser())
+    if not storage_io.exists(recipe_root):
         return {}, {}
     if recipe_root.is_symlink() or not recipe_root.is_dir():
         raise ValueError(f"recipe root must be an ordinary directory: {recipe_root}")
@@ -577,9 +578,9 @@ def discover_runtime_recipe_presets(
     package that was used to create the selectable local game candidate.
     """
 
-    static_ingress_root = static_ingress_root.expanduser().resolve()
-    runtime_candidates_root = runtime_candidates_root.expanduser().resolve()
-    if not static_ingress_root.exists():
+    static_ingress_root = storage_io.resolve(static_ingress_root.expanduser())
+    runtime_candidates_root = storage_io.resolve(runtime_candidates_root.expanduser())
+    if not storage_io.exists(static_ingress_root):
         return {}, {}
     if static_ingress_root.is_symlink() or not static_ingress_root.is_dir():
         raise ValueError(f"static ingress root must be an ordinary directory: {static_ingress_root}")
@@ -630,7 +631,7 @@ def discover_kit_assets(kit_render_root: Path, *, season: str, revision: str) ->
     an arbitrary path supplied by a browser request.
     """
 
-    kit_render_root = kit_render_root.expanduser().resolve()
+    kit_render_root = storage_io.resolve(kit_render_root.expanduser())
     candidates = [
         kit_render_root / season / f"source-backed-{revision}" / "kit-render-bindings-v1.json",
         kit_render_root / season / "kit-render-bindings-v1.json",
@@ -680,7 +681,7 @@ def discover_portrait_assets(
     a relative BMP path and its expected SHA-256.
     """
 
-    portrait_render_root = portrait_render_root.expanduser().resolve()
+    portrait_render_root = storage_io.resolve(portrait_render_root.expanduser())
     candidates = [portrait_render_root / season / "portrait-render-bindings-v1.json"]
     if revision is not None:
         candidates.insert(
@@ -735,7 +736,7 @@ def _add_declared_workspace_preset(
     if not isinstance(declared, dict):
         return
     path = _workspace_file(declared.get("path"))
-    if path is None or path.stat().st_size > MAX_PRESET_BYTES:
+    if path is None or storage_io.size(path) > MAX_PRESET_BYTES:
         return
     entries.setdefault(season, []).append(_preset_from_file(
         season=season,
@@ -801,8 +802,8 @@ def discover_selected_overlay_presets(
                 declared=row.get("opening_manager_ledger"), title=f"Opening-manager ledger · {overlay_id}",
             )
 
-    overlays_root = overlays_root.expanduser().resolve()
-    if overlays_root.exists() and not overlays_root.is_symlink() and overlays_root.is_dir():
+    overlays_root = storage_io.resolve(overlays_root.expanduser())
+    if storage_io.exists(overlays_root) and not overlays_root.is_symlink() and overlays_root.is_dir():
         for season_dir in sorted(overlays_root.iterdir(), key=lambda item: item.name):
             if not season_dir.is_dir() or season_dir.is_symlink() or not SEASON_NAME.fullmatch(season_dir.name):
                 continue
@@ -824,7 +825,7 @@ def discover_selected_overlay_presets(
             reconciliation_path = _safe_regular_file(
                 season_dir / "opening-xi-v1/opening-lineup-reconciliation.json", root=season_dir
             )
-            if reconciliation_path is not None and reconciliation_path.stat().st_size <= MAX_PRESET_BYTES:
+            if reconciliation_path is not None and storage_io.size(reconciliation_path) <= MAX_PRESET_BYTES:
                 entries[season_dir.name].append(_preset_from_file(
                     season=season_dir.name,
                     relative_path="assembly/opening-xi-v1/opening-lineup-reconciliation.json",
@@ -841,7 +842,7 @@ def discover_legacy_2015_presets() -> list[Preset]:
 
     presets: list[Preset] = []
     package = _safe_regular_file(DEFAULT_LEGACY_2015_ROOT / "season-package.effective.json", root=ROOT)
-    if package is not None and package.stat().st_size <= MAX_PRESET_BYTES:
+    if package is not None and storage_io.size(package) <= MAX_PRESET_BYTES:
         presets.append(_preset_from_file(
             season="2015-16", relative_path="legacy-world/season-package.effective.json",
             kind="legacy-world-package", role="Legacy world V1 package (semantic QA failed)",
@@ -898,7 +899,7 @@ class PresetCatalog:
         candidates_root: Path | None = None,
         minimum_free_bytes: int | None = None,
     ) -> None:
-        self.seasons_root = seasons_root.expanduser().resolve()
+        self.seasons_root = storage_io.resolve(seasons_root.expanduser())
         # One build at a time; the builder is injectable so the workbook can be tested without a game tree.
         self._amendment_builder = amendment_builder
         self._candidates_root = candidates_root
@@ -908,7 +909,7 @@ class PresetCatalog:
         self._minimum_free_bytes = minimum_free_bytes
         self._build_lock = threading.Lock()
         self.base_overrides: dict[str, str] = {}
-        self.amendment_output_root = amendment_output_root.expanduser().resolve()
+        self.amendment_output_root = storage_io.resolve(amendment_output_root.expanduser())
         self.entries = discover_presets(
             self.seasons_root, include_source_captures=include_source_captures
         )
@@ -916,7 +917,7 @@ class PresetCatalog:
         if playtests_root is not None:
             for season, presets in discover_playtest_presets(playtests_root).items():
                 self.entries.setdefault(season, []).extend(presets)
-        if authoring_root is not None and authoring_root.exists():
+        if authoring_root is not None and storage_io.exists(authoring_root):
             for season, presets in discover_current_authoring_presets(authoring_root).items():
                 self.entries.setdefault(season, []).extend(presets)
         self.kit_render_root = kit_render_root
@@ -1040,13 +1041,13 @@ class PresetCatalog:
         item = self._by_key.get((season, manifest_id))
         if item is None or item.generated is not None or item.path is None or item.path.suffix != ".json":
             raise amendments.AmendmentError("choose an original JSON manifest, not a generated map or document")
-        if item.path.is_symlink() or not item.path.is_file():
+        if item.path.is_symlink() or not storage_io.is_file(item.path):
             raise FileNotFoundError("selected manifest is no longer a regular local file")
         actual_sha256 = sha256_file(item.path)
         if actual_sha256 != item.sha256:
             raise amendments.AmendmentError("selected manifest changed after catalog startup; restart before staging an edit")
         try:
-            value = json.loads(item.path.read_text(encoding="utf-8"))
+            value = json.loads(storage_io.read_text(item.path, encoding='utf-8'))
         except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
             raise amendments.AmendmentError(f"selected manifest is not editable JSON: {exc}") from exc
         return item, value, actual_sha256
@@ -1352,9 +1353,9 @@ class PresetCatalog:
                 "summary": _structured_summary(item.generated),
             }
         path = item.path
-        if path is None or path.is_symlink() or not path.is_file():
+        if path is None or path.is_symlink() or not storage_io.is_file(path):
             raise FileNotFoundError("preset no longer exists as a regular file")
-        payload = path.read_bytes()
+        payload = storage_io.read_bytes(path)
         if len(payload) > MAX_PRESET_BYTES:
             raise ValueError("preset is too large for the local browser")
         if sha256_file(path) != item.sha256:
@@ -1445,7 +1446,7 @@ def make_handler(catalog: PresetCatalog) -> type[BaseHTTPRequestHandler]:
                 return
 
         def _send_asset(self, path: Path) -> None:
-            payload = path.read_bytes()
+            payload = storage_io.read_bytes(path)
             content_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-Type", content_type)

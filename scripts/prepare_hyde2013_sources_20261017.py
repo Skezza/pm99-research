@@ -5,6 +5,7 @@ No game writes, source recrawl or publication. Completed raw responses are reuse
 from pathlib import Path
 import requests
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import prepare_paired_whole_club_dispositions_v1 as paired
 from scripts.prepare_paired_whole_club_native_v1 import dated_manager_identity
@@ -22,8 +23,8 @@ def run():
     cache=ROOT/'source-cache';cache.mkdir(parents=True,exist_ok=True)
     for filename,url in SOURCES.items():
         path=cache/filename;receipt=path.with_name(filename+'.source.json')
-        if path.exists():
-            if not receipt.exists() or pipeline.read_json_file(receipt)!=dict(url=url,sha256=registry.sha256_file(path)):
+        if storage_io.exists(path):
+            if not storage_io.exists(receipt) or pipeline.read_json_file(receipt)!=dict(url=url,sha256=registry.sha256_file(path)):
                 raise ValueError('existing original source lacks matching URL/body receipt')
             continue
         response=requests.get(url,timeout=45,headers={'User-Agent':'PM99 historical season research/1.0'})
@@ -33,11 +34,11 @@ def run():
         limit=(40 if filename.endswith('.pdf') else 3)*1024*1024
         if not body or len(body)>limit:raise ValueError('unexpected source size')
         if filename.endswith('.pdf') and not body.startswith(b'%PDF-'):raise ValueError('programme is not PDF')
-        path.write_bytes(body);retained(receipt,dict(url=url,sha256=registry.sha256_file(path)))
+        storage_io.write_bytes(path, body);retained(receipt,dict(url=url,sha256=registry.sha256_file(path)))
         print(dict(original_source_captured=filename,bytes=len(body)),flush=True)
-    manager,person=dated_manager_identity((cache/'manager-1332.html').read_bytes(),'2013-08-10')
+    manager,person=dated_manager_identity(storage_io.read_bytes(cache / 'manager-1332.html'),'2013-08-10')
     if manager!='Scott McNiven':raise ValueError('original dated manager differs')
-    page=BeautifulSoup((cache/'ground-2013-conference.html').read_bytes(),'html.parser')
+    page=BeautifulSoup(storage_io.read_bytes(cache / 'ground-2013-conference.html'),'html.parser')
     rows=[r.get_text(' ',strip=True) for r in page.select('tr') if r.select_one('a[title="Hyde F.C."]') or
         r.select_one('a[title="Hyde United F.C."]')]
     if not any('Ewen Fields' in row for row in rows):raise ValueError('season stadium table does not bind Hyde to Ewen Fields')

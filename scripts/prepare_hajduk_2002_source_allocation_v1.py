@@ -5,6 +5,7 @@ Native compilation must separately declare how an unavailable DOB is handled.
 """
 import copy
 import hashlib
+from scripts import json_storage_io_v1 as storage_io
 from scripts import hajduk_2002_original_opening_v1 as opening
 from scripts import season_august_source_fallback_v1 as fallback
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
@@ -35,7 +36,7 @@ ROLES = {1514015:'G',35918:'D',10290:'D',28688:'M',35921:'D',35929:'M',
 
 
 def prepare(output, baseline_release_id=None):
-    if output.exists(): raise ValueError('source-only allocation is immutable')
+    if storage_io.exists(output): raise ValueError('source-only allocation is immutable')
     originals = [source_rows(key) for key in KEYS]
     actual = opening.parse(*(r[1] for r in originals))
     documents = [pipeline.read_json_file(ROOT/name) for name in DOCUMENTS]
@@ -44,7 +45,7 @@ def prepare(output, baseline_release_id=None):
     combined['historical_opening_inputs'] += copy.deepcopy(documents[1]['historical_opening_inputs'])
     people.merge({},combined)
     biography = ROOT/'hajduk-2002-combined-original-identities-v1.json'
-    if biography.exists():
+    if storage_io.exists(biography):
         if pipeline.read_json_file(biography) != combined: raise ValueError('combined biography changed')
     else: pipeline.write_canonical_json(biography,combined)
     persons = {p['source_player_id']:p for batch in combined['batches'] for p in batch['people']}
@@ -95,7 +96,7 @@ def prepare(output, baseline_release_id=None):
         raise ValueError('obsolete club changed or Hajduk already represented')
     slots=[p for p in package['players'] if p['club_id']==club['id']]
     if len(slots)!=18:raise ValueError('fixed18 capacity changed')
-    jug=(release.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    jug=storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     ids=[id for id in XI_IDS+[87808]+RESERVES if id is not None]
     fitted=allocation.allocate(jug,slots,desired,display.claims(biography),
         published_families=families.claims(biography,ids),opening_slot_orders=allocation.startup_orders(jug,slots),

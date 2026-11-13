@@ -24,6 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_carrier_allocation_v1 as carrier_allocation  # noqa: E402
 from scripts import season_editorial_ratings_v1 as editorial_ratings  # noqa: E402
 from scripts import season_package_v2 as package_v2  # noqa: E402
@@ -57,7 +58,7 @@ def document_sha256(value: Any) -> str:
 
 
 def _read_canonical(path: Path) -> dict[str, Any]:
-    raw = path.read_bytes()
+    raw = storage_io.read_bytes(path)
     value = json.loads(raw.decode("utf-8"))
     if not isinstance(value, dict) or raw != canonical_json_bytes(value):
         raise BatchAuthoringError(f"input is not canonical JSON: {path}")
@@ -66,7 +67,7 @@ def _read_canonical(path: Path) -> dict[str, Any]:
 
 def _write(path: Path, value: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(canonical_json_bytes(dict(value)))
+    storage_io.write_bytes(path, canonical_json_bytes(dict(value)))
 
 
 def _capture_size(capture: Mapping[str, Any]) -> tuple[int, int]:
@@ -88,7 +89,7 @@ def select_capture(season_dir: Path) -> tuple[Path | None, dict[str, Any] | None
     accepted: list[tuple[int, int, str, Path, dict[str, Any]]] = []
     rejected: list[dict[str, str]] = []
     source_dir = season_dir / "sources"
-    for path in sorted(source_dir.glob("*.json")) if source_dir.is_dir() else []:
+    for path in sorted(storage_io.glob(source_dir, '*.json')) if source_dir.is_dir() else []:
         relative = path.relative_to(season_dir).as_posix()
         try:
             capture = _read_canonical(path)
@@ -112,7 +113,7 @@ def _block(code: str, message: str, **details: Any) -> dict[str, Any]:
 
 def _lane_input(season_dir: Path, name: str) -> tuple[dict[str, Any] | None, dict[str, Any]]:
     path = season_dir / name
-    if not path.is_file():
+    if not storage_io.is_file(path):
         return None, {"status": "missing", "path": name}
     try:
         value = _read_canonical(path)

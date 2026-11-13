@@ -13,6 +13,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_historical_roster_audit_v1 as audit
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
@@ -34,7 +35,7 @@ HTML_ROLES = {'goalkeeper': 0, 'rightback': 1, 'leftback': 2, 'sweeper': 3,
 
 def fifa_index() -> dict:
     index = collections.defaultdict(list)
-    with FIFA.open() as handle:
+    with storage_io.open_file(FIFA) as handle:
         for row in csv.DictReader(handle):
             edition = int(row['fifa_version'])
             row = {key: row[key] for key in ('player_id', 'long_name', 'short_name', 'dob', 'player_positions', 'fifa_update_date')}
@@ -74,7 +75,7 @@ def html_roles(report: dict) -> dict:
         if source['status'] != 'raw-source-reparsed' or not source.get('local_path', '').endswith('.html'):
             continue
         path = ROOT / source['local_path']
-        payload = path.read_bytes()
+        payload = storage_io.read_bytes(path)
         if registry.sha256_file(path) != source['source_sha256']:
             raise ValueError('raw role source changed since audit')
         rows = []
@@ -115,13 +116,13 @@ def detailed_index(season: str, path: Path | None, reparse_audit_path: Path | No
     if path is None:
         return index, bindings
     from scripts.capture_historical_detailed_roles_v1 import parse
-    document = json.loads(path.read_text())
+    document = json.loads(storage_io.read_text(path))
     if document['schema_version'] != 'pm99-historical-detailed-roles-capture-v1' or document['season'] != season:
         raise ValueError('wrong detailed-role capture season/schema')
     cache_root = registry._workspace_path(document['cache_root'], label='detailed role cache')
     reparsed_clubs = set()
     if reparse_audit_path is not None:
-        checked = json.loads(reparse_audit_path.read_text())
+        checked = json.loads(storage_io.read_text(reparse_audit_path))
         binding = checked['bindings']['detailed_capture']
         if checked['schema_version'] != 'pm99-historical-player-facts-audit-v1' or checked['season'] != season:
             raise ValueError('independent detailed reparse audit has wrong identity')
@@ -129,7 +130,7 @@ def detailed_index(season: str, path: Path | None, reparse_audit_path: Path | No
             original_path = registry._workspace_path(binding['path'], label='independently reparsed capture')
             if registry.sha256_file(original_path) != binding['sha256']:
                 raise ValueError('independently reparsed capture changed')
-            original = json.loads(original_path.read_text())
+            original = json.loads(storage_io.read_text(original_path))
             if (original['schema_version'], original['season'], original['cache_root']) != (
                     document['schema_version'], season, document['cache_root']):
                 raise ValueError('independent detailed reparse capture has different source namespace')
@@ -145,9 +146,9 @@ def detailed_index(season: str, path: Path | None, reparse_audit_path: Path | No
         if registry.sha256_file(raw) != club['source_sha256']:
             raise ValueError('detailed role capture raw bytes changed')
         if hashlib.sha256(pipeline.canonical_json_bytes(club)).hexdigest() not in reparsed_clubs:
-            name, _ = audit.historical_html_title(raw.read_bytes(), 'transfermarkt', season,
+            name, _ = audit.historical_html_title(storage_io.read_bytes(raw), 'transfermarkt', season,
                                                   audit.source_group(club['country_catalog']))
-            if audit.normalise(name) != audit.normalise(club['source_club_name']) or parse(raw.read_bytes()) != club['players']:
+            if audit.normalise(name) != audit.normalise(club['source_club_name']) or parse(storage_io.read_bytes(raw)) != club['players']:
                 raise ValueError('detailed role source reparse disagrees')
         for player in club['players']:
             if isinstance(player['birth_date'], str):
@@ -162,11 +163,11 @@ def detailed_index(season: str, path: Path | None, reparse_audit_path: Path | No
 def plan(season: str, report_path: Path, fifa: dict, detailed_path: Path | None = None,
          reparse_audit_path: Path | None = None, ntf_path: Path | None = None) -> dict:
     release = registry.load_preferred_release(season)
-    report = json.loads(report_path.read_text())
+    report = json.loads(storage_io.read_text(report_path))
     if (report['season'] != season or report['bindings']['package_sha256'] != registry.sha256_file(release.package_path)
             or report['bindings']['jug_sha256'] != registry.sha256_file(release.game_path / 'DBDAT/JUG98030.FDI')):
         raise ValueError('role plan requires the exact current historical audit')
-    package = json.loads(release.package_path.read_text())
+    package = json.loads(storage_io.read_text(release.package_path))
     clubs, players, _ = audit.add_legacy_english(package, season)
     club_by_id = {c['id']: c for c in clubs}
     aliases_by_club = {c['id']: audit.club_names(audit.club_group(c), c['name'], c.get('full_name', '')) for c in clubs}
@@ -249,12 +250,12 @@ def main():
         if season in args.skip_season:
             continue
         detailed = args.detailed_root / season / 'detailed-role-capture.json' if args.detailed_root else None
-        result = plan(season, args.audit_root / season / 'report.json', fifa, detailed if detailed and detailed.exists() else None,
+        result = plan(season, args.audit_root / season / 'report.json', fifa, detailed if detailed and storage_io.exists(detailed) else None,
                       args.reparse_audit_root / season / 'player-facts-audit.json' if args.reparse_audit_root else None,
                       args.ntf_root / season / 'ntf-review-capture.json' if args.ntf_root else None)
         destination = args.output / season / 'role-plan.json'
         destination.parent.mkdir(parents=True, exist_ok=True)
-        if destination.exists():
+        if storage_io.exists(destination):
             raise ValueError('role plan already exists; use a fresh output root')
         pipeline.write_canonical_json(destination, result)
         print(json.dumps({'season': season, **result['summary']}), flush=True)

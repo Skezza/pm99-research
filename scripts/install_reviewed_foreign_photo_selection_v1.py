@@ -9,6 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_visual_patch_v1 as art
 from scripts import season_art_transaction_v1 as transaction
@@ -17,21 +18,21 @@ from scripts import season_art_transaction_v1 as transaction
 def prepare(season, selection_root, review_path, output):
     release = registry.load_preferred_release(season)
     selection_path = selection_root / season / 'selection.json'
-    selected = json.loads(selection_path.read_text())
-    review = json.loads(review_path.read_text())
+    selected = json.loads(storage_io.read_text(selection_path))
+    review = json.loads(storage_io.read_text(review_path))
     if selected['package_sha256'] != art.sha(release.package_path):
         raise ValueError('photographic selection targets another recipe')
     decisions = {int(r['carrier_id']): r for r in review['rows'] if r['season'] == season}
-    package = json.loads(release.package_path.read_text())
+    package = json.loads(storage_io.read_text(release.package_path))
     players = {int(p['carrier_id']): p for p in package['players']}
     rows = []
-    if output.exists() and any(output.iterdir()):
+    if storage_io.exists(output) and any(output.iterdir()):
         plan_path = output / 'plan.json'
         receipt_path = output / 'patch/receipt.json'
-        if not plan_path.is_file() or not receipt_path.is_file():
+        if not storage_io.is_file(plan_path) or not storage_io.is_file(receipt_path):
             raise ValueError('incomplete prepared output; inspect it before retrying')
-        plan = json.loads(plan_path.read_text())
-        receipt = json.loads(receipt_path.read_text())
+        plan = json.loads(storage_io.read_text(plan_path))
+        receipt = json.loads(storage_io.read_text(receipt_path))
         if (plan['inputs']['release_id'] != release.release_id
                 or plan['inputs']['package_sha256'] != art.sha(release.package_path)
                 or plan['inputs']['selection_sha256'] != art.sha(selection_path)
@@ -57,24 +58,24 @@ def prepare(season, selection_root, review_path, output):
                 or art.sha(Path(row['bitmap_path'])) != row['bitmap_sha256']):
             raise ValueError('reviewed player, source or bitmap changed')
         installed = release.game_path / 'DBDAT/MINIFOTO' / f'J96{carrier:05d}.BMP'
-        if installed.is_file() and art.sha(installed) == row['bitmap_sha256']:
+        if storage_io.is_file(installed) and art.sha(installed) == row['bitmap_sha256']:
             continue
         target = output / 'patch/DBDAT/MINIFOTO' / f'J96{carrier:05d}.BMP'
-        target.parent.mkdir(parents=True, exist_ok=True); shutil.copyfile(row['bitmap_path'], target)
+        target.parent.mkdir(parents=True, exist_ok=True); storage_io.copy_file(row['bitmap_path'], target)
         rows.append(row)
     if not rows:
         return 0
     no_photo, included = [], []
     old_path = ROOT / '.local/season-visual-patches-v2' / season / 'plan.json'
-    if old_path.exists():
-        old = json.loads(old_path.read_text())
+    if storage_io.exists(old_path):
+        old = json.loads(storage_io.read_text(old_path))
         if old['inputs']['release_id'] == release.release_id:
-            receipt = json.loads((old_path.parent / 'patch/receipt.json').read_text())
+            receipt = json.loads(storage_io.read_text(old_path.parent / 'patch/receipt.json'))
             if receipt['plan_sha256'] != art.sha(old_path) or receipt['archive_before_sha256'] != art.sha(release.game_path / 'DBDAT/MINIFOTO.PKF'):
                 raise ValueError('old no-photo cleanup is stale')
             installed = {int(r['carrier_id']) for r in rows}
             no_photo = [r for r in old['no_photo'] if int(r['carrier_id']) not in installed]
-            shutil.copyfile(old_path.parent / 'patch/DBDAT/MINIFOTO.PKF', output / 'patch/DBDAT/MINIFOTO.PKF')
+            storage_io.copy_file(old_path.parent / 'patch/DBDAT/MINIFOTO.PKF', output / 'patch/DBDAT/MINIFOTO.PKF')
             included = [art.sha(old_path)]
     plan = {'schema_version': art.SCHEMA, 'season': season,
             'inputs': {'release_id': release.release_id, 'package_sha256': art.sha(release.package_path),
@@ -83,7 +84,7 @@ def prepare(season, selection_root, review_path, output):
     art.save(output / 'plan.json', plan)
     receipt = {'schema_version': 'pm99-season-visual-patch-materialisation-v1', 'season': season,
                'plan_sha256': art.sha(output / 'plan.json'), 'archive_before_sha256': art.sha(release.game_path / 'DBDAT/MINIFOTO.PKF'),
-               'outputs': {str(p.relative_to(output / 'patch')): art.sha(p) for p in sorted((output / 'patch').rglob('*')) if p.is_file()},
+               'outputs': {str(p.relative_to(output / 'patch')): art.sha(p) for p in sorted(storage_io.glob(output / 'patch', '*', recursive=True)) if storage_io.is_file(p)},
                'replacements': rows, 'no_photo_count': len(no_photo), 'visual_review_sha256': art.sha(review_path)}
     art.save(output / 'patch/receipt.json', receipt)
     return len(rows)
@@ -118,5 +119,5 @@ if __name__ == '__main__':
         print(json.dumps(outcomes[-1]),flush=True)
     if args.season=='all':
         summary = args.output_root / 'summary.json'
-        if not summary.exists():
+        if not storage_io.exists(summary):
             art.save(summary, {'seasons':outcomes})

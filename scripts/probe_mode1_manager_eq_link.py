@@ -8,6 +8,14 @@ can be paired with a fresh-game dashboard capture.
 """
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -85,13 +93,13 @@ def main() -> int:
     args = _args()
     if not 1 <= args.new_manager_id <= 0xFFFF_FFFF:
         raise SystemExit("new manager id must be a non-zero u32")
-    dbdat = args.dbdat.resolve()
+    dbdat = storage_io.resolve(args.dbdat)
     eq_path = dbdat / "EQ98030.FDI"
     ent_path = dbdat / "ENT98030.FDI"
-    if not eq_path.is_file() or not ent_path.is_file():
+    if not storage_io.is_file(eq_path) or not storage_io.is_file(ent_path):
         raise SystemExit("both EQ98030.FDI and ENT98030.FDI are required")
 
-    before_file = eq_path.read_bytes()
+    before_file = storage_io.read_bytes(eq_path)
     eq_index = IndexedFDIFile.from_bytes(before_file)
     entry = next((row for row in eq_index.entries if row.record_id == args.eq_record_id), None)
     if entry is None:
@@ -116,7 +124,7 @@ def main() -> int:
     start = entry.payload_offset + final_offset
     after_file[start : start + 4] = raw_after[final_offset : final_offset + 4]
     IndexedFDIFile.from_bytes(bytes(after_file))
-    eq_path.write_bytes(after_file)
+    storage_io.write_bytes(eq_path, after_file)
     receipt = {
         "schema": "pm99-mode1-manager-eq-link-probe/v1",
         "eq_path": str(eq_path),
@@ -130,7 +138,7 @@ def main() -> int:
         "after_sha256": hashlib.sha256(after_file).hexdigest(),
     }
     args.receipt.parent.mkdir(parents=True, exist_ok=True)
-    args.receipt.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
+    storage_io.write_text(args.receipt, json.dumps(receipt, indent=2) + '\n', encoding='utf-8')
     print(json.dumps(receipt, indent=2))
     return 0
 

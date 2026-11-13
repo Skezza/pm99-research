@@ -13,6 +13,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import archive_retired_season_tests_20261004 as archive
 from scripts import season_release_registry_v1 as registry
 
@@ -44,27 +45,27 @@ def run(delete=False, review_root=None):
     source = ROOT / '.local' / review_root if review_root else SOURCE
     remote = REMOTE + '/' + review_root if review_root else REMOTE
     receipt = RECEIPT.with_name(review_root + '-csvs.json') if review_root else RECEIPT
-    if receipt.exists():
+    if storage_io.exists(receipt):
         raise ValueError('archive receipt already exists; do not overwrite')
     references = set()
     for season in registry.supported_seasons():
         release = registry.load_preferred_release(season)
-        for value in strings([release.locator, json.loads(release.package_path.read_text())]):
+        for value in strings([release.locator, json.loads(storage_io.read_text(release.package_path))]):
             if value.endswith('players.csv'):
                 path = Path(value)
-                references.add((path if path.is_absolute() else ROOT / path).resolve())
-                references.add((release.package_path.parent / path).resolve())
+                references.add(storage_io.resolve(path if path.is_absolute() else ROOT / path))
+                references.add(storage_io.resolve(release.package_path.parent / path))
     files = []
     for season in registry.supported_seasons():
         path = source / season / 'players.csv'
-        if not path.exists():
+        if not storage_io.exists(path):
             continue
-        if (path.is_symlink() or path.resolve().parent.parent != source.resolve()
-                or path.resolve() in references):
+        if (path.is_symlink() or storage_io.resolve(path).parent.parent != storage_io.resolve(source)
+                or storage_io.resolve(path) in references):
             raise ValueError('CSV is not an unreferenced exact superseded export')
         files.append({'path': registry.relative_workspace_path(path),
-            'sha256': registry.sha256_file(path), 'size': path.stat().st_size,
-            'allocated_bytes': path.stat().st_blocks * 512})
+            'sha256': registry.sha256_file(path), 'size': storage_io.size(path),
+            'allocated_bytes': storage_io.stat_result(path).st_blocks * 512})
     result = {'schema_version': 'pm99-superseded-review-csv-archive-v1',
         'host': archive.HOST, 'remote': remote, 'files': files,
         'file_count': len(files), 'logical_bytes': sum(f['size'] for f in files),
@@ -92,7 +93,7 @@ def run(delete=False, review_root=None):
         str(receipt), archive.HOST + ':' + remote + '/receipt.json'])
     archive.remote('sync')
     for row in files:
-        (ROOT / row['path']).unlink()
+        storage_io.unlink(ROOT / row['path'])
     result['local_removed'] = True
     archive.save(receipt, result)
     archive.command(['rsync', '-lt', '-e', 'ssh -o BatchMode=yes -o ConnectTimeout=8',

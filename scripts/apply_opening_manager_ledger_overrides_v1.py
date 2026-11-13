@@ -3,6 +3,14 @@
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import copy
 import hashlib
@@ -27,9 +35,9 @@ def main() -> int:
     parser.add_argument("--output-ledger", required=True, type=Path)
     parser.add_argument("--output-audit", required=True, type=Path)
     args = parser.parse_args()
-    if any(path.exists() for path in (args.output_ledger, args.output_audit)):
+    if any(storage_io.exists(path) for path in (args.output_ledger, args.output_audit)):
         parser.error("refusing to overwrite an existing output")
-    ledger_raw, override_raw = args.ledger.read_bytes(), args.overrides.read_bytes()
+    ledger_raw, override_raw = storage_io.read_bytes(args.ledger), storage_io.read_bytes(args.overrides)
     ledger = copy.deepcopy(json.loads(ledger_raw.decode("utf-8")))
     overrides = json.loads(override_raw.decode("utf-8"))
     season = f"{int(ledger['season_start_year']):04d}/{(int(ledger['season_start_year']) + 1) % 100:02d}"
@@ -67,16 +75,16 @@ def main() -> int:
         }
         applied.append({"club": club, "before": previous, "after": manager, "source_url": source_url})
     args.output_ledger.parent.mkdir(parents=True, exist_ok=True)
-    args.output_ledger.write_bytes(_canonical(ledger))
+    storage_io.write_bytes(args.output_ledger, _canonical(ledger))
     audit = {
         "schema_version": "pm99-opening-manager-ledger-override-audit-v1",
         "season": season,
         "input_ledger_sha256": hashlib.sha256(ledger_raw).hexdigest(),
         "overrides_sha256": override_sha,
-        "output_ledger_sha256": hashlib.sha256(args.output_ledger.read_bytes()).hexdigest(),
+        "output_ledger_sha256": hashlib.sha256(storage_io.read_bytes(args.output_ledger)).hexdigest(),
         "applied": applied,
     }
-    args.output_audit.write_bytes(_canonical(audit))
+    storage_io.write_bytes(args.output_audit, _canonical(audit))
     print(json.dumps({"applied_correction_count": len(applied)}, sort_keys=True))
     return 0
 

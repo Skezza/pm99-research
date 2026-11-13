@@ -10,6 +10,7 @@ import copy
 import hashlib
 
 from app.eq_roster_pruning import prune_visible_mode1_roster_payload
+from scripts import json_storage_io_v1 as storage_io
 from scripts import review_profile_addition_duplicate_assignments_v1 as source
 from scripts import season_italian_opening_layer_v1 as native
 from scripts import season_package_compiler_v2 as compiler
@@ -63,8 +64,8 @@ def _prepare_source_selection(release, cases):
     from datetime import date
     from scripts.season_frozen_fixture_reserve_v2 import heading_name
     package = pipeline.read_json_file(release.package_path)
-    eq = (release.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    eq = storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     jug_entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(jug).entries}
     _, owners = full._native_owner_index(eq)
     reviews = []
@@ -308,7 +309,7 @@ def apply(jug, eq, plan):
         # Idempotence accepts only the exact complete postimage, not a game
         # with matching target rows but unrelated edits hidden elsewhere.
         baseline = registry.load_registered_release(plan['season'], plan['release_id'])
-        original = (baseline.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+        original = storage_io.read_bytes(baseline.game_path / 'DBDAT/EQ98030.FDI')
         if digest(original) != plan['eq_sha256']:
             raise ValueError('immutable reserve pruning baseline changed')
         expected_replacements = {}
@@ -461,7 +462,7 @@ def reconstruction(previous, release_id):
     from scripts import season_barrow_opening_repair_v1 as barrow
     if plan.get('schema') == barrow.SCHEMA:
         return barrow.reconstruction(previous, release_id)
-    if path.resolve() != (previous.package_path.parent / filename(plan)).resolve():
+    if storage_io.resolve(path) != storage_io.resolve(previous.package_path.parent / filename(plan)):
         raise ValueError('reserve pruning replay locator is not the exact local layer')
     artifacts = [a for a in package['artifacts'] if a['id'] == artifact_id(plan)]
     if len(artifacts) != 1 or artifacts[0]['relative_path'] != filename(plan):

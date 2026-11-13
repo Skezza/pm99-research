@@ -1,4 +1,5 @@
 """Archive rejected private coach trials; preserve selected safe reuse and parents."""
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import archive_rejected_role_trials_20261016 as archive
 from scripts import build_cached_manager_repairs_20261016 as prior
@@ -15,7 +16,7 @@ def targets():
             continue
         if not decision['deferred']:raise ValueError('cannot retire a trial without an explicit rejected source/owner disposition')
         selection=current.ROOT/season/'selected-delivery.json'
-        if selection.exists() and pipeline.read_json_file(selection)['release_id']==prior.RELEASE:
+        if storage_io.exists(selection) and pipeline.read_json_file(selection)['release_id']==prior.RELEASE:
             raise ValueError('a selected exact private coach game cannot be retired')
         rows.append(dict(season=season,release_id=prior.BASE))
     return rows,skip

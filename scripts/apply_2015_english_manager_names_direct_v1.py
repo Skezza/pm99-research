@@ -28,6 +28,7 @@ for candidate in (ROOT, EDITOR):
 
 from app.ent_manager_profiles import parse_indexed_ent_manager_profile  # noqa: E402
 from app.fdi_indexed import IndexedFDIFile  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts.build_2015_english92_release import _patch_ent_name, _rebuild_indexed  # noqa: E402
 from scripts.season_package_v2 import canonical_json_bytes  # noqa: E402
 
@@ -41,7 +42,7 @@ class ManagerRepairError(ValueError):
 
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
@@ -49,7 +50,7 @@ def _sha256(path: Path) -> str:
 
 def _read(path: Path) -> dict[str, Any]:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(storage_io.read_text(path, encoding='utf-8'))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise ManagerRepairError(f"cannot read manifest: {path}") from exc
     if not isinstance(value, dict):
@@ -88,11 +89,11 @@ def _manager_targets(manifest: Mapping[str, Any]) -> dict[int, dict[str, str]]:
 def repair(*, manifest_path: Path, game_root: Path, receipt_path: Path, apply: bool) -> dict[str, Any]:
     manifest = _read(manifest_path)
     targets = _manager_targets(manifest)
-    ent_path = game_root.resolve() / "DBDAT" / "ENT98030.FDI"
-    if not ent_path.is_file() or ent_path.is_symlink():
+    ent_path = storage_io.resolve(game_root) / "DBDAT" / "ENT98030.FDI"
+    if not storage_io.is_file(ent_path) or ent_path.is_symlink():
         raise ManagerRepairError(f"game does not have a safe ENT file: {ent_path}")
     before_sha256 = _sha256(ent_path)
-    data = ent_path.read_bytes()
+    data = storage_io.read_bytes(ent_path)
     index = IndexedFDIFile.from_bytes(data)
     entries = {int(entry.record_id): entry for entry in index.entries}
     replacements: dict[int, bytes] = {}
@@ -121,9 +122,9 @@ def repair(*, manifest_path: Path, game_root: Path, receipt_path: Path, apply: b
         })
     rebuilt = _rebuild_indexed(data, index, replacements)
     temporary = ent_path.with_name(f".{ent_path.name}.english-manager-repair.tmp")
-    if temporary.exists() or temporary.is_symlink():
+    if storage_io.exists(temporary) or temporary.is_symlink():
         raise ManagerRepairError(f"temporary manager repair exists: {temporary}")
-    temporary.write_bytes(rebuilt)
+    storage_io.write_bytes(temporary, rebuilt)
     try:
         rebuilt_entries = {int(entry.record_id): entry for entry in IndexedFDIFile.from_bytes(rebuilt).entries}
         for manager_id, target in targets.items():
@@ -137,10 +138,10 @@ def repair(*, manifest_path: Path, game_root: Path, receipt_path: Path, apply: b
                 )
         after_sha256 = _sha256(temporary)
         if apply:
-            os.replace(temporary, ent_path)
+            storage_io.replace_file(temporary, ent_path)
     finally:
-        if temporary.exists() or temporary.is_symlink():
-            temporary.unlink()
+        if storage_io.exists(temporary) or temporary.is_symlink():
+            storage_io.unlink(temporary)
     receipt = {
         "schema_version": SCHEMA,
         "season": "2015-16",
@@ -151,7 +152,7 @@ def repair(*, manifest_path: Path, game_root: Path, receipt_path: Path, apply: b
             "ent_before_sha256": before_sha256,
         },
         "output": {
-            "game": str(game_root.resolve()),
+            "game": str(storage_io.resolve(game_root)),
             "ent_after_sha256": after_sha256,
             "changed_manager_count": len(changes),
             "already_correct_manager_count": already_correct,
@@ -160,7 +161,7 @@ def repair(*, manifest_path: Path, game_root: Path, receipt_path: Path, apply: b
     }
     if apply:
         receipt_path.parent.mkdir(parents=True, exist_ok=True)
-        receipt_path.write_bytes(canonical_json_bytes(receipt))
+        storage_io.write_bytes(receipt_path, canonical_json_bytes(receipt))
     return receipt
 
 

@@ -19,6 +19,7 @@ from urllib.error import HTTPError
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts.season_portrait_pipeline_v1 import _normalise_name
 from scripts.season_portrait_pipeline_v1 import _name_score
 
@@ -27,7 +28,7 @@ OUTPUT = ROOT / '.local/visual-qa-20261003/foreign-biography-review/report.json'
 
 
 def sha(path):
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def name_key(value):
@@ -37,8 +38,8 @@ def name_key(value):
 def biography_index(root):
     from scripts import capture_2015_wikipedia_player_facts_v1 as wiki
     index = defaultdict(dict)
-    for path in sorted(root.glob('wikipedia-player-facts*/pages/*.json')):
-        doc = json.loads(path.read_text())
+    for path in sorted(storage_io.glob(root, 'wikipedia-player-facts*/pages/*.json')):
+        doc = json.loads(storage_io.read_text(path))
         query = doc.get('query', {})
         pages = query.get('pages', [])
         if isinstance(pages, dict):
@@ -136,7 +137,7 @@ def official_edition_verdict(row, ea_players, index):
 
 
 def run(fetch=False):
-    report = json.loads(INPUT.read_text())
+    report = json.loads(storage_io.read_text(INPUT))
     cache_root = ROOT / '.local/season-pipeline-v2/source-cache'
     if fetch:
         from scripts import capture_2015_wikipedia_player_facts_v1 as wiki
@@ -165,14 +166,14 @@ def run(fetch=False):
                               'total_titles': len(titles)}), flush=True)
     index = biography_index(cache_root)
     ea_path = ROOT / '.local/season-2015-16/fifa16-ea-player-meta.json'
-    ea_document = json.loads(ea_path.read_text())
+    ea_document = json.loads(storage_io.read_text(ea_path))
     from scripts.capture_fifa16_player_meta import SOURCE_URL
     if ea_document.get('source_url') != SOURCE_URL:
         raise ValueError('EA metadata is not bound to the official FIFA16 endpoint')
     ea_players = {int(row['id']): row for row in ea_document['players']}
     from scripts.season_release_registry_v1 import load_preferred_release
     package_path = load_preferred_release('2015-16').package_path
-    package = json.loads(package_path.read_text())
+    package = json.loads(storage_io.read_text(package_path))
     package_dates = {int(p['carrier_id']): p.get('facts', {}).get('birth_date') for p in package['players']}
     rows = []
     for row in report['players']:
@@ -195,7 +196,7 @@ def run(fetch=False):
               'scope': 'Cached labelled identities and dates, not face recognition or visual certification.',
               'players': rows}
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT.write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n')
+    storage_io.write_text(OUTPUT, json.dumps(result, ensure_ascii=False, indent=2) + '\n')
     print(json.dumps({k: v for k, v in result.items() if k != 'players'}))
 
 
@@ -219,7 +220,7 @@ def english_biography_verdict(row, index):
 
 
 def reconcile_english(input_path, output, fetch=False):
-    report = json.loads(input_path.read_text())
+    report = json.loads(storage_io.read_text(input_path))
     cache_root = ROOT / '.local/season-pipeline-v2/source-cache'
     if fetch:
         from scripts import capture_2015_wikipedia_player_facts_v1 as wiki

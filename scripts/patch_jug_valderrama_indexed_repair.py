@@ -12,6 +12,14 @@ participate in game-side identity/link behavior.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -22,7 +30,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
@@ -50,7 +58,7 @@ def _sha256_bytes(data: bytes) -> str:
 
 
 def _sha256_file(path: Path) -> str:
-    return _sha256_bytes(path.read_bytes())
+    return _sha256_bytes(storage_io.read_bytes(path))
 
 
 def _parse_player(payload: bytes, payload_offset: int) -> dict[str, Any]:
@@ -176,7 +184,7 @@ def apply_patch(
     backup: bool,
     alias_window: int,
 ) -> dict[str, Any]:
-    file_bytes = jug_path.read_bytes()
+    file_bytes = storage_io.read_bytes(jug_path)
     indexed = IndexedFDIFile.from_bytes(file_bytes)
 
     target = _find_indexed_hit(file_bytes=file_bytes, indexed=indexed, full_name=target_name)
@@ -213,8 +221,8 @@ def apply_patch(
         if in_place and backup:
             stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             backup_path = jug_path.with_name(f"{jug_path.name}.bak_valderrama_indexed_repair_{stamp}")
-            shutil.copy2(jug_path, backup_path)
-        out_path.write_bytes(bytes(patched))
+            storage_io.copy_file(jug_path, backup_path, metadata=True)
+        storage_io.write_bytes(out_path, bytes(patched))
 
     report: dict[str, Any] = {
         "jug_path": str(jug_path),
@@ -302,7 +310,7 @@ def main() -> int:
     if args.json_output:
         out = Path(args.json_output)
         out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(text + "\n", encoding="utf-8")
+        storage_io.write_text(out, text + '\n', encoding='utf-8')
     return 0
 
 

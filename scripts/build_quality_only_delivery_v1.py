@@ -1,5 +1,6 @@
 """Materialise a narrow quality delta, byte-prove it and replay full SOURCE."""
 import os
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import season_quality_only_delta_v1 as source
 from scripts import publish_historical_role_delta_v1 as publisher
@@ -17,14 +18,14 @@ def deduplicate_owned_replay(base,release,replay,root,plan):
         (root/'quality-plan.json',release.package_path.parent/source.filename(plan)),
         (root/'quality-plan.json',replay.package_path.parent/source.filename(plan))]
     evidence=[]
-    allowed={release.package_path.parent.resolve(),replay.package_path.parent.resolve()}
+    allowed={storage_io.resolve(release.package_path.parent),storage_io.resolve(replay.package_path.parent)}
     for original,target in pairs:
-        if not any(target.resolve().is_relative_to(parent) for parent in allowed):raise ValueError('quality dedup target not owned')
+        if not any(storage_io.resolve(target).is_relative_to(parent) for parent in allowed):raise ValueError('quality dedup target not owned')
         if registry.sha256_file(original)!=registry.sha256_file(target):raise ValueError('quality dedup unequal bytes')
-        if original.stat().st_ino!=target.stat().st_ino:
+        if (storage_io.stat_result(original).st_ino != storage_io.stat_result(target).st_ino) and not storage_io.is_compressed(original) and not storage_io.is_compressed(target):
             temporary=target.with_name(target.name+'.verified-link')
-            if temporary.exists():raise ValueError('unreceipted dedup temporary')
-            os.link(original,temporary);os.replace(temporary,target)
+            if storage_io.exists(temporary):raise ValueError('unreceipted dedup temporary')
+            storage_io.link(original, temporary);storage_io.replace_file(temporary,target)
         evidence.append(dict(source=registry.relative_workspace_path(original),target=registry.relative_workspace_path(target),
             sha256=registry.sha256_file(target),content_preserved=True))
     retained(root/'owned-identical-content-sharing.json',evidence)
@@ -33,18 +34,18 @@ def deduplicate_owned_replay(base,release,replay,root,plan):
 def build(base,kind,root,release_id,replay_id):
     root.mkdir(parents=True,exist_ok=True)
     path=root/'quality-plan.json'
-    if path.exists():plan=pipeline.read_json_file(path)
+    if storage_io.exists(path):plan=pipeline.read_json_file(path)
     else:plan=source.prepare(base,kind);retained(path,plan)
     descriptor=root/'inert.json'
     retained(descriptor,dict(season=base.season,release_id=base.release_id,
         package_sha256=registry.sha256_file(base.package_path),jug_sha256=registry.sha256_file(base.game_path/'DBDAT/JUG98030.FDI'),
         updates=[],unresolved=[]))
-    if not registry.locator_path(base.season,release_id).exists():
+    if not storage_io.exists(registry.locator_path(base.season, release_id)):
         publisher.publish(base.season,descriptor,release_id=release_id,source_release_id=base.release_id,profile_assignment_plan_path=path)
     release=registry.load_registered_release(base.season,release_id)
-    if not (root/'native-byte-proof.json').exists():
-        original=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes();eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
-        actual=(release.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    if not storage_io.exists(root / 'native-byte-proof.json'):
+        original=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI');eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
+        actual=storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
         if source.apply(original,eq,plan)!=(actual,eq) or source.apply(actual,eq,plan)!=(actual,eq):
             raise ValueError('actual quality native result/replay/idempotence differs')
         if pipeline.read_json_file(release.package_path)!=source.bind(pipeline.read_json_file(base.package_path),plan):
@@ -60,8 +61,8 @@ def build(base,kind,root,release_id,replay_id):
             all_other_record_bytes='identical outside selected nationality/ability bytes',all_other_game_files='byte-identical',
             skills_changed=kind.startswith('season-rating-calibration'),nationalities_changed=kind=='woking-original-nationalities',
             fixed_rosters_roles_tactics_managers_assets_EXE=True))
-    if not (root/'complete-SOURCE-replay.json').exists():
-        if registry.locator_path(base.season,replay_id).exists():raise ValueError('unreceipted quality replay exists')
+    if not storage_io.exists(root / 'complete-SOURCE-replay.json'):
+        if storage_io.exists(registry.locator_path(base.season, replay_id)):raise ValueError('unreceipted quality replay exists')
         retained(root/'complete-SOURCE-replay.json',source.reconstruction(release,replay_id))
     deduplicate_owned_replay(base,release,registry.load_registered_release(base.season,replay_id),root,plan)
     print(dict(season=base.season,release_id=release_id,built=True,complete_SOURCE_exact=True,runtime_pending=True),flush=True)

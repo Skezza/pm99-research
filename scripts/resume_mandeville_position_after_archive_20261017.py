@@ -3,6 +3,7 @@ import argparse
 from pathlib import Path
 import time
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import build_exact_position_batch_20261017 as build
 from scripts.capture_exact_position_batch_20261017 import main as capture
@@ -13,13 +14,13 @@ ROOT=build.ROOT/'position-resume-after-archive'
 
 
 def main(archive_pid):
-    if ROOT.exists():raise ValueError('existing position resume needs inspection, not restart')
+    if storage_io.exists(ROOT):raise ValueError('existing position resume needs inspection, not restart')
     ROOT.mkdir()
     retained(ROOT/'input.json',dict(archive_pid=archive_pid,season='2017-18',target_carrier=10683,
         previous_build_tool_session=29307,previous_build_terminal_exit=1,
         native_build_previously_started=False,no_completed_game_regeneration=True))
-    while not ARCHIVE.exists():
-        try:command=Path(f'/proc/{archive_pid}/cmdline').read_bytes()
+    while not storage_io.exists(ARCHIVE):
+        try:command=storage_io.read_bytes(Path(f'/proc/{archive_pid}/cmdline'))
         except FileNotFoundError as exc:
             raise ValueError('cold report archive stopped without completion; inspect instead of bypassing reserve') from exc
         if b'scripts.archive_cold_transfer_reviews_to_pi_20261017' not in command:

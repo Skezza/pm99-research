@@ -15,6 +15,7 @@ from app.eq_jug_linked import parse_eq_external_team_roster_payload
 from app.fdi_indexed import IndexedFDIFile
 from app.player_initial_order import OrderReplacement, read_initial_order, patch_initial_orders
 from app.xor import xor_encode
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_compiler_v2 as compiler
 from scripts import season_package_v2 as packages
 from scripts import season_pipeline_v2 as pipeline
@@ -76,10 +77,10 @@ def _bound_path(row: Mapping[str, Any]) -> Path:
     raw = Path(str(row.get("path") or ""))
     if raw.is_absolute() or ".." in raw.parts:
         raise ValueError("source evidence path must be project-relative and confined")
-    path = (registry.ROOT / raw).resolve()
-    if registry.ROOT.resolve() not in path.parents:
+    path = storage_io.resolve(registry.ROOT / raw)
+    if storage_io.resolve(registry.ROOT) not in path.parents:
         raise ValueError("source evidence path escapes project root")
-    if not path.is_file() or path.is_symlink() or registry.sha256_file(path) != row.get("sha256"):
+    if not storage_io.is_file(path) or path.is_symlink() or registry.sha256_file(path) != row.get("sha256"):
         raise ValueError("bound source evidence is missing or changed")
     return path
 
@@ -91,7 +92,7 @@ def _validate_sources(request: Mapping[str, Any]) -> dict[str, Any]:
         raise ValueError("source input paths and immutable raw-body hashes differ")
     if len(rows) != len(SOURCE_BINDINGS):
         raise ValueError("source input binding contains duplicate or missing rows")
-    bound = {Path(str(x["path"])).name: _bound_path(x).read_bytes() for x in rows}
+    bound = {Path(str(x["path"])).name: storage_io.read_bytes(_bound_path(x)) for x in rows}
     lineups = json.loads(bound["opening-lineups.json"])
     rows = [x for x in lineups.get("clubs", [])
             if str(x.get("source_match_id")) == "3053576"
@@ -240,8 +241,8 @@ def prepare(base, input_path):
         raise ValueError("whole registered r213a package/native preimage hashes differ")
     source = _validate_sources(request)
     package = pipeline.read_json_file(base.package_path)
-    eq = (base.game_path / "DBDAT/EQ98030.FDI").read_bytes()
-    jug = (base.game_path / "DBDAT/JUG98030.FDI").read_bytes()
+    eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
+    jug = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
     info, native = _assert_package_native_preimage(base, package, eq, jug)
     stoke, wolves, batth, fletcher = (info["clubs"][351], info["clubs"][333],
                                      info["people"][10749], info["people"][10762])
@@ -276,12 +277,12 @@ def prepare(base, input_path):
                                       "club_id": int(club["carrier_id"])})
     if len(order_changes) != 7:
         raise ValueError("opening transfer does not resolve to the exact seven-order-byte plan")
-    request_path = Path(input_path).resolve()
-    if registry.ROOT.resolve() not in request_path.parents or request_path.is_symlink():
+    request_path = storage_io.resolve(Path(input_path))
+    if storage_io.resolve(registry.ROOT) not in request_path.parents or request_path.is_symlink():
         raise ValueError("typed request path must be retained inside project root")
     plan = {
         "schema": SCHEMA, "mode": MODE, "season": base.season, "release_id": base.release_id,
-        "request_input": {"path": str(request_path.relative_to(registry.ROOT.resolve())),
+        "request_input": {"path": str(request_path.relative_to(storage_io.resolve(registry.ROOT))),
                           "sha256": registry.sha256_file(request_path)},
         "parent": expected_parent,
         "source_inputs": request["source_inputs"],
@@ -335,9 +336,9 @@ def _candidate_native(base, plan):
     verify(base, plan)
     source_package = pipeline.read_json_file(base.package_path)
     package = bind(source_package, plan)
-    original_eq = (base.game_path / "DBDAT/EQ98030.FDI").read_bytes()
-    original_jug = (base.game_path / "DBDAT/JUG98030.FDI").read_bytes()
-    original_ent = (base.game_path / "DBDAT/ENT98030.FDI").read_bytes()
+    original_eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
+    original_jug = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    original_ent = storage_io.read_bytes(base.game_path / 'DBDAT/ENT98030.FDI')
     ent_ids = {e.record_id for e in IndexedFDIFile.from_bytes(original_ent).entries}
     all_replacements, _, _ = compiler._team_replacements(
         package=package, eq_data=original_eq, ent_carriers=ent_ids)
@@ -395,8 +396,8 @@ def _verify_postimage(package, jug, eq):
 def apply(jug, eq, plan):
     base = registry.load_registered_release(plan["season"], plan["release_id"])
     verify(base, plan)
-    original_jug = (base.game_path / "DBDAT/JUG98030.FDI").read_bytes()
-    original_eq = (base.game_path / "DBDAT/EQ98030.FDI").read_bytes()
+    original_jug = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    original_eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     is_before = jug == original_jug and eq == original_eq
     if is_before:
         return _candidate_native(base, plan)
@@ -424,11 +425,11 @@ def reconstruction(previous, release_id):
     relative = previous.locator.get('sourced_profile_assignment_plan_path')
     if not relative:
         raise ValueError('Batth SOURCE lacks its assignment plan')
-    path = (registry.ROOT / relative).resolve()
+    path = storage_io.resolve(registry.ROOT / relative)
     plan = pipeline.read_json_file(path)
     base = registry.load_registered_release(plan['season'], BASE_RELEASE)
     verify(base, plan)
-    if (path != (previous.package_path.parent / filename(plan)).resolve()
+    if (path != storage_io.resolve(previous.package_path.parent / filename(plan))
             or registry.sha256_file(path) != receipt.get('original_profile_assignment_plan_sha256')):
         raise ValueError('Batth SOURCE assignment path/hash differs')
     expected = bind(pipeline.read_json_file(base.package_path), plan)

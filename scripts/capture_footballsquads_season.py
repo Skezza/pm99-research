@@ -16,6 +16,14 @@ Example:
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import csv
 import hashlib
@@ -51,7 +59,7 @@ def _canonical_json_bytes(value: Any) -> bytes:
 
 def _sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
@@ -137,7 +145,7 @@ def _birth_date(value: str, *, season_start: int, label: str) -> str:
 
 
 def _read_club_file(path: Path, *, root: Path, season_start: int, season_label: str) -> dict[str, Any]:
-    raw = path.read_text(encoding="utf-8")
+    raw = storage_io.read_text(path, encoding='utf-8')
     lines = raw.splitlines()
     title = next((line for line in lines if line.strip()), "")
     matched = _TITLE.fullmatch(title)
@@ -265,7 +273,7 @@ def _season_spec(season: str) -> tuple[int, str, str]:
 def capture_season(
     *, source_root: Path, season: str, countries: set[str] | None = None
 ) -> dict[str, Any]:
-    source_root = source_root.expanduser().resolve()
+    source_root = storage_io.resolve(source_root.expanduser())
     if not source_root.is_dir():
         raise CaptureError(f"source root does not exist: {source_root}")
     season_start, season_label, catalog_folder = _season_spec(season)
@@ -273,7 +281,7 @@ def capture_season(
     if country_filter is not None and not country_filter:
         raise CaptureError("country filter must contain at least one non-blank catalog id")
     club_files = sorted(
-        path for path in source_root.glob(f"*/{catalog_folder}/*/*.txt") if path.name != "README.md"
+        path for path in storage_io.glob(source_root, f'*/{catalog_folder}/*/*.txt') if path.name != "README.md"
     )
     if country_filter is not None:
         club_files = [path for path in club_files if path.relative_to(source_root).parts[0] in country_filter]
@@ -355,7 +363,7 @@ def main() -> int:
     except CaptureError as exc:
         raise SystemExit(f"capture failed: {exc}") from exc
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(_canonical_json_bytes(capture))
+    storage_io.write_bytes(args.output, _canonical_json_bytes(capture))
     print(json.dumps({"output": str(args.output), **capture["summary"]}, sort_keys=True))
     return 0
 

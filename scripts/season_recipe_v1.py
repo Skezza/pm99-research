@@ -15,6 +15,14 @@ overlay without treating an old built game folder as source.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -26,7 +34,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = storage_io.resolve(Path(__file__)).parents[1]
 SCHEMA = "pm99-season-recipe-v1"
 SCHEMA_PATH = ROOT / "schemas" / f"{SCHEMA}.schema.json"
 ID_RE = re.compile(r"^[a-z][a-z0-9-]{1,79}$")
@@ -102,7 +110,7 @@ def sha256_bytes(payload: bytes) -> str:
 
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
@@ -113,14 +121,14 @@ def write_canonical_recipe(path: Path, recipe: Mapping[str, Any]) -> None:
 
     validate_recipe(dict(recipe))
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(canonical_json_bytes(dict(recipe)))
+    storage_io.write_bytes(path, canonical_json_bytes(dict(recipe)))
 
 
 def read_canonical_recipe(path: Path) -> dict[str, Any]:
     """Load and validate recipe source; local artifact paths are not opened."""
 
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise SeasonRecipeError(f"cannot read recipe {path}: {exc}") from exc
@@ -137,7 +145,7 @@ def _schema_errors(value: Mapping[str, Any]) -> list[str]:
         import jsonschema  # type: ignore[import-not-found]
     except ImportError:
         return []
-    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    schema = json.loads(storage_io.read_text(SCHEMA_PATH, encoding='utf-8'))
     validator = jsonschema.Draft202012Validator(schema)
     return [
         f"{'.'.join(str(part) for part in error.absolute_path) or '<root>'}: {error.message}"
@@ -432,13 +440,13 @@ def validate_recipe(recipe: Mapping[str, Any]) -> None:
 
 def _resolve_artifact(recipe_path: Path, artifact: Mapping[str, Any]) -> Path:
     relative = str(artifact["relative_path"])
-    root = recipe_path.parent.resolve()
-    candidate = (root / relative).resolve()
+    root = storage_io.resolve(recipe_path.parent)
+    candidate = storage_io.resolve(root / relative)
     try:
         candidate.relative_to(root)
     except ValueError as exc:
         raise SeasonRecipeError(f"artifact path escapes recipe directory: {relative}") from exc
-    if candidate.is_symlink() or not candidate.is_file():
+    if candidate.is_symlink() or not storage_io.is_file(candidate):
         raise SeasonRecipeError(f"artifact must be an existing regular file: {relative}")
     return candidate
 
@@ -446,7 +454,7 @@ def _resolve_artifact(recipe_path: Path, artifact: Mapping[str, Any]) -> Path:
 def verify_recipe_inputs(*, recipe_path: Path, recipe: Mapping[str, Any] | None = None) -> dict[str, Any]:
     """Verify every retained input without reading or writing a PM99 tree."""
 
-    recipe_path = recipe_path.expanduser().resolve()
+    recipe_path = storage_io.resolve(recipe_path.expanduser())
     value = dict(recipe) if recipe is not None else read_canonical_recipe(recipe_path)
     validate_recipe(value)
     verified: list[dict[str, str]] = []
@@ -459,10 +467,10 @@ def verify_recipe_inputs(*, recipe_path: Path, recipe: Mapping[str, Any] | None 
             )
         if artifact["encoding"] == "canonical-json":
             try:
-                payload = json.loads(path.read_bytes().decode("utf-8"))
+                payload = json.loads(storage_io.read_bytes(path).decode("utf-8"))
             except (UnicodeDecodeError, json.JSONDecodeError) as exc:
                 raise SeasonRecipeError(f"canonical JSON artifact {artifact['id']} is unreadable") from exc
-            if not isinstance(payload, dict) or path.read_bytes() != canonical_json_bytes(payload):
+            if not isinstance(payload, dict) or storage_io.read_bytes(path) != canonical_json_bytes(payload):
                 raise SeasonRecipeError(f"canonical JSON artifact {artifact['id']} is not canonically encoded")
         verified.append({"id": str(artifact["id"]), "sha256": actual})
     return {

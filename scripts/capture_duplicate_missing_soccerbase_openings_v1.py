@@ -18,6 +18,7 @@ from urllib.parse import parse_qs,urlparse,quote_plus
 
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import prepare_duplicate_club_disposition_v1 as whole
 from scripts import season_soccerbase_original_opening_v1 as original
 from scripts import capture_ntf_historical_carrier_squads_v1 as acquisition
@@ -58,15 +59,15 @@ def provider_matches(published, target):
 
 def reuse_original_profile(cache,id,url):
     target=cache.root/f'players/{id}.html'
-    if target.exists():return
+    if storage_io.exists(target):return
     for year in range(2000,2026):
         source=ROOT/'.local'/f'season-{year}-{str(year+1)[-2:]}'/'soccerbase-august-cache-v1'/'player'/f'{id}.html'
         receipt=source.with_suffix(source.suffix+'.source.json')
-        if not source.is_file() or not receipt.is_file():continue
-        metadata=json.loads(receipt.read_text())
+        if not storage_io.is_file(source) or not storage_io.is_file(receipt):continue
+        metadata=json.loads(storage_io.read_text(receipt))
         if metadata!={'url':url,'sha256':whole.registry.sha256_file(source)}:continue
         target.parent.mkdir(parents=True,exist_ok=True)
-        os.link(source,target);os.link(receipt,target.with_suffix(target.suffix+'.source.json'))
+        storage_io.link(source, target);storage_io.link(receipt, target.with_suffix(target.suffix + '.source.json'))
         return
 
 
@@ -93,12 +94,12 @@ def resolve_provider(target,cache):
         catalogue_url='https://www.soccerbase.com/js/autocomplete-teams.js.sd?1.1.38'
         source=ROOT/'.local/duplicate-ownership-v3/Soccerbase-primary-club-discovery-r1/autocomplete-teams.js'
         target_path=cache.root/'autocomplete-teams.js';receipt=source.with_suffix(source.suffix+'.source.json')
-        if source.is_file() and receipt.is_file() and not target_path.exists():
-            metadata=json.loads(receipt.read_text())
+        if storage_io.is_file(source) and storage_io.is_file(receipt) and not storage_io.exists(target_path):
+            metadata=json.loads(storage_io.read_text(receipt))
             if metadata!={'url':catalogue_url,'sha256':whole.registry.sha256_file(source)}:
                 raise ValueError('original numeric club catalogue receipt changed')
             target_path.parent.mkdir(parents=True,exist_ok=True)
-            os.link(source,target_path);os.link(receipt,target_path.with_suffix(target_path.suffix+'.source.json'))
+            storage_io.link(source, target_path);storage_io.link(receipt, target_path.with_suffix(target_path.suffix + '.source.json'))
         raw=cache.get(catalogue_url,'autocomplete-teams.js')
         text=raw.decode() if isinstance(raw,bytes) else raw
         data=re.search(r'teamsData\s*=\s*(\[\[.*?\]\])\s*;',text)
@@ -134,14 +135,14 @@ def discover_targets(queue):
     result=[]
     for season,clubs in sorted(wanted.items()):
         published=[]
-        for path in sorted((ROOT/'.local'/('season-'+season)).glob('*opening*json')):
-            doc=json.loads(path.read_text());published.extend(selectors(doc))
+        for path in sorted(storage_io.glob(ROOT / '.local' / ('season-' + season), '*opening*json')):
+            doc=json.loads(storage_io.read_text(path));published.extend(selectors(doc))
             for c in doc.get('clubs',[]):
                 source=c.get('source_path','');m=re.fullmatch(r'soccerbase/team/(\d+)/august',source)
                 if m:published.append({'club_name':c['club_name'],'soccerbase_team_id':int(m.group(1))})
         nonleague=ROOT/'.local'/('season-'+season)/'soccerbase-august-english-nonleague-v1.json'
-        if nonleague.is_file():
-            for c in json.loads(nonleague.read_text())['clubs']:
+        if storage_io.is_file(nonleague):
+            for c in json.loads(storage_io.read_text(nonleague))['clubs']:
                 m=re.fullmatch(r'soccerbase/team/(\d+)/august',c['source_path'])
                 if m:published.append({'club_name':c['club_name'],'soccerbase_team_id':int(m.group(1))})
         by_name=collections.defaultdict(set)
@@ -160,12 +161,12 @@ def capture(target,root,offline,prior_roots=()):
     season=target['season'];year=int(season[:4])
     directory=root/season/whole.roster.normalise(target['club'])
     output=directory/'capture.json'
-    if not directory.exists():
+    if not storage_io.exists(directory):
         for prior in prior_roots:
             previous=prior/season/whole.roster.normalise(target['club'])
             prior_capture=previous/'capture.json'
-            if not prior_capture.is_file():continue
-            saved=json.loads(prior_capture.read_text())
+            if not storage_io.is_file(prior_capture):continue
+            saved=json.loads(storage_io.read_text(prior_capture))
             if saved['target']!=target:raise ValueError('previous target capture differs from exact new scope')
             for proof in saved['raw_sources']:
                 if whole.registry.sha256_file(ROOT/proof['path'])!=proof['sha256']:raise ValueError('previous original changed')
@@ -173,8 +174,8 @@ def capture(target,root,offline,prior_roots=()):
             directory.parent.mkdir(parents=True,exist_ok=True)
             shutil.copytree(previous,directory,copy_function=os.link)
             break
-    if output.exists():
-        saved=json.loads(output.read_text())
+    if storage_io.exists(output):
+        saved=json.loads(storage_io.read_text(output))
         if saved['target']!=target:raise ValueError('immutable target capture changed')
         for proof in saved['raw_sources']:
             if whole.registry.sha256_file(ROOT/proof['path'])!=proof['sha256']:raise ValueError('saved source changed')
@@ -223,16 +224,16 @@ def capture(target,root,offline,prior_roots=()):
 
 
 def run(queue_path,root,offline=False,limit=None,prior_roots=(),summary_output=None):
-    if summary_output is not None and summary_output.exists():
+    if summary_output is not None and storage_io.exists(summary_output):
         raise ValueError('revised source collection summary is immutable')
     root.mkdir(parents=True,exist_ok=True)
-    targets=discover_targets(json.loads(queue_path.read_text()))
+    targets=discover_targets(json.loads(storage_io.read_text(queue_path)))
     if limit is not None:targets=targets[:limit]
     scope={'queue_path':whole.registry.relative_workspace_path(queue_path),'queue_sha256':whole.registry.sha256_file(queue_path),
         'targets':targets,'native_writes':0,'recipes_modified':0}
     scope_path=root/'scope.json'
-    if scope_path.exists():
-        if json.loads(scope_path.read_text())!=scope:raise ValueError('target scope changed')
+    if storage_io.exists(scope_path):
+        if json.loads(storage_io.read_text(scope_path))!=scope:raise ValueError('target scope changed')
     else:pipeline.write_canonical_json(scope_path,scope)
     outcomes=[]
     for target in targets:
@@ -240,14 +241,14 @@ def run(queue_path,root,offline=False,limit=None,prior_roots=(),summary_output=N
         try:
             result=capture(target,root,offline,prior_roots)
             output=root/target['season']/whole.roster.normalise(target['club'])/'capture.json'
-            if not output.exists():pipeline.write_canonical_json(output,result)
+            if not storage_io.exists(output):pipeline.write_canonical_json(output,result)
             result={'target':target,'status':'original-first-fixture-and-biographies-reparsed',
                 'capture_path':whole.registry.relative_workspace_path(output),'capture_sha256':whole.registry.sha256_file(output)}
         except (ValueError,OSError) as exc:
             result={'target':target,'status':'source-gap','reason':str(exc)}
         outcomes.append(result);print(json.dumps(result),flush=True)
     summary=summary_output or root/'summary.json'
-    if not summary.exists():pipeline.write_canonical_json(summary,{'scope':scope,'outcomes':outcomes,
+    if not storage_io.exists(summary):pipeline.write_canonical_json(summary,{'scope':scope,'outcomes':outcomes,
         'status_counts':dict(collections.Counter(r['status'] for r in outcomes)),'native_writes':0,'recipes_modified':0})
 
 

@@ -11,6 +11,7 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_portrait_pipeline_v1 as portraits
 from scripts import season_release_registry_v1 as registry
 from scripts import season_visual_patch_v1 as art
@@ -41,22 +42,22 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
     release = registry.load_preferred_release(args.season)
-    summary = json.loads((args.evidence / 'summary.json').read_text())
+    summary = json.loads(storage_io.read_text(args.evidence / 'summary.json'))
     if not summary['success'] or not summary['player_profile']['expected_name_token_satisfied']:
         raise ValueError('runner did not pass the requested player-name check')
     screenshot = args.evidence / 'screens' / Path(summary['player_profile']['screenshot']).name
     bitmap = release.game_path / 'DBDAT/MINIFOTO' / f'J96{args.carrier_id:05d}.BMP'
-    provenance = json.loads((args.evidence / 'input-provenance.json').read_text())
+    provenance = json.loads(storage_io.read_text(args.evidence / 'input-provenance.json'))
     matches = [r for r in provenance['replacements'] if int(r['carrier_id']) == args.carrier_id]
     if len(matches) != 1 or art.sha(bitmap) != matches[0]['bitmap_sha256']:
         raise ValueError('named portrait bytes no longer match the runner input')
     row = matches[0]
-    players = [p for p in json.loads(release.package_path.read_text())['players']
+    players = [p for p in json.loads(storage_io.read_text(release.package_path))['players']
                if int(p['carrier_id']) == args.carrier_id]
     if (len(players) != 1 or players[0]['name'] != row['name']
             or players[0]['facts']['birth_date'] != row['birth_date']):
         raise ValueError('recipe identity changed since the photo probe')
-    raw = bitmap.read_bytes()
+    raw = storage_io.read_bytes(bitmap)
     shape = portraits.validate_minifoto_bitmap(raw)
     if (shape.width, shape.height) != (32, 32):
         raise ValueError('unsupported portrait dimensions')

@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts.season_package_v2 import canonical_json_bytes
 
 SCHEMA = "pm99-world-2015-person-overlap-audit-v1"
@@ -65,9 +66,9 @@ def main() -> int:
     parser.add_argument("--candidate", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
-    value = audit(json.loads(args.candidate.read_text(encoding="utf-8")))
+    value = audit(json.loads(storage_io.read_text(args.candidate, encoding='utf-8')))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_json_bytes(value))
+    storage_io.write_bytes(args.output, canonical_json_bytes(value))
     print(json.dumps({key: value[key] for key in ("result", "overlap_identity_count", "overlap_row_count")}, sort_keys=True))
     return 0
 

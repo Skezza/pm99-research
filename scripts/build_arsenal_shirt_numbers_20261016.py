@@ -1,5 +1,6 @@
 """Deliver13 measured shirt bytes while preserving the validated actor game."""
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry,season_pipeline_v2 as pipeline
 from scripts import season_source_bound_shirt_numbers_v1 as source
 from scripts import publish_historical_role_delta_v1 as publisher
@@ -13,10 +14,10 @@ REPLAY='replayed-arsenal-shirt-numbers-20261016-r112b'
 
 
 def native_proof(base,release,plan):
-    original=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    actual=(release.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
-    if source.apply(original,eq,plan)!=(actual,(release.game_path/'DBDAT/EQ98030.FDI').read_bytes()):
+    original=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    actual=storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
+    eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
+    if source.apply(original,eq,plan)!=(actual,storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')):
         raise ValueError('actual shirt game differs from exact thirteen-byte delta')
     entries={e.record_id:e for e in IndexedFDIFile.from_bytes(original).entries}
     expected={entries[row['carrier_id']].payload_offset+7 for row in plan['updates'] if row['before_number']!=row['number']}
@@ -45,22 +46,22 @@ def native_proof(base,release,plan):
 def main():
     ROOT.mkdir(parents=True,exist_ok=True);base=registry.load_registered_release(SEASON,BASE)
     path=ROOT/'shirt-number-plan.json'
-    if path.exists():plan=pipeline.read_json_file(path)
+    if storage_io.exists(path):plan=pipeline.read_json_file(path)
     else:
         plan=source.prepare(base)
         source.bind(pipeline.read_json_file(base.package_path),plan)
-        source.apply((base.game_path/'DBDAT/JUG98030.FDI').read_bytes(),
-            (base.game_path/'DBDAT/EQ98030.FDI').read_bytes(),plan)
+        source.apply(storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI'),
+            storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI'),plan)
         retained(path,plan)
     descriptor=ROOT/'inert.json'
     retained(descriptor,dict(season=SEASON,release_id=BASE,package_sha256=plan['package_sha256'],
         jug_sha256=plan['jug_sha256'],updates=[],unresolved=[]))
-    if not registry.locator_path(SEASON,RELEASE).exists():
+    if not storage_io.exists(registry.locator_path(SEASON, RELEASE)):
         publisher.publish(SEASON,descriptor,release_id=RELEASE,source_release_id=BASE,profile_assignment_plan_path=path)
     release=registry.load_registered_release(SEASON,RELEASE)
-    if not (ROOT/'native-byte-proof.json').exists():native_proof(base,release,plan)
-    if not (ROOT/'complete-SOURCE-replay.json').exists():
-        if registry.locator_path(SEASON,REPLAY).exists():raise ValueError('unreceipted shirt SOURCE replay exists; inspect')
+    if not storage_io.exists(ROOT / 'native-byte-proof.json'):native_proof(base,release,plan)
+    if not storage_io.exists(ROOT / 'complete-SOURCE-replay.json'):
+        if storage_io.exists(registry.locator_path(SEASON, REPLAY)):raise ValueError('unreceipted shirt SOURCE replay exists; inspect')
         retained(ROOT/'complete-SOURCE-replay.json',source.reconstruction(release,REPLAY))
     print(dict(actual_shirt_bytes_changed=13,explicit_source_numbers=25,complete_SOURCE_exact=True,
         other_game_files_unchanged=True,runtime_pending=True,preferred_unchanged=True),flush=True)

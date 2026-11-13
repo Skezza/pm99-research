@@ -13,6 +13,7 @@ from statistics import median
 from urllib.parse import urlsplit
 
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_duplicate_ownership_delta_v1 as delta
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_package_v2 as packages
@@ -71,7 +72,7 @@ def original(value):
 
 
 def source_text(value):
-    page = BeautifulSoup(original(value).read_bytes(), 'lxml')
+    page = BeautifulSoup(storage_io.read_bytes(original(value)), 'lxml')
     text = ' '.join(page.get_text(' ', strip=True).split())
     if not value.get('anchors') or any(' '.join(a.split()) not in text for a in value['anchors']):
         raise ValueError('opening exchange dated evidence lacks exact reviewed anchors')
@@ -95,7 +96,7 @@ def dated_source(value):
     if value.get('dfb_registration_row'):
         claim = value['dfb_registration_row']
         origin = urlsplit(value['url'])
-        page = BeautifulSoup(original(value).read_bytes(), 'lxml')
+        page = BeautifulSoup(storage_io.read_bytes(original(value)), 'lxml')
         if (origin.scheme != 'https' or origin.hostname != 'datencenter.dfb.de'
                 or not re.search(r'/(?:seasons/)?' + str(claim['season_start_year']) + '-' +
                     str(claim['season_start_year'] + 1) + r'/(?:teams|mannschaft)/', origin.path)
@@ -127,7 +128,7 @@ def dated_source(value):
             raise ValueError('dated registration exact person/DOB/entry row differs')
     if value.get('person_row'):
         claim = value['person_row']
-        page = BeautifulSoup(original(value).read_bytes(), 'html.parser')
+        page = BeautifulSoup(storage_io.read_bytes(original(value)), 'html.parser')
         rows = [row for row in page.select('table.items > tbody > tr') if row.select_one(
             'a[href*="/profil/spieler/' + str(claim['provider_player_id']) + '"]')]
         if len(rows) != 1:
@@ -166,7 +167,7 @@ def verify_first_league_fixture(value):
         raise ValueError('first league fixture needs one exact captured competition club')
     row = rows[0]
     schedule = value['schedule_source']
-    raw = original(schedule).read_bytes()
+    raw = storage_io.read_bytes(original(schedule))
     canonical = BeautifulSoup(raw, 'html.parser').select_one('link[rel="canonical"]')
     canonical_url = urlsplit(canonical.get('href', '') if canonical else '')
     requested_url = urlsplit(schedule['url'])
@@ -194,7 +195,7 @@ def verify_first_league_fixture(value):
 
 def match_people(value):
     """Scope links to the exact requested club, not the opponent or page sidebar."""
-    page = BeautifulSoup(original(value).read_bytes(), 'html.parser')
+    page = BeautifulSoup(storage_io.read_bytes(original(value)), 'html.parser')
     stamp = page.select_one('.sb-datum')
     dates = re.findall(r'\b\d{2}/\d{2}/\d{2}\b', stamp.get_text(' ', strip=True) if stamp else '')
     if len(dates) != 1 or datetime.strptime(dates[0], '%d/%m/%y').date().isoformat() != value['date']:
@@ -255,7 +256,7 @@ def match_people(value):
 def verify_match_club(value, native_name):
     from scripts.capture_transfermarkt_opening_lineups_v1 import _club_key
     from scripts.season_transfermarkt_squad_biography_v1 import club_label_keys
-    page = BeautifulSoup(original(value).read_bytes(), 'html.parser')
+    page = BeautifulSoup(storage_io.read_bytes(original(value)), 'html.parser')
     links = page.select('a[href*="/startseite/verein/' + str(value['provider_club_id']) + '"]')
     labels = {published_name_key(text) for a in links
               for text in (a.get('title', ''), a.get_text(' ', strip=True)) if text}
@@ -271,7 +272,7 @@ def verify_match_club(value, native_name):
 
 def read_transfermarkt_profile(profile, pid):
     """Read stable identity and published scalar facts, without season claims."""
-    raw = original(profile).read_bytes()
+    raw = storage_io.read_bytes(original(profile))
     requested = urlsplit(profile['url'])
     allowed_hosts = {'www.transfermarkt.co.uk', 'www.transfermarkt.us',
                      'www.transfermarkt.com', 'www.transfermarkt.de'}
@@ -429,7 +430,7 @@ def published_profile_family_display(selection, evidence):
     target = selection['native_display_name']
     profile = evidence[selection['profile']]
     parsed = read_transfermarkt_profile(profile, selection['provider_player_id'])
-    page = BeautifulSoup(original(profile).read_bytes(), 'html.parser')
+    page = BeautifulSoup(storage_io.read_bytes(original(profile)), 'html.parser')
     header = page.select_one('h1.data-header__headline-wrapper')
     if header:
         for number in header.select('.data-header__shirt-number'):
@@ -459,7 +460,7 @@ def official_biography_birth_date(actor, claim, evidence, *, season=None):
     origin = urlsplit(source['url'])
     if origin.scheme != 'https' or origin.hostname not in ('www.moldefk.no', 'moldefk.no'):
         raise ValueError('biography needs its supported official club HTTPS publisher URL')
-    page = BeautifulSoup(original(source).read_bytes(), 'html.parser')
+    page = BeautifulSoup(storage_io.read_bytes(original(source)), 'html.parser')
     articles = page.select('article')
     name = actor.get('source_name') or actor['name']
     if claim.get('identity_fifa'):
@@ -581,8 +582,8 @@ def prepare(base, input_path):
     package = pipeline.read_json_file(base.package_path)
     players = {row['carrier_id']: row for row in package['players']}
     clubs = {row['id']: row for row in package['clubs']}
-    jug = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     from scripts.season_opening_order_repair_v1 import native_owners
     owners = native_owners(eq)
     evidence = request['evidence']
@@ -965,8 +966,8 @@ def bind(package, plan):
     if plan['request'].get('schema') == 'pm99-walsall-opening-two-person-v4':
         from scripts import season_walsall_two_new_person_v4 as walsall_v4
         base = registry.load_registered_release(plan['season'], plan['release_id'])
-        original_jug = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-        original_eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+        original_jug = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+        original_eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
         walsall_v4.validate_plan_bench(plan, package, original_jug, original_eq)
         walsall_v4.bind_bench(result, plan)
     if plan.get('complete_mode1_opening') is not None:
@@ -993,8 +994,8 @@ def apply(jug, eq, plan):
         from scripts import season_soccerbase_mode0_partial_order_v1 as partial_order
         return partial_order.apply(jug, eq, plan)
     base = registry.load_registered_release(plan['season'], plan['release_id'])
-    original_jug = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    original_eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    original_jug = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    original_eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     if (digest(original_jug), digest(original_eq)) != (plan['jug_sha256'], plan['eq_sha256']):
         raise ValueError('opening exchange immutable baseline changed')
     package = bind(pipeline.read_json_file(base.package_path), plan)
@@ -1140,7 +1141,7 @@ def reconstruction(previous, release_id, *, minimum_free_bytes=8 * 1024**3):
         minimum_free_bytes=minimum_free_bytes)
     rebuilt = registry.load_registered_release(previous.season, release_id)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path, pipeline.read_json_file(previous.inventory_path))
-    if rebuilt.package_path.read_bytes() != previous.package_path.read_bytes():
+    if storage_io.read_bytes(rebuilt.package_path) != storage_io.read_bytes(previous.package_path):
         raise ValueError('opening exchange complete recipe replay differs')
     if not registry.validate_preferred_release(previous.season, level='playable', release_id=release_id)['valid']:
         raise ValueError('opening exchange SOURCE output failed its registered playable gate')

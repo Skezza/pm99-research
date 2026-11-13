@@ -1,5 +1,6 @@
 """Actual Arsenal XI/tactics, paired reserves and corrected Holding age."""
 import os
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import capture_registered_season_runtime_v1 as capture
 from scripts.capture_city_opening_exchange_20261011 import captured
@@ -12,7 +13,7 @@ PROFILES=((9080,'philogene','Philogene'),(21228,'palumbo','Palumbo'),
 
 
 def bound_capture(command,evidence,receipt,release,env):
-    if receipt.exists():
+    if storage_io.exists(receipt):
         saved=pipeline.read_json_file(receipt)
         if (saved['exit_code']!=0 or saved['release_manifest_sha256']!=release.manifest_sha256
             or saved['evidence']!=registry.relative_workspace_path(evidence)):
@@ -22,7 +23,7 @@ def bound_capture(command,evidence,receipt,release,env):
 
 
 def main():
-    if not (ROOT/'native-byte-proof.json').exists():raise ValueError('actual Arsenal native proof required before runner')
+    if not storage_io.exists(ROOT / 'native-byte-proof.json'):raise ValueError('actual Arsenal native proof required before runner')
     release=registry.load_registered_release(SEASON,RELEASE)
     package=pipeline.read_json_file(release.package_path)
     club=next(c for c in package['clubs'] if c['carrier_id']==309)

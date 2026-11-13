@@ -24,6 +24,7 @@ EDITOR = ROOT / "upstream/pm99-skezmod-db-editor"
 if str(EDITOR) not in sys.path:
     sys.path.insert(0, str(EDITOR))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import admit_hertha_dated_cohort_coach_20261017 as old_admission
 from scripts import build_2015_english92_release as native_writer
 from scripts import season_period_cohort_coach_v3 as frozen_v3
@@ -85,8 +86,8 @@ def _validate_html_identity(raw: bytes, *, expected_url: str, title: str) -> str
 def _captured_page(key: str, *, expected_url: str, title: str, phrases: tuple[str, ...]) -> tuple[dict, str]:
     raw_path = EVIDENCE_ROOT / "raw" / f"{key}.html"
     receipt_path = EVIDENCE_ROOT / "raw" / f"{key}.source.json"
-    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
-    raw = raw_path.read_bytes()
+    receipt = json.loads(storage_io.read_text(receipt_path, encoding='utf-8'))
+    raw = storage_io.read_bytes(raw_path)
     raw_sha = hashlib.sha256(raw).hexdigest()
     if (receipt.get("status") != "original-captured" or receipt.get("url") != expected_url
             or receipt.get("sha256") != raw_sha or _sha(raw_path) != raw_sha
@@ -132,8 +133,8 @@ def _native_preflight(base, club_update: dict, manager_update: dict) -> dict:
     prior = old_admission.prior
     eq_path = base.game_path / "DBDAT/EQ98030.FDI"
     ent_path = base.game_path / "DBDAT/ENT98030.FDI"
-    eq = eq_path.read_bytes()
-    ent = ent_path.read_bytes()
+    eq = storage_io.read_bytes(eq_path)
+    ent = storage_io.read_bytes(ent_path)
     after_eq, changes = prior.labels.rewrite_club_labels(eq, [club_update])
     if len(changes) != 1 or changes[0]["after"] != "Hertha Berlin":
         raise ValueError("existing EQ label writer did not produce exactly the requested club label change")
@@ -188,7 +189,7 @@ def _native_birth_date_crosswalk(season: str, annual_path: Path,
     silently treated as a match or used to alter an unrelated birth date.
     """
     source = birth_facts.roster.csv_source._read_club_file(
-        annual_path.resolve(), root=registry.ROOT,
+        storage_io.resolve(annual_path), root=registry.ROOT,
         season_start=int(season[:4]), season_label=(
             f"{season[:4]}/{str(int(season[:4]) + 1)[-2:]}"))
     source_rows = {}
@@ -272,7 +273,7 @@ def prepare(base, *, expected_release_id: str | None = None) -> dict:
     jug_path = base.game_path / "DBDAT/JUG98030.FDI"
     eq_path = base.game_path / "DBDAT/EQ98030.FDI"
     ent_path = base.game_path / "DBDAT/ENT98030.FDI"
-    jug, eq = jug_path.read_bytes(), eq_path.read_bytes()
+    jug, eq = storage_io.read_bytes(jug_path), storage_io.read_bytes(eq_path)
     jug_entries = {row.record_id: row for row in prior.IndexedFDIFile.from_bytes(jug).entries}
     ownership = prior.owners.native_owners(eq)
     for person in residents:
@@ -336,7 +337,7 @@ def prepare(base, *, expected_release_id: str | None = None) -> dict:
     ground_evidence = {"kind": "official-Hertha-Olympiastadion-continuity-v1",
         "original": {"url": stadium_capture["url"], **stadium_capture["raw"]}}
     ground_proof = old_admission.annual.ground(
-        (EVIDENCE_ROOT / "raw" / f"{stadium_key}.html").read_bytes(), ground_evidence,
+        storage_io.read_bytes(EVIDENCE_ROOT / 'raw' / f'{stadium_key}.html'), ground_evidence,
         "Hertha Berlin", ground, int(season[:4]))
 
     club_update = {

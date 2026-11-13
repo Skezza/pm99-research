@@ -10,6 +10,7 @@ import copy
 from datetime import date
 from pathlib import Path
 import re
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import season_duplicate_ownership_plan_v1 as layers
 from scripts import season_historical_roster_audit_v1 as roster
@@ -95,7 +96,7 @@ def retired_member_proof(base,decision,case,actors,jug):
                 or current['facts']['birth_date']!=allocation[0]['replacement']['source_player']['birth_date']
                 or identity(current)==identity(before)):
             raise ValueError('retired member lacks the unchanged positive sourced replacement')
-        prior_jug=(prior.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+        prior_jug=storage_io.read_bytes(prior.game_path / 'DBDAT/JUG98030.FDI')
         old_entry=next(e for e in IndexedFDIFile.from_bytes(prior_jug).entries if e.record_id==carrier)
         current_entry=next(e for e in IndexedFDIFile.from_bytes(jug).entries if e.record_id==carrier)
         if old_entry.decode_payload(prior_jug)!=current_entry.decode_payload(jug):
@@ -123,7 +124,7 @@ def prepare(base,review_path):
     represented=[p for _,pkg,_ in layers.package_layers(base) for p in pkg['players']]
     actors={p['carrier_id']:p for p in main['players']};clubs={c['id']:c for c in main['clubs']}
     jug_path=base.game_path/'DBDAT/JUG98030.FDI';eq_path=base.game_path/'DBDAT/EQ98030.FDI'
-    jug=jug_path.read_bytes();eq=eq_path.read_bytes();owners=ownership.native_owners(eq)
+    jug=storage_io.read_bytes(jug_path);eq=storage_io.read_bytes(eq_path);owners=ownership.native_owners(eq)
     updates=[];proofs=[];selected=set();new_names=set()
     for decision in review['cases']:
         source_id=decision['source_person_id'];displaced=decision['displaced_carrier'];retained=decision['retained_carrier']
@@ -216,9 +217,9 @@ def reconstruction(previous,release_id):
     from scripts import publish_historical_role_delta_v1 as publisher
     from scripts.build_savio_bobb_alias_reserve_20261011 import retained
     base=registry.load_registered_release(plan['season'],plan['release_id']);verify_plan(base,plan)
-    if path.resolve()!=(previous.package_path.parent/delta.plan_filename(plan)).resolve():
+    if storage_io.resolve(path)!=storage_io.resolve(previous.package_path.parent / delta.plan_filename(plan)):
         raise ValueError('SOURCE input is not the exact release-local frozen-pair plan')
-    expected,english,_,_=layered.prepare(base,plan,(base.game_path/'DBDAT/JUG98030.FDI').read_bytes())
+    expected,english,_,_=layered.prepare(base,plan,storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI'))
     if english is not None or expected!=pipeline.read_json_file(previous.package_path):
         raise ValueError('edited frozen-pair recipe cannot discard changes during SOURCE replay')
     descriptor=path.with_name('frozen-fixture-source-replay-inert.json')
@@ -227,5 +228,5 @@ def reconstruction(previous,release_id):
     publisher.publish(base.season,descriptor,release_id=release_id,source_release_id=base.release_id,ownership_plan_path=path)
     rebuilt=registry.load_registered_release(base.season,release_id)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path,pipeline.read_json_file(previous.inventory_path))
-    if rebuilt.package_path.read_bytes()!=previous.package_path.read_bytes():raise ValueError('whole SOURCE recipe differs')
+    if storage_io.read_bytes(rebuilt.package_path)!=storage_io.read_bytes(previous.package_path):raise ValueError('whole SOURCE recipe differs')
     return dict(season=base.season,release_id=release_id,complete_game_inventory_identical=True,complete_recipe_identical=True)

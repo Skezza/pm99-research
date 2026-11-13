@@ -27,6 +27,7 @@ from app.minifoto_bitmap_archive import (  # noqa: E402
     iter_obfuscated_bmp_records,
     validate_minifoto_bitmap,
 )
+from scripts import json_storage_io_v1 as storage_io
 from scripts.materialise_2015_world_fifaindex_kits import render_fifaindex_candidate  # noqa: E402
 from scripts import pm99_compact_kit_template_v1 as compact_template  # noqa: E402
 from scripts.pm99_kit_palette_v1 import runtime_kit_palette  # noqa: E402
@@ -37,7 +38,7 @@ SCHEMA = "pm99-2015-fifa-kit-visual-receipt-v1"
 
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
@@ -112,7 +113,7 @@ def preview(
         before = bytes(reference_record.raw_bitmap)
         before_label = "reference carrier"
     elif existing_candidate is not None:
-        before = existing_candidate.read_bytes()
+        before = storage_io.read_bytes(existing_candidate)
         before_label = "legacy candidate"
     else:
         raise ValueError("one existing candidate or reference DBDAT is required")
@@ -161,12 +162,12 @@ def preview(
         "carrier_id": carrier,
         "archive": archive,
         "inputs": {
-            "dbdat": str(dbdat.resolve()),
-            "source_png": {"path": str(source_png.resolve()), "sha256": sha256_file(source_png)},
+            "dbdat": str(storage_io.resolve(dbdat)),
+            "source_png": {"path": str(storage_io.resolve(source_png)), "sha256": sha256_file(source_png)},
             "reference_candidate": (
-                {"path": str(existing_candidate.resolve()), "sha256": sha256_file(existing_candidate)}
+                {"path": str(storage_io.resolve(existing_candidate)), "sha256": sha256_file(existing_candidate)}
                 if existing_candidate is not None
-                else {"dbdat": str(reference_dbdat.resolve()), "sha256": sha256_file(reference_dbdat / archive)}
+                else {"dbdat": str(storage_io.resolve(reference_dbdat)), "sha256": sha256_file(reference_dbdat / archive)}
             ),
             "palette": {**palette_source, "sha256": sha256_file(Path(str(palette_source["path"])))},
             "render_template": compact_template.TEMPLATE_ID,
@@ -174,10 +175,10 @@ def preview(
         "checks": checks,
         "metrics": {"legacy": _metrics(before, record, palette), "corrected": _metrics(after, record, palette)},
         "previews": {
-            "native": str(baseline_path.resolve()),
-            "legacy": str(before_path.resolve()),
-            "corrected": str(after_path.resolve()),
-            "comparison": str(contact_path.resolve()),
+            "native": str(storage_io.resolve(baseline_path)),
+            "legacy": str(storage_io.resolve(before_path)),
+            "corrected": str(storage_io.resolve(after_path)),
+            "comparison": str(storage_io.resolve(contact_path)),
         },
     }
 
@@ -204,7 +205,7 @@ def main() -> int:
         output_dir=args.output_dir,
     )
     args.receipt.parent.mkdir(parents=True, exist_ok=True)
-    args.receipt.write_text(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(args.receipt, json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8')
     print(json.dumps({"result": result["result"], "previews": result["previews"]}, sort_keys=True))
     return 0 if result["result"] == "preview-ready" else 1
 

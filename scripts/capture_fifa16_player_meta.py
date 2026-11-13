@@ -3,6 +3,14 @@
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -11,7 +19,7 @@ from pathlib import Path
 from urllib.request import Request, urlopen
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = storage_io.resolve(Path(__file__)).parents[1]
 SOURCE_URL = (
     "https://fifa15.content.easports.com/fifa/fltOnlineAssets/"
     "B488919F-23B5-497F-9FC0-CACFB38863D0/2016/fut/items/web/players.json"
@@ -38,7 +46,7 @@ def main() -> int:
         "players": [{key: row.get(key) for key in ("id", "r", "f", "l", "c")} for row in rows],
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(output, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    storage_io.write_text(args.output, json.dumps(output, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     print(json.dumps({"output": str(args.output), "players": len(rows), "source_sha256": output["source_sha256"]}, indent=2))
     return 0
 

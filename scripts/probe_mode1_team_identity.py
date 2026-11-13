@@ -30,6 +30,7 @@ from app.eq_team_indexed_metadata import (  # noqa: E402
 )
 from app.fdi_indexed import IndexedFDIFile  # noqa: E402
 from app.xor import xor_decode, xor_encode  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts.build_2015_english92_release import _rebuild_indexed, _rewrite_eq_strings  # noqa: E402
 
 
@@ -83,7 +84,7 @@ def main(argv: list[str] | None = None) -> int:
             parser.error(f"--{label} must contain 1..255 CP1252 bytes")
 
     eq_path = args.dbdat / "EQ98030.FDI"
-    before_file = eq_path.read_bytes()
+    before_file = storage_io.read_bytes(eq_path)
     indexed = IndexedFDIFile.from_bytes(before_file)
     entry = next((item for item in indexed.entries if item.record_id == args.eq_record_id), None)
     if entry is None:
@@ -131,7 +132,7 @@ def main(argv: list[str] | None = None) -> int:
     rebuilt_payload = rebuilt_entry.decode_payload(after_file)
     if rebuilt_payload != after_decoded:
         raise SystemExit("rebuilt indexed EQ record failed exact decoded read-back")
-    eq_path.write_bytes(after_file)
+    storage_io.write_bytes(eq_path, after_file)
 
     receipt = {
         "schema": "pm99-mode1-team-identity-probe/v1",
@@ -161,7 +162,7 @@ def main(argv: list[str] | None = None) -> int:
         "record_changed_spans": _spans(before, after),
     }
     args.receipt.parent.mkdir(parents=True, exist_ok=True)
-    args.receipt.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
+    storage_io.write_text(args.receipt, json.dumps(receipt, indent=2) + '\n', encoding='utf-8')
     print(json.dumps(receipt, indent=2))
     return 0
 

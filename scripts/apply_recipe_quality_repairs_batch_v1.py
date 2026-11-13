@@ -27,6 +27,7 @@ POSITION_REPAIR = ROOT / "scripts/apply_opening_lineup_position_repairs_v1.py"
 
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts.pm99_season_play_v1 import REVISIONS  # noqa: E402
 
 
@@ -65,7 +66,7 @@ def _paths(season: str) -> dict[str, Path]:
 def _packages(paths: dict[str, Path]) -> list[str]:
     result: list[str] = []
     for key in ("strict", "source", "alias", "reconciled"):
-        if paths[key].is_file():
+        if storage_io.is_file(paths[key]):
             result.extend(("--package", str(paths[key])))
     if str(paths["reconciled"]) not in result:
         raise BatchRepairError("reconciled recipe snapshot is unavailable")
@@ -90,14 +91,14 @@ def _command(*, kind: str, season: str, paths: dict[str, Path]) -> tuple[list[st
 def _run_one(kind: str, season: str) -> dict[str, Any]:
     paths = _paths(season)
     required = ("source", "alias", "reconciled", "runtime")
-    missing = [key for key in required if not paths[key].exists()]
-    if kind == "date" and not paths["intake"].is_file():
+    missing = [key for key in required if not storage_io.exists(paths[key])]
+    if kind == "date" and not storage_io.is_file(paths['intake']):
         missing.append("intake")
     if missing:
         raise BatchRepairError(f"{season} lacks required inputs: {', '.join(missing)}")
     command, receipt = _command(kind=kind, season=season, paths=paths)
-    if receipt.is_file():
-        value = json.loads(receipt.read_text(encoding="utf-8"))
+    if storage_io.is_file(receipt):
+        value = json.loads(storage_io.read_text(receipt, encoding='utf-8'))
         if value.get("state") == "applied-directly-to-alpha-game":
             return {"season": season, "kind": kind, "status": "reused", "receipt": str(receipt.relative_to(ROOT))}
     completed = subprocess.run(command, cwd=ROOT, text=True, capture_output=True)
@@ -111,12 +112,12 @@ def _run_one(kind: str, season: str) -> dict[str, Any]:
         and "no implausible player birth dates require repair" in completed.stderr
     ):
         return {"season": season, "kind": kind, "status": "not-required"}
-    if completed.returncode or not receipt.is_file():
+    if completed.returncode or not storage_io.is_file(receipt):
         raise BatchRepairError(json.dumps({
             "season": season, "kind": kind, "returncode": completed.returncode,
             "stdout": completed.stdout.strip(), "stderr": completed.stderr.strip(),
         }, ensure_ascii=False, sort_keys=True))
-    value = json.loads(receipt.read_text(encoding="utf-8"))
+    value = json.loads(storage_io.read_text(receipt, encoding='utf-8'))
     return {
         "season": season, "kind": kind, "status": "applied",
         "target_player_count": value.get("target_player_count"), "actions": value.get("actions"),
@@ -171,7 +172,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "failures": [*date_failures, *position_failures],
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(result, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(args.output, json.dumps(result, ensure_ascii=False, sort_keys=True) + '\n', encoding='utf-8')
     print(json.dumps({
         "state": result["state"], "date_applied": sum(row["status"] == "applied" for row in date_events),
         "position_applied": sum(row["status"] == "applied" for row in position_events),

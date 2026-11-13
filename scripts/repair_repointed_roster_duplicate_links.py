@@ -33,6 +33,7 @@ from app.editor_actions import _IndexedRawStageRecord, write_player_staged_recor
 from app.editor_helpers import team_query_matches  # noqa: E402
 from app.eq_jug_linked import load_eq_linked_team_rosters  # noqa: E402
 from app.fdi_indexed import IndexedFDIFile  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts.build_pm99_repointed_roster_candidate import (  # noqa: E402
     _build_non_assigned_payload,
     _candidate_player_rows,
@@ -122,7 +123,7 @@ def _repair_rows(
             }
         )
 
-    team_data = team_file.read_bytes()
+    team_data = storage_io.read_bytes(team_file)
     indexed_teams = IndexedFDIFile.from_bytes(team_data)
     team_entries_by_id = {int(entry.record_id): entry for entry in indexed_teams.entries}
     raw_payload_by_offset: dict[int, bytes] = {}
@@ -166,9 +167,9 @@ def repair_duplicate_links(
 ) -> dict[str, Any]:
     team_file = game_root / "DBDAT" / "EQ98030.FDI"
     player_file = game_root / "DBDAT" / "JUG98030.FDI"
-    if not team_file.is_file():
+    if not storage_io.is_file(team_file):
         raise FileNotFoundError(f"Missing team file: {team_file}")
-    if not player_file.is_file():
+    if not storage_io.is_file(player_file):
         raise FileNotFoundError(f"Missing player file: {player_file}")
 
     rosters = load_eq_linked_team_rosters(team_file=str(team_file), player_file=str(player_file))
@@ -217,14 +218,14 @@ def repair_manifest_duplicate_links(
 ) -> dict[str, Any]:
     team_file = game_root / "DBDAT" / "EQ98030.FDI"
     player_file = game_root / "DBDAT" / "JUG98030.FDI"
-    if not team_file.is_file():
+    if not storage_io.is_file(team_file):
         raise FileNotFoundError(f"Missing team file: {team_file}")
-    if not player_file.is_file():
+    if not storage_io.is_file(player_file):
         raise FileNotFoundError(f"Missing player file: {player_file}")
-    if not manifest_path.is_file():
+    if not storage_io.is_file(manifest_path):
         raise FileNotFoundError(f"Missing manifest file: {manifest_path}")
 
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest = json.loads(storage_io.read_text(manifest_path, encoding='utf-8'))
     rosters = load_eq_linked_team_rosters(team_file=str(team_file), player_file=str(player_file))
     refs_by_player_id = _linked_refs_by_player_id(rosters)
 
@@ -277,14 +278,14 @@ def detach_manifest_external_duplicate_refs(
 
     team_file = game_root / "DBDAT" / "EQ98030.FDI"
     player_file = game_root / "DBDAT" / "JUG98030.FDI"
-    if not team_file.is_file():
+    if not storage_io.is_file(team_file):
         raise FileNotFoundError(f"Missing team file: {team_file}")
-    if not player_file.is_file():
+    if not storage_io.is_file(player_file):
         raise FileNotFoundError(f"Missing player file: {player_file}")
-    if not manifest_path.is_file():
+    if not storage_io.is_file(manifest_path):
         raise FileNotFoundError(f"Missing manifest file: {manifest_path}")
 
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest = json.loads(storage_io.read_text(manifest_path, encoding='utf-8'))
     allocations = [row for row in list(manifest.get("allocations") or []) if isinstance(row, dict)]
     target_slot_keys = {
         (int(row.get("carrier_eq_record_id") or 0), int(row.get("slot") or 0))
@@ -307,7 +308,7 @@ def detach_manifest_external_duplicate_refs(
                 continue
             detach_events.append({"record_id": record_id, **ref})
 
-    team_data = team_file.read_bytes()
+    team_data = storage_io.read_bytes(team_file)
     indexed_teams = IndexedFDIFile.from_bytes(team_data)
     team_entries_by_id = {int(entry.record_id): entry for entry in indexed_teams.entries}
     raw_payload_by_offset: dict[int, bytes] = {}
@@ -368,29 +369,29 @@ def main() -> int:
         if not args.manifest:
             raise SystemExit("--detach-external-refs requires --manifest")
         result = detach_manifest_external_duplicate_refs(
-            game_root=Path(args.game_root).expanduser().resolve(),
-            manifest_path=Path(args.manifest).expanduser().resolve(),
+            game_root=storage_io.resolve(Path(args.game_root).expanduser()),
+            manifest_path=storage_io.resolve(Path(args.manifest).expanduser()),
             dry_run=bool(args.dry_run),
         )
     elif bool(args.all_manifest_targets):
         if not args.manifest:
             raise SystemExit("--all-manifest-targets requires --manifest")
         result = repair_manifest_duplicate_links(
-            game_root=Path(args.game_root).expanduser().resolve(),
-            manifest_path=Path(args.manifest).expanduser().resolve(),
+            game_root=storage_io.resolve(Path(args.game_root).expanduser()),
+            manifest_path=storage_io.resolve(Path(args.manifest).expanduser()),
             dry_run=bool(args.dry_run),
         )
     else:
         if not args.team:
             raise SystemExit("--team is required unless --all-manifest-targets is used")
         result = repair_duplicate_links(
-            game_root=Path(args.game_root).expanduser().resolve(),
+            game_root=storage_io.resolve(Path(args.game_root).expanduser()),
             team_query=str(args.team),
             dry_run=bool(args.dry_run),
         )
-    output_path = Path(args.output_json).expanduser().resolve()
+    output_path = storage_io.resolve(Path(args.output_json).expanduser())
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(output_path, json.dumps(result, indent=2, sort_keys=True) + '\n', encoding='utf-8')
     summary_keys = (
         "ok",
         "duplicate_row_count",

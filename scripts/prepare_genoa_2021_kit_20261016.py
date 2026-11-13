@@ -7,6 +7,7 @@ shadows, silhouette, seams and all three native record wrappers.
 from pathlib import Path
 from PIL import Image
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_kit_render_bindings_v1 as render
 from scripts import cascade_compact_kit_v6 as cascade
@@ -50,7 +51,7 @@ def catalogue():
 
 def prepare():
     output = ROOT / 'prepared-v1'
-    if (output / 'delta').exists():
+    if storage_io.exists(output / 'delta'):
         raise ValueError('prepared evidence exists; inspect it rather than rerendering')
     doc = catalogue()
     verify_sources(doc)
@@ -58,9 +59,9 @@ def prepare():
     if release.release_id != 'sourced-arsenal-shirt-numbers-20261016-r112a':
         raise ValueError('Genoa preparation requires the verified Arsenal shirt parent')
     catalogue_path = ROOT / 'kit-catalogue.json'
-    if catalogue_path.exists() and pipeline.read_json_file(catalogue_path) != doc:
+    if storage_io.exists(catalogue_path) and pipeline.read_json_file(catalogue_path) != doc:
         raise ValueError('retained Genoa source contract changed')
-    if not catalogue_path.exists():
+    if not storage_io.exists(catalogue_path):
         pipeline.write_canonical_json(catalogue_path, doc)
     palette, _ = render._palette(release.game_path / 'DBDAT')
     artifacts = []

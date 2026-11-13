@@ -12,6 +12,7 @@ import re
 from bs4 import BeautifulSoup
 from app.fdi_indexed import IndexedFDIFile
 from app.editor_actions import _read_eq_inline_string
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_historical_club_label_review_v1 as old
 from scripts import season_historical_club_label_plan_v1 as labels
 from scripts import season_external_soccerbase_birthday_v2 as originals
@@ -103,7 +104,7 @@ def prepare(base, targets, source_inputs):
     package = pipeline.read_json_file(base.package_path)
     preallocation = pipeline.read_json_file(paths['preallocation'])
     fixed = pipeline.read_json_file(paths['fixed_registry'])
-    if (paths['fixed_registry'].resolve() != (registry.ROOT/'seasons'/base.season/'fixed-carrier-registry.json').resolve()
+    if (storage_io.resolve(paths['fixed_registry']) != storage_io.resolve(registry.ROOT / 'seasons' / base.season / 'fixed-carrier-registry.json')
             or fixed.get('schema_version') != 'pm99-world-fixed-carrier-registry-v2'):
         raise ValueError('requires this season original fixed-carrier registry, not an arbitrary replacement')
     previous_opening = pipeline.read_json_file(paths['opening_equivalence'])
@@ -113,8 +114,8 @@ def prepare(base, targets, source_inputs):
         raise ValueError('current recipe does not bind original source preallocation')
     captures, _ = old.roster.load_sources(base.season)
     index, sources = old.indexed_claims(preallocation)
-    eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
-    jug = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
+    jug = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
     entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(eq).entries}
     player_entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(jug).entries}
     actual_owners = owners.native_owners(eq)

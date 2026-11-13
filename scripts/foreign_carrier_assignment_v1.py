@@ -31,6 +31,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import world_fixed_carrier_ledger_v2 as registry_lib  # noqa: E402
 
 
@@ -53,7 +54,7 @@ def canonical_json_bytes(value: Any) -> bytes:
 
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
@@ -61,7 +62,7 @@ def sha256_file(path: Path) -> str:
 
 def read_canonical_json(path: Path, *, label: str) -> tuple[dict[str, Any], str]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         payload = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise AssignmentError(f"cannot read {label}: {path}") from exc
@@ -79,7 +80,7 @@ def read_json_document(path: Path, *, label: str) -> tuple[dict[str, Any], str]:
     """
 
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         payload = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise AssignmentError(f"cannot read {label}: {path}") from exc
@@ -90,7 +91,7 @@ def read_json_document(path: Path, *, label: str) -> tuple[dict[str, Any], str]:
 
 def write_canonical_json(path: Path, value: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(canonical_json_bytes(dict(value)))
+    storage_io.write_bytes(path, canonical_json_bytes(dict(value)))
 
 
 def _normalise_country(value: object) -> str:

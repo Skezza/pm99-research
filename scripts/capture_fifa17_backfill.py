@@ -9,6 +9,14 @@ and individual attributes without mislabelling the result as FIFA 16 data.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import csv
 import hashlib
@@ -46,7 +54,7 @@ def main() -> int:
         raise SystemExit("FIFA 17 source does not have numeric player ids")
 
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_bytes(raw)
+    storage_io.write_bytes(output, raw)
     receipt = {
         "schema": "pm99-fifa-close-era-backfill-v1",
         "edition": values.edition,
@@ -56,10 +64,10 @@ def main() -> int:
         "sha256": hashlib.sha256(raw).hexdigest(),
         "rows": len(rows),
         "columns": list(rows[0]),
-        "output": str(output.resolve()),
+        "output": str(storage_io.resolve(output)),
     }
     receipt_path.parent.mkdir(parents=True, exist_ok=True)
-    receipt_path.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
+    storage_io.write_text(receipt_path, json.dumps(receipt, indent=2) + '\n', encoding='utf-8')
     print(json.dumps(receipt, indent=2))
     return 0
 

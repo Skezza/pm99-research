@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -10,12 +18,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR_ROOT = REPO_ROOT / "upstream" / "pm99-skezmod-db-editor"
 if str(EDITOR_ROOT) not in sys.path:
     sys.path.insert(0, str(EDITOR_ROOT))
-if str(Path(__file__).resolve().parent) not in sys.path:
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
+if str(storage_io.resolve(Path(__file__)).parent) not in sys.path:
+    sys.path.insert(0, str(storage_io.resolve(Path(__file__)).parent))
 
 from assert_pm99_isolated_input import core_file_hashes, resolve_fixture_root, resolve_game_root, sha256  # noqa: E402
 from app.fdi_indexed import IndexedFDIFile  # noqa: E402
@@ -78,7 +86,7 @@ def _parse_record_ids(text: str) -> list[int]:
 
 def _copy_game_tree(source_game_root: Path, target_game_root: Path) -> None:
     target_game_root.parent.mkdir(parents=True, exist_ok=True)
-    if target_game_root.exists():
+    if storage_io.exists(target_game_root):
         raise RuntimeError(f"Target game root already exists: {target_game_root}")
     target_game_root.mkdir(parents=True, exist_ok=False)
     subprocess.run(
@@ -123,7 +131,7 @@ def main() -> int:
 
     timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     variant_id = args.variant_id.strip() or f"indexed_payload_restore_{relative_file.stem.lower()}_{timestamp}"
-    variant_root = Path(args.output_root).expanduser().resolve() / variant_id
+    variant_root = storage_io.resolve(Path(args.output_root).expanduser()) / variant_id
     game_root = variant_root / "game"
     patch_dir = variant_root / "patches" / "indexed_payload_restore"
     patch_dir.mkdir(parents=True, exist_ok=True)
@@ -134,9 +142,9 @@ def main() -> int:
     baseline_file = baseline_game_root / relative_file
     target_file = game_root / relative_file
 
-    source_bytes = source_file.read_bytes()
-    baseline_bytes = baseline_file.read_bytes()
-    target_input_bytes = target_file.read_bytes()
+    source_bytes = storage_io.read_bytes(source_file)
+    baseline_bytes = storage_io.read_bytes(baseline_file)
+    target_input_bytes = storage_io.read_bytes(target_file)
 
     source_entries = _indexed_entry_by_id(source_file)
     baseline_entries = _indexed_entry_by_id(baseline_file)
@@ -185,9 +193,9 @@ def main() -> int:
             }
         )
 
-    target_file.write_bytes(bytes(patched))
+    storage_io.write_bytes(target_file, bytes(patched))
 
-    target_output_bytes = target_file.read_bytes()
+    target_output_bytes = storage_io.read_bytes(target_file)
     target_output_entries = _indexed_entry_by_id(target_file)
     for row in rows:
         record_id = int(row["record_id"])
@@ -201,7 +209,7 @@ def main() -> int:
         )
 
     report_path = patch_dir / "payload_restore_result.json"
-    report_path.write_text(json.dumps({"rows": rows}, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(report_path, json.dumps({'rows': rows}, indent=2, sort_keys=True) + '\n', encoding='utf-8')
 
     validate_result = _run_editor_cli(
         [
@@ -219,10 +227,7 @@ def main() -> int:
             "--json",
         ]
     )
-    (patch_dir / "validate_database.json").write_text(
-        validate_result["stdout"] if validate_result["stdout"] else json.dumps(validate_result, indent=2) + "\n",
-        encoding="utf-8",
-    )
+    storage_io.write_text(patch_dir / 'validate_database.json', validate_result['stdout'] if validate_result['stdout'] else json.dumps(validate_result, indent=2) + '\n', encoding='utf-8')
     if int(validate_result["returncode"]) != 0:
         raise RuntimeError(f"validate-database failed for variant {variant_id}")
 
@@ -245,7 +250,7 @@ def main() -> int:
         },
     }
     manifest_path = patch_dir / "variant_manifest.json"
-    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(manifest_path, json.dumps(manifest, indent=2, sort_keys=True) + '\n', encoding='utf-8')
 
     print(
         json.dumps(

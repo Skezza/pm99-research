@@ -11,6 +11,7 @@ from pathlib import Path
 
 from bs4 import BeautifulSoup
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import prepare_jedinstvo_2005_source_allocation_v1 as source
 from scripts import ofk_2004_original_secondary_facts_v1 as secondary
 from scripts.capture_tachira_2014_original_people_v1 import source_rows
@@ -30,7 +31,7 @@ def home_ground(raw):
 
 
 def prepare(output,baseline_release_id=None):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('verified foreign source inputs are immutable')
     with tempfile.TemporaryDirectory(prefix='pm99-jedinstvo2005-replay-') as temporary:
         proposal=source.prepare(Path(temporary)/'allocation.json',baseline_release_id)

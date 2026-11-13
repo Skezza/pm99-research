@@ -29,6 +29,7 @@ from app.editor_actions import _decoded_byte, _native_dd6360_role_start  # noqa:
 from app.editor_actions import xor_encode  # noqa: E402
 from app.fdi_indexed import IndexedFDIFile  # noqa: E402
 from app.eq_initial_tactics import read_initial_tactics  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts.build_2015_english92_release import (  # noqa: E402
     EQ_TACTICS_GRID_BYTES,
     EQ_TACTICS_PLAYER_COUNT,
@@ -45,18 +46,18 @@ VISIBLE_SKILLS = (*SKILLS, "handling")
 
 
 def _load_json(path: Path) -> Any:
-    if not path.is_file():
+    if not storage_io.is_file(path):
         raise RuntimeError(f"required artefact is missing: {path}")
-    return json.loads(path.read_text(encoding="utf-8"))
+    return json.loads(storage_io.read_text(path, encoding='utf-8'))
 
 
 def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def _dd6360_audit(game_root: Path, ledger: list[dict[str, Any]], manifest: dict[str, Any]) -> dict[str, Any]:
     player_path = game_root / "DBDAT" / "JUG98030.FDI"
-    data = player_path.read_bytes()
+    data = storage_io.read_bytes(player_path)
     indexed = IndexedFDIFile.from_bytes(data)
     entries = {entry.record_id: entry for entry in indexed.entries}
     nationalities = {int(row["record_id"]): int(row["nationality_code"]) for row in manifest["players"]}
@@ -100,7 +101,7 @@ def _dd6360_audit(game_root: Path, ledger: list[dict[str, Any]], manifest: dict[
 def _dd6361_visible_skill_audit(game_root: Path, ledger: list[dict[str, Any]]) -> dict[str, Any]:
     """Verify all ten displayed skills, including the dedicated Handling byte."""
     player_path = game_root / "DBDAT" / "JUG98030.FDI"
-    data = player_path.read_bytes()
+    data = storage_io.read_bytes(player_path)
     indexed = IndexedFDIFile.from_bytes(data)
     entries = {entry.record_id: entry for entry in indexed.entries}
     rows = [row for row in ledger if row.get("family") == "dd6361"]
@@ -159,7 +160,7 @@ def _opening_tactics_audit(
 ) -> dict[str, Any]:
     """Verify every opening XI grid and its minimum meaningful geometry."""
     team_path = game_root / "DBDAT" / "EQ98030.FDI"
-    data = team_path.read_bytes()
+    data = storage_io.read_bytes(team_path)
     indexed = IndexedFDIFile.from_bytes(data)
     entries = {entry.record_id: entry for entry in indexed.entries}
     player_positions = {int(row["record_id"]): str(row["position"]) for row in ledger}
@@ -283,18 +284,18 @@ def main() -> int:
     )
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
-    build_dir = args.build_dir.expanduser().resolve()
-    game_root = (args.game_root or build_dir / "game").expanduser().resolve()
+    build_dir = storage_io.resolve(args.build_dir.expanduser())
+    game_root = storage_io.resolve((args.game_root or build_dir / 'game').expanduser())
     if not game_root.is_dir() or game_root.is_symlink():
         raise RuntimeError(f"game root must be an existing non-symlink directory: {game_root}")
-    output = (args.output or build_dir / "release-audit.json").expanduser().resolve()
+    output = storage_io.resolve((args.output or build_dir / 'release-audit.json').expanduser())
 
     manifest = _load_json(build_dir / "2015-16-english92-manifest.json")
     ledger = list(_load_json(build_dir / "player-ledger.json"))
     roster_audit = list(_load_json(build_dir / "roster-audit.json"))
     visible_skills_receipt = _load_json(build_dir / "visible-skill-receipt.json")
     face_receipt = _load_json(build_dir / "face-stage-receipt.json")
-    kit_receipts = sorted((build_dir / "kit-stage").glob("*kit-receipt.json"))
+    kit_receipts = sorted(storage_io.glob(build_dir / 'kit-stage', '*kit-receipt.json'))
     if len(kit_receipts) != 1:
         raise RuntimeError(
             "expected exactly one generated kit receipt in kit-stage, found "
@@ -347,7 +348,7 @@ def main() -> int:
             if not isinstance(face_receipt.get("unresolved"), list)
             else len(face_receipt.get("unresolved") or [])
         ),
-            "loose_bitmap_count": len(list((game_root / "DBDAT" / "MINIFOTO").glob("J96*.BMP"))),
+            "loose_bitmap_count": len(list(storage_io.glob(game_root / 'DBDAT' / 'MINIFOTO', 'J96*.BMP'))),
             "minifoto_pkf_sha256": _sha256(game_root / "DBDAT" / "MINIFOTO.PKF"),
         },
         "kits": {
@@ -380,7 +381,7 @@ def main() -> int:
         failures.append("calendar patch")
     audit["ok"] = not failures
     audit["failures"] = failures
-    output.write_text(json.dumps(audit, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(output, json.dumps(audit, indent=2, sort_keys=True) + '\n', encoding='utf-8')
     print(json.dumps(audit, indent=2, sort_keys=True))
     return 0 if audit["ok"] else 1
 

@@ -13,6 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import pm99_season_qa_v1 as qa
 from scripts import register_season_qa_results_v1 as registration
@@ -54,8 +55,8 @@ def main():
                 if not release.release_id.startswith(args.release_prefix): continue
                 path = args.output_root / season / 'qa-report.json'
                 original = binding(release)
-                if path.exists():
-                    report = json.loads(path.read_text())
+                if storage_io.exists(path):
+                    report = json.loads(storage_io.read_text(path))
                     if report.get('historical_revision_binding') != original or report['result'] != 'pass':
                         raise ValueError('saved QA is stale/failed; use fresh output root: ' + season)
                     registration.register(season, path); pending.remove(season)

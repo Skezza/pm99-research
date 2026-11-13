@@ -1,4 +1,5 @@
 """Acquire only OFK original XI plus positively dated reserve biographies."""
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_historical_transfer_review_v1 as transfer
 from scripts import capture_source_bound_people_v1 as people
@@ -12,7 +13,7 @@ def original(key):
     receipt = pipeline.read_json_file(ROOT / (key + '.source.json'))
     if receipt['status'] != 'original-captured' or registry.sha256_file(path) != receipt['sha256']:
         raise ValueError('original OFK opening source changed')
-    return path.read_bytes(), dict(path=registry.relative_workspace_path(path), sha256=receipt['sha256'], url=receipt['url'])
+    return storage_io.read_bytes(path), dict(path=registry.relative_workspace_path(path), sha256=receipt['sha256'], url=receipt['url'])
 
 
 def main():

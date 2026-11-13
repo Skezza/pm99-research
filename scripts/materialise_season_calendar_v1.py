@@ -35,6 +35,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_calendar_package_overlay_v1 as calendar_overlay  # noqa: E402
 from scripts import season_package_v2 as package_v2  # noqa: E402
 from scripts import season_pipeline_v2 as pipeline_v2  # noqa: E402
@@ -51,15 +52,15 @@ class CalendarMaterialisationError(ValueError):
 
 def _regular_file(path: Path, *, label: str) -> Path:
     path = path.expanduser()
-    if not path.is_file() or path.is_symlink():
+    if not storage_io.is_file(path) or path.is_symlink():
         raise CalendarMaterialisationError(f"{label} must be a regular, non-symlink file: {path}")
-    return path.resolve()
+    return storage_io.resolve(path)
 
 
 def _read_json(path: Path, *, label: str) -> tuple[dict[str, Any], str]:
     path = _regular_file(path, label=label)
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise CalendarMaterialisationError(f"cannot read {label}: {path}: {exc}") from exc
@@ -245,7 +246,7 @@ def materialise_calendar(
     game_tree = game_tree.expanduser()
     if game_tree.is_symlink() or not game_tree.is_dir():
         raise CalendarMaterialisationError(f"game tree must be an existing non-symlink directory: {game_tree}")
-    game_tree = game_tree.resolve()
+    game_tree = storage_io.resolve(game_tree)
     target_executable = _regular_file(game_tree / EXECUTABLE_NAME, label="game-tree MANAGPRE.EXE")
     if target_executable.parent != game_tree:
         raise CalendarMaterialisationError("game-tree MANAGPRE.EXE resolved outside the game tree")
@@ -261,16 +262,16 @@ def materialise_calendar(
             mode="wb", prefix=".calendar-materialise-", dir=target_executable.parent, delete=False
         ) as handle:
             temporary = Path(handle.name)
-            with calendar_executable_path.open("rb") as source:
+            with storage_io.open_file(calendar_executable_path, 'rb') as source:
                 shutil.copyfileobj(source, handle)
             handle.flush()
             os.fsync(handle.fileno())
         shutil.copystat(calendar_executable_path, temporary)
-        os.replace(temporary, target_executable)
+        storage_io.replace_file(temporary, target_executable)
         temporary = None
     finally:
         if temporary is not None:
-            temporary.unlink(missing_ok=True)
+            storage_io.unlink(temporary, missing_ok=True)
 
     after = pipeline_v2.build_tree_inventory(game_tree)
     difference = _assert_only_calendar_changed(
@@ -336,7 +337,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             raise CalendarMaterialisationError(
                 "select exactly one receipt mode: --output or --build-plan-adapter"
             )
-        if args.output is not None and (args.output.exists() or args.output.is_symlink()):
+        if args.output is not None and (storage_io.exists(args.output) or args.output.is_symlink()):
             raise CalendarMaterialisationError(f"refusing to overwrite calendar materialisation receipt: {args.output}")
         receipt = materialise_calendar(
             package_path=args.package,
@@ -348,7 +349,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         if args.output is not None:
             args.output.parent.mkdir(parents=True, exist_ok=True)
-            args.output.write_bytes(package_v2.canonical_json_bytes(receipt))
+            storage_io.write_bytes(args.output, package_v2.canonical_json_bytes(receipt))
     except (
         CalendarMaterialisationError,
         OSError,

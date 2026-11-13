@@ -1,5 +1,6 @@
 """Capture corrected actual Haladas keeper without a full-squad approval."""
 import argparse
+from scripts import json_storage_io_v1 as storage_io
 from scripts import build_haladas2000_opening_keeper_20261017 as build
 from scripts.capture_shinnie_country_20261017 import main as capture,wait_owned
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
@@ -11,9 +12,9 @@ PROFILES=[PROFILE,(2211,'hertha_kiraly_retained','Kiraly','Kiraly')]
 
 def main(previous_runner_pid,builder_pid=0):
     path=build.ROOT/'runtime-profile-spec.json'
-    if path.exists():raise ValueError('existing Haladas runner capture needs inspection, not restart')
+    if storage_io.exists(path):raise ValueError('existing Haladas runner capture needs inspection, not restart')
     wait_owned(builder_pid,'scripts.build_haladas2000_opening_keeper_20261017')
-    if not (build.ROOT/'complete-SOURCE-replay.json').exists():raise ValueError('Haladas native and complete SOURCE proof required')
+    if not storage_io.exists(build.ROOT / 'complete-SOURCE-replay.json'):raise ValueError('Haladas native and complete SOURCE proof required')
     wait_owned(previous_runner_pid,'scripts.capture_preetz_period_profile_20261017')
     actual=build.source.registry.load_registered_release('2000-01',build.RELEASE)
     profiles=[dict(carrier_id=carrier,label=label,search=search,token=token) for carrier,label,search,token in PROFILES]

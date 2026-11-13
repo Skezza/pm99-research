@@ -13,6 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
 from scripts import season_historical_review_inventory_v1 as inventory
@@ -34,31 +35,31 @@ def assert_review_inputs_unchanged(before, after):
 
 def rebind(prior_review, prior_opening, output):
     release = registry.load_preferred_release('2015-16')
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('completed derived review exists; never overwrite it')
     plan_path = ROOT / release.locator['manager_graph_reconciliation_path']
-    plan = json.loads(plan_path.read_text())
+    plan = json.loads(storage_io.read_text(plan_path))
     previous = registry.load_registered_release('2015-16', plan['source_release_id'])
     if registry.sha256_file(previous.package_path) != plan['source_package_sha256']:
         raise ValueError('recipe-only predecessor changed')
-    assert_review_inputs_unchanged(json.loads(previous.package_path.read_text()),
-                                   json.loads(release.package_path.read_text()))
+    assert_review_inputs_unchanged(json.loads(storage_io.read_text(previous.package_path)),
+                                   json.loads(storage_io.read_text(release.package_path)))
     native_inventory = pipeline.read_json_file(previous.inventory_path)
     if (native_inventory['files_fingerprint'] != plan['source_game_inventory_fingerprint'] or
             release.locator['game_inventory_fingerprint'] != native_inventory['files_fingerprint']):
         raise ValueError('recipe-only native game inventory differs')
     pipeline.assert_tree_matches_inventory(release.game_path, native_inventory)
     native_path = prior_review / 'roster-audit.json'
-    if not native_path.exists(): native_path = prior_review / 'report.json'
+    if not storage_io.exists(native_path): native_path = prior_review / 'report.json'
     fact_path = prior_review / 'player-facts-audit.json'
     opening_path = prior_opening / 'opening-review.json'
-    documents = [json.loads(path.read_text()) for path in (native_path, fact_path, opening_path)]
+    documents = [json.loads(storage_io.read_text(path)) for path in (native_path, fact_path, opening_path)]
     native, facts, opening = documents
     checked = {}
 
     def check(path, digest):
-        path = path.resolve()
-        path.relative_to(ROOT.resolve())
+        path = storage_io.resolve(path)
+        path.relative_to(storage_io.resolve(ROOT))
         actual = checked.setdefault(path, registry.sha256_file(path)) if path not in checked else checked[path]
         if actual != digest:
             raise ValueError('retained underlying historical source changed: ' + str(path))
@@ -81,14 +82,14 @@ def rebind(prior_review, prior_opening, output):
             check(ROOT / source['local_path'], source['source_sha256'])
             raw[source['source_path'], source['source_sha256']] = True
     detail = facts['bindings'].get('detailed_capture')
-    detail_root = ROOT / json.loads((ROOT / detail['path']).read_text())['cache_root'] if detail else None
+    detail_root = ROOT / json.loads(storage_io.read_text(ROOT / detail['path']))['cache_root'] if detail else None
     check(roles.FIFA, facts['bindings']['exact_editions_FIFA_sha256'])
     for player in facts['players']:
         for source in player['evidence']:
             if source['provider'] == 'exact-edition-FIFA': continue
             if (source.get('source_path'), source.get('source_sha256')) in raw: continue
             path = ROOT / source['source_path']
-            if not path.is_file() and detail_root and source['provider'] == 'original-dated-detailed-squad-reparse':
+            if not storage_io.is_file(path) and detail_root and source['provider'] == 'original-dated-detailed-squad-reparse':
                 path = detail_root / source['source_path']
             check(path, source['source_sha256'])
     destination = output / '2015-16'
@@ -113,7 +114,7 @@ def rebind(prior_review, prior_opening, output):
             result['bindings'].update(roster_audit_path=registry.relative_workspace_path(new_native),
                                       roster_audit_sha256=registry.sha256_file(new_native))
         pipeline.write_canonical_json(target, result)
-    prior_application = json.loads((prior_review / 'application.json').read_text())
+    prior_application = json.loads(storage_io.read_text(prior_review / 'application.json'))
     application = {**prior_application, 'release_id': release.release_id,
                    'source_verified_exclusive_managers': len(plan['dated_foreign_managers']) + len(plan['english_manager_graph_checked_unchanged']),
                    'remaining_clubs': len(plan['preserved_non_club_links']),

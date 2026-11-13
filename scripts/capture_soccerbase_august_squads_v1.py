@@ -26,6 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts.capture_ntf_historical_carrier_squads_v1 import Cache
 from scripts.capture_transfermarkt_historical_squads_v1 import canonical_bytes
 
@@ -283,7 +284,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     result, gaps = capture(tournament_id=args.tournament_id, season_id=args.season_id, start_year=args.season_start_year,
                            competition=args.competition, cache=Cache(args.cache_dir, offline=args.offline, delay=args.delay),
                            registered_players=registered)
-    args.output.parent.mkdir(parents=True, exist_ok=True); args.output.write_bytes(canonical_bytes(result)); args.gaps_output.write_bytes(canonical_bytes(gaps))
+    args.output.parent.mkdir(parents=True, exist_ok=True); storage_io.write_bytes(args.output, canonical_bytes(result)); storage_io.write_bytes(args.gaps_output, canonical_bytes(gaps))
     print(json.dumps({**result["summary"], **gaps["summary"]}, sort_keys=True)); return 0
 
 

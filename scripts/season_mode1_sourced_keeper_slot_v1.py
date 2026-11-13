@@ -14,6 +14,7 @@ from bs4 import BeautifulSoup
 from app.player_initial_order import OrderReplacement, patch_owned_mode1_reserve_keeper_slot
 from app.fdi_indexed import IndexedFDIFile
 from app.eq_jug_linked import parse_eq_external_team_roster_payload
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_football_data_opening_dates_v1 as dates
@@ -79,7 +80,7 @@ def report(raw, url, club, opponent, day):
 
 
 def prepare(release, keeper_id, outfielder_id, bindings):
-    package = json.loads(release.package_path.read_text())
+    package = json.loads(storage_io.read_text(release.package_path))
     players = {p['carrier_id']: p for p in package['players']}
     keeper, outfielder = players[keeper_id], players[outfielder_id]
     if keeper['club_id'] != outfielder['club_id'] or keeper_id == outfielder_id:
@@ -88,19 +89,19 @@ def prepare(release, keeper_id, outfielder_id, bindings):
     if club['opening'].get('policy') != 'preserve-existing-mode1':
         raise ValueError('reserve keeper policy is mode1 only')
     results = original(bindings['league_results'])
-    receipt = json.loads(original(bindings['league_results_receipt']).read_text())
+    receipt = json.loads(storage_io.read_text(original(bindings['league_results_receipt'])))
     for key in ('requested_url', 'response_url'):
         dates.validate_url(receipt[key], release.season, 'I1')
     if receipt['sha256'] != registry.sha256_file(results):
         raise ValueError('original results receipt does not bind the CSV')
-    first = dates.first_fixture(results.read_bytes(), release.season, 'I1', club['name'])
+    first = dates.first_fixture(storage_io.read_bytes(results), release.season, 'I1', club['name'])
     fixture = first['fixture']
     if fixture['home'] != club['name']:
         raise ValueError('this policy currently requires a literal home-club report title')
-    evidence = report(original(bindings['lineup_report']).read_bytes(), bindings['report_url'],
+    evidence = report(storage_io.read_bytes(original(bindings['lineup_report'])), bindings['report_url'],
                       club['name'], fixture['away'], fixture['date'])
     capture, proof = roster.annual_capture(release.season, club)
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     rows = []
     for player, membership in ((outfielder, 'bench_names'), (keeper, 'starting_xi_names')):
         name = player.get('source_name') or player['name']
@@ -125,7 +126,7 @@ def prepare(release, keeper_id, outfielder_id, bindings):
             'bindings': bindings, 'first_fixture': first, 'original_XI_bench': evidence,
             'annual_capture': capture, 'annual_proof': proof, 'players': rows,
             'complete_native_XI_repair_claimed': False}
-    apply(jug, (release.game_path / 'DBDAT/EQ98030.FDI').read_bytes(), plan)
+    apply(jug, storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI'), plan)
     return plan
 
 
@@ -198,7 +199,7 @@ def replay(jug, eq, package, package_path):
         path = package_path.parent / relative
         if registry.sha256_file(path) != artifact['sha256']:
             raise ValueError('recipe keeper source plan hash changed')
-        plan = json.loads(path.read_text())
+        plan = json.loads(storage_io.read_text(path))
         season = str(package['season']['start_year']) + '-' + str(package['season']['end_year'])[-2:]
         if plan['season'] != season:
             raise ValueError('recipe keeper source plan season differs')

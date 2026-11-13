@@ -9,6 +9,14 @@ hash-bound overlay receipt makes the operation resumable and reversible.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -21,7 +29,7 @@ import tempfile
 from typing import Any, Mapping
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = storage_io.resolve(Path(__file__)).parents[1]
 LOCAL = ROOT / ".local"
 BASE_DBDAT = LOCAL / "season-pipeline-v2" / "pm99-base-clean" / "DBDAT"
 PATTERN_CACHE = LOCAL / "source-cache" / "wikimedia-kit-patterns-v1"
@@ -46,7 +54,7 @@ class OverlayError(RuntimeError):
 
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
@@ -54,7 +62,7 @@ def _sha256(path: Path) -> str:
 
 def _read(path: Path, label: str) -> dict[str, Any]:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(storage_io.read_text(path, encoding='utf-8'))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise OverlayError(f"{label} is unavailable or invalid: {path}: {exc}") from exc
     if not isinstance(value, dict):
@@ -63,10 +71,10 @@ def _read(path: Path, label: str) -> dict[str, Any]:
 
 
 def _run(command: list[str], terminal: Path) -> None:
-    if terminal.is_file():
+    if storage_io.is_file(terminal):
         return
     completed = subprocess.run(command, cwd=ROOT, text=True, capture_output=True)
-    if completed.returncode or not terminal.is_file():
+    if completed.returncode or not storage_io.is_file(terminal):
         raise OverlayError(
             json.dumps(
                 {
@@ -104,10 +112,10 @@ def _revision_number(path: Path) -> tuple[int, str]:
 
 def _author_input(season: str, runtime_revision: str) -> Path:
     exact = LOCAL / "season-english-authoring-v1" / season / runtime_revision / "english-compiler-input.json"
-    if exact.is_file():
+    if storage_io.is_file(exact):
         return exact
     candidates = sorted(
-        (LOCAL / "season-english-authoring-v1" / season).glob("*/english-compiler-input.json"),
+        storage_io.glob(LOCAL / 'season-english-authoring-v1' / season, '*/english-compiler-input.json'),
         key=_revision_number,
     )
     if not candidates:
@@ -154,12 +162,12 @@ def apply(season: str, revision: str) -> dict[str, Any]:
         / "kit-archive-materialisation-receipt-v1.json"
     )
     overlay_receipt_path = LOCAL / "season-kit-runtime-overlays-v1" / season / "v5" / "receipt.json"
-    if overlay_receipt_path.is_file():
+    if storage_io.is_file(overlay_receipt_path):
         receipt = _read(overlay_receipt_path, "existing V5 overlay receipt")
         expected = _archive_rows(receipt, "existing V5 overlay receipt")
         mismatches = [
             archive for archive in ARCHIVES
-            if not (runtime / "DBDAT" / archive).is_file()
+            if not storage_io.is_file(runtime / 'DBDAT' / archive)
             or _sha256(runtime / "DBDAT" / archive) != expected[archive]["sha256_after"]
         ]
         if mismatches:
@@ -171,8 +179,8 @@ def apply(season: str, revision: str) -> dict[str, Any]:
             provenance["english_compiler_input_sha256"] = _sha256(author_input)
             receipt["provenance"] = provenance
             temp_receipt = overlay_receipt_path.with_suffix(".json.tmp")
-            temp_receipt.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-            os.replace(temp_receipt, overlay_receipt_path)
+            storage_io.write_text(temp_receipt, json.dumps(receipt, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+            storage_io.replace_file(temp_receipt, overlay_receipt_path)
         return {"season": season, "status": "reused", "receipt": str(overlay_receipt_path.relative_to(ROOT))}
 
     original_receipt = _read(original_receipt_path, "original kit archive receipt")
@@ -180,7 +188,7 @@ def apply(season: str, revision: str) -> dict[str, Any]:
     before = {}
     for archive in ARCHIVES:
         path = runtime / "DBDAT" / archive
-        if not path.is_file():
+        if not storage_io.is_file(path):
             raise OverlayError(f"{season} runtime lacks {archive}")
         actual = _sha256(path)
         expected = original_rows[archive]["sha256_after"]
@@ -204,18 +212,18 @@ def apply(season: str, revision: str) -> dict[str, Any]:
         for archive in ARCHIVES:
             source = archive_root / "archives" / archive
             expected = v5_rows[archive]["sha256_after"]
-            if not source.is_file() or _sha256(source) != expected:
+            if not storage_io.is_file(source) or _sha256(source) != expected:
                 raise OverlayError(f"{season} V5 source archive is missing or stale: {archive}")
             staged_path = temporary_root / f"new-{archive}"
             backup_path = temporary_root / f"old-{archive}"
-            shutil.copy2(source, staged_path)
-            shutil.copy2(dbdat / archive, backup_path)
+            storage_io.copy_file(source, staged_path, metadata=True)
+            storage_io.copy_file(dbdat / archive, backup_path, metadata=True)
             staged[archive] = staged_path
             backups[archive] = backup_path
         replaced = []
         try:
             for archive in ARCHIVES:
-                os.replace(staged[archive], dbdat / archive)
+                storage_io.replace_file(staged[archive], dbdat / archive)
                 replaced.append(archive)
             for archive in ARCHIVES:
                 actual = _sha256(dbdat / archive)
@@ -223,7 +231,7 @@ def apply(season: str, revision: str) -> dict[str, Any]:
                     raise OverlayError(f"{season} post-write hash mismatch for {archive}")
         except Exception:
             for archive in replaced:
-                shutil.copy2(backups[archive], dbdat / archive)
+                storage_io.copy_file(backups[archive], dbdat / archive, metadata=True)
             raise
 
     receipt = {
@@ -258,8 +266,8 @@ def apply(season: str, revision: str) -> dict[str, Any]:
     }
     overlay_receipt_path.parent.mkdir(parents=True, exist_ok=True)
     temp_receipt = overlay_receipt_path.with_suffix(".json.tmp")
-    temp_receipt.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    os.replace(temp_receipt, overlay_receipt_path)
+    storage_io.write_text(temp_receipt, json.dumps(receipt, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+    storage_io.replace_file(temp_receipt, overlay_receipt_path)
     return {
         "season": season,
         "status": "applied",

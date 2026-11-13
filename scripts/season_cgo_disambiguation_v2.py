@@ -13,6 +13,7 @@ import re
 from urllib.parse import unquote, urlparse
 
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_cgo_disambiguation_v1 as prior
 
 pipeline = prior.pipeline
@@ -87,7 +88,7 @@ def resolve(row, season, *, catalog=CATALOG):
             or metadata.get('sha256') != source['sha256']
             or registry.sha256_file(receipt) != source['receipt_sha256']):
         raise ValueError('independent original Congo biography URL/body/receipt changed')
-    result = parse(path.read_bytes(), person['name'], person['birth_date'], season, metadata['utc'])
+    result = parse(storage_io.read_bytes(path), person['name'], person['birth_date'], season, metadata['utc'])
     return dict(schema='pm99-independent-CGO-country-disambiguation-v2',
         source_player_id=person['source_player_id'], name=person['name'], **result,
         original_source=source, catalog_sha256=registry.sha256_file(catalog),

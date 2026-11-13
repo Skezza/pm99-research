@@ -22,6 +22,7 @@ for candidate in (ROOT, EDITOR):
     if str(candidate) not in sys.path:
         sys.path.insert(0, str(candidate))
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts.season_package_compiler_v2 import _native_dd6360_role_start, _read_native_dd6360_fields
 
 SCHEMA = "pm99-world-2015-recycle-role-demand-v1"
@@ -29,13 +30,13 @@ POSITION_ROLE = {"G": 0, "D": 4, "M": 9, "F": 12}
 
 
 def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def audit(*, registry_path: Path, player_plan_path: Path, capacity_path: Path) -> dict[str, Any]:
-    registry = json.loads(registry_path.read_text(encoding="utf-8"))
-    plan = json.loads(player_plan_path.read_text(encoding="utf-8"))
-    capacity = json.loads(capacity_path.read_text(encoding="utf-8"))
+    registry = json.loads(storage_io.read_text(registry_path, encoding='utf-8'))
+    plan = json.loads(storage_io.read_text(player_plan_path, encoding='utf-8'))
+    capacity = json.loads(storage_io.read_text(capacity_path, encoding='utf-8'))
 
     owners: dict[int, list[int]] = defaultdict(list)
     for club in registry["carriers"]:
@@ -47,7 +48,7 @@ def audit(*, registry_path: Path, player_plan_path: Path, capacity_path: Path) -
     qualified = {int(value) for value in capacity["runtime_qualified_primary_fine_role_codes"]}
     dbdat_value = (capacity.get("input") or {}).get("dbdat")
     jug_path = Path(dbdat_value) / "JUG98030.FDI" if isinstance(dbdat_value, str) else None
-    jug_data = jug_path.read_bytes() if jug_path is not None else b""
+    jug_data = storage_io.read_bytes(jug_path) if jug_path is not None else b""
     jug_entries = (
         {int(e.record_id): e for e in IndexedFDIFile.from_bytes(jug_data).entries}
         if jug_path is not None else {}
@@ -133,12 +134,12 @@ def main() -> int:
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
     report = audit(
-        registry_path=args.registry.resolve(),
-        player_plan_path=args.player_plan.resolve(),
-        capacity_path=args.capacity_audit.resolve(),
+        registry_path=storage_io.resolve(args.registry),
+        player_plan_path=storage_io.resolve(args.player_plan),
+        capacity_path=storage_io.resolve(args.capacity_audit),
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+    storage_io.write_text(args.output, json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2) + '\n', encoding='utf-8')
     print(json.dumps({"output": str(args.output), "result": report["result"]}, sort_keys=True))
     return 0 if report["result"] == "pass-for-selected-carriers" else 1
 

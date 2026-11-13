@@ -5,6 +5,7 @@ discarded, no full database regeneration, and no stale art is substituted.
 """
 from pathlib import Path
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
 from scripts import season_visual_patch_v1 as art
@@ -27,8 +28,8 @@ def verify_ancestry_edge(parent, child):
 
     def retained(relative):
         path = registry.ROOT / relative
-        if (path.is_symlink() or not path.is_file()
-                or not path.resolve().is_relative_to(registry.ROOT.resolve())):
+        if (path.is_symlink() or not storage_io.is_file(path)
+                or not storage_io.resolve(path).is_relative_to(storage_io.resolve(registry.ROOT))):
             raise ValueError('artwork ancestry input is not retained in the workspace')
         return path
 
@@ -42,11 +43,11 @@ def verify_ancestry_edge(parent, child):
     if (without_stage != parent_chain
             or stage.get('receipt_sha256') != registry.sha256_file(application_path)
             or application.get('plan_sha256') != registry.sha256_file(plan_path)
-            or Path(application.get('plan_path', '')).resolve() != plan_path.resolve()
+            or storage_io.resolve(Path(application.get('plan_path', ''))) != storage_io.resolve(plan_path)
             or application.get('season') != child.season or child.season != parent.season
             or plan.get('inputs', {}).get('release_id') != parent.release_id
             or plan['inputs'].get('package_sha256') != registry.sha256_file(parent.package_path)
-            or child.package_path.read_bytes() != parent.package_path.read_bytes()
+            or storage_io.read_bytes(child.package_path) != storage_io.read_bytes(parent.package_path)
             or registry.sha256_file(child.compiler_receipt_path) != registry.sha256_file(parent.compiler_receipt_path)):
         raise ValueError('artwork ancestry parent, chain, recipe or compiler binding differs')
     material = retained(application['materialisation_path'])
@@ -64,7 +65,7 @@ def verify_ancestry_edge(parent, child):
                 'id': stage_id, 'role': 'input',
                 'schema': 'pm99-external-artifact-v2',
                 'sha256': registry.sha256_file(application_path),
-                'size': application_path.stat().st_size}]):
+                'size': storage_io.size(application_path)}]):
         raise ValueError('artwork ancestry manifest does not seal the immediate parent')
     before = pipeline.read_json_file(parent.inventory_path)
     after = pipeline.read_json_file(child.inventory_path)
@@ -95,14 +96,14 @@ def reconstruction(previous, release_id):
     if not chain['stages'] or chain['stages'][-1]['id'] != 'portrait-' + previous.release_id:
         return None
     plan_path = registry.ROOT / relative
-    plan_path.resolve().relative_to(registry.ROOT.resolve())
+    storage_io.resolve(plan_path).relative_to(storage_io.resolve(registry.ROOT))
     application_path = registry.ROOT / previous.locator['portrait_patch_application_path']
     application = pipeline.read_json_file(application_path)
     if (registry.sha256_file(application_path) != chain['stages'][-1]['receipt_sha256']
             or registry.sha256_file(plan_path) != application['plan_sha256']):
         raise ValueError('newest artwork replay input changed')
     material_path = Path(application['materialisation_path'])
-    material_path.resolve().relative_to(registry.ROOT.resolve())
+    storage_io.resolve(material_path).relative_to(storage_io.resolve(registry.ROOT))
     if registry.sha256_file(material_path) != application['materialisation_sha256']:
         raise ValueError('newest artwork materialisation changed')
     plan = pipeline.read_json_file(plan_path)
@@ -113,7 +114,7 @@ def reconstruction(previous, release_id):
     for release in [baseline, previous]:
         pipeline.assert_tree_matches_inventory(release.game_path, pipeline.read_json_file(release.inventory_path))
     destination = registry.ROOT / '.local/season-visual-replays-v1' / previous.season / release_id
-    if destination.exists() or registry.locator_path(previous.season, release_id).exists():
+    if storage_io.exists(destination) or storage_io.exists(registry.locator_path(previous.season, release_id)):
         raise ValueError('artwork replay destination already exists')
     art.apply(plan_path, material_path.parent, destination / 'game', source_release=baseline)
     pipeline.assert_tree_matches_inventory(destination / 'game', pipeline.read_json_file(previous.inventory_path))

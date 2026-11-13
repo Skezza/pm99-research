@@ -23,6 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import foreign_carrier_assignment_v1 as assignment_lib  # noqa: E402
 from scripts import merge_footballsquads_captures as merge_lib  # noqa: E402
 from scripts import world_fixed_carrier_ledger_v2 as registry_lib  # noqa: E402
@@ -67,8 +68,8 @@ def _safe_relative_path(value: Any, label: str) -> str:
 
 
 def _resolve(bundle_path: Path, relative_path: str, label: str) -> Path:
-    root = bundle_path.parent.resolve()
-    path = (root / relative_path).resolve()
+    root = storage_io.resolve(bundle_path.parent)
+    path = storage_io.resolve(root / relative_path)
     try:
         path.relative_to(root)
     except ValueError as exc:
@@ -223,7 +224,7 @@ def _output_paths(bundle_path: Path, bundle: Mapping[str, Any]) -> tuple[Path, P
 def build_bundle(*, bundle_path: Path, bundle: Mapping[str, Any]) -> dict[str, Any]:
     composed, rebound = compose_bundle(bundle_path=bundle_path, bundle=bundle)
     capture_output, assignment_output = _output_paths(bundle_path, bundle)
-    if capture_output.exists() or assignment_output.exists():
+    if storage_io.exists(capture_output) or storage_io.exists(assignment_output):
         raise SourceBundleError("bundle outputs already exist; use verify instead of replacing them")
     assignment_lib.write_canonical_json(capture_output, composed)
     try:
@@ -231,7 +232,7 @@ def build_bundle(*, bundle_path: Path, bundle: Mapping[str, Any]) -> dict[str, A
     except OSError:
         # Avoid claiming a partial completed bundle.  The capture is a known,
         # resolved exact target rather than an arbitrary directory.
-        capture_output.unlink(missing_ok=True)
+        storage_io.unlink(capture_output, missing_ok=True)
         raise
     return receipt(bundle_path=bundle_path, bundle=bundle, composed=composed, rebound=rebound)
 
@@ -277,7 +278,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--bundle", required=True, type=Path)
     args = parser.parse_args(argv)
     try:
-        bundle_path = args.bundle.resolve()
+        bundle_path = storage_io.resolve(args.bundle)
         bundle = read_bundle(bundle_path)
         output = build_bundle(bundle_path=bundle_path, bundle=bundle) if args.command == "build" else verify_bundle(
             bundle_path=bundle_path, bundle=bundle

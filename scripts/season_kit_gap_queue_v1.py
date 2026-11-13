@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_kit_catalogue_v1 as catalogue_v1
 
 SCHEMA = "pm99-season-kit-gap-queue-v1"
@@ -25,17 +26,17 @@ def canonical_json_bytes(value: Any) -> bytes:
 
 
 def sha256_file(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def build_queue(source_root: Path, cache_dir: Path) -> dict[str, Any]:
     rows: list[dict[str, Any]] = []
     inputs = []
-    for catalogue_path in sorted(source_root.glob("*/kit-catalogue-v1.json")):
+    for catalogue_path in sorted(storage_io.glob(source_root, '*/kit-catalogue-v1.json')):
         season_dir = catalogue_path.parent
         request_path = season_dir / "kit-catalogue-request-v1.json"
-        catalogue = json.loads(catalogue_path.read_text(encoding="utf-8"))
-        request = json.loads(request_path.read_text(encoding="utf-8"))
+        catalogue = json.loads(storage_io.read_text(catalogue_path, encoding='utf-8'))
+        request = json.loads(storage_io.read_text(request_path, encoding='utf-8'))
         requested = {row["carrier_id"]: row for row in request.get("clubs") or []}
         season = season_dir.name
         inputs.append({"season": season, "catalogue_sha256": sha256_file(catalogue_path), "request_sha256": sha256_file(request_path)})
@@ -112,7 +113,7 @@ def main() -> int:
     args = parser.parse_args()
     document = build_queue(args.source_root, args.cache_dir)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_json_bytes(document))
+    storage_io.write_bytes(args.output, canonical_json_bytes(document))
     print(json.dumps(document["coverage"], indent=2, sort_keys=True))
     return 0
 

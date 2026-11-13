@@ -9,6 +9,7 @@ import sys
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
 import numpy as np
 from PIL import Image
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_kit_render_bindings_v1 as renderer
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
@@ -53,22 +54,22 @@ def compare(record,palette,screenshot):
 
 
 def verify(candidate,evidence,carrier,output,visual_review=None):
-    if output.exists():raise ValueError('paired runtime proof is immutable')
+    if storage_io.exists(output):raise ValueError('paired runtime proof is immutable')
     receipt=candidate/'candidate-receipt.json';provenance=evidence/'input-provenance.json'
     if registry.sha256_file(receipt)!=registry.sha256_file(provenance):raise ValueError('profile launched another candidate')
-    package=json.loads((candidate/'season-package.json').read_text());players={p['carrier_id']:p for p in package['players']}
+    package=json.loads(storage_io.read_text(candidate / 'season-package.json'));players={p['carrier_id']:p for p in package['players']}
     player=players[carrier];club=next(c for c in package['clubs'] if c['id']==player['club_id'])
-    summary=json.loads((evidence/'summary.json').read_text());profile=summary.get('player_profile',{})
+    summary=json.loads(storage_io.read_text(evidence / 'summary.json'));profile=summary.get('player_profile',{})
     if not summary.get('success') or not profile.get('expected_name_token_satisfied'):
         raise ValueError('runner did not complete the named profile')
-    launched={line.split()[1]:line.split()[0] for line in (evidence/'dbdat_override.sha256').read_text().splitlines() if line and not line.startswith('#')}
-    for name,sha in json.loads(receipt.read_text())['native_hashes'].items():
+    launched={line.split()[1]:line.split()[0] for line in storage_io.read_text(evidence / 'dbdat_override.sha256').splitlines() if line and not line.startswith('#')}
+    for name,sha in json.loads(storage_io.read_text(receipt))['native_hashes'].items():
         if launched.get('DBDAT/'+name)!=sha or registry.sha256_file(candidate/'game/DBDAT'/name)!=sha:
             raise ValueError('profile actual native/archive hash differs from candidate')
     screenshot=evidence/'screens'/Path(profile['screenshot']).name
     reviewed=None
     if visual_review is not None:
-        reviewed=json.loads(visual_review.read_text())
+        reviewed=json.loads(storage_io.read_text(visual_review))
         if (reviewed.get('method')!='assistant-original-image-visual-review'
                 or reviewed.get('screenshot_sha256')!=registry.sha256_file(screenshot)):
             raise ValueError('visual club review does not bind the original runner frame')

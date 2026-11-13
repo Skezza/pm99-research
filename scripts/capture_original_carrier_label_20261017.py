@@ -1,5 +1,6 @@
 """Capture genuine startup and restored non-playable club identity."""
 import argparse
+from scripts import json_storage_io_v1 as storage_io
 from scripts import build_original_carrier_label_20261017 as build
 from scripts.capture_shinnie_country_20261017 import main as capture, wait_owned
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
@@ -10,11 +11,11 @@ PROFILE = dict(carrier_id=10987, label='morecambe_label', search='John Hardiker'
 
 def main(builder_pid):
     folder = build.ROOT/build.SEASON
-    if (folder/'runtime-profile-spec.json').exists():
+    if storage_io.exists(folder / 'runtime-profile-spec.json'):
         raise ValueError('existing club label capture needs inspection, not restart')
     if builder_pid:
         wait_owned(builder_pid, 'scripts.build_original_carrier_label_20261017')
-    if not (folder/'complete-SOURCE-replay.json').exists():
+    if not storage_io.exists(folder / 'complete-SOURCE-replay.json'):
         raise ValueError('actual label SOURCE proof incomplete; do not launch an intermediate')
     release = build.source.registry.load_registered_release(build.SEASON, build.RELEASE)
     retained(folder/'runtime-profile-spec.json', dict(season=build.SEASON, release_id=build.RELEASE,

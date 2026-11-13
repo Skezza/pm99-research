@@ -22,6 +22,7 @@ for path in (ROOT, ROOT / "scripts", ROOT / "upstream/pm99-skezmod-db-editor"):
         sys.path.insert(0, str(path))
 from app.fdi_indexed import IndexedFDIFile
 from app.minifoto_bitmap_archive import decode_obfuscated_bitmap_name, iter_minifoto_records, iter_obfuscated_bmp_records, validate_minifoto_bitmap
+from scripts import json_storage_io_v1 as storage_io
 from scripts.season_package_compiler_v2 import _source_roster_owners, _player_name
 from scripts import season_release_registry_v1 as registry
 
@@ -29,17 +30,17 @@ ARCHIVES = ("BIGCAMP.PKF", "BIGESC.PKF", "MINIESC.PKF", "NANOESC.PKF", "RIDIESC.
 
 
 def sha(path):
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def save(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n")
+    storage_io.write_text(path, json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(',', ':')) + '\n')
 
 
 def invalid_photo_entries(path, decoded):
     """The ordinary archive iterator skips malformed active BMPs; count those too."""
-    data = path.read_bytes()
+    data = storage_io.read_bytes(path)
     invalid = {}
     offset = data.find(b'\x02')
     while 0 <= offset <= len(data) - 38:
@@ -58,13 +59,13 @@ def screenshot_from_summary(evidence):
     if not evidence:
         return None
     path = evidence / "summary.json"
-    if not path.is_file():
+    if not storage_io.is_file(path):
         return None
-    summary = json.loads(path.read_text())
+    summary = json.loads(storage_io.read_text(path))
     for step in summary.get("steps", []):
         if step.get("step", {}).get("label") == "pick_stoke":
             screenshot = evidence / "screens" / Path(step["screenshot"]).name
-            if screenshot.is_file():
+            if storage_io.is_file(screenshot):
                 return {"path": str(screenshot), "sha256": sha(screenshot),
                         "summary_sha256": sha(path), "success": summary.get("success"),
                         "release_manifest_sha256": summary.get("release_manifest_sha256"),
@@ -79,22 +80,22 @@ def audit(output):
                         for r in iter_minifoto_records(baseline_release.game_path / "DBDAT/MINIFOTO.PKF")}
     parsed_photos, invalid_photos, parsed_kits = {}, {}, {}
     english_source = ROOT / '.local/season-2015-16/english92-2015-16-build36-native-no-photo'
-    english_receipt = json.loads((english_source / 'face-stage-receipt.json').read_text())
+    english_receipt = json.loads(storage_io.read_text(english_source / 'face-stage-receipt.json'))
     english_rows = {int(row['record_id']): row for row in english_receipt['rows']}
     english_expected = {record.player_record_id: hashlib.sha256(record.raw_bitmap).hexdigest()
                         for record in iter_minifoto_records(english_source / 'game/DBDAT/MINIFOTO.PKF')}
-    for path in (english_source / 'game/DBDAT/MINIFOTO').glob('*.BMP'):
+    for path in storage_io.glob(english_source / 'game/DBDAT/MINIFOTO', '*.BMP'):
         english_expected[int(path.stem[3:])] = sha(path)
     foreign_receipt_path = ROOT / '.local/season-workspace-v1/2015-16-final-build/foreign-portrait-application-receipt.json'
     foreign_rows = {int(row['player_carrier_id']): row
-                    for row in json.loads(foreign_receipt_path.read_text())['operations']
+                    for row in json.loads(storage_io.read_text(foreign_receipt_path))['operations']
                     if row.get('resulting_state') == 'applied'}
     summaries = []
     for season in seasons:
         release = registry.load_preferred_release(season)
-        package = json.loads(release.package_path.read_text())
+        package = json.loads(storage_io.read_text(release.package_path))
         dbdat = release.game_path / "DBDAT"
-        owner, rosters, modes = _source_roster_owners((dbdat / "EQ98030.FDI").read_bytes())
+        owner, rosters, modes = _source_roster_owners(storage_io.read_bytes(dbdat / 'EQ98030.FDI'))
         package_players = {int(p["carrier_id"]): p for p in package["players"]}
         declarations = {p["player_id"]: p.get("status") for p in package["assets"]["portraits"]}
         archive_hash = sha(dbdat / "MINIFOTO.PKF")
@@ -102,7 +103,7 @@ def audit(output):
             parsed_photos[archive_hash] = {r.player_record_id: r for r in iter_minifoto_records(dbdat / "MINIFOTO.PKF")}
             invalid_photos[archive_hash] = invalid_photo_entries(dbdat / 'MINIFOTO.PKF', parsed_photos[archive_hash])
         photos = parsed_photos[archive_hash]
-        jug = (dbdat / "JUG98030.FDI").read_bytes()
+        jug = storage_io.read_bytes(dbdat / 'JUG98030.FDI')
         entries = {int(e.record_id): e for e in IndexedFDIFile.from_bytes(jug).entries}
         players = []
         counts = Counter()
@@ -123,8 +124,8 @@ def audit(output):
                 name = "missing-player-record"
             group = "english-club" if any(modes.get(c) == 0 for c in clubs) else "foreign-club"
             status, bitmap_hash, issue = "no-photo", None, None
-            if loose.is_file():
-                payload = loose.read_bytes()
+            if storage_io.is_file(loose):
+                payload = storage_io.read_bytes(loose)
                 bitmap_hash = hashlib.sha256(payload).hexdigest()
                 try:
                     validate_minifoto_bitmap(payload)
@@ -199,7 +200,7 @@ def audit(output):
 
 
 def capture(output, worker, selected):
-    selectors = {r["season"]: r for r in json.loads((ROOT / "data/season-runtime-selectors-v1.json").read_text())["seasons"]}
+    selectors = {r["season"]: r for r in json.loads(storage_io.read_text(ROOT / 'data/season-runtime-selectors-v1.json'))["seasons"]}
     env = os.environ.copy()
     env["PM99_RUNNER_ARCHIVE_COLD_RUNS"] = "0"
     env["PM99_RUNNER_RUN_ROOT_BUDGET_ENFORCE"] = "0"
@@ -210,7 +211,7 @@ def capture(output, worker, selected):
         tag = "visual_qa_" + season.replace("-", "_") + "_20261003_r1"
         evidence = ROOT / ".local/runlogs/pm99_runner" / tag
         existing_summary = evidence / 'selector_discovery_summary.json'
-        if existing_summary.is_file() and json.loads(existing_summary.read_text()).get('success'):
+        if storage_io.is_file(existing_summary) and json.loads(storage_io.read_text(existing_summary)).get('success'):
             result = {"season": season, "status": "existing-capture", "evidence": str(evidence)}
         else:
             command = [str(ROOT / "scripts/run_pm99_experiment.sh"), "selector-discovery-capture",
@@ -222,7 +223,7 @@ def capture(output, worker, selected):
             log = output / season / "capture-launch.log"
             log.parent.mkdir(parents=True, exist_ok=True)
             print(json.dumps({"season": season, "capture": "starting", "tag": tag}), flush=True)
-            with log.open("w") as stream:
+            with storage_io.open_file(log, 'w') as stream:
                 try:
                     # Includes fair-share host queue time, not just the bounded 180-second game run.
                     complete = subprocess.run(command, cwd=ROOT, env=env, stdout=stream, stderr=subprocess.STDOUT, timeout=900)
@@ -250,13 +251,13 @@ def gallery(output):
         discovery_path = evidence / 'selector_discovery.json'
         row = {'season': season, 'release_manifest_sha256': release.manifest_sha256,
                'status': 'missing-capture'}
-        if summary_path.is_file() and discovery_path.is_file():
-            summary = json.loads(summary_path.read_text())
-            discovery = json.loads(discovery_path.read_text())
+        if storage_io.is_file(summary_path) and storage_io.is_file(discovery_path):
+            summary = json.loads(storage_io.read_text(summary_path))
+            discovery = json.loads(storage_io.read_text(discovery_path))
             observations = [team for division in discovery.get('divisions', []) for team in division.get('teams', [])]
             if summary.get('success') and len(observations) == 1:
                 path = evidence / 'screens' / Path(observations[0]['screenshot']).name
-                if path.is_file():
+                if storage_io.is_file(path):
                     row.update(status='captured', screenshot=str(path), screenshot_sha256=sha(path),
                                summary_sha256=sha(summary_path), discovery_sha256=sha(discovery_path))
                     baseline = screenshot_from_summary(release.runtime_evidence_path)
@@ -268,22 +269,22 @@ def gallery(output):
                             row['kit_grid_matches_bound_baseline'] = diff.getbbox() is None
                             row['kit_grid_changed_pixels'] = sum(pixel != (0, 0, 0) for pixel in diff.getdata())
         baseline_summary = release.runtime_evidence_path / 'summary.json' if release.runtime_evidence_path else None
-        if baseline_summary and baseline_summary.is_file():
-            steps = json.loads(baseline_summary.read_text()).get('steps', [])
+        if baseline_summary and storage_io.is_file(baseline_summary):
+            steps = json.loads(storage_io.read_text(baseline_summary)).get('steps', [])
             for step in steps:
                 if step.get('step', {}).get('label') == 'return_from_line_up':
                     dashboard = release.runtime_evidence_path / 'screens' / Path(step['screenshot']).name
-                    if dashboard.is_file():
+                    if storage_io.is_file(dashboard):
                         row['bound_baseline_dashboard'] = str(dashboard)
                         row['bound_baseline_dashboard_sha256'] = sha(dashboard)
         fresh_dashboard = ROOT / '.local/runlogs/pm99_runner' / ('visual_qa_' + season.replace('-', '_') + '_dashboard_20261003_r1')
-        if (fresh_dashboard / 'summary.json').is_file():
-            dashboard_summary = json.loads((fresh_dashboard / 'summary.json').read_text())
+        if storage_io.is_file(fresh_dashboard / 'summary.json'):
+            dashboard_summary = json.loads(storage_io.read_text(fresh_dashboard / 'summary.json'))
             if dashboard_summary.get('success') and dashboard_summary.get('release_manifest_sha256') == release.manifest_sha256:
                 for step in dashboard_summary.get('steps', []):
                     if step.get('step', {}).get('label') == 'return_from_line_up':
                         path = fresh_dashboard / 'screens' / Path(step['screenshot']).name
-                        if path.is_file():
+                        if storage_io.is_file(path):
                             row['fresh_dashboard'] = str(path)
                             row['fresh_dashboard_sha256'] = sha(path)
                             # Known PM99 640x480 HUD position. Compare foreground
@@ -322,7 +323,7 @@ def gallery(output):
                     draw.text((x + 7, y + 50), 'NOT CAPTURED', fill='#ff9090')
             path = output / f'{kind}-{start + 1:02d}-{start + len(subset):02d}.png'
             sheet.save(path)
-            sheets.append(str(path.resolve()))
+            sheets.append(str(storage_io.resolve(path)))
 
         # These are explicitly archive previews, not runner screenshots.
         kit_sheet = Image.new('RGB', (6 * 150, len(subset) * 160 + 24), '#e0e0da')
@@ -331,7 +332,7 @@ def gallery(output):
         queries = ('Barcelona', 'Real Madrid', 'Bayern', 'Milan', 'Juventus', 'Ajax')
         for index, row in enumerate(subset):
             release = registry.load_preferred_release(row['season'])
-            package = json.loads(release.package_path.read_text())
+            package = json.loads(storage_io.read_text(release.package_path))
             records = kit_records(release.game_path / 'DBDAT')
             palette, _ = runtime_kit_palette(release.game_path / 'DBDAT')
             for col, query in enumerate(queries):
@@ -347,7 +348,7 @@ def gallery(output):
                     kit_sheet.paste(rendered, (x + 25, y + 24), rendered)
         path = output / f'foreign-kit-palette-previews-{start + 1:02d}-{start + len(subset):02d}.png'
         kit_sheet.save(path)
-        sheets.append(str(path.resolve()))
+        sheets.append(str(storage_io.resolve(path)))
     save(output / 'screenshot-index.json', {'seasons': rows, 'sheets': sheets,
                                           'fresh_capture_count': sum(row['status'] == 'captured' for row in rows)})
     parts = ['<!doctype html><meta charset="utf-8"><title>PM99 visual QA</title>',
@@ -356,24 +357,24 @@ def gallery(output):
     for row in rows:
         parts.append('<section><h2>' + row['season'] + '</h2>')
         audit_path = output / row['season'] / 'player-photo-audit.json'
-        if audit_path.is_file():
-            data = json.loads(audit_path.read_text())
+        if storage_io.is_file(audit_path):
+            data = json.loads(storage_io.read_text(audit_path))
             parts.append('<p>English clubs: ' + html.escape(str(data['photo_groups'].get('english-club'))) +
                          '<br>Foreign clubs: ' + html.escape(str(data['photo_groups'].get('foreign-club'))) +
                          '<br><a href="' + row['season'] + '/player-photo-audit.json">Every rostered player: photo audit</a></p>')
         for key, label in (('screenshot', 'Fresh team / kit selection'), ('fresh_dashboard', 'Fresh dashboard capture'),
                            ('bound_baseline_dashboard', 'Release-bound dashboard baseline')):
             if key in row:
-                relative = os.path.relpath(row[key], output.resolve())
+                relative = os.path.relpath(row[key], storage_io.resolve(output))
                 parts.append('<p>' + label + '</p><a href="' + html.escape(relative, quote=True) + '"><img src="' + html.escape(relative, quote=True) + '"></a>')
         parts.append('</section>')
-    (output / 'screenshots.html').write_text('\n'.join(parts), encoding='utf-8')
+    storage_io.write_text(output / 'screenshots.html', '\n'.join(parts), encoding='utf-8')
     print(json.dumps({'fresh_capture_count': sum(row['status'] == 'captured' for row in rows), 'sheets': sheets}), flush=True)
 
 
 def report(output):
-    audited = json.loads((output / 'all-seasons-audit.json').read_text())
-    screenshots = json.loads((output / 'screenshot-index.json').read_text())
+    audited = json.loads(storage_io.read_text(output / 'all-seasons-audit.json'))
+    screenshots = json.loads(storage_io.read_text(output / 'screenshot-index.json'))
     per_season = []
     for row in audited['seasons']:
         groups = row['photo_groups']
@@ -385,14 +386,14 @@ def report(output):
                            'foreign_stock_photos': groups['foreign-club'].get('stock-carrier-photo', 0),
                            'foreign_no_photo': groups['foreign-club'].get('no-photo', 0),
                            'no_photo_declaration_conflicts': row['no_photo_declaration_conflicts']})
-    with (output / 'photo-coverage.csv').open('w', newline='', encoding='utf-8') as stream:
+    with storage_io.open_file(output / 'photo-coverage.csv', 'w', newline='', encoding='utf-8') as stream:
         writer = csv.DictWriter(stream, fieldnames=list(per_season[0]))
         writer.writeheader()
         writer.writerows(per_season)
     pilot_root = ROOT / '.local/season-historical-photo-pilots-v1/2014-15/stoke-qa-v4'
-    pilot = json.loads((pilot_root / 'combined-materialisation.json').read_text())
-    pilot_qa = json.loads((pilot_root / 'historical-photo-qa.json').read_text())
-    pilot_validation = json.loads((pilot_root / 'validation.json').read_text())
+    pilot = json.loads(storage_io.read_text(pilot_root / 'combined-materialisation.json'))
+    pilot_qa = json.loads(storage_io.read_text(pilot_root / 'historical-photo-qa.json'))
+    pilot_validation = json.loads(storage_io.read_text(pilot_root / 'validation.json'))
     totals = Counter()
     for row in audited['seasons']:
         totals.update(row['photo_counts'])
@@ -452,20 +453,20 @@ def report(output):
         {'season': row['season'], **row['dashboard_kit_colour_comparison']}
         for row in screenshots['seasons'] if 'dashboard_kit_colour_comparison' in row]
     release_validation = output / 'registered-release-validation.json'
-    if release_validation.is_file():
-        verified = json.loads(release_validation.read_text())
+    if storage_io.is_file(release_validation):
+        verified = json.loads(storage_io.read_text(release_validation))
         result['immutable_release_validation'] = {'season_count': verified['season_count'],
                                                   'valid_count': verified['valid_count']}
     binding_report = output / 'foreign-kit-bindings.json'
-    if binding_report.is_file():
-        result['native_kit_identity_review'] = json.loads(binding_report.read_text())
+    if storage_io.is_file(binding_report):
+        result['native_kit_identity_review'] = json.loads(storage_io.read_text(binding_report))
     foreign_capture = ROOT / '.local/runlogs/pm99_runner/visual_qa_2015_16_foreign_spain_20261003_r1'
-    if (foreign_capture / 'summary.json').is_file():
-        summary = json.loads((foreign_capture / 'summary.json').read_text())
+    if storage_io.is_file(foreign_capture / 'summary.json'):
+        summary = json.loads(storage_io.read_text(foreign_capture / 'summary.json'))
         release = registry.load_preferred_release('2015-16')
         receipt = foreign_capture / 'dbdat_override.sha256'
         matches = True
-        for line in receipt.read_text().splitlines():
+        for line in storage_io.read_text(receipt).splitlines():
             if line.startswith('#') or not line.strip():
                 continue
             expected, relative = line.split(None, 1)
@@ -497,9 +498,9 @@ def kit_bindings(output):
     flags, summaries = [], []
     for season in registry.supported_seasons():
         release = registry.load_preferred_release(season)
-        package = json.loads(release.package_path.read_text())
+        package = json.loads(storage_io.read_text(release.package_path))
         clubs = {int(club['carrier_id']): club for club in package['clubs']}
-        _owners, _rosters, modes = _source_roster_owners((release.game_path / 'DBDAT/EQ98030.FDI').read_bytes())
+        _owners, _rosters, modes = _source_roster_owners(storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI'))
         count, identical = 0, 0
         for carrier, record in records(release.game_path / 'DBDAT').items():
             if modes.get(carrier) != 1 or carrier not in clubs:
@@ -516,7 +517,7 @@ def kit_bindings(output):
                 count += 1
         summaries.append({'season': season, 'identical_native_foreign_miniesc': identical,
                           'renamed_native_kit_review_count': count})
-    with (output / 'foreign-kit-binding-review.csv').open('w', newline='', encoding='utf-8') as stream:
+    with storage_io.open_file(output / 'foreign-kit-binding-review.csv', 'w', newline='', encoding='utf-8') as stream:
         writer = csv.DictWriter(stream, fieldnames=list(flags[0]))
         writer.writeheader()
         writer.writerows(flags)

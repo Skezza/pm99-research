@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 import os
 from pathlib import Path
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts.build_discovered_fixture_batches_20261017 import ROOT, RELEASE
 from scripts.capture_discovered_fixture_batches_20261017 import tag
@@ -20,32 +21,32 @@ def binding(path):
 
 def recover_completed_child(folder, release):
     receipt = folder / 'replacement_18072-profile-transport.json'
-    if receipt.exists():
+    if storage_io.exists(receipt):
         raise ValueError('recovered child already receipted; never overwrite')
-    if (Path('/proc') / '3327709' / 'cmdline').exists():
+    if storage_io.exists(Path('/proc') / '3327709' / 'cmdline'):
         raise ValueError('original controller still exists; inspect before recovery')
     target = folder / 'runtime/replacement_18072'
-    summaries = list(target.rglob('summary.json'))
+    summaries = list(storage_io.glob(target, 'summary.json', recursive=True))
     if len(summaries) != 1:
         raise ValueError('one exact returned completed profile required')
     evidence = summaries[0].parent
     summary = pipeline.read_json_file(summaries[0])
     exit_path = evidence / 'remote_startup/container_exit_code.txt'
-    if (exit_path.read_text().strip() != '0' or not summary.get('success')
+    if (storage_io.read_text(exit_path).strip() != '0' or not summary.get('success')
             or summary.get('wine_debugger_detected')
             or not summary['player_profile'].get('expected_name_token_satisfied')):
         raise ValueError('returned remote profile not successful; no inferred recovery')
     if registry.sha256_file(evidence / 'input-provenance.json') != registry.sha256_file(release.compiler_receipt_path):
         raise ValueError('completed child provenance identifies another actual game')
     hashes = {line.split()[1]: line.split()[0]
-        for line in (evidence / 'dbdat_override.sha256').read_text().splitlines()
+        for line in storage_io.read_text(evidence / 'dbdat_override.sha256').splitlines()
         if line and not line.startswith('#')}
     for name in ('JUG98030.FDI', 'EQ98030.FDI', 'ENT98030.FDI',
                  'MINIFOTO.PKF', 'RIDIESC.PKF', 'MINIESC.PKF', 'NANOESC.PKF'):
         if hashes.get('DBDAT/' + name) != registry.sha256_file(release.game_path / 'DBDAT' / name):
             raise ValueError('returned completed child native inputs differ')
     screenshot = evidence / 'screens' / Path(summary['player_profile']['screenshot']).name
-    if not screenshot.is_file():
+    if not storage_io.is_file(screenshot):
         raise ValueError('completed profile original screenshot absent')
     recovery = folder / 'replacement_18072-controller-interruption-recovery.json'
     retained(recovery, dict(utc=datetime.now(UTC).isoformat(), outer_controller_pid=3327709,

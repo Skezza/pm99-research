@@ -35,6 +35,7 @@ for candidate in (ROOT, EDITOR):
 
 from app.fdi_indexed import IndexedFDIFile  # noqa: E402
 from app.models import PlayerRecord  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts.season_package_compiler_v2 import (  # noqa: E402
     SeasonCompilerError,
     _dd6361_fine_roles,
@@ -62,7 +63,7 @@ PROVISIONABLE_ROLE_CODES = (3,)
 
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
@@ -79,13 +80,13 @@ def _name(payload: bytes) -> str | None:
 def audit_mode1_recycle_capacity(*, dbdat: Path) -> dict[str, Any]:
     """Return a deterministic, non-mutating mode-1 recycle gate report."""
 
-    dbdat = dbdat.expanduser().resolve()
+    dbdat = storage_io.resolve(dbdat.expanduser())
     eq_path = dbdat / "EQ98030.FDI"
     jug_path = dbdat / "JUG98030.FDI"
-    if not eq_path.is_file() or not jug_path.is_file():
+    if not storage_io.is_file(eq_path) or not storage_io.is_file(jug_path):
         raise ValueError("--dbdat must contain EQ98030.FDI and JUG98030.FDI")
-    eq_data = eq_path.read_bytes()
-    jug_data = jug_path.read_bytes()
+    eq_data = storage_io.read_bytes(eq_path)
+    jug_data = storage_io.read_bytes(jug_path)
     owners, _rosters, modes = _source_roster_owners(eq_data)
     entries = {int(entry.record_id): entry for entry in IndexedFDIFile.from_bytes(jug_data).entries}
 
@@ -209,7 +210,7 @@ def main() -> int:
     args = parser.parse_args()
     report = audit_mode1_recycle_capacity(dbdat=args.dbdat)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+    storage_io.write_text(args.output, json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2) + '\n', encoding='utf-8')
     print(json.dumps({"output": str(args.output), "release_status": report["release_status"]}, sort_keys=True))
     return 0
 

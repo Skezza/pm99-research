@@ -3,6 +3,7 @@
 This review grants no permission to substitute a cup XI for the league opener.
 The previous immutable review is retained; neither a keeper nor a DOB is invented.
 """
+from scripts import json_storage_io_v1 as storage_io
 from scripts import italchacao_2001_original_august_v1 as opening
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_published_person_identity_v1 as people
@@ -44,7 +45,7 @@ def prepare():
 if __name__ == '__main__':
     output = ROOT / 'italchacao-2001-original-capacity-review-v2.json'
     result = prepare()
-    if output.exists():
+    if storage_io.exists(output):
         if pipeline.read_json_file(output) != result:
             raise ValueError('immutable corrected capacity review differs')
     else:

@@ -7,6 +7,14 @@ It emits both machine-readable JSON and analyst-friendly CSV.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import csv
 from datetime import datetime, timezone
@@ -15,12 +23,12 @@ from pathlib import Path
 import sys
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR_ROOT = REPO_ROOT / "upstream" / "pm99-skezmod-db-editor"
 if str(EDITOR_ROOT) not in sys.path:
     sys.path.insert(0, str(EDITOR_ROOT))
-if str(Path(__file__).resolve().parent) not in sys.path:
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
+if str(storage_io.resolve(Path(__file__)).parent) not in sys.path:
+    sys.path.insert(0, str(storage_io.resolve(Path(__file__)).parent))
 
 from assert_pm99_isolated_input import choose_preferred_game_root, ensure_not_legacy_path
 from app.editor_sources import gather_player_records
@@ -55,7 +63,7 @@ def _slug(value: str) -> str:
 
 def _write_json(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    storage_io.write_text(path, json.dumps(payload, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
 
 
 def _resolve_team_roster(*, team_file: Path, player_file: Path, team_query: str) -> EQLinkedTeamRoster:
@@ -234,7 +242,7 @@ def run(*, team_file: Path, player_file: Path, team_query: str, output_dir: Path
     }
     _write_json(manifest_path, manifest)
 
-    with table_path.open("w", newline="", encoding="utf-8") as handle:
+    with storage_io.open_file(table_path, 'w', newline='', encoding='utf-8') as handle:
         writer = csv.writer(handle)
         writer.writerow(
             [
@@ -303,7 +311,7 @@ def main() -> int:
         team_file=ensure_not_legacy_path(args.team_file, label="EQ file"),
         player_file=ensure_not_legacy_path(args.player_file, label="JUG file"),
         team_query=str(args.team_query),
-        output_dir=args.output_dir.expanduser().resolve(),
+        output_dir=storage_io.resolve(args.output_dir.expanduser()),
     )
 
     print(f"Wrote: {result['manifest_path']}")

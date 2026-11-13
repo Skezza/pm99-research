@@ -21,8 +21,10 @@ from typing import Any, Iterable
 
 try:
     from . import json_storage_v1 as json_storage
+    from . import json_storage_io_v1 as storage_io
 except ImportError:  # direct execution from scripts/
     import json_storage_v1 as json_storage
+    import json_storage_io_v1 as storage_io
 
 
 SCHEMA_VERSION = "pm99-season-package-v2"
@@ -84,7 +86,7 @@ def sha256_file(path: Path) -> str:
     return json_storage.sha256_file(path)
 
 
-def write_canonical_package(path: Path, package: dict[str, Any], *, compressed: bool | None = None) -> None:
+def write_canonical_package(path: Path, package: dict[str, Any], *, compressed: bool | str | None = None) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     encoded = canonical_json_bytes(package)
     # Preserve the established plain writer (including non-POSIX callers).
@@ -92,7 +94,9 @@ def write_canonical_package(path: Path, package: dict[str, Any], *, compressed: 
     is_json = path.name.endswith((".json", ".json.zst"))
     packed = json_storage.compressed_path(path) if is_json else None
     has_compressed = packed is not None and (packed.exists() or packed.is_symlink())
-    if compressed is not True and not has_compressed:
+    if compressed is None and is_json and storage_io.automatic(path):
+        compressed = 'auto'
+    if compressed not in (True, 'auto') and not has_compressed:
         path.write_bytes(encoded)
     else:
         json_storage.write_bytes(path, encoded, compressed=compressed, overwrite=True)

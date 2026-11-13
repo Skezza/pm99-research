@@ -2,6 +2,7 @@
 import copy
 import re
 from datetime import UTC,datetime
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import season_2015_english_fifa_roles_v1 as source
 from scripts import publish_historical_role_delta_v1 as publisher,attest_registered_season_runtime_v1 as runtime
@@ -28,7 +29,7 @@ def role_label_matches(code,label):
 
 def run():
     prior=MAIN.parent/'release-delivery-checklist-v45.json';output=MAIN.parent/'release-delivery-checklist-v46.json'
-    if output.exists():raise ValueError('completed English role checkpoint must not repeat')
+    if storage_io.exists(output):raise ValueError('completed English role checkpoint must not repeat')
     result=copy.deepcopy(pipeline.read_json_file(prior))
     old={r['season']:r for r in result['current_release_bindings']}
     for season in registry.supported_seasons():
@@ -48,7 +49,7 @@ def run():
         raise ValueError('English actual native/SOURCE proof differs')
     if (source.bind(pipeline.read_json_file(base.package_path),plan)!=pipeline.read_json_file(release.package_path)
             or source.updated_english(plan)!=source.overlay(release)[0]):raise ValueError('English edited recipe not actually published')
-    raw=(release.game_path/'DBDAT/JUG98030.FDI').read_bytes();indexed={e.record_id:e for e in IndexedFDIFile.from_bytes(raw).entries}
+    raw=storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI');indexed={e.record_id:e for e in IndexedFDIFile.from_bytes(raw).entries}
     changed=0
     for row in plan['updates']:
         roles=read_indexed_native_roles(indexed[row['carrier_id']].decode_payload(raw),row['carrier_id'])[1]

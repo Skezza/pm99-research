@@ -15,6 +15,7 @@ import sys
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]; sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import prepare_paired_whole_club_dispositions_v1 as paired
 from scripts import prepare_duplicate_whole_club_native_v1 as native
 from scripts import season_release_registry_v1 as registry
@@ -87,17 +88,17 @@ def independently_replay_sources(proposals):
                 fit_verified_reserve_pool=bool(p.get('fit_verified_reserve_pool')),
                 retained_source_label_review_path=(native.original(p['bindings']['retained_duplicate_label_review'])
                     if p['bindings'].get('retained_duplicate_label_review') else None))
-            if json.loads(path.read_text()) != p:
+            if json.loads(storage_io.read_text(path)) != p:
                 raise ValueError('coupled source proposal differs from independent original replay')
 
 
 def prepare(pair_path, managers, output, input_overrides=None):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('paired native candidate is immutable')
-    pair = json.loads(pair_path.read_text())
+    pair = json.loads(storage_io.read_text(pair_path))
     if pair.get('schema_version') not in (paired.SCHEMA,paired.SINGLETON_SCHEMA) or pair.get('publication_authorised') is not False:
         raise ValueError('paired native candidate needs complete explicit source-only group')
-    proposals = [json.loads(native.original(b).read_text()) for b in pair['proposals']]
+    proposals = [json.loads(storage_io.read_text(native.original(b))) for b in pair['proposals']]
     if paired.source_guard(pair,proposals) != pair['source_guard']:
         raise ValueError('saved coupled source guard does not independently reproduce')
     if any((p['season'], p['release_id']) != (pair['season'], pair['release_id']) for p in proposals):
@@ -150,13 +151,13 @@ def prepare(pair_path, managers, output, input_overrides=None):
     # Perform cheap native fitting/preflight IN MEMORY before the expensive
     # source replay. Neither phase writes a game. Both original-source decisions
     # still independently reproduce before any candidate/native file is saved.
-    package = json.loads(release.package_path.read_text()); result = copy.deepcopy(package)
+    package = json.loads(storage_io.read_text(release.package_path)); result = copy.deepcopy(package)
     holdings, _ = native._manager_graph(eq_path=release.game_path / 'DBDAT/EQ98030.FDI',
         ent_path=release.game_path / 'DBDAT/ENT98030.FDI')
     compositions = []; managers_proof = []; changed = set(); player_carriers = set(); manager_carriers = set()
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (release.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
-    ent = (release.game_path / 'DBDAT/ENT98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
+    ent = storage_io.read_bytes(release.game_path / 'DBDAT/ENT98030.FDI')
     # Compose both complete squads while all old coaches are still unchanged.
     # Moving one real coach first may temporarily collide with his old wrong
     # assignment on the other retired carrier. Validate only the fully composed
@@ -167,12 +168,12 @@ def prepare(pair_path, managers, output, input_overrides=None):
     for p in proposals:
         club, slots = native.validate_allocation(package, p); carrier = club['carrier_id']
         changed.update(slots); player_carriers.update(r['carrier_id'] for r in p['allocation'])
-        manager_path = managers[carrier]; receipt = json.loads(manager_path.with_name(manager_path.name + '.source.json').read_text())
+        manager_path = managers[carrier]; receipt = json.loads(storage_io.read_text(manager_path.with_name(manager_path.name + '.source.json')))
         team_id = p['original_opening']['source_capture']['source_path'].split('/')[2]
         if receipt != {'url': f'https://www.soccerbase.com/teams/team.sd?team_id={team_id}&teamTabs=managers',
                        'sha256': registry.sha256_file(manager_path)}:
             raise ValueError('manager original URL/SHA belongs to another coupled club')
-        name,source_manager_id = dated_manager_identity(manager_path.read_bytes(), p['original_opening']['fixture']['date'])
+        name,source_manager_id = dated_manager_identity(storage_io.read_bytes(manager_path), p['original_opening']['fixture']['date'])
         short, _ = native.manager_display.short_name(name)
         if short is None:
             raise ValueError('coupled manager has no proved native display form')
@@ -229,7 +230,7 @@ def prepare(pair_path, managers, output, input_overrides=None):
             exchanges.append({'club_carrier_id':p['before_club']['carrier_id'],'rows':rows,
                 'changed_file_offsets':changed_bytes,'all_other_bytes_preserved':True})
     for p in proposals:
-        before = native.source.startup_orders((release.game_path / 'DBDAT/JUG98030.FDI').read_bytes(),
+        before = native.source.startup_orders(storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI'),
             [r['before_recipe'] for r in p['allocation']])
         after = native.source.startup_orders(jug, [r['before_recipe'] for r in p['allocation']])
         expected={r['carrier_id']:r.get('native_startup_order_after',before[r['carrier_id']]) for r in p['allocation']}
@@ -239,9 +240,9 @@ def prepare(pair_path, managers, output, input_overrides=None):
     club_carriers = {p['before_club']['carrier_id'] for p in proposals}
     for filename, data, allowed in (('JUG98030.FDI', jug, player_carriers),
                                   ('EQ98030.FDI', eq, club_carriers), ('ENT98030.FDI', ent, manager_carriers)):
-        native.preserve_other_records((release.game_path / 'DBDAT' / filename).read_bytes(), data, allowed)
+        native.preserve_other_records(storage_io.read_bytes(release.game_path / 'DBDAT' / filename), data, allowed)
     archive, photo_offsets = native.delta.no_photo_archive(
-        (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes(), player_carriers)
+        storage_io.read_bytes(release.game_path / 'DBDAT/MINIFOTO.PKF'), player_carriers)
     independently_replay_sources(proposals)
     estimated = len(jug) + len(eq) + len(ent) + len(archive) + 64 * 1024**2
     if shutil.disk_usage(release.game_path).free - estimated < 8 * 1024**3:
@@ -251,27 +252,27 @@ def prepare(pair_path, managers, output, input_overrides=None):
     output.mkdir(parents=True); shutil.copytree(release.game_path, output / 'game', copy_function=os.link)
     for name, data in (('JUG98030.FDI', jug), ('EQ98030.FDI', eq), ('ENT98030.FDI', ent), ('MINIFOTO.PKF', archive)):
         path = output / 'game/DBDAT' / name
-        if path.read_bytes() != data:
-            temporary = output / (name + '.partial'); temporary.write_bytes(data); os.replace(temporary, path)
+        if storage_io.read_bytes(path) != data:
+            temporary = output / (name + '.partial'); storage_io.write_bytes(temporary, data); storage_io.replace_file(temporary, path)
     for carrier in photo_offsets:
         path = output / 'game/DBDAT/MINIFOTO' / f'J96{carrier:05d}.BMP'
-        if path.exists(): path.unlink()
+        if storage_io.exists(path): storage_io.unlink(path)
     pipeline.write_canonical_json(output / 'season-package.json', result)
     for composition in compositions:
         pipeline.write_canonical_json(output / native.delta.plan_filename(composition), composition)
     for manager in managers_proof:
-        os.link(ROOT / manager['path'], output / manager['relative_path'])
+        storage_io.link(ROOT / manager['path'], output / manager['relative_path'])
     for artifact in result['artifacts']:
         if not (relative := artifact.get('relative_path')): continue
         relative = Path(relative)
         if relative.is_absolute() or '..' in relative.parts:
             raise ValueError('unsafe coupled recipe artifact')
         target = output / relative
-        if not target.exists():
+        if not storage_io.exists(target):
             previous = inputs.get(relative, (release.package_path.parent / relative,))[0]
             from scripts.publish_contextual_tactics_delta_v1 import verify_recipe_artifact
             verify_recipe_artifact(previous, artifact['sha256'])
-            target.parent.mkdir(parents=True, exist_ok=True); os.link(previous, target)
+            target.parent.mkdir(parents=True, exist_ok=True); storage_io.link(previous, target)
         from scripts.publish_contextual_tactics_delta_v1 import verify_recipe_artifact
         verify_recipe_artifact(target, artifact['sha256'])
     holders, names = native._manager_graph(eq_path=output / 'game/DBDAT/EQ98030.FDI',

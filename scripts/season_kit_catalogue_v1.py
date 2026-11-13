@@ -15,6 +15,14 @@ request marks the carrier club as exited, matching the V1 season policy.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -87,15 +95,15 @@ def _cache_paths(cache_dir: Path, source: Mapping[str, Any]) -> tuple[Path, Path
 
 def _read_cached_wikipedia(cache_dir: Path, source: Mapping[str, Any]) -> dict[str, Any] | None:
     index_path, object_root = _cache_paths(cache_dir, source)
-    if not index_path.is_file():
+    if not storage_io.is_file(index_path):
         return None
     try:
-        index = json.loads(index_path.read_text(encoding="utf-8"))
+        index = json.loads(storage_io.read_text(index_path, encoding='utf-8'))
         digest = str(index["sha256"])
         if not SHA256_RE.fullmatch(digest):
             return None
         object_path = object_root / digest[:2] / f"{digest}.json"
-        payload = object_path.read_bytes()
+        payload = storage_io.read_bytes(object_path)
         value = json.loads(payload.decode("utf-8"))
         if payload != canonical_json_bytes(value) or sha256_bytes(payload) != digest:
             return None
@@ -110,12 +118,12 @@ def _write_cached_wikipedia(cache_dir: Path, source: Mapping[str, Any], value: M
     index_path, object_root = _cache_paths(cache_dir, source)
     object_path = object_root / digest[:2] / f"{digest}.json"
     object_path.parent.mkdir(parents=True, exist_ok=True)
-    if object_path.exists() and object_path.read_bytes() != payload:
+    if storage_io.exists(object_path) and storage_io.read_bytes(object_path) != payload:
         raise KitCatalogueError(f"content-addressed cache collision: {object_path}")
-    if not object_path.exists():
-        object_path.write_bytes(payload)
+    if not storage_io.exists(object_path):
+        storage_io.write_bytes(object_path, payload)
     index_path.parent.mkdir(parents=True, exist_ok=True)
-    index_path.write_bytes(canonical_json_bytes({"sha256": digest}))
+    storage_io.write_bytes(index_path, canonical_json_bytes({'sha256': digest}))
     return digest
 
 
@@ -377,10 +385,10 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--allow-network", action="store_true", help="fetch exact requested Wikipedia pages on cache miss")
     args = parser.parse_args()
-    request = json.loads(args.request.read_text(encoding="utf-8"))
+    request = json.loads(storage_io.read_text(args.request, encoding='utf-8'))
     result = build_catalogue(request, cache_dir=args.cache_dir, allow_network=args.allow_network)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_json_bytes(result))
+    storage_io.write_bytes(args.output, canonical_json_bytes(result))
     print(json.dumps(result["coverage"], indent=2, sort_keys=True))
     return 0
 

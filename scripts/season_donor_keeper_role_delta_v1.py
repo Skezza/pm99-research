@@ -14,6 +14,7 @@ from bs4 import BeautifulSoup
 from app.fdi_indexed import IndexedFDIFile
 from app.indexed_jug_roles import read_indexed_native_roles, rewrite_indexed_native_roles
 from app.indexed_jug_nationality import rewrite_indexed_native_nationalities
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_package_v2 as packages, season_package_compiler_v2 as compiler
 from scripts import season_historical_roster_audit_v1 as roster
@@ -40,7 +41,7 @@ def filename(plan):
 @lru_cache(maxsize=2)
 def factory_people(file_sha):
     path = DEFAULT_BASE / 'DBDAT/JUG98030.FDI'
-    data = path.read_bytes()
+    data = storage_io.read_bytes(path)
     if hashlib.sha256(data).hexdigest() != file_sha:
         raise ValueError('factory donor source changed')
     result = {}
@@ -83,7 +84,7 @@ def known_biography(raw):
 
 def prepare(base):
     package = pipeline.read_json_file(base.package_path)
-    data = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    data = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
     index = {e.record_id:e for e in IndexedFDIFile.from_bytes(data).entries}
     factory_path = DEFAULT_BASE / 'DBDAT/JUG98030.FDI'
     factory_sha = registry.sha256_file(factory_path)
@@ -188,9 +189,9 @@ def bind(package, plan):
 
 def apply(jug, eq, plan):
     base = registry.load_registered_release(plan['season'], plan['release_id'])
-    original = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    original = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
     if (hashlib.sha256(original).hexdigest() != plan['jug_sha256']
-            or eq != (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()):
+            or eq != storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')):
         raise ValueError('donor-role exact native preimage/EQ changed')
     roles = {r['carrier_id']:r['fine_roles'] for r in plan['updates'] if r['fine_roles'] is not None}
     codes = compiler._extract_country_codes_from_textos(base.game_path / 'DBDAT/TEXTOS.PKF')
@@ -225,7 +226,7 @@ def reconstruction(previous, release_id):
     if bind(pipeline.read_json_file(base.package_path),plan) != package:
         raise ValueError('donor-role SOURCE would discard recipe edits')
     artifact = next(a for a in package['artifacts'] if a['id']==PREFIX+plan['transaction_id'])
-    if path.resolve() != (previous.package_path.parent/filename(plan)).resolve() or registry.sha256_file(path)!=artifact['sha256']:
+    if storage_io.resolve(path) != storage_io.resolve(previous.package_path.parent / filename(plan)) or registry.sha256_file(path)!=artifact['sha256']:
         raise ValueError('donor-role SOURCE artifact path/hash differs')
     descriptor = previous.package_path.parent/'role-delta-input.json'
     if pipeline.read_json_file(descriptor) != dict(season=base.season,release_id=base.release_id,

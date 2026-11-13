@@ -12,6 +12,7 @@ from pathlib import Path
 import sys
 
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_duplicate_source_context_v1 as source
 from scripts import season_duplicate_ownership_plan_v1 as planner
 from scripts import season_duplicate_ownership_delta_v1 as delta
@@ -39,8 +40,8 @@ def unused(replacement,used_people,used_identity,used_dates,undated_names,provid
 
 def prepare_one(path,output,snapshot_people,snapshot_events,pin,claims,display_claims,capacity_bundle=None):
     target=output/path.parent.name/'ownership-plan.json'
-    if target.exists():raise ValueError('family-window proposal already exists; never overwrite')
-    old=json.loads(path.read_text());pending=[r for r in old['unresolved'] if r['reason']==REASON]
+    if storage_io.exists(target):raise ValueError('family-window proposal already exists; never overwrite')
+    old=json.loads(storage_io.read_text(path));pending=[r for r in old['unresolved'] if r['reason']==REASON]
     if not pending:return None
     print(json.dumps({'family_source_replay':old['season'],'pending_name_slots':len(pending)}),flush=True)
     ctx=source.context(old,snapshot_people,snapshot_events,pin)
@@ -52,7 +53,7 @@ def prepare_one(path,output,snapshot_people,snapshot_events,pin,claims,display_c
     used_people={p['source_player_id'] for row in players if (p:=transfer.unique_person(row,ctx['people']))}
     used_identity={roster.person_identity_key(p) for p in players}
     used_dates,undated_names=soccerbase.existing_identity_protection(players)
-    native=(release.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    native=storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     result=copy.deepcopy(old);result['updates']=[];completed=set();refused=[]
     result['allow_published_family_components']=True
     result['bindings']['published_family_component_policy']=family.POLICY
@@ -153,7 +154,7 @@ def native_feasible(doc,claims,capacity_bundle=None):
     if not pending:return False
     release=registry.load_preferred_release(doc['season'])
     if release.release_id!=doc['release_id']:raise ValueError('native feasibility baseline changed')
-    data=(release.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    data=storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     entries={e.record_id:e for e in IndexedFDIFile.from_bytes(data).entries}
     for queued in pending:
         loser=next(p for p in queued['candidates'] if p['player_id']==queued['player_id'])
@@ -179,7 +180,7 @@ def native_feasible(doc,claims,capacity_bundle=None):
 
 
 def run(input_root,output,resume=False,capacity_bundle=None):
-    paths=sorted(input_root.glob('*/ownership-plan.json'));documents=[json.loads(p.read_text()) for p in paths]
+    paths=sorted(storage_io.glob(input_root, '*/ownership-plan.json'));documents=[json.loads(storage_io.read_text(p)) for p in paths]
     if not documents:raise ValueError('no completed input plans')
     public=documents[0]['bindings']['published_person_supplement']
     if any(d['bindings']['published_person_supplement']!=public for d in documents):raise ValueError('different original-person inputs')
@@ -194,8 +195,8 @@ def run(input_root,output,resume=False,capacity_bundle=None):
     if binding!=pin:raise ValueError('immutable source snapshot binding changed')
     for path,doc in zip(paths,documents):
         existing=output/doc['season']/'ownership-plan.json'
-        if existing.exists():
-            saved=json.loads(existing.read_text());continued=saved['continued_name_window_queue']
+        if storage_io.exists(existing):
+            saved=json.loads(storage_io.read_text(existing));continued=saved['continued_name_window_queue']
             if (not resume or continued['sha256']!=registry.sha256_file(path)
                     or continued['path']!=registry.relative_workspace_path(path)
                     or continued.get('capacity_policy_bundle')!=capacity_bundle):

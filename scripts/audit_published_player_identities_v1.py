@@ -14,6 +14,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import audit_duplicate_club_cohorts_v1 as cohorts
 from scripts import season_duplicate_ownership_plan_v1 as planner
 from scripts import season_historical_transfer_review_v1 as transfer
@@ -42,11 +43,11 @@ def key(player, people):
 
 
 def run(output, release_map=None, person_supplement=None):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('identity evidence is immutable')
     mapping = {}
     if release_map is not None:
-        document = json.loads(release_map.read_text())
+        document = json.loads(storage_io.read_text(release_map))
         mapping = {row['season']: row for row in document['releases']}
         if set(mapping) != set(registry.supported_seasons()):
             raise ValueError('before-state release map must bind all 26 seasons')
@@ -55,7 +56,7 @@ def run(output, release_map=None, person_supplement=None):
     if person_supplement is not None:
         from scripts import season_published_person_identity_v1 as public
         digest = registry.sha256_file(person_supplement)
-        people, merge_report = public.merge(people, json.loads(person_supplement.read_text()))
+        people, merge_report = public.merge(people, json.loads(storage_io.read_text(person_supplement)))
         public_binding = {'path': registry.relative_workspace_path(person_supplement),
             'sha256': digest, 'policy': public.POLICY, 'merge_refusals': merge_report['refused']}
     seasons = []

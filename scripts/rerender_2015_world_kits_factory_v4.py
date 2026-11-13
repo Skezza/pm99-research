@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import pm99_factory_kit_renderer_v4 as factory_renderer
 from scripts.materialise_2015_world_kits import canonical_json_bytes, sha256_bytes
 from scripts.rerender_2015_world_kits_factory_v1 import FactoryRerenderError, rerender
@@ -26,7 +27,7 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     try:
-        source_bytes = args.materialisation.read_bytes()
+        source_bytes = storage_io.read_bytes(args.materialisation)
         result = rerender(
             materialisation=json.loads(source_bytes),
             clean_dbdat=args.clean_dbdat,
@@ -38,7 +39,7 @@ def main() -> int:
         return 2
     result["renderer"]["source_materialisation_file_sha256"] = sha256_bytes(source_bytes)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_json_bytes(result))
+    storage_io.write_bytes(args.output, canonical_json_bytes(result))
     print(json.dumps({"rerendered": result["coverage"]["factory_template_rerendered_carrier_count"], "output": str(args.output)}, sort_keys=True))
     return 0
 

@@ -22,6 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'upstream/pm99-skezmod-patcher'))
 from player_birth_year_guard import patch_native_birth_year_guard
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_package_v2 as package_v2
 from scripts import season_disk_budget_v1 as disk_budget
@@ -48,7 +49,7 @@ def _write_amavisca_source_artifact(workspace, assignment_plan):
             or hashlib.sha256(package_v2.canonical_json_bytes(source_artifact['document'])).hexdigest() != source_artifact['sha256']):
         raise ValueError('Amavisca SOURCE artifact binding differs')
     target = workspace / source_artifact['filename']
-    if target.exists():
+    if storage_io.exists(target):
         raise ValueError('existing Amavisca SOURCE artifact must not be overwritten')
     pipeline.write_canonical_json(target, source_artifact['document'])
     if registry.sha256_file(target) != source_artifact['sha256']:
@@ -86,8 +87,8 @@ def register_completed_delta(season, release_id, *, verified_ancestor_chain=None
     """Promote an already compiled exact-baseline delta without rebuilding it."""
     current = registry.load_preferred_release(season)
     locator_path = registry.locator_path(season, release_id)
-    locator = json.loads(locator_path.read_text())
-    receipt = json.loads((ROOT / locator['compiler_receipt_path']).read_text())
+    locator = json.loads(storage_io.read_text(locator_path))
+    receipt = json.loads(storage_io.read_text(ROOT / locator['compiler_receipt_path']))
     if current.release_id == release_id:
         return {'season': season, 'release_id': release_id, 'already_registered': True}
     if verified_ancestor_chain is not None:
@@ -273,14 +274,14 @@ def updated_package(package, plan, nationality_plan=None, manager_plan=None, clu
 
 def _verify_prepared_donor_workspace(workspace, release, before, patched, package, plan, assignment, *, assignment_module=None):
     """Resume metadata only after independently proving the entire staged game."""
-    if workspace.is_symlink() or workspace.resolve()!=workspace.absolute():
+    if workspace.is_symlink() or storage_io.resolve(workspace)!=workspace.absolute():
         raise ValueError('unsafe prepared donor workspace')
     game=workspace/'game'
     after=pipeline.build_tree_inventory(game)
     difference=pipeline.inventory_difference(before,after)
     if (difference['only_left'] or difference['only_right']
             or sorted(row['path'] for row in difference['changed'])!=['DBDAT/JUG98030.FDI']
-            or (game/'DBDAT/JUG98030.FDI').read_bytes()!=patched):
+            or storage_io.read_bytes(game / 'DBDAT/JUG98030.FDI')!=patched):
         raise ValueError('prepared donor game is not the exact already-computed source delta')
     if assignment_module is None:
         from scripts import season_donor_keeper_role_delta_v1 as assignment_module
@@ -289,15 +290,16 @@ def _verify_prepared_donor_workspace(workspace, release, before, patched, packag
         assignment_module.filename(assignment):pipeline.canonical_json_bytes(assignment)+b'\n'}
     for name,raw in expected.items():
         path=workspace/name
-        if path.is_symlink() or not path.is_file() or path.read_bytes()!=raw or path.stat().st_nlink!=1:
+        if path.is_symlink() or not storage_io.is_file(path) or storage_io.read_bytes(path)!=raw or storage_io.stat_result(path).st_nlink!=1:
             raise ValueError('prepared donor recipe/input is missing, shared or changed: '+name)
-    if (workspace/'role-delta-compiler.json').exists():
+    if storage_io.exists(workspace / 'role-delta-compiler.json'):
         raise ValueError('prepared donor metadata already progressed; inspect rather than overwrite')
-    for path in workspace.rglob('*'):
-        if path.is_relative_to(game) or not path.is_file() or path.relative_to(workspace).as_posix() in expected:
+    for physical in storage_io.glob(workspace, '*', recursive=True):
+        path=physical.with_suffix('') if physical.name.endswith('.json.zst') else physical
+        if path.is_relative_to(game) or not storage_io.is_file(path) or path.relative_to(workspace).as_posix() in expected:
             continue
         original=release.package_path.parent/path.relative_to(workspace)
-        if path.is_symlink() or not original.is_file() or registry.sha256_file(path)!=registry.sha256_file(original):
+        if path.is_symlink() or not storage_io.is_file(original) or registry.sha256_file(path)!=registry.sha256_file(original):
             raise ValueError('unrecognised or changed prepared donor metadata')
     return after
 
@@ -313,7 +315,7 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         raise ValueError('name-only delta cannot mix unrelated repairs')
     release = (registry.load_registered_release(season, source_release_id)
                if source_release_id is not None else registry.load_preferred_release(season))
-    plan = json.loads(plan_path.read_text())
+    plan = json.loads(storage_io.read_text(plan_path))
     keeper_policies = {
         'original-target-squad-full-name-DOB-literal-G-to-PM99-role-zero-v1',
         'declared-and-native-G-preserved-fine-role-to-keeper-zero-v1',
@@ -372,7 +374,7 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
     if (plan['season'], plan['release_id'], plan['package_sha256'], plan['jug_sha256']) != (
             season, release.release_id, registry.sha256_file(release.package_path), registry.sha256_file(source_jug)):
         raise ValueError('role plan is stale; never apply to a different release')
-    package = json.loads(release.package_path.read_text())
+    package = json.loads(storage_io.read_text(release.package_path))
     if plan.get('policy') in (
             'original-target-squad-full-name-DOB-literal-G-to-PM99-role-zero-v1',
             'declared-and-native-G-preserved-fine-role-to-keeper-zero-v1'):
@@ -392,11 +394,11 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         if row['carrier_id'] in updates:
             raise ValueError('duplicate native role carrier')
         updates[row['carrier_id']] = row['fine_roles']
-    original = source_jug.read_bytes()
+    original = storage_io.read_bytes(source_jug)
     patched, changes = rewrite_indexed_native_roles(original, updates)
     nationality_plan, nationality_changes, nationality_updates = None, [], {}
     if nationality_plan_path is not None:
-        nationality_plan = json.loads(nationality_plan_path.read_text())
+        nationality_plan = json.loads(storage_io.read_text(nationality_plan_path))
         if (nationality_plan['season'], nationality_plan['release_id'], nationality_plan['package_sha256'], nationality_plan['jug_sha256']) != (
                 season, release.release_id, registry.sha256_file(release.package_path), registry.sha256_file(source_jug)):
             raise ValueError('nationality plan is stale')
@@ -411,10 +413,10 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
                 raise ValueError('nationality translation is not proven')
             nationality_updates[row['carrier_id']] = code
         patched, nationality_changes = rewrite_indexed_native_nationalities(patched, nationality_updates)
-    original_exe = (release.game_path / 'MANAGPRE.EXE').read_bytes()
+    original_exe = storage_io.read_bytes(release.game_path / 'MANAGPRE.EXE')
     patched_exe, birth_receipt = patch_native_birth_year_guard(original_exe) if modern_birth_dates else (original_exe, None)
-    original_ent = (release.game_path / DATABASES[2]).read_bytes()
-    original_eq = (release.game_path / DATABASES[1]).read_bytes()
+    original_ent = storage_io.read_bytes(release.game_path / DATABASES[2])
+    original_eq = storage_io.read_bytes(release.game_path / DATABASES[1])
     patched_eq, club_plan, club_changes = original_eq, None, []
     if club_plan_path is not None:
         from scripts import season_original_carrier_label_restoration_v1 as original_labels
@@ -422,7 +424,7 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         from scripts import season_period_squad_carrier_label_v2 as annual_labels
         from scripts import season_period_cohort_coach_v3 as cohort_coaches
         from scripts import season_period_cohort_coach_v4 as extended_cohort_coaches
-        candidate_club_plan = json.loads(club_plan_path.read_text())
+        candidate_club_plan = json.loads(storage_io.read_text(club_plan_path))
         if candidate_club_plan.get('schema_version') in (original_labels.SCHEMA, exact_page_labels.SCHEMA, annual_labels.SCHEMA, cohort_coaches.SCHEMA, extended_cohort_coaches.SCHEMA):
             label_policy = {original_labels.SCHEMA:original_labels,annual_labels.SCHEMA:annual_labels,
                 exact_page_labels.SCHEMA:exact_page_labels,
@@ -430,13 +432,13 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             label_policy.verify(release, candidate_club_plan)
             if label_policy in (cohort_coaches, extended_cohort_coaches):
                 if manager_plan_path is None:raise ValueError('coupled cohort/coach correction requires manager plan')
-                label_policy.verify_manager_pair(candidate_club_plan,json.loads(manager_plan_path.read_text()))
+                label_policy.verify_manager_pair(candidate_club_plan,json.loads(storage_io.read_text(manager_plan_path)))
             from scripts.season_historical_club_label_plan_v1 import rewrite_club_labels
             club_plan = candidate_club_plan
             patched_eq, club_changes = rewrite_club_labels(original_eq, club_plan['updates'])
         else:
             from scripts.season_historical_club_label_plan_v1 import SCHEMA, rewrite_club_labels
-            club_plan = json.loads(club_plan_path.read_text())
+            club_plan = json.loads(storage_io.read_text(club_plan_path))
             if club_plan['schema_version'] != SCHEMA or (
                     club_plan['season'], club_plan['release_id'], club_plan['package_sha256'],
                     club_plan['eq_sha256'], club_plan['ent_sha256']) != (
@@ -446,7 +448,7 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             audit_path = ROOT / club_plan['audit_path']
             if registry.sha256_file(audit_path) != club_plan['audit_sha256']:
                 raise ValueError('club label source audit changed')
-            audit = json.loads(audit_path.read_text())
+            audit = json.loads(storage_io.read_text(audit_path))
             source_bindings = club_plan['source_bindings']
             if audit['bindings'] != source_bindings:
                 raise ValueError('club source bindings changed')
@@ -456,7 +458,7 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             supported = {r['club_id']: r for r in audit['clubs'] if r['status'] in (
                 'source-supported-club-label-mismatch', 'source-supported-full-cohort-club-label-mismatch')}
             from scripts import season_historical_club_label_full_cohort_optin_v2 as full_cohort_optin
-            paired = json.loads(manager_plan_path.read_text())['updates'] if manager_plan_path else []
+            paired = json.loads(storage_io.read_text(manager_plan_path))['updates'] if manager_plan_path else []
             for row in club_plan['updates']:
                 proof = supported.get(row['club_id'])
                 if proof is None or any(row[k] != proof[k] for k in ('carrier_id', 'before', 'after', 'evidence', 'source_selector')):
@@ -477,7 +479,7 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             patched_eq, club_changes = rewrite_club_labels(original_eq, club_plan['updates'])
     patched_ent, manager_plan, manager_changes = original_ent, None, []
     if manager_plan_path is not None:
-        manager_plan = json.loads(manager_plan_path.read_text())
+        manager_plan = json.loads(storage_io.read_text(manager_plan_path))
         _validate_manager_display_projection(manager_plan)
         if (manager_plan['season'], manager_plan['release_id'], manager_plan['package_sha256'], manager_plan['eq_sha256'], manager_plan['ent_sha256']) != (
                 season, release.release_id, registry.sha256_file(release.package_path),
@@ -529,7 +531,7 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
     ownership_plan, ownership_changes, portrait_archive, portrait_offsets, ownership_aliases = None, [], None, {}, []
     if ownership_plan_path is not None:
         from scripts import season_duplicate_ownership_delta_v1 as ownership
-        ownership_plan = json.loads(ownership_plan_path.read_text())
+        ownership_plan = json.loads(storage_io.read_text(ownership_plan_path))
         ownership.verify_plan(release, ownership_plan)
         if any((plan['updates'], nationality_changes, club_changes, manager_changes)):
             raise ValueError('ownership replacements cannot be mixed with unrelated repairs')
@@ -538,7 +540,7 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         from scripts import season_mode1_sourced_keeper_slot_v1 as keeper_slot
         if any((plan['updates'], nationality_plan, manager_plan, club_plan, ownership_plan, visibility_plan_path)) or patched_exe != original_exe:
             raise ValueError('sourced keeper slot repair cannot mix unrelated changes')
-        keeper_plan = json.loads(mode1_keeper_plan_path.read_text())
+        keeper_plan = json.loads(storage_io.read_text(mode1_keeper_plan_path))
         keeper_slot.verify_bound(release, keeper_plan)
         patched = keeper_slot.apply(original, original_eq, keeper_plan)
         keeper_changes = keeper_plan['players']
@@ -547,7 +549,7 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         from scripts import season_sourced_birth_years_v1 as birth_years
         if any((plan['updates'], nationality_plan, manager_plan, club_plan, ownership_plan, visibility_plan_path, keeper_plan)) or patched_exe != original_exe:
             raise ValueError('sourced birth-year repair cannot mix unrelated changes')
-        birth_year_plan = json.loads(birth_year_plan_path.read_text())
+        birth_year_plan = json.loads(storage_io.read_text(birth_year_plan_path))
         from scripts import season_biographic_birth_years_v1 as biographic_years
         if birth_year_plan.get('policy') == biographic_years.POLICY:
             birth_years = biographic_years
@@ -566,24 +568,24 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         from scripts import season_tff_sourced_opening_xi_v1 as opening_xi
         if any((plan['updates'], nationality_plan, manager_plan, club_plan, ownership_plan, visibility_plan_path, keeper_plan, birth_year_plan)) or patched_exe != original_exe:
             raise ValueError('full original-XI repair cannot mix unrelated deltas')
-        opening_plan = json.loads(mode1_opening_plan_path.read_text())
+        opening_plan = json.loads(storage_io.read_text(mode1_opening_plan_path))
         opening_xi.verify(release, opening_plan)
     italian_plan = None
     if italian_opening_plan_path is not None:
         from scripts import season_italian_opening_layer_v1 as italian_opening
         if any((plan['updates'], nationality_plan, manager_plan, club_plan, ownership_plan, visibility_plan_path, keeper_plan, birth_year_plan, opening_plan)) or patched_exe != original_exe:
             raise ValueError('Italian original-XI repair cannot mix unrelated deltas')
-        italian_plan = json.loads(italian_opening_plan_path.read_text())
+        italian_plan = json.loads(storage_io.read_text(italian_opening_plan_path))
         italian_opening.verify(release, italian_plan)
     trabzon_plan = None
     if trabzon_opening_plan_path is not None:
         from scripts import season_trabzon_opening_layer_v1 as trabzon_opening
-        trabzon_plan = json.loads(trabzon_opening_plan_path.read_text())
+        trabzon_plan = json.loads(storage_io.read_text(trabzon_opening_plan_path))
         trabzon_opening.verify(release, trabzon_plan)
     name_plan = None
     if name_only_plan_path is not None:
         from scripts import season_maccabi_name_layer_v1 as names
-        name_plan = json.loads(name_only_plan_path.read_text())
+        name_plan = json.loads(storage_io.read_text(name_only_plan_path))
         from scripts import season_number_label_names_v2 as numeric_labels
         if name_plan.get('schema') == numeric_labels.SCHEMA:
             names = numeric_labels
@@ -594,7 +596,7 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
     assignment_plan = None
     if profile_assignment_plan_path is not None:
         from scripts import season_profile_assignment_pruning_layer_v1 as assignments
-        assignment_plan = json.loads(profile_assignment_plan_path.read_text())
+        assignment_plan = json.loads(storage_io.read_text(profile_assignment_plan_path))
         from scripts import season_source_bound_duplicate_opening_v1 as duplicate_opening
         if assignment_plan.get('schema') == duplicate_opening.SCHEMA:
             assignments = duplicate_opening
@@ -788,85 +790,85 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
                 raise ValueError('editorial manager-name delta is not idempotent')
         if assignment_plan.get('schema') == authored_country.SCHEMA:
             patched_ent = authored_country.apply_ent(original_ent, assignment_plan)
-            original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
+            original_archive = storage_io.read_bytes(release.game_path / 'DBDAT/MINIFOTO.PKF')
             portrait_archive, portrait_offsets = authored_country.apply_minifoto(original_archive, assignment_plan)
         if assignment_plan.get('schema') == owned_roster.SCHEMA:
             from scripts import season_duplicate_ownership_delta_v1 as portrait_delta
-            original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
+            original_archive = storage_io.read_bytes(release.game_path / 'DBDAT/MINIFOTO.PKF')
             portrait_archive, portrait_offsets = portrait_delta.no_photo_archive(original_archive,
                 {r['carrier_id'] for r in assignment_plan['updates']})
         if assignment_plan.get('schema') in (stevenage.SCHEMA, boreham.SCHEMA, barrow.SCHEMA):
             from scripts import season_duplicate_ownership_delta_v1 as portrait_delta
-            original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
+            original_archive = storage_io.read_bytes(release.game_path / 'DBDAT/MINIFOTO.PKF')
             portrait_archive, portrait_offsets = portrait_delta.no_photo_archive(original_archive,
                 {r['carrier_id'] for r in assignment_plan['replacements']})
         elif assignment_plan.get('schema') == opening_exchange.SCHEMA:
             from scripts import season_duplicate_ownership_delta_v1 as portrait_delta
-            original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
+            original_archive = storage_io.read_bytes(release.game_path / 'DBDAT/MINIFOTO.PKF')
             portrait_archive, portrait_offsets = portrait_delta.no_photo_archive(original_archive,
                 opening_exchange.selected_carriers(assignment_plan))
         elif assignment_plan.get('schema') == city_exchange.SCHEMA:
             from scripts import season_duplicate_ownership_delta_v1 as portrait_delta
-            original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
+            original_archive = storage_io.read_bytes(release.game_path / 'DBDAT/MINIFOTO.PKF')
             portrait_archive, portrait_offsets = portrait_delta.no_photo_archive(original_archive,
                 {r[k] for r in assignment_plan['exchanges'] for k in ('city_carrier','destination_carrier')})
         elif assignment_plan.get('schema') == arsenal_owned.SCHEMA:
             from scripts import season_duplicate_ownership_delta_v1 as portrait_delta
-            original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
+            original_archive = storage_io.read_bytes(release.game_path / 'DBDAT/MINIFOTO.PKF')
             portrait_archive, portrait_offsets = portrait_delta.no_photo_archive(original_archive,
                 arsenal_owned.selected_carriers(assignment_plan))
         elif assignment_plan.get('schema') == morecambe_owned.SCHEMA:
             from scripts import season_duplicate_ownership_delta_v1 as portrait_delta
-            original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
+            original_archive = storage_io.read_bytes(release.game_path / 'DBDAT/MINIFOTO.PKF')
             portrait_archive, portrait_offsets = portrait_delta.no_photo_archive(original_archive,
                 morecambe_owned.selected_carriers(assignment_plan))
         elif assignment_plan.get('schema') == haladas_keeper.SCHEMA:
             from scripts import season_duplicate_ownership_delta_v1 as portrait_delta
-            original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
+            original_archive = storage_io.read_bytes(release.game_path / 'DBDAT/MINIFOTO.PKF')
             portrait_archive, portrait_offsets = portrait_delta.no_photo_archive(original_archive,
                 haladas_keeper.selected_carriers(assignment_plan))
         elif assignment_plan.get('schema_version') == rawle_forbes.SCHEMA:
-            original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
+            original_archive = storage_io.read_bytes(release.game_path / 'DBDAT/MINIFOTO.PKF')
             portrait_archive = rawle_forbes.apply_minifoto(original_archive, assignment_plan)
             portrait_offsets = {carrier: [] for carrier in rawle_forbes.selected_carriers(assignment_plan)}
         elif assignment_plan.get('schema_version') == english_reserves.SCHEMA:
-            original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
+            original_archive = storage_io.read_bytes(release.game_path / 'DBDAT/MINIFOTO.PKF')
             portrait_archive = english_reserves.apply_minifoto(original_archive, assignment_plan)
             portrait_offsets = {carrier: [] for carrier in english_reserves.selected_carriers(assignment_plan)}
         elif assignment_plan.get('schema') == anelka_chain.SCHEMA:
-            original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
+            original_archive = storage_io.read_bytes(release.game_path / 'DBDAT/MINIFOTO.PKF')
             portrait_archive, portrait_offsets = anelka_chain.apply_photo_archive(original_archive, assignment_plan)
         elif assignment_plan.get('schema') == evers_mcclune.SCHEMA:
             from scripts import season_duplicate_ownership_delta_v1 as portrait_delta
-            original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
+            original_archive = storage_io.read_bytes(release.game_path / 'DBDAT/MINIFOTO.PKF')
             portrait_archive, portrait_offsets = portrait_delta.no_photo_archive(original_archive, evers_mcclune.selected_carriers(assignment_plan))
         elif assignment_plan.get('schema') == shevlin_reserve.SCHEMA:
-            original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
+            original_archive = storage_io.read_bytes(release.game_path / 'DBDAT/MINIFOTO.PKF')
             portrait_archive = shevlin_reserve.apply_minifoto(original_archive, assignment_plan)
             if shevlin_reserve.apply_minifoto(portrait_archive, assignment_plan) != portrait_archive:
                 raise ValueError('Ballymena selected no-photo archive is not idempotent')
             portrait_offsets = shevlin_reserve.photo_offsets(assignment_plan)
         elif assignment_plan.get('schema') == gimmelli_serena.SCHEMA:
             from scripts import season_duplicate_ownership_delta_v1 as portrait_delta
-            original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
+            original_archive = storage_io.read_bytes(release.game_path / 'DBDAT/MINIFOTO.PKF')
             portrait_archive, portrait_offsets = portrait_delta.no_photo_archive(
                 original_archive, gimmelli_serena.selected_carriers(assignment_plan))
         elif assignment_plan.get('schema') == blackburn_city.SCHEMA:
-            original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
+            original_archive = storage_io.read_bytes(release.game_path / 'DBDAT/MINIFOTO.PKF')
             portrait_archive = blackburn_city.apply_minifoto(original_archive, assignment_plan)
             portrait_offsets = {carrier: [] for carrier in blackburn_city.selected_carriers(assignment_plan)}
         elif assignment_plan.get('schema') == alty_2001_roles.SCHEMA:
             patched_ent = alty_2001_roles.apply_ent(original_ent, assignment_plan)
             if alty_2001_roles.apply_ent(patched_ent, assignment_plan) != patched_ent:
                 raise ValueError('Altrincham sourced role composition manager is not idempotent')
-            original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
+            original_archive = storage_io.read_bytes(release.game_path / 'DBDAT/MINIFOTO.PKF')
             portrait_archive = alty_2001_roles.apply_minifoto(original_archive, assignment_plan)
             portrait_offsets = alty_2001_roles.photo_offsets(assignment_plan)
         elif assignment_plan.get('schema') == alty_2001.SCHEMA:
             patched_ent = alty_2001.apply_ent(original_ent, assignment_plan)
             if alty_2001.apply_ent(patched_ent, assignment_plan) != patched_ent:
                 raise ValueError('Altrincham 2001 manager is not idempotent')
-            original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
+            original_archive = storage_io.read_bytes(release.game_path / 'DBDAT/MINIFOTO.PKF')
             portrait_archive = alty_2001.apply_minifoto(original_archive, assignment_plan)
             if alty_2001.apply_minifoto(portrait_archive, assignment_plan) != portrait_archive:
                 raise ValueError('Altrincham 2001 photo archive is not idempotent')
@@ -875,7 +877,7 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             patched_ent = alty_joint.apply_ent(original_ent, assignment_plan)
             if alty_joint.apply_ent(patched_ent, assignment_plan) != patched_ent:
                 raise ValueError('Altrincham sourced manager is not idempotent')
-            original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
+            original_archive = storage_io.read_bytes(release.game_path / 'DBDAT/MINIFOTO.PKF')
             if alty_joint.apply_minifoto(original_archive, assignment_plan) != original_archive:
                 raise ValueError('Altrincham composition unexpectedly changes the photo archive')
         elif assignment_plan.get('schema') == woking_owned.SCHEMA:
@@ -883,11 +885,11 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             if woking_owned.apply_ent(patched_ent, assignment_plan) != patched_ent:
                 raise ValueError('Woking sourced manager is not idempotent')
             from scripts import season_duplicate_ownership_delta_v1 as portrait_delta
-            original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
+            original_archive = storage_io.read_bytes(release.game_path / 'DBDAT/MINIFOTO.PKF')
             portrait_archive, portrait_offsets = portrait_delta.no_photo_archive(original_archive,
                 woking_owned.selected_carriers(assignment_plan))
         elif assignment_plan.get('schema') == opening_cohort.PROFILE_SCHEMA:
-            original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
+            original_archive = storage_io.read_bytes(release.game_path / 'DBDAT/MINIFOTO.PKF')
             portrait_archive, portrait_offsets = assignments.apply_profile_minifoto(
                 original_archive, assignment_plan)
         predicted = (len(patched) if patched != original else 0) + len(patched_eq) + len(package_v2.canonical_json_bytes(result)) + len(pipeline.canonical_json_bytes(assignment_plan)) + 32 * 1024**2
@@ -941,7 +943,7 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         patched = opening_xi.apply(original, original_eq, result, countries, opening_plan)
         if opening_xi.apply(patched, original_eq, result, countries, opening_plan) != patched:
             raise ValueError('full original-XI delta is not idempotent')
-        original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
+        original_archive = storage_io.read_bytes(release.game_path / 'DBDAT/MINIFOTO.PKF')
         stale = {r['carrier_id'] for r in opening_plan['replacements'] if r['kind'] == 'wrong-person-facts'}
         portrait_archive, portrait_offsets = portrait_delta.no_photo_archive(original_archive, stale)
         predicted = len(patched) + len(pipeline.canonical_json_bytes(result)) + len(pipeline.canonical_json_bytes(opening_plan)) + (len(portrait_archive) if portrait_archive != original_archive else 0) + 32 * 1024 ** 2
@@ -968,7 +970,7 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             'before': row['before']['source_name'] if row['before'].get('source_name') else row['before']['name'],
             'after': row['replacement']['source_player']['name']} for row in ownership_plan['updates']]
         carriers = {row['carrier_id'] for row in ownership_plan['updates']}
-        original_archive = (release.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes()
+        original_archive = storage_io.read_bytes(release.game_path / 'DBDAT/MINIFOTO.PKF')
         portrait_archive, portrait_offsets = ownership.no_photo_archive(original_archive, carriers)
         predicted = len(patched) + (len(portrait_archive) if portrait_archive != original_archive else 0) + 32 * 1024 * 1024
         disk_budget.require_space(release.game_path, predicted,
@@ -976,7 +978,7 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
     visibility_plan, visibility_changes = None, []
     if visibility_plan_path is not None:
         from scripts import season_roster_visibility_v1 as visibility
-        visibility_plan = json.loads(visibility_plan_path.read_text())
+        visibility_plan = json.loads(storage_io.read_text(visibility_plan_path))
         visibility.verify_bound(release, visibility_plan)
         patched_eq, visibility_changes = visibility.apply(patched_eq, visibility_plan, exact_before=True)
         result = visibility.bind(result, visibility_plan)
@@ -984,8 +986,8 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             minimum_free_bytes=minimum_free_bytes, context="season publication")
     destination = registry.locator_path(season, release_id).parent
     workspace = ROOT / '.local/historical-role-deltas-v1' / season / release_id
-    prepared=workspace.exists() and resume_unregistered_assignment
-    if destination.exists() or (workspace.exists() and not prepared):
+    prepared=storage_io.exists(workspace) and resume_unregistered_assignment
+    if storage_io.exists(destination) or (storage_io.exists(workspace) and not prepared):
         raise ValueError('role delta already exists; never overwrite')
     before, runtime_drift = source_inventory(release)
     game = workspace / 'game'
@@ -1002,23 +1004,23 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         workspace.mkdir(parents=True)
         shutil.copytree(release.game_path, game, copy_function=os.link)
         for name, payload in [(DATABASES[0], patched), (DATABASES[1], patched_eq), (DATABASES[2], patched_ent), ('MANAGPRE.EXE', patched_exe)]:
-            if payload == (release.game_path / name).read_bytes():
+            if payload == storage_io.read_bytes(release.game_path / name):
                 continue
             temporary = workspace / (Path(name).name + '.partial')
-            temporary.write_bytes(payload)
-            os.replace(temporary, game / name)
+            storage_io.write_bytes(temporary, payload)
+            storage_io.replace_file(temporary, game / name)
     removed_photos = []
     archive_changed = portrait_archive is not None and portrait_archive != original_archive
     if archive_changed:
         temporary = workspace / 'MINIFOTO.PKF.partial'
-        temporary.write_bytes(portrait_archive)
-        os.replace(temporary, game / 'DBDAT/MINIFOTO.PKF')
+        storage_io.write_bytes(temporary, portrait_archive)
+        storage_io.replace_file(temporary, game / 'DBDAT/MINIFOTO.PKF')
     for carrier in portrait_offsets:
         relative = f'DBDAT/MINIFOTO/J96{carrier:05d}.BMP'
-        if (game / relative).exists():
+        if storage_io.exists(game / relative):
             # Unlink this new game's directory entry only; source hardlink
             # content and the preceding playable game are untouched.
-            (game / relative).unlink()
+            storage_io.unlink(game / relative)
             removed_photos.append(relative)
     after = pipeline.build_tree_inventory(game)
     difference = pipeline.inventory_difference(before, after)
@@ -1032,7 +1034,7 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         raise ValueError('nationality delta is not idempotent')
     package_path = workspace / 'season-package.json'
     if not prepared:
-        package_path.write_bytes(package_v2.canonical_json_bytes(result))
+        storage_io.write_bytes(package_path, package_v2.canonical_json_bytes(result))
     if updated_english is not None:
         from scripts import season_duplicate_english_overlay_v1 as overlay
         if assignment_plan is not None and assignment_plan.get('schema') in (fixture_membership.PROFILE_SCHEMA, reserve_transfer.SCHEMA):
@@ -1047,7 +1049,7 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
             raise ValueError('unsafe repaired English recipe artifact path')
         target = workspace / relative
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(package_v2.canonical_json_bytes(updated_english))
+        storage_io.write_bytes(target, package_v2.canonical_json_bytes(updated_english))
         if registry.sha256_file(target) != artifact['sha256']:
             raise ValueError('repaired English recipe artifact hash differs')
     # A visibility/ownership/no-op delta is not a new historical role source.
@@ -1083,7 +1085,7 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         if assignment_plan.get('schema') == blackburn_city.SCHEMA:
             artifact = blackburn_city.source_artifact(assignment_plan)
             target = workspace / artifact['filename']
-            if target.exists():
+            if storage_io.exists(target):
                 raise ValueError('existing Blackburn/City source artifact must not be overwritten')
             pipeline.write_canonical_json(target, artifact['document'])
             if registry.sha256_file(target) != artifact['sha256']:
@@ -1091,7 +1093,7 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         if assignment_plan.get('schema') == alty_2001_roles.SCHEMA:
             artifact = alty_2001_roles.source_artifact(assignment_plan)
             target = workspace / artifact['filename']
-            if target.exists():
+            if storage_io.exists(target):
                 raise ValueError('existing Altrincham role source artifact must not be overwritten')
             pipeline.write_canonical_json(target, artifact['document'])
             if registry.sha256_file(target) != artifact['sha256']:
@@ -1099,7 +1101,7 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         if assignment_plan.get('schema') == alty_2001.SCHEMA:
             artifact = alty_2001.source_artifact(assignment_plan)
             target = workspace / artifact['filename']
-            if target.exists():
+            if storage_io.exists(target):
                 raise ValueError('existing Altrincham 2001 inner source artifact must not be overwritten')
             pipeline.write_canonical_json(target, artifact['document'])
             if registry.sha256_file(target) != artifact['sha256']:
@@ -1135,10 +1137,10 @@ def publish(season, plan_path, *, release_id, register=False, modern_birth_dates
         if rel.is_absolute() or '..' in rel.parts: raise ValueError('unsafe inherited recipe artifact path')
         inherited = release.package_path.parent / rel
         target = workspace / rel
-        if inherited.is_file() and not target.exists():
+        if storage_io.is_file(inherited) and not storage_io.exists(target):
             target.parent.mkdir(parents=True, exist_ok=True)
-            os.link(inherited, target)
-    outputs = [{'path': name, 'sha256': registry.sha256_file(game / name), 'size': (game / name).stat().st_size}
+            storage_io.link(inherited, target)
+    outputs = [{'path': name, 'sha256': registry.sha256_file(game / name), 'size': storage_io.size(game / name)}
                for name in DATABASES]
     receipt = {'schema': 'pm99-native-role-delta-compiler-v1', 'season': season,
         'season_package_sha256': registry.canonical_document_sha256(package_path),

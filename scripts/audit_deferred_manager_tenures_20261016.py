@@ -9,6 +9,7 @@ from datetime import date
 from pathlib import Path
 import re
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import capture_opening_manager_history_supplements_v1 as history
 from scripts.build_year_bound_manager_repairs_20261016 import ROOT
@@ -32,24 +33,23 @@ def index():
     roots=[registry.ROOT/'.local/external-sources/cache.transfermarkt-opening/manager-history',
         registry.ROOT/'.local/external-sources/cache.transfermarkt-2015-manager-snapshot-v5/manager-history/2015-snapshot',
         registry.ROOT/'.local/external-sources/cache.transfermarkt-2015-manager-exact-search-v6/manager-history/manager-history/2015-exact-search']
-    roots.extend((registry.ROOT/'.local/transfermarkt-opening-plans-current-v1').glob('*/cache/manager-history'))
+    roots.extend(storage_io.glob(registry.ROOT / '.local/transfermarkt-opening-plans-current-v1', '*/cache/manager-history'))
     result=defaultdict(list)
     for root in roots:
-        for path in sorted(root.glob('*.html')):
+        for path in sorted(storage_io.glob(root, '*.html')):
             if path.stem.isdigit():result[int(path.stem)].append(path)
     return result
 
 
 def receipt_index():
     """Join captured download hashes, not just self-declared page canonicals."""
-    documents=list((registry.ROOT/'.local/transfermarkt-opening-plans-current-v1').glob(
-        '*/opening-manager-supplement-transfermarkt.json'))
+    documents=list(storage_io.glob(registry.ROOT / '.local/transfermarkt-opening-plans-current-v1', '*/opening-manager-supplement-transfermarkt.json'))
     documents.extend(registry.ROOT/'.local/operations/2015-16'/name for name in (
         'world-manager-history-transfermarkt-snapshot-v5-r2-20260912.json',
         'world-manager-history-transfermarkt-exact-search-v6-r3-20260912.json'))
     result=defaultdict(list)
     for path in documents:
-        if not path.exists():continue
+        if not storage_io.exists(path):continue
         document=pipeline.read_json_file(path)
         provenance=dict(receipt_path=registry.relative_workspace_path(path),
             receipt_sha256=registry.sha256_file(path))
@@ -68,7 +68,7 @@ def inspect(paths,club_id,at,receipts=None):
         binding=dict(path=registry.relative_workspace_path(path),sha256=registry.sha256_file(path))
         try:
             witnesses=(receipts or {}).get((club_id,binding['sha256']),[])
-            claims.append(dict(tenure(path.read_bytes(),club_id,at),**binding,
+            claims.append(dict(tenure(storage_io.read_bytes(path),club_id,at),**binding,
                 original_download_receipt_verified=bool(witnesses),download_receipts=witnesses))
         except (ValueError,history.ManagerHistoryError) as exc:
             unusable.append(dict(binding,reason=str(exc)))
@@ -85,7 +85,7 @@ def inspect(paths,club_id,at,receipts=None):
 
 def main():
     files=index();receipts=receipt_index();rows=[]
-    for path in sorted(ROOT.glob('20*-*/source-acceptance-decision.json')):
+    for path in sorted(storage_io.glob(ROOT, '20*-*/source-acceptance-decision.json')):
         decision=pipeline.read_json_file(path);season=decision['season']
         for item in decision['deferred']:
             row=item['row'];club_id=row['evidence']['source_club_id']

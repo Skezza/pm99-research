@@ -21,6 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts.supplement_2015_ntf_with_transfermarkt import _get, parse_squad
 
 SCHEMA = "pm99-footballsquads-season-capture-v1"
@@ -61,7 +62,7 @@ def acquire(*, draft: dict[str, Any], cache_root: Path, fetch: Callable[[str], b
         source_path = Path(f"transfermarkt/{target['country']}/{carrier_id}-{target['club_id']}.html")
         full_path = cache_root / source_path
         full_path.parent.mkdir(parents=True, exist_ok=True)
-        full_path.write_bytes(payload)
+        storage_io.write_bytes(full_path, payload)
         clubs.append({
             "candidate_carrier_id": carrier_id,
             "candidate_baseline_name": proposal["baseline_name"],
@@ -92,9 +93,9 @@ def main() -> int:
     parser.add_argument("--cache-root", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
-    result = acquire(draft=json.loads(args.draft.read_text(encoding="utf-8")), cache_root=args.cache_root)
+    result = acquire(draft=json.loads(storage_io.read_text(args.draft, encoding='utf-8')), cache_root=args.cache_root)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_bytes(result))
+    storage_io.write_bytes(args.output, canonical_bytes(result))
     print(json.dumps(result["summary"], sort_keys=True))
     return 0
 

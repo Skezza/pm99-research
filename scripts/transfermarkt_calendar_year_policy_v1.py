@@ -11,6 +11,14 @@ Russia <= 2010 is quarantined only.
 """
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import hashlib
 import json
 from dataclasses import dataclass
@@ -58,7 +66,7 @@ class YearRoute:
 def verify_audit(repo_root: Path) -> dict[str, str]:
     path = repo_root / AUDIT_RELATIVE_PATH
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         doc = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise RoutingError(f"calendar routing audit is unavailable: {path}") from exc

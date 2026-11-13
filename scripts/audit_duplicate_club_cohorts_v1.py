@@ -17,6 +17,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'upstream/pm99-skezmod-db-editor'))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_duplicate_ownership_plan_v1 as planner
 from scripts import season_historical_roster_audit_v1 as roster
 from scripts import season_historical_transfer_review_v1 as transfer
@@ -55,7 +56,7 @@ def classify_pair(left, right, left_people, right_people, left_source, right_sou
 
 
 def run(source_root, output):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('cohort evidence is immutable; use another output path')
     seasons = []
     for season in registry.supported_seasons():
@@ -67,9 +68,9 @@ def run(source_root, output):
             layers.append({'layer': label, 'path': registry.relative_workspace_path(path),
                            'sha256': registry.sha256_file(path)})
         eq = release.game_path / 'DBDAT/EQ98030.FDI'
-        _, _, modes = compiler._source_roster_owners(eq.read_bytes())
+        _, _, modes = compiler._source_roster_owners(storage_io.read_bytes(eq))
         opening_path = source_root / 'opening' / season / 'opening-review.json'
-        opening = json.loads(opening_path.read_text())
+        opening = json.loads(storage_io.read_text(opening_path))
         transfer.verify_opening_sources(opening)
         by_carrier = {c['carrier_id']: c for c in clubs.values()}
         sources = {}

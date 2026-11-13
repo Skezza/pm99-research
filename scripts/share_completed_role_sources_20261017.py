@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 import re
 import shutil
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry, season_pipeline_v2 as pipeline
 from scripts.archive_completed_arsenal_replays_20261016 import assert_equal_games, active
 from scripts.share_verified_r70_source_copies_20261016 import share_identical
@@ -21,7 +22,7 @@ def main(*, min_revision=100, max_revision=116, selected_replays=None):
                                        for row in selected_replays):
             raise ValueError('explicit nonempty season/replay pairs required')
     ROOT.mkdir(parents=True, exist_ok=True)
-    if (ROOT/'completed.json').exists():
+    if storage_io.exists(ROOT / 'completed.json'):
         raise ValueError('completed sharing must not repeat')
     catalog = registry.sha256_file(registry.CATALOG_PATH)
     before = shutil.disk_usage(registry.ROOT).free
@@ -29,7 +30,7 @@ def main(*, min_revision=100, max_revision=116, selected_replays=None):
     selected_found = set()
     for season in registry.supported_seasons():
         folder = registry.locator_path(season,'unused').parent.parent
-        for path in sorted(folder.glob('replayed-*/locator.json')):
+        for path in sorted(storage_io.glob(folder, 'replayed-*/locator.json')):
             rid=path.parent.name;match=re.search(r'-r([0-9]+)b$',rid)
             if match is None or not min_revision<=int(match[1])<=max_revision:
                 continue
@@ -37,7 +38,7 @@ def main(*, min_revision=100, max_revision=116, selected_replays=None):
                 continue
             selected_found.add((season, rid))
             actual_id=rid.replace('replayed-','sourced-',1)[:-1]+'a'
-            if not registry.locator_path(season,actual_id).exists():
+            if not storage_io.exists(registry.locator_path(season, actual_id)):
                 if selected_replays is not None:
                     raise ValueError('explicit replay has no registered actual counterpart')
                 continue
@@ -52,7 +53,7 @@ def main(*, min_revision=100, max_revision=116, selected_replays=None):
                 raise ValueError('unexpected or active old role SOURCE scope')
             pairs=((base.package_path,replay.package_path),
                 (base.game_path/'DBDAT/JUG98030.FDI',replay.game_path/'DBDAT/JUG98030.FDI'))
-            if all(a.stat().st_ino==b.stat().st_ino for a,b in pairs):
+            if all(storage_io.stat_result(a).st_ino==storage_io.stat_result(b).st_ino for a,b in pairs):
                 if selected_replays is not None:
                     raise ValueError('explicit replay files already shared; reuse prior ledger instead')
                 continue
@@ -66,7 +67,7 @@ def main(*, min_revision=100, max_revision=116, selected_replays=None):
     rows=[]
     for season,actual_id,rid,base,replay,pairs in targets:
         ledger=ROOT/(season+'-'+rid+'.json')
-        if ledger.exists():
+        if storage_io.exists(ledger):
             raise ValueError('partial sharing ledger exists; inspect instead of repeating')
         assert_equal_games(base,replay)
         shared=[share_identical(a,b) for a,b in pairs]

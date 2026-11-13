@@ -13,6 +13,7 @@ import copy
 from pathlib import Path
 from typing import Any
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2 as package_v2
 from scripts import season_release_registry_v1 as registry
 
@@ -41,7 +42,7 @@ def _file_sha(path: Path) -> str:
 
 
 def _source_bindings(base) -> list[dict[str, str]]:
-    data = json.loads(compiler.typed.DATA_INPUT.read_text())
+    data = json.loads(storage_io.read_text(compiler.typed.DATA_INPUT))
     bindings: dict[str, str] = {}
     def add(path: str, digest: str) -> None:
         if path in bindings and bindings[path] != digest:
@@ -70,7 +71,7 @@ def _source_bindings(base) -> list[dict[str, str]]:
 
 def _implementation_bindings() -> list[dict[str, str]]:
     paths = {
-        "adapter": Path(__file__).resolve(),
+        "adapter": storage_io.resolve(Path(__file__)),
         "in_memory_compiler": COMPILER_PATH,
         "typed_alty_reader": compiler.PROTOTYPE,
     }
@@ -159,7 +160,7 @@ def _compile(base, *, expected_plan: dict | None = None) -> dict:
             "publication_approved":False}
         plan["transaction_id"] = _sha(package_v2.canonical_json_bytes(plan))[:24]
         cached={"plan":plan,"result":result,"parent":parent,
-                "native_before":{name:(base.game_path/"DBDAT"/name).read_bytes() for name in REQUIRED_NATIVE}}
+                "native_before":{name:storage_io.read_bytes(base.game_path / 'DBDAT' / name) for name in REQUIRED_NATIVE}}
         _CACHE[key]=cached
     if cached["parent"] != parent:
         raise ValueError("content-keyed cache parent differs")
@@ -195,7 +196,7 @@ def bind(package: dict, plan: dict) -> dict:
     base=registry.load_registered_release(SEASON, RELEASE_ID)
     verify(base,plan)
     cache=_compile(base,expected_plan=plan)
-    before=json.loads(base.package_path.read_text())
+    before=json.loads(storage_io.read_text(base.package_path))
     after=cache["result"]["package"]
     if package not in (before,after):
         raise ValueError("bind accepts only the complete exact r210a package preimage/postimage")
@@ -283,11 +284,11 @@ def reconstruction(previous, release_id):
     relative = previous.locator.get('sourced_profile_assignment_plan_path')
     if not relative:
         raise ValueError('Altrincham SOURCE lacks its typed assignment plan')
-    path = (registry.ROOT / relative).resolve()
+    path = storage_io.resolve(registry.ROOT / relative)
     plan = pipeline.read_json_file(path)
     base = registry.load_registered_release(SEASON, RELEASE_ID)
     verify(base, plan)
-    if (path != (previous.package_path.parent / filename(plan)).resolve()
+    if (path != storage_io.resolve(previous.package_path.parent / filename(plan))
             or _file_sha(path) != receipt.get('original_profile_assignment_plan_sha256')):
         raise ValueError('Altrincham SOURCE assignment path/hash differs')
     inner = source_artifact(plan)

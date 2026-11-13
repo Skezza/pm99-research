@@ -11,6 +11,7 @@ import re
 from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_external_soccerbase_birthday_v1 as prior
 
 pipeline, registry = prior.pipeline, prior.registry
@@ -38,7 +39,7 @@ def publisher_original(binding):
             or metadata.get('url') != binding['url'] or metadata.get('status') != 'original-captured'
             or metadata.get('sha256') != binding['sha256']):
         raise ValueError('secondary publisher original receipt/body/URL differs')
-    return path.read_bytes()
+    return storage_io.read_bytes(path)
 
 
 def birthday(body, url, name, role, club, fixture_date):

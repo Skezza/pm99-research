@@ -23,6 +23,7 @@ for candidate in (ROOT, EDITOR):
         sys.path.insert(0, str(candidate))
 
 from app.minifoto_bitmap_archive import iter_obfuscated_bmp_records, validate_minifoto_bitmap  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts import patch_english80_reference_kits_v2 as recipe_renderer  # noqa: E402
 from scripts import pm99_factory_kit_renderer_v1 as factory_renderer  # noqa: E402
 from scripts import pm99_kit_raster_v1 as raster  # noqa: E402
@@ -35,7 +36,7 @@ ARCHIVE = "MINIESC.PKF"
 
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
@@ -169,15 +170,15 @@ def main() -> int:
             "result": "review-ready",
             "carrier_id": args.carrier,
             "archive": ARCHIVE,
-            "source_png": {"path": str(args.source_png.resolve()), "sha256": sha256_file(args.source_png)},
+            "source_png": {"path": str(storage_io.resolve(args.source_png)), "sha256": sha256_file(args.source_png)},
             "runtime_palette": {**palette_info, "sha256": sha256_file(Path(str(palette_info["path"])))},
             "recipe": recipe,
             "outputs": rows,
-            "preview": str(args.output.resolve()),
+            "preview": str(storage_io.resolve(args.output)),
         }
         args.receipt.parent.mkdir(parents=True, exist_ok=True)
         import json
-        args.receipt.write_text(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        storage_io.write_text(args.receipt, json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8')
         print(result["preview"])
         return 0
     except (OSError, ValueError) as exc:

@@ -14,6 +14,7 @@ from app.fdi_indexed import IndexedFDIFile
 from app.eq_roster_pruning import prune_visible_mode1_roster_payload
 from app.indexed_jug_roles import read_indexed_native_roles, rewrite_indexed_native_primary_roles, rewrite_indexed_native_roles
 from app.player_initial_order import OrderReplacement, patch_owned_mode1_complete_orders
+from scripts import json_storage_io_v1 as storage_io
 from scripts import review_profile_addition_duplicate_assignments_v1 as source
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_package_v2 as packages
@@ -101,8 +102,8 @@ def prepare(release, case, profile_root, profile_receipt):
     slugs = source.identity.original_person_links(raw_match, set(review['first_fixture']['starting_xi']))
     receipt = pipeline.read_json_file(profile_receipt)
     people = [p for p in package['players'] if p['club_id'] == club['id']]
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (release.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
     owners = source.ownership.native_owners(eq)
     roster = review['native_roster_before']
     entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(jug).entries}
@@ -253,8 +254,8 @@ def apply(jug, eq, plan):
     if plan.get('schema') != SCHEMA or not plan['review']['removed_is_current_native_starter']:
         raise ValueError('unapproved starter-removal source policy')
     baseline = registry.load_registered_release(plan['season'], plan['release_id'])
-    original = ((baseline.game_path / 'DBDAT/JUG98030.FDI').read_bytes(),
-                (baseline.game_path / 'DBDAT/EQ98030.FDI').read_bytes())
+    original = (storage_io.read_bytes(baseline.game_path / 'DBDAT/JUG98030.FDI'),
+                storage_io.read_bytes(baseline.game_path / 'DBDAT/EQ98030.FDI'))
     expected = _apply_before(*original, plan)
     if (jug, eq) not in (original, expected):
         raise ValueError('whole opening pre/postimage changed or partially applied')
@@ -331,7 +332,7 @@ def reconstruction(previous, release_id):
     from scripts import publish_historical_role_delta_v1 as publisher
     path = registry.ROOT / previous.locator['sourced_profile_assignment_plan_path']
     plan = pipeline.read_json_file(path)
-    if plan.get('schema') != SCHEMA or path.resolve() != (previous.package_path.parent / filename(plan)).resolve():
+    if plan.get('schema') != SCHEMA or storage_io.resolve(path) != storage_io.resolve(previous.package_path.parent / filename(plan)):
         raise ValueError('opening source locator schema/path differs')
     baseline = registry.load_registered_release(previous.season, plan['release_id'])
     verify(baseline, plan)

@@ -3,6 +3,14 @@
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -18,11 +26,11 @@ def canonical_json_bytes(value: Any) -> bytes:
 
 
 def digest(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def _load(path: Path, schema: str | set[str]) -> dict[str, Any]:
-    value = json.loads(path.read_text(encoding="utf-8"))
+    value = json.loads(storage_io.read_text(path, encoding='utf-8'))
     allowed = {schema} if isinstance(schema, str) else schema
     if value.get("schema_version") not in allowed:
         raise ValueError(f"{path}: expected {schema}, got {value.get('schema_version')!r}")
@@ -43,7 +51,7 @@ def _selector_key(value: Any) -> tuple[str, str, str] | None:
 def build_matrix(roots: list[Path], *, historical_current_root: Path | None = None) -> dict[str, Any]:
     season_dirs: dict[str, Path] = {}
     for root in roots:
-        for path in sorted(root.glob("*/opening-lineups.json")):
+        for path in sorted(storage_io.glob(root, '*/opening-lineups.json')):
             season_dirs[path.parent.name] = path.parent
 
     rows: list[dict[str, Any]] = []
@@ -63,22 +71,22 @@ def build_matrix(roots: list[Path], *, historical_current_root: Path | None = No
         if historical_current_root is not None:
             current_path = historical_current_root / season / "current.json"
             plan_path = directory / "plan.json"
-            if not current_path.is_file():
+            if not storage_io.is_file(current_path):
                 current_binding_errors.append("historical-current-manifest-missing")
             else:
-                current = json.loads(current_path.read_text(encoding="utf-8"))
+                current = json.loads(storage_io.read_text(current_path, encoding='utf-8'))
                 row["historical_current_revision"] = current.get("revision_id")
                 current_intake_sha = ((current.get("artifacts") or {}).get("intake") or {}).get("sha256")
                 current_allocation_sha = ((current.get("artifacts") or {}).get("allocation") or {}).get("sha256")
-            if not plan_path.is_file():
+            if not storage_io.is_file(plan_path):
                 current_binding_errors.append("current-plan-missing")
             elif current_intake_sha is not None:
-                plan = json.loads(plan_path.read_text(encoding="utf-8"))
+                plan = json.loads(storage_io.read_text(plan_path, encoding='utf-8'))
                 if (plan.get("source_intake") or {}).get("sha256") != current_intake_sha:
                     current_binding_errors.append("current-plan-intake-stale")
 
         preallocation_path = directory / "opening-squad-preallocation.json"
-        if preallocation_path.is_file():
+        if storage_io.is_file(preallocation_path):
             preallocation = _load(preallocation_path, "pm99-opening-squad-preallocation-v1")
             _assert_hash(f"{season} preallocation/lineup", lineup_sha, preallocation["sources"].get("opening_lineup_sha256"))
             row["preallocation"] = preallocation["summary"]
@@ -89,7 +97,7 @@ def build_matrix(roots: list[Path], *, historical_current_root: Path | None = No
             row["preallocation_status"] = "missing"
 
         manager_path = directory / "opening-manager-ledger.json"
-        if manager_path.is_file():
+        if storage_io.is_file(manager_path):
             managers = _load(manager_path, "pm99-opening-manager-ledger-v1")
             _assert_hash(f"{season} manager/lineup", lineup_sha, managers["sources"].get("opening_lineup_receipt_sha256"))
             row["managers"] = managers["summary"]
@@ -109,7 +117,7 @@ def build_matrix(roots: list[Path], *, historical_current_root: Path | None = No
             row["manager_status"] = "missing"
 
         audit_path = directory / "preallocation-package-audit.json"
-        if audit_path.is_file():
+        if storage_io.is_file(audit_path):
             audit = _load(audit_path, "pm99-season-source-package-build-audit-v1")
             if "opening_squad_preallocation_sha256" in row:
                 _assert_hash(
@@ -163,7 +171,7 @@ def main() -> int:
     args = parser.parse_args()
     matrix = build_matrix(args.root, historical_current_root=args.historical_current_root)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_json_bytes(matrix))
+    storage_io.write_bytes(args.output, canonical_json_bytes(matrix))
     print(json.dumps(matrix["coverage"], indent=2, sort_keys=True))
     return 0
 

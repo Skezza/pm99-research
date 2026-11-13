@@ -9,6 +9,7 @@ from functools import lru_cache
 import json
 import re
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_duplicate_ownership_delta_v1 as delta
 from scripts import capture_named_birth_date_corroboration_v1 as biography
@@ -32,10 +33,10 @@ def corroborated_dates(plan, evidence):
         path = registry.ROOT / source['path']
         if registry.sha256_file(path) != source['sha256']:
             raise ValueError('DOB original biography changed')
-        if json.loads((registry.ROOT / source['receipt_path']).read_text()) != {
+        if json.loads(storage_io.read_text(registry.ROOT / source['receipt_path'])) != {
                 'url': source['url'], 'sha256': source['sha256']}:
             raise ValueError('DOB original biography URL/SHA differs')
-        observed = biography.parse(path.read_bytes(), claim['source_name'], source['provider'])
+        observed = biography.parse(storage_io.read_bytes(path), claim['source_name'], source['provider'])
         if observed != claim['after'] or source['observed_birth_date'] != observed:
             raise ValueError('DOB corroboration does not reproduce from original biography')
         result[row['source_player_id']] = claim['player_id']

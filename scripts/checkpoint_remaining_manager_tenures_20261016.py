@@ -5,6 +5,7 @@ readback and original screenshot review before the first preferred change.
 """
 import copy
 from datetime import UTC, datetime
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_remaining_manager_tenures_20261016 as source
 from scripts import build_remaining_manager_tenures_20261016 as batch
@@ -45,7 +46,7 @@ def verify_original2015():
 def run():
     previous = batch.ROOT.parent / 'release-delivery-checklist-v54.json'
     output = batch.ROOT.parent / 'release-delivery-checklist-v55.json'
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('completed publication must not repeat')
     result = copy.deepcopy(pipeline.read_json_file(previous))
     admission_path = batch.ROOT / 'source-admission-summary.json'
@@ -77,7 +78,7 @@ def run():
         season = row['season']; root = batch.ROOT / season
         retained(root / 'prepublication-proof.json', row)
         publisher.register_completed_delta(season, batch.RELEASE)
-        if not (root / 'final-attestation.json').exists():
+        if not storage_io.exists(root / 'final-attestation.json'):
             retained(root / 'final-attestation.json', runtime.attest(season=season,
                 evidence_dir=registry.ROOT / '.local/runlogs/pm99_runner' / tag(season)))
         valid = registry.validate_preferred_release(season, level='playable')

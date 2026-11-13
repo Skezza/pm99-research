@@ -12,6 +12,14 @@ This is read-only. It does not mutate game/database files.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import contextlib
 import io
@@ -24,13 +32,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 UPSTREAM_EDITOR = REPO_ROOT / "upstream" / "pm99-skezmod-db-editor"
 
 if str(UPSTREAM_EDITOR) not in sys.path:
     sys.path.insert(0, str(UPSTREAM_EDITOR))
-if str(Path(__file__).resolve().parent) not in sys.path:
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
+if str(storage_io.resolve(Path(__file__)).parent) not in sys.path:
+    sys.path.insert(0, str(storage_io.resolve(Path(__file__)).parent))
 
 from assert_pm99_isolated_input import choose_preferred_game_root, ensure_not_legacy_path
 from app.editor_actions import (  # type: ignore
@@ -220,7 +228,7 @@ def _parse_two_column_listing(pdf_path: Path, title: str) -> list[dict[str, str]
 
 def _parse_premier_manager_listing(pdf_dir: Path) -> list[ManagerListingRow]:
     pdf_path = pdf_dir / "Premier League Managers.pdf"
-    if not pdf_path.exists():
+    if not storage_io.exists(pdf_path):
         return []
     rows = _parse_two_column_listing(pdf_path, "LISTING OF ALL MANAGERS")
     out: list[ManagerListingRow] = []
@@ -527,21 +535,21 @@ def main() -> int:
     payload = _build_payload(
         team_file=ensure_not_legacy_path(args.team_file, label="EQ file"),
         coach_file=ensure_not_legacy_path(args.coach_file, label="coach file"),
-        pdf_dir=Path(str(args.pdf_dir)).expanduser().resolve(),
+        pdf_dir=storage_io.resolve(Path(str(args.pdf_dir)).expanduser()),
         focus_teams=[_normalize_spaces(item) for item in list(args.focus_team or []) if str(item).strip()],
     )
 
     if args.json_output:
         out_path = Path(str(args.json_output)).expanduser()
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        storage_io.write_text(out_path, json.dumps(payload, indent=2, ensure_ascii=False), encoding='utf-8')
 
     if args.json:
         print(json.dumps(payload, indent=2, ensure_ascii=False))
     else:
         _print_text(payload)
         if args.json_output:
-            print(f"\nJSON report: {Path(str(args.json_output)).expanduser().resolve()}")
+            print(f"\nJSON report: {storage_io.resolve(Path(str(args.json_output)).expanduser())}")
 
     return 0
 

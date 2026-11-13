@@ -1,4 +1,5 @@
 """Bind dated Barnet ground and season-specific illustrated home-kit colours."""
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry, season_pipeline_v2 as pipeline
 from scripts import season_kit_render_bindings_v1 as render
 from scripts import prepare_paired_club_assets_v1 as assets
@@ -16,7 +17,7 @@ SPECS = {3317: ('Barnet', 'The Hive London', 'ground-original-3317.html',
 
 
 def main():
-    if COMPLETE.exists():
+    if storage_io.exists(COMPLETE):
         raise ValueError('completed asset candidate must not be repeated')
     evidence = []
     for name in ('kit-history-original.html', 'home-2018-19.gif'):

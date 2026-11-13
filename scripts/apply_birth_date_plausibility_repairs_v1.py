@@ -39,6 +39,7 @@ for candidate in (ROOT, EDITOR):
         sys.path.insert(0, str(candidate))
 
 from app.fdi_indexed import IndexedFDIFile  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts import apply_opening_lineup_position_repairs_v1 as jug_refresh  # noqa: E402
 from scripts import reconcile_mode1_roster_base_v1 as base_rows  # noqa: E402
 from scripts import prepare_provisional_compile_package_v1 as preparation  # noqa: E402
@@ -60,7 +61,7 @@ class BirthDateRepairError(ValueError):
 
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
@@ -99,7 +100,7 @@ def _bad_date(player: Mapping[str, Any], snapshot: dt.date) -> bool:
 
 def _read_object(path: Path, label: str) -> dict[str, Any]:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(storage_io.read_text(path, encoding='utf-8'))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise BirthDateRepairError(f"cannot read {label}: {path}") from exc
     if not isinstance(value, dict):
@@ -240,10 +241,10 @@ def _ensure_correction_artifact(package: dict[str, Any], *, corrections_sha256: 
 def _write_package(path: Path, package: Mapping[str, Any]) -> str:
     payload = package_v2.canonical_json_bytes(dict(package))
     temporary = path.with_name(f".{path.name}.birth-date-repair.tmp")
-    if temporary.exists() or temporary.is_symlink():
+    if storage_io.exists(temporary) or temporary.is_symlink():
         raise BirthDateRepairError(f"temporary recipe path already exists: {temporary}")
-    temporary.write_bytes(payload)
-    os.replace(temporary, path)
+    storage_io.write_bytes(temporary, payload)
+    storage_io.replace_file(temporary, path)
     return hashlib.sha256(payload).hexdigest()
 
 
@@ -437,19 +438,19 @@ def repair(
     base_tree: Path, runtime_game: Path, receipt_path: Path, apply: bool,
     force_refresh_ids: Sequence[str] = (),
 ) -> dict[str, Any]:
-    resolved = [path.resolve() for path in package_paths]
+    resolved = [storage_io.resolve(path) for path in package_paths]
     if len(set(resolved)) != len(resolved):
         raise BirthDateRepairError("each --package must be supplied once")
-    compile_package_path = compile_package_path.resolve()
+    compile_package_path = storage_io.resolve(compile_package_path)
     if compile_package_path not in resolved:
         raise BirthDateRepairError("--compile-package must also be supplied through --package")
-    base_jug = base_tree.resolve() / "DBDAT/JUG98030.FDI"
-    if not base_jug.is_file():
+    base_jug = storage_io.resolve(base_tree) / "DBDAT/JUG98030.FDI"
+    if not storage_io.is_file(base_jug):
         raise BirthDateRepairError("clean base JUG is unavailable")
-    base_bytes = base_jug.read_bytes()
+    base_bytes = storage_io.read_bytes(base_jug)
     base_entries = {int(entry.record_id): entry for entry in IndexedFDIFile.from_bytes(base_bytes).entries}
     corrections, corrections_sha256 = _correction_index()
-    sources = _source_clubs(source_intake.resolve())
+    sources = _source_clubs(storage_io.resolve(source_intake))
     plans = [
         (path, *_plan_package(
             path=path, source_clubs=sources, base_entries=base_entries, base_bytes=base_bytes,
@@ -461,10 +462,10 @@ def repair(
     # previous interrupted alpha run can have a recipe already restored to a
     # native whole-record policy while its live JUG still carries the old
     # candidate.  Detect that specific, byte-provable pending refresh here.
-    live_jug = runtime_game.resolve() / "DBDAT/JUG98030.FDI"
-    if not live_jug.is_file():
+    live_jug = storage_io.resolve(runtime_game) / "DBDAT/JUG98030.FDI"
+    if not storage_io.is_file(live_jug):
         raise BirthDateRepairError("runtime game has no JUG98030.FDI")
-    live_bytes = live_jug.read_bytes()
+    live_bytes = storage_io.read_bytes(live_jug)
     live_entries = {int(entry.record_id): entry for entry in IndexedFDIFile.from_bytes(live_bytes).entries}
     pending_native_ids: list[str] = []
     compile_package = next(package for path, package, _plan in plans if path == compile_package_path)
@@ -507,7 +508,7 @@ def repair(
     # file before replacing even one live snapshot.  The actual write repeats
     # the same deterministic compile only after that proof succeeds.
     with tempfile.NamedTemporaryFile(
-        prefix="pm99-birth-date-repair-", suffix=".json", dir=runtime_game.resolve().parent,
+        prefix="pm99-birth-date-repair-", suffix=".json", dir=storage_io.resolve(runtime_game).parent,
         delete=False,
     ) as handle:
         temporary_package = Path(handle.name)
@@ -518,8 +519,8 @@ def repair(
             target_ids=target_ids, apply=False,
         )
     finally:
-        if temporary_package.exists() or temporary_package.is_symlink():
-            temporary_package.unlink()
+        if storage_io.exists(temporary_package) or temporary_package.is_symlink():
+            storage_io.unlink(temporary_package)
     if apply:
         for path, package, plan in plans:
             plan["after_sha256"] = _write_package(path, package)
@@ -549,7 +550,7 @@ def repair(
     }
     if apply:
         receipt_path.parent.mkdir(parents=True, exist_ok=True)
-        receipt_path.write_bytes(package_v2.canonical_json_bytes(result))
+        storage_io.write_bytes(receipt_path, package_v2.canonical_json_bytes(result))
     return result
 
 

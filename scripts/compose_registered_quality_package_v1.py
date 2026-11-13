@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2 as package_v2  # noqa: E402
 from scripts import season_pipeline_v2 as pipeline  # noqa: E402
 from scripts import season_release_registry_v1 as registry  # noqa: E402
@@ -30,7 +31,7 @@ class CompositionError(ValueError):
 
 def _read(path: Path, *, label: str) -> dict[str, Any]:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(storage_io.read_text(path, encoding='utf-8'))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise CompositionError(f"cannot read {label}: {path}") from exc
     if not isinstance(value, dict):
@@ -48,12 +49,12 @@ def _normalise(value: object) -> str:
 
 def _repair_source(season: str, kind: str) -> tuple[dict[str, Any], Path, Path] | None:
     path = ROOT / f".local/season-direct-{kind}-repairs-v1/{season}.json"
-    if not path.is_file():
+    if not storage_io.is_file(path):
         return None
     receipt = _read(path, label=f"{kind} repair receipt")
     refresh = receipt.get("runtime_refresh")
     source_path = Path(str(refresh.get("package_path"))) if isinstance(refresh, Mapping) else None
-    if source_path is None or not source_path.is_file():
+    if source_path is None or not storage_io.is_file(source_path):
         raise CompositionError(f"{kind} receipt has no retained corrected package: {path}")
     # Derive the field-level delta from the retained strict corrected package. An
     # older direct-repair receipt can legitimately describe the last binary

@@ -17,6 +17,14 @@ evidence.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import datetime as dt
 import hashlib
@@ -134,7 +142,7 @@ def sha256_file(path: Path) -> str:
     """Return a file SHA-256 without loading a game asset into memory."""
 
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
@@ -142,7 +150,7 @@ def sha256_file(path: Path) -> str:
 
 def _read_json(path: Path) -> Mapping[str, Any] | None:
     try:
-        parsed = json.loads(path.read_text(encoding="utf-8"))
+        parsed = json.loads(storage_io.read_text(path, encoding='utf-8'))
     except (OSError, json.JSONDecodeError):
         return None
     return parsed if isinstance(parsed, Mapping) else None
@@ -152,7 +160,7 @@ def _read_json_value(path: Path) -> Any | None:
     """Read JSON when an evidence sidecar is deliberately an array."""
 
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return json.loads(storage_io.read_text(path, encoding='utf-8'))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         return None
 
@@ -175,9 +183,9 @@ def _read_canonical_json(path: Path) -> tuple[Any, str] | None:
     """
 
     try:
-        if not path.is_file() or path.is_symlink():
+        if not storage_io.is_file(path) or path.is_symlink():
             return None
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
         canonical = _canonical_json_bytes(value)
     except (OSError, UnicodeDecodeError, TypeError, ValueError, json.JSONDecodeError):
@@ -197,9 +205,9 @@ def _relative(root: Path, path: Path) -> str:
 def _hash_record(root: Path, path: Path) -> dict[str, Any]:
     """Return an exact, current fingerprint or a clear missing state."""
 
-    record: dict[str, Any] = {"path": _relative(root, path), "exists": path.is_file()}
-    if path.is_file():
-        record.update({"sha256": sha256_file(path), "bytes": path.stat().st_size})
+    record: dict[str, Any] = {"path": _relative(root, path), "exists": storage_io.is_file(path)}
+    if storage_io.is_file(path):
+        record.update({"sha256": sha256_file(path), "bytes": storage_io.size(path)})
     return record
 
 
@@ -221,7 +229,7 @@ def source_status(root: Path, season: str) -> dict[str, Any]:
     """Read a current historical-source pointer without changing it."""
 
     pointer = root / ".local/season-historical-squad-backfill-v1" / season / "current.json"
-    if pointer.is_file():
+    if storage_io.is_file(pointer):
         document = _read_json(pointer)
         if document is None:
             return {"state": "invalid-current-pointer", "pointer": _hash_record(root, pointer)}
@@ -239,7 +247,7 @@ def source_status(root: Path, season: str) -> dict[str, Any]:
         }
 
     source_dir = root / "seasons" / season / "sources"
-    source_files = sorted(path for path in source_dir.glob("*.json") if path.is_file()) if source_dir.is_dir() else []
+    source_files = sorted(path for path in storage_io.glob(source_dir, '*.json') if storage_io.is_file(path)) if source_dir.is_dir() else []
     return {
         "state": "season-source-files-only" if source_files else "missing",
         "source_files": [_hash_record(root, path) for path in source_files],
@@ -247,17 +255,17 @@ def source_status(root: Path, season: str) -> dict[str, Any]:
 
 
 def _newest(paths: Iterable[Path]) -> Path | None:
-    candidates = [path for path in paths if path.is_file()]
-    return max(candidates, key=lambda path: path.stat().st_mtime_ns) if candidates else None
+    candidates = [path for path in paths if storage_io.is_file(path)]
+    return max(candidates, key=lambda path: storage_io.stat_result(path).st_mtime_ns) if candidates else None
 
 
 def _safe_index_path(root: Path, value: Any) -> Path | None:
     """Resolve a baseline-index path only when it remains beneath the repo."""
     if not isinstance(value, str) or not value or Path(value).is_absolute():
         return None
-    candidate = (root / value).resolve()
+    candidate = storage_io.resolve(root / value)
     try:
-        candidate.relative_to(root.resolve())
+        candidate.relative_to(storage_io.resolve(root))
     except ValueError:
         return None
     return candidate
@@ -268,9 +276,9 @@ def _safe_child_path(parent: Path, value: Any) -> Path | None:
 
     if not isinstance(value, str) or not value or Path(value).is_absolute():
         return None
-    candidate = (parent / value).resolve()
+    candidate = storage_io.resolve(parent / value)
     try:
-        candidate.relative_to(parent.resolve())
+        candidate.relative_to(storage_io.resolve(parent))
     except ValueError:
         return None
     return candidate
@@ -287,7 +295,7 @@ def _frozen_baseline_draft(root: Path, season: str) -> tuple[Path, Path, Mapping
     candidates: list[tuple[Path, Path, Mapping[str, Any]]] = []
     if not index_root.is_dir():
         return None
-    for index_path in sorted(index_root.glob("*.json")):
+    for index_path in sorted(storage_io.glob(index_root, '*.json')):
         index = _read_json(index_path)
         if index is None or index.get("schema_version") != BASELINE_INDEX_SCHEMA:
             continue
@@ -309,7 +317,7 @@ def _frozen_baseline_draft(root: Path, season: str) -> tuple[Path, Path, Mapping
             expected_audit = audit.get("sha256")
             if (
                 package_path is None or audit_path is None
-                or not package_path.is_file() or not audit_path.is_file()
+                or not storage_io.is_file(package_path) or not storage_io.is_file(audit_path)
                 or _hash_record(root, package_path).get("sha256") != expected_package
                 or _hash_record(root, audit_path).get("sha256") != expected_audit
             ):
@@ -317,7 +325,7 @@ def _frozen_baseline_draft(root: Path, season: str) -> tuple[Path, Path, Mapping
             candidates.append((package_path, index_path, entry))
     if not candidates:
         return None
-    return max(candidates, key=lambda row: row[1].stat().st_mtime_ns)
+    return max(candidates, key=lambda row: storage_io.stat_result(row[1]).st_mtime_ns)
 
 
 def _frozen_baseline_seasons(root: Path) -> set[str]:
@@ -326,7 +334,7 @@ def _frozen_baseline_seasons(root: Path) -> set[str]:
     result: set[str] = set()
     if not index_root.is_dir():
         return result
-    for path in index_root.glob("*.json"):
+    for path in storage_io.glob(index_root, '*.json'):
         document = _read_json(path)
         if document is None or document.get("schema_version") != BASELINE_INDEX_SCHEMA:
             continue
@@ -350,7 +358,7 @@ def _calendar_bound_source_draft(root: Path, season: str) -> tuple[Path, Path, M
     candidates = _matching_source_build_audits(root, season)
     if not candidates:
         return None
-    return max(candidates, key=lambda row: row[1].stat().st_mtime_ns)
+    return max(candidates, key=lambda row: storage_io.stat_result(row[1]).st_mtime_ns)
 
 
 def _matching_source_build_audits(
@@ -375,10 +383,10 @@ def _matching_source_build_audits(
     intake = source.get("intake") if isinstance(source, Mapping) else None
     if not isinstance(intake, Mapping):
         return candidates
-    for audit_path in root.glob(f".local/{pattern}"):
+    for audit_path in storage_io.glob(root, f'.local/{pattern}'):
         audit = _read_json(audit_path)
         package_path = audit_path.with_name("draft-season-package.json")
-        if audit is None or not package_path.is_file():
+        if audit is None or not storage_io.is_file(package_path):
             continue
         package = _hash_record(root, package_path)
         hard_blockers = audit.get("hard_blockers")
@@ -468,7 +476,7 @@ def _canonical_workspace_candidates(
         "workspace",
         "build_plan_candidate",
     }
-    for audit_path in sorted(candidate_root.glob("*/promotion-audit.json")):
+    for audit_path in sorted(storage_io.glob(candidate_root, '*/promotion-audit.json')):
         audit = _read_json(audit_path)
         if audit is None:
             continue
@@ -601,7 +609,7 @@ def package_status(root: Path, season: str) -> dict[str, Any]:
     """Locate a canonical package first, otherwise the current draft package."""
 
     canonical = root / "seasons" / season / "season-package.json"
-    if canonical.is_file():
+    if storage_io.is_file(canonical):
         package_path, state = canonical, "canonical-package"
     else:
         frozen = _frozen_baseline_draft(root, season)
@@ -639,7 +647,7 @@ def package_status(root: Path, season: str) -> dict[str, Any]:
                 calendar_audit_sha256=calendar_audit_sha256,
             )
             if audits:
-                _package, audit_path, audit = max(audits, key=lambda row: row[1].stat().st_mtime_ns)
+                _package, audit_path, audit = max(audits, key=lambda row: storage_io.stat_result(row[1]).st_mtime_ns)
                 _add_current_source_audit(root, season, result, audit_path, audit)
             return result
         bound = _calendar_bound_source_draft(root, season)
@@ -648,7 +656,7 @@ def package_status(root: Path, season: str) -> dict[str, Any]:
             state = "calendar-bound-source-draft"
         else:
             package_path = _newest(
-                (root / ".local/season-authoring-final-shards-v1").glob(f"*/{season}/draft-season-package.json")
+                storage_io.glob(root / '.local/season-authoring-final-shards-v1', f'*/{season}/draft-season-package.json')
             )
             state = "draft-package" if package_path else "missing"
     if package_path is None:
@@ -671,7 +679,7 @@ def package_status(root: Path, season: str) -> dict[str, Any]:
         bound_audit_path if state == "calendar-bound-source-draft"
         else root / ".local/transfermarkt-opening-plans-current-v1" / season / "preallocation-package-audit.json"
     )
-    if audit_path.is_file():
+    if storage_io.is_file(audit_path):
         audit = bound_audit if state == "calendar-bound-source-draft" else (_read_json(audit_path) or {})
         if state == "calendar-bound-source-draft":
             _add_current_source_audit(root, season, result, audit_path, audit)
@@ -700,9 +708,9 @@ def _static_ingress_candidates(
         return []
 
     receipt_paths = [
-        *sorted((root / ".local/season-static-ingress-v1").glob("*/static-ingress-receipt.json")),
-        *sorted((root / ".local/season-static-ingress-batch-v1").glob("*/*/static-ingress-receipt.json")),
-        *sorted((root / ".local/season-static-qualification-v1").glob("*/static-ingress-receipt.json")),
+        *sorted(storage_io.glob(root / '.local/season-static-ingress-v1', '*/static-ingress-receipt.json')),
+        *sorted(storage_io.glob(root / '.local/season-static-ingress-batch-v1', '*/*/static-ingress-receipt.json')),
+        *sorted(storage_io.glob(root / '.local/season-static-qualification-v1', '*/static-ingress-receipt.json')),
     ]
     expected_label = season.replace("-", "/", 1)
     candidates: list[dict[str, Any]] = []
@@ -759,7 +767,7 @@ def _static_ingress_candidates(
                 if not stage_package.is_absolute():
                     stage_package = receipt_path.parent / stage_package
                 try:
-                    stage_package.resolve().relative_to(receipt_path.parent.resolve())
+                    storage_io.resolve(stage_package).relative_to(storage_io.resolve(receipt_path.parent))
                 except ValueError:
                     chain_valid = False
                     break
@@ -779,7 +787,7 @@ def _static_ingress_candidates(
             preparation_root = root / ".local/season-provisional-compile-packages-v1"
             preparation_candidates: list[tuple[int, str, Path, Path, dict[str, Any]]] = []
             for preparation_path in sorted(
-                preparation_root.glob(f"{season}*/provisional-preparation-audit.json")
+                storage_io.glob(preparation_root, f'{season}*/provisional-preparation-audit.json')
             ):
                 if not (
                     preparation_path.parent.name == season
@@ -812,7 +820,7 @@ def _static_ingress_candidates(
                     or preparation_output.get("package_sha256") != receipt_input_sha256
                     or not isinstance(preparation_season, Mapping)
                     or preparation_season.get("label") != expected_label
-                    or not prepared_package_path.is_file()
+                    or not storage_io.is_file(prepared_package_path)
                     or sha256_file(prepared_package_path) != receipt_input_sha256
                     or not isinstance(duplicate_ownership, Mapping)
                     or not isinstance(outfield_handling, Mapping)
@@ -963,7 +971,7 @@ def _static_ingress_preflight_candidates(
     expected_label = season.replace("-", "/", 1)
     candidates: list[dict[str, Any]] = []
     for receipt_path in sorted(
-        (root / ".local/season-static-ingress-v1").glob("*/static-ingress-preflight-blocked.json")
+        storage_io.glob(root / '.local/season-static-ingress-v1', '*/static-ingress-preflight-blocked.json')
     ):
         receipt = _read_json(receipt_path)
         if receipt is None:
@@ -1220,7 +1228,7 @@ def _canonical_package_build_evidence(
     if not candidate_root.is_dir() or not plan_root.is_dir():
         return None
 
-    for promotion_path in sorted(candidate_root.glob("*/promotion-audit.json")):
+    for promotion_path in sorted(storage_io.glob(candidate_root, '*/promotion-audit.json')):
         promotion = _read_json(promotion_path)
         if promotion is None:
             continue
@@ -1284,7 +1292,7 @@ def _canonical_package_build_evidence(
         ):
             continue
 
-        for plan_path in sorted(plan_root.glob("*/build-plan.json")):
+        for plan_path in sorted(storage_io.glob(plan_root, '*/build-plan.json')):
             parsed_plan = _read_canonical_json(plan_path)
             if parsed_plan is None:
                 continue
@@ -1309,7 +1317,7 @@ def _canonical_package_build_evidence(
                 "total_bytes": final_inventory["total_bytes"],
             }
 
-            for metadata_path in sorted(plan_root.glob("*/build-plan-receipt.json")):
+            for metadata_path in sorted(storage_io.glob(plan_root, '*/build-plan-receipt.json')):
                 receipt = _read_json(metadata_path)
                 if receipt is None:
                     continue
@@ -1410,19 +1418,19 @@ def compilation_status(root: Path, season: str, package: Mapping[str, Any]) -> d
 
     receipts = root / ".local/season-workspace-v1" / f"{season}-final-build"
     release_link = root / ".local/releases" / f"pm99-{season}-world"
-    release_root = release_link.resolve() if release_link.exists() else None
+    release_root = storage_io.resolve(release_link) if storage_io.exists(release_link) else None
     audit_path = receipts / "clean-base-audit.json"
     compiler_path = receipts / "database-compiler-receipt.json"
     effective_path = receipts / "season-package.effective.json"
     result: dict[str, Any] = {
         "state": "not-compiled",
-        "release_link": _relative(root, release_link) if release_link.exists() else None,
-        "release_root": _relative(root, release_root) if release_root and release_root.exists() else None,
+        "release_link": _relative(root, release_link) if storage_io.exists(release_link) else None,
+        "release_root": _relative(root, release_root) if release_root and storage_io.exists(release_root) else None,
         "audit": _hash_record(root, audit_path),
         "compiler_receipt": _hash_record(root, compiler_path),
         "effective_package": _hash_record(root, effective_path),
     }
-    if not (release_root and release_root.is_dir() and audit_path.is_file() and compiler_path.is_file()):
+    if not (release_root and release_root.is_dir() and storage_io.is_file(audit_path) and storage_io.is_file(compiler_path)):
         package_record = package.get("package")
         input_package_sha256 = package_record.get("sha256") if isinstance(package_record, Mapping) else None
         if package.get("state") == "canonical-package" and isinstance(input_package_sha256, str):
@@ -1514,11 +1522,11 @@ def _verify_static_ingress_runtime_binding(
     raw_game_root = proof.get("static_game_root")
     if not isinstance(raw_attestation_path, Path) or not isinstance(raw_game_root, Path):
         return None
-    attestation_path = (root / raw_attestation_path).resolve()
-    game_root = (root / raw_game_root).resolve()
+    attestation_path = storage_io.resolve(root / raw_attestation_path)
+    game_root = storage_io.resolve(root / raw_game_root)
     try:
-        attestation_path.relative_to(root.resolve())
-        game_root.relative_to(root.resolve())
+        attestation_path.relative_to(storage_io.resolve(root))
+        game_root.relative_to(storage_io.resolve(root))
     except ValueError:
         return None
     parsed = _read_canonical_json(attestation_path)
@@ -1536,7 +1544,7 @@ def _verify_static_ingress_runtime_binding(
 
     package = attestation.get("package")
     package_file = _attested_file(root, package)
-    if package_file is None or package_file[0] != (root / "seasons" / season / "season-package.json").resolve():
+    if package_file is None or package_file[0] != storage_io.resolve(root / 'seasons' / season / 'season-package.json'):
         return None
     package_document = _read_json(package_file[0])
     if not isinstance(package_document, Mapping):
@@ -1595,7 +1603,7 @@ def _verify_static_ingress_runtime_binding(
             return None
 
     calendar_file = _attested_file(root, attestation.get("calendar"))
-    expected_calendar = (root / ".local" / "calendar-v1" / season / "MANAGPRE.EXE").resolve()
+    expected_calendar = storage_io.resolve(root / '.local' / 'calendar-v1' / season / 'MANAGPRE.EXE')
     if calendar_file is None or calendar_file[0] != expected_calendar:
         return None
 
@@ -1607,7 +1615,7 @@ def _verify_static_ingress_runtime_binding(
     screenshot_file = _attested_file(root, runtime.get("screenshot"))
     if (
         control_file is None or summary_file is None or screenshot_file is None
-        or summary_file[0] != summary_path.resolve()
+        or summary_file[0] != storage_io.resolve(summary_path)
         or not screenshot_file[0].as_posix().startswith(summary_path.parent.as_posix() + "/screens/")
     ):
         return None
@@ -1666,7 +1674,7 @@ def runtime_status(root: Path, season: str) -> dict[str, Any]:
                 "summary": _hash_record(root, summary_path),
                 "screenshots": {"state": "missing", "count": 0},
             }
-    screen_paths = sorted(path for path in (summary_path.parent / "screens").glob("*") if path.is_file())
+    screen_paths = sorted(path for path in storage_io.glob(summary_path.parent / 'screens', '*') if storage_io.is_file(path))
     if proof["kind"] == "selector-discovery":
         completed = (
             summary.get("success") is True
@@ -1711,7 +1719,7 @@ def _directory_size(path: Path) -> tuple[int, int] | None:
         for name in names:
             candidate = Path(current) / name
             try:
-                total += candidate.stat().st_size
+                total += storage_io.size(candidate)
                 files += 1
             except OSError:
                 continue
@@ -1836,7 +1844,7 @@ def delivery_status(source: Mapping[str, Any], package: Mapping[str, Any], compi
 
 
 def build_report(root: Path, *, remote_host: str | None = None, remote_timeout_seconds: int = 5) -> dict[str, Any]:
-    root = root.resolve()
+    root = storage_io.resolve(root)
     season_root = root / "seasons"
     seasons = _frozen_baseline_seasons(root)
     if season_root.is_dir():
@@ -1992,12 +2000,12 @@ def _atomic_write(path: Path, payload: str) -> None:
     with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=path.parent, delete=False) as handle:
         handle.write(payload)
         temporary = Path(handle.name)
-    temporary.replace(path)
+    storage_io.move(temporary, path, replace=True)
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1], help="PM99RE root (default: repository containing this script)")
+    parser.add_argument("--root", type=Path, default=storage_io.resolve(Path(__file__)).parents[1], help="PM99RE root (default: repository containing this script)")
     parser.add_argument("--output", type=Path, help="write Markdown report atomically")
     parser.add_argument("--json-output", type=Path, help="write full JSON report atomically")
     parser.add_argument("--archive-host", default="192.168.1.133", help="Pi address; use --no-remote for a local-only read")

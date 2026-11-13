@@ -15,6 +15,14 @@ Premier League retain the supplied shirt numbers on PM99's Line-up screen?
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import json
 import shutil
@@ -23,7 +31,7 @@ import sys
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR_ROOT = ROOT / "upstream" / "pm99-skezmod-db-editor"
 if str(EDITOR_ROOT) not in sys.path:
     sys.path.insert(0, str(EDITOR_ROOT))
@@ -197,32 +205,32 @@ def _set_dd6361_initial_squad_order(raw_file: bytearray, indexed: IndexedFDIFile
 
 def _copy_source(source: Path, output: Path) -> None:
     required = ("JUG98030.FDI", "EQ98030.FDI", "ENT98030.FDI", "MINIFOTO.PKF")
-    missing = [name for name in required if not (source / name).is_file()]
+    missing = [name for name in required if not storage_io.is_file(source / name)]
     if missing:
         raise ValueError(f"Source is missing required files: {', '.join(missing)}")
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError(f"Output already exists: {output}")
     output.mkdir(parents=True)
     for name in required:
-        shutil.copy2(source / name, output / name)
+        storage_io.copy_file(source / name, output / name, metadata=True)
 
 
 def main() -> int:
     args = parse_args()
-    source = args.source.resolve()
-    output = args.output.resolve()
+    source = storage_io.resolve(args.source)
+    output = storage_io.resolve(args.output)
     _copy_source(source, output)
 
     jug_path = output / "JUG98030.FDI"
-    jug = bytearray(jug_path.read_bytes())
+    jug = bytearray(storage_io.read_bytes(jug_path))
     jug_indexed = IndexedFDIFile.from_bytes(jug)
     for initial_squad_order, (player_id, number, _) in enumerate(STOKE_2015_25, start=1):
         _set_dd6361_shirt_number(jug, jug_indexed, player_id, number)
         _set_dd6361_initial_squad_order(jug, jug_indexed, player_id, initial_squad_order)
-    jug_path.write_bytes(jug)
+    storage_io.write_bytes(jug_path, jug)
 
     eq_path = output / "EQ98030.FDI"
-    eq = eq_path.read_bytes()
+    eq = storage_io.read_bytes(eq_path)
     eq_indexed = IndexedFDIFile.from_bytes(eq)
     # The external-roster parser is traced against the raw outer-FDI bytes.
     # `rebuild_indexed_fdi`, conversely, accepts decoded payload replacements.
@@ -247,7 +255,7 @@ def main() -> int:
         OLD_STOKE_EQ_ID: xor_decode(_rewrite_roster_tail(source_stoke, [WIMBLEDON_CARRIER_PLAYER_ID])),
     }
     built_eq = _rebuild_indexed_fdi(eq, eq_indexed, replacements)
-    eq_path.write_bytes(built_eq)
+    storage_io.write_bytes(eq_path, built_eq)
 
     rosters = {team.eq_record_id: team for team in load_eq_linked_team_rosters(str(eq_path), str(jug_path))}
     if [row.player_record_id for row in rosters[PREMIER_STOKE_EQ_ID].rows] != stoke_ids:
@@ -271,7 +279,7 @@ def main() -> int:
             "dd6361_initial_squad_order_readback": True,
         },
     }
-    (output / "proof.json").write_text(json.dumps(proof, indent=2) + "\n", encoding="utf-8")
+    storage_io.write_text(output / 'proof.json', json.dumps(proof, indent=2) + '\n', encoding='utf-8')
     print(json.dumps(proof, indent=2))
     return 0
 

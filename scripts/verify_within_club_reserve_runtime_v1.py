@@ -2,15 +2,16 @@
 import json
 from pathlib import Path
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
 from scripts.verify_paired_profile_runtime_v1 import profile_name_method
 
 
 def verify(release, evidence, visual_review, output, *, carrier=None):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('within-club runtime proof is immutable')
-    plan = json.loads((registry.ROOT / release.locator['ownership_plan_path']).read_text())
+    plan = json.loads(storage_io.read_text(registry.ROOT / release.locator['ownership_plan_path']))
     from scripts import season_within_club_reserve_repair_v1 as source
     from scripts import season_stoke_original_alias_reserve_v1 as original_alias
     from scripts import season_shtanyuk_2002_coupled_alias_v1 as coupled_alias
@@ -23,25 +24,25 @@ def verify(release, evidence, visual_review, output, *, carrier=None):
     selected = [r for r in plan['updates'] if carrier is None or r['carrier_id'] == carrier]
     if len(selected) != 1:
         raise ValueError('runtime profile requires one explicitly selected source-plan actor')
-    package = json.loads(release.package_path.read_text())
+    package = json.loads(storage_io.read_text(release.package_path))
     player = next(p for p in package['players'] if p['carrier_id'] == selected[0]['carrier_id'])
     club = next(c for c in package['clubs'] if c['id'] == player['club_id'])
     if registry.sha256_file(release.compiler_receipt_path) != registry.sha256_file(evidence / 'input-provenance.json'):
         raise ValueError('runtime launched another repair provenance')
-    summary = json.loads((evidence / 'summary.json').read_text())
+    summary = json.loads(storage_io.read_text(evidence / 'summary.json'))
     profile = summary.get('player_profile', {})
     if (summary.get('success') is not True or summary.get('wine_debugger_detected') or
             summary.get('process_exit_code') not in (None, 0) or
             profile.get('expected_name_token_satisfied') is not True):
         raise ValueError('named reserve profile did not complete successfully')
     launched = {line.split()[1]: line.split()[0] for line in
-        (evidence / 'dbdat_override.sha256').read_text().splitlines() if line and not line.startswith('#')}
+        storage_io.read_text(evidence / 'dbdat_override.sha256').splitlines() if line and not line.startswith('#')}
     for name in ('JUG98030.FDI', 'EQ98030.FDI', 'ENT98030.FDI', 'MINIFOTO.PKF',
                  'RIDIESC.PKF', 'MINIESC.PKF', 'NANOESC.PKF'):
         if launched.get('DBDAT/' + name) != registry.sha256_file(release.game_path / 'DBDAT' / name):
             raise ValueError('actual runner native/archive inputs differ from repair')
     shot = evidence / 'screens' / Path(profile['screenshot']).name
-    visual = json.loads(visual_review.read_text())
+    visual = json.loads(storage_io.read_text(visual_review))
     if (visual.get('method') != 'assistant-original-image-visual-review' or
             visual.get('screenshot_sha256') != registry.sha256_file(shot) or
             visual.get('observed_club') != club['name']):

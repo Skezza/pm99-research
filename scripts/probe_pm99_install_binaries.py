@@ -14,6 +14,14 @@ with a reproducible artifact instead of ad-hoc terminal grep.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -22,7 +30,7 @@ from pathlib import Path
 from typing import Any
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 DEFAULT_INSTALL_DIR = REPO_ROOT / ".local" / "premier-manager-ninety-nine"
 
 BINARY_NAMES = [
@@ -54,7 +62,7 @@ MARKER_BYTES = {
 
 def _sha256(path: Path) -> str:
     h = hashlib.sha256()
-    with path.open("rb") as f:
+    with storage_io.open_file(path, 'rb') as f:
         for chunk in iter(lambda: f.read(1024 * 1024), b""):
             h.update(chunk)
     return h.hexdigest()
@@ -104,13 +112,13 @@ def _scan_marker_offsets(data: bytes) -> dict[str, list[int]]:
 
 
 def _scan_binary(path: Path) -> dict[str, Any]:
-    data = path.read_bytes()
+    data = storage_io.read_bytes(path)
     strings = _extract_ascii_strings(data)
     classified = _classify_strings(strings)
     marker_offsets = _scan_marker_offsets(data)
     return {
         "path": str(path),
-        "size_bytes": path.stat().st_size,
+        "size_bytes": storage_io.size(path),
         "sha256": _sha256(path),
         "ascii_string_count": len(strings),
         "marker_offsets": {k: [int(x) for x in v] for k, v in marker_offsets.items()},
@@ -124,26 +132,26 @@ def _inventory_save_like_files(install_dir: Path) -> dict[str, Any]:
         install_dir / "save",
         install_dir / "SAVES",
     ]
-    existing = [p for p in save_roots if p.exists()]
+    existing = [p for p in save_roots if storage_io.exists(p)]
     files: list[dict[str, Any]] = []
 
     # Also include known oddball root files that may be save-/session-related.
     extra_patterns = ["*.R0X", "*.0??", "*.DAT", "*.dbc", "*.DBC"]
     candidates: set[Path] = set()
     for root in existing:
-        for p in root.rglob("*"):
-            if p.is_file():
+        for p in storage_io.glob(root, '*', recursive=True):
+            if storage_io.is_file(p):
                 candidates.add(p)
     for pat in extra_patterns:
-        for p in install_dir.glob(pat):
-            if p.is_file():
+        for p in storage_io.glob(install_dir, pat):
+            if storage_io.is_file(p):
                 candidates.add(p)
 
     for p in sorted(candidates):
         files.append(
             {
                 "path": str(p),
-                "size_bytes": p.stat().st_size,
+                "size_bytes": storage_io.size(p),
             }
         )
     return {
@@ -155,9 +163,9 @@ def _inventory_save_like_files(install_dir: Path) -> dict[str, Any]:
 
 def _inventory_tactics_files(install_dir: Path) -> dict[str, Any]:
     tactics_dir = install_dir / "TACTICS"
-    if not tactics_dir.exists():
+    if not storage_io.exists(tactics_dir):
         return {"tactics_dir": str(tactics_dir), "exists": False}
-    files = sorted([p for p in tactics_dir.iterdir() if p.is_file()])
+    files = sorted([p for p in tactics_dir.iterdir() if storage_io.is_file(p)])
     tactic_files = [p for p in files if p.name.upper().startswith("TACTIC.")]
     predef_files = [p for p in files if p.name.lower().startswith("predef.")]
     return {
@@ -166,10 +174,10 @@ def _inventory_tactics_files(install_dir: Path) -> dict[str, Any]:
         "file_count": len(files),
         "tactic_file_count": len(tactic_files),
         "predef_file_count": len(predef_files),
-        "partido_dat_exists": (tactics_dir / "partido.dat").exists(),
+        "partido_dat_exists": storage_io.exists(tactics_dir / 'partido.dat'),
         "sample_files": [p.name for p in files[:40]],
         "sizes": {
-            p.name: p.stat().st_size
+            p.name: storage_io.size(p)
             for p in files
             if p.name in {"partido.dat", "TACTIC.000", "TACTIC.001", "TACTIC.002", "predef.001"}
         },
@@ -190,7 +198,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     install_dir = Path(args.install_dir)
-    if not install_dir.exists():
+    if not storage_io.exists(install_dir):
         payload = {"error": f"Install dir not found: {install_dir}"}
         print(json.dumps(payload, indent=2))
         return 2
@@ -198,7 +206,7 @@ def main() -> int:
     binaries: list[dict[str, Any]] = []
     for name in BINARY_NAMES:
         p = install_dir / name
-        if p.exists() and p.is_file():
+        if storage_io.exists(p) and storage_io.is_file(p):
             binaries.append(_scan_binary(p))
 
     payload = {
@@ -217,7 +225,7 @@ def main() -> int:
     if args.json_output:
         out = Path(args.json_output)
         out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(text + "\n", encoding="utf-8")
+        storage_io.write_text(out, text + '\n', encoding='utf-8')
     print(text)
     return 0
 

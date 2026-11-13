@@ -13,6 +13,7 @@ import re
 from datetime import date
 from pathlib import Path
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_opening_identity_exchange_v1 as exchange
 from scripts import season_release_registry_v1 as registry
 
@@ -22,7 +23,7 @@ POLICY = "editorial-right-wing-from-broad-M-and-period-role-witness-v1"
 
 def _raw(path: str, sha: str) -> bytes:
     p = ROOT / path
-    raw = p.read_bytes()
+    raw = storage_io.read_bytes(p)
     if hashlib.sha256(raw).hexdigest() != sha:
         raise ValueError(f"original source hash differs: {path}")
     return raw
@@ -30,7 +31,7 @@ def _raw(path: str, sha: str) -> bytes:
 
 def _receipt(value: dict) -> None:
     receipt_path = ROOT / value["receipt_path"]
-    receipt_raw = receipt_path.read_bytes()
+    receipt_raw = storage_io.read_bytes(receipt_path)
     if hashlib.sha256(receipt_raw).hexdigest() != value["receipt_sha256"]:
         raise ValueError("retained source receipt hash differs")
     receipt = json.loads(receipt_raw)

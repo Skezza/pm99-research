@@ -1,6 +1,7 @@
 """Independent literal identity/ten-skill readbacks of the private alias games."""
 from app.fdi_indexed import IndexedFDIFile
 from app.indexed_jug_roles import read_indexed_native_roles
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import season_package_compiler_v2 as compiler
 from scripts import season_within_club_reserve_repair_v1 as native
@@ -12,14 +13,14 @@ from scripts import build_shtanyuk_2002_coupled_alias_20261016 as second
 
 def verify(batch,expected):
     output=batch.ROOT/'actual-actor-readbacks.json'
-    if output.exists():raise ValueError('completed independent alias readback must not repeat')
+    if storage_io.exists(output):raise ValueError('completed independent alias readback must not repeat')
     release=registry.load_registered_release(batch.SEASON,batch.RELEASE)
     parent=registry.load_registered_release(batch.SEASON,'sourced-remaining-manager-tenures-20261016-r116a')
-    data=(release.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    old=(parent.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    data=storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
+    old=storage_io.read_bytes(parent.game_path / 'DBDAT/JUG98030.FDI')
     preserve_other_records(old,data,set(expected))
     for name in ('EQ98030.FDI','ENT98030.FDI'):
-        if (release.game_path/'DBDAT'/name).read_bytes()!=(parent.game_path/'DBDAT'/name).read_bytes():
+        if storage_io.read_bytes(release.game_path / 'DBDAT' / name)!=storage_io.read_bytes(parent.game_path / 'DBDAT' / name):
             raise ValueError('alias changed another club/order/tactics/manager file')
     entries={e.record_id:e for e in IndexedFDIFile.from_bytes(data).entries}
     countries=compiler._extract_country_codes_from_textos(release.game_path/'DBDAT/TEXTOS.PKF')

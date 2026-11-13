@@ -8,17 +8,18 @@ Counts of inherited declarations are review candidates, not proven defects.
 import json
 from pathlib import Path
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
 from scripts.audit_2015_world_release_semantics_v1 import _manager_graph
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = storage_io.resolve(Path(__file__)).parents[1]
 OUTPUT = ROOT / '.local/editorial-closeout-20261008'
 
 
 def source(name, url, required):
     path = OUTPUT / 'sources' / name
-    text = BeautifulSoup(path.read_bytes(), 'html.parser').get_text(' ', strip=True)
+    text = BeautifulSoup(storage_io.read_bytes(path), 'html.parser').get_text(' ', strip=True)
     for phrase in required:
         if phrase.casefold() not in text.casefold():
             raise ValueError(f'Original source missing required anchor: {phrase}')
@@ -28,7 +29,7 @@ def source(name, url, required):
 
 def prepare(season, name, surname, sources):
     release = registry.load_preferred_release(season)
-    package = json.loads(release.package_path.read_text())
+    package = json.loads(storage_io.read_text(release.package_path))
     club = next(c for c in package['clubs'] if c['carrier_id'] == 223)
     manager = next(m for m in package['managers'] if m['id'] == club['manager_id'])
     holders, names = _manager_graph(eq_path=release.game_path/'DBDAT/EQ98030.FDI',
@@ -66,7 +67,7 @@ def census():
     rows = []
     for season in registry.supported_seasons():
         release = registry.load_preferred_release(season)
-        package = json.loads(release.package_path.read_text())
+        package = json.loads(storage_io.read_text(release.package_path))
         manager_lookup = {m['id']: m for m in package['managers']}
         inherited = []
         for club in package['clubs']:

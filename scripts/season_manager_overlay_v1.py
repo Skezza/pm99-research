@@ -23,6 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import compose_opening_manager_supplements_v1 as composer  # noqa: E402
 from scripts import materialise_opening_manager_ledger_v1 as ledger_v1  # noqa: E402
 from scripts import season_package_v2 as package_v2  # noqa: E402
@@ -37,12 +38,12 @@ class ManagerOverlayError(ValueError):
 
 
 def _sha256_file(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def _read(path: Path, label: str) -> tuple[dict[str, Any], str]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise ManagerOverlayError(f"cannot read {label}: {path}") from exc
@@ -53,9 +54,9 @@ def _read(path: Path, label: str) -> tuple[dict[str, Any], str]:
 
 def _relative(path: Path) -> str:
     try:
-        return path.resolve().relative_to(ROOT).as_posix()
+        return storage_io.resolve(path).relative_to(ROOT).as_posix()
     except ValueError:
-        return str(path.resolve())
+        return str(storage_io.resolve(path))
 
 
 def _baseline_entry(*, baseline: Mapping[str, Any], season: str) -> Mapping[str, Any]:
@@ -75,7 +76,7 @@ def _baseline_entry(*, baseline: Mapping[str, Any], season: str) -> Mapping[str,
     if not isinstance(path_value, str) or not path_value or Path(path_value).is_absolute() or ".." in Path(path_value).parts:
         raise ManagerOverlayError(f"baseline {season} base path is unsafe")
     package_path = ROOT / path_value
-    if not package_path.is_file() or _sha256_file(package_path) != expected:
+    if not storage_io.is_file(package_path) or _sha256_file(package_path) != expected:
         raise ManagerOverlayError(f"baseline {season} base package is missing or hash-mismatched")
     return entry
 
@@ -94,7 +95,7 @@ def build_overlay(
         raise ManagerOverlayError("source capture has no club list")
     if opening_lineups.get("season_start_year") != int(season[:4]):
         raise ManagerOverlayError("opening lineup receipt targets a different season")
-    ordered = sorted(supplements, key=lambda item: str(item[0].resolve()))
+    ordered = sorted(supplements, key=lambda item: str(storage_io.resolve(item[0])))
     try:
         composed = composer.compose([(document, digest) for _path, document, digest in ordered])
         composed_bytes = composer.canonical_json_bytes(composed)
@@ -144,14 +145,14 @@ def write_overlay(
     supplements: Sequence[Path], output_root: Path,
 ) -> dict[str, Any]:
     """Write a new overlay root once, preserving all prior evidence untouched."""
-    output_root = output_root.resolve()
-    if output_root.exists():
+    output_root = storage_io.resolve(output_root)
+    if storage_io.exists(output_root):
         raise ManagerOverlayError(f"refusing to overwrite manager overlay root: {output_root}")
     baseline, baseline_sha256 = _read(baseline_index, "baseline index")
     source, source_sha256 = _read(source_capture, "source capture")
     lineups, lineups_sha256 = _read(opening_lineups, "opening lineups")
     loaded_supplements = [
-        (path.resolve(), *_read(path, "manager supplement"))
+        (storage_io.resolve(path), *_read(path, "manager supplement"))
         for path in supplements
     ]
     composed, materialised, receipt = build_overlay(
@@ -161,9 +162,9 @@ def write_overlay(
         supplements=loaded_supplements,
     )
     output_root.mkdir(parents=True, exist_ok=False)
-    (output_root / "manager-supplement.composed.json").write_bytes(composer.canonical_json_bytes(composed))
-    (output_root / "opening-manager-ledger.json").write_bytes(ledger_v1._canonical_json_bytes(materialised))
-    (output_root / "manager-overlay-audit.json").write_bytes(package_v2.canonical_json_bytes(receipt))
+    storage_io.write_bytes(output_root / 'manager-supplement.composed.json', composer.canonical_json_bytes(composed))
+    storage_io.write_bytes(output_root / 'opening-manager-ledger.json', ledger_v1._canonical_json_bytes(materialised))
+    storage_io.write_bytes(output_root / 'manager-overlay-audit.json', package_v2.canonical_json_bytes(receipt))
     return receipt
 
 

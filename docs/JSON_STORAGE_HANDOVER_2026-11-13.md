@@ -1,168 +1,166 @@
-# JSON storage pilot and agent handover
+# Inline JSON storage and agent handover
 
 Machine: `joe-Vostro-3350`. Source storage session:
 `01a1c97b-1165-7fa0-a47f-2f9698bcb4a1`. Date: 2026-11-13 UTC.
 
+Status: staged rollout running. Final measured scope and results will be added
+here after the migration gates finish. Do not infer conversion scope from the
+mechanical adapter inventory.
+
 ## Prompt to give the other agent
 
 ```text
-Before continuing PM99 work, read AGENTS.md, CURRENT_WORK.md and
-docs/JSON_STORAGE_HANDOVER_2026-11-13.md. A small inline Zstd storage pilot is
-already implemented and six inactive qualification snapshots are compressed.
-Preserve scripts/json_storage_v1.py, scripts/migrate_json_storage_v1.py, their
-tests and the integrations in season_pipeline_v2.py, season_package_v2.py and
-season_release_registry_v1.py. These may be uncommitted alongside my unrelated
-work: inspect the diff and preserve it; do not reset, clean or replace it.
+Before continuing PM99 work, read AGENTS.md, CURRENT_WORK.md,
+docs/JSON_STORAGE_HANDOVER_2026-11-13.md and
+ docs/JSON_STORAGE_CONSUMER_AUDIT_2026-11-13.md.
+Preserve the inline JSON storage implementation and its consumer adaptations.
+It may coexist with unrelated reconstruction/submodule work: inspect the diff;
+do not reset, clean, replace or revert it as incidental cleanup.
 
-JSON input paths are logical: name.json may be physically name.json.zst.
-Use json_storage_v1.read_json/read_bytes/is_file/iter_json_paths/sha256_file/
-size/copy_json for those inputs. Compression/decompression happens inline;
-do not create permanent plain copies to make direct read_text/read_bytes,
-Path.exists, glob or shutil.copy calls work. Audit such callers before moving
-additional files. Raw game files and physical game inventories stay unchanged.
-Never change a receipt's original SHA-256 to the compressed-file hash.
+JSON input names are logical: name.json may be physically name.json.zst.
+In scripts/tools, use scripts.json_storage_io_v1 for Path-like reads, writes,
+existence checks, discovery, copying, linking and atomic replacement. Use
+json_storage_v1 for explicit logical hashes/size/JSON operations. Do not add
+permanent decompressed caches or patch Python's Path/builtins. Do not bypass
+these helpers with open, os.replace, shutil.copy or direct imported Path
+constants. The consumer regression guard must pass after changes.
 
-Default writes remain plain. Compressed writes are opt-in; existing compressed
-package writes retain that format. Keep immutable-evidence no-overwrite rules,
-canonical encoding checks, corruption rejection and concurrency protections.
-Do not blanket-compress .local or touch registered/current release inputs.
-Only six manifest-listed inactive snapshots have been migrated. The workbook,
-builder and arbitrary historical scripts are NOT all compression-aware yet.
+Logical JSON hashes/sizes describe the original decoded bytes, including
+whitespace and newlines. Game/tree/archive inventories describe physical stored
+names and bytes. Explicit .json.zst paths in the generic adapter are physical:
+never mix explicit frame names with logical JSON copy/link destinations.
+A corrupt frame or simultaneous plain+compressed copies is an error; fail
+closed and use the migration journal. Never update a receipt hash to the frame
+hash, delete an ambiguous copy blindly, or swallow codec errors as missing data.
 
-Continue the user's current task while preserving this compatibility contract.
-If a required historical caller lacks support, adapt that caller and test it,
-or use the documented verified restore operation and report the rollback.
-Run the documented storage/pipeline/package/registry regressions before
-claiming compatibility. Keep existing 26 preferred games and original 2015
-backup unchanged. Do not resume or broaden storage migration without scope.
+New automatic compression is limited by AUTO_ROOTS and the shared exclusion
+policy. Existing compressed outputs retain their representation. Controls such
+as current.json, *-current.json, working.json, candidates.json and locator.json
+stay plain; game/binary trees, preferred input dependencies and the original
+2015 backup are excluded from migration. Evidence no-overwrite rules remain.
+A shared compressed inode is immutable: publish a new logical artifact rather
+than overwriting one alias. Optional replay dedup skips compressed artifacts.
+Never link a frame to .verified-link and rename it into a plain JSON filename.
+
+Use batch manifests/journals to restore converted files. recover requires the
+ORIGINAL batch journal and follows its recorded direction, including restore.
+If new hardlink aliases exist, the old manifest must be expanded and reviewed
+first; the tool refuses rather than dropping an alias. Keep every good copy.
+Do not broaden root activation or migration just because a module was adapted.
+Run the documented regressions and a concrete compressed build/SOURCE canary
+for any newly supported family. NAS deployment is a separate filesystem gate.
+Continue the user's research work while preserving this storage contract.
 ```
 
-## Implemented behavior and scope
+## Storage contract
 
-The shared API lives in `scripts/json_storage_v1.py`. It accepts a logical
-`name.json` and resolves exactly one representation: the ordinary file or
-`name.json.zst`. The latter is read through the installed `zstd` command directly
-into the calling process. It does not materialise a plain disk cache or patch
-Python's Path/builtins. The Zstd command is required only for compressed data.
-Compressed writes and conversion are supported on the POSIX laptop/Pi in v1.
-Plain reads and the established plain package writer remain available elsewhere.
+`scripts/json_storage_v1.py` owns verified Zstd encoding/decoding, logical
+resolution and POSIX directory locks. `scripts/json_storage_io_v1.py` dispatches
+logical `.json` paths to it and delegates ordinary files and objects to native
+Python behavior. No global monkeypatching is used. Plain copies and moves stay
+native. Text decoding preserves Python's default encoding and newline handling.
 
-Supported entry points are:
+Zstd level 1 is used for fast inline operation. Automatic new-output compression
+requires at least 1 MiB and at least 10% saving, applies only in enabled families,
+and preserves an existing file's representation. The decoded per-document limit
+is 512 MiB. This is a decoded-size bound, **not** a total process RAM bound:
+parsing JSON also allocates Python objects. Current large-document and real-shape
+rehearsal evidence is in the rollout directory.
 
-- `season_pipeline_v2.read_json_file` and opt-in
-  `write_canonical_json(..., compressed=True)`;
-- pipeline external-artifact and canonical-document descriptors;
-- `season_package_v2.read_canonical_package`, package hashes, legacy JSON loader,
-  and opt-in `write_canonical_package(..., compressed=True)`;
-- registry JSON reading, logical workspace input existence and input hashes.
+A logical JSON hash always covers original bytes; compression never reserializes
+existing evidence. Both representations at once, corruption, unsafe symlinks and
+missing codecs fail closed. Immutable writers refuse existing evidence. Ordinary
+plain I/O remains available without the codec. Compressed writes and migration
+are supported on the tested POSIX laptop filesystem.
 
-`write_canonical_package` keeps an already compressed file compressed when the
-caller omits the compression argument. Uncompressed callers retain their prior
-plain-file behavior. The immutable pipeline writer refuses existing plain OR
-compressed evidence. The physical `pipeline.sha256_file` and tree inventory
-functions deliberately remain unchanged: compressed files in a physical tree
-are fingerprinted as their actual stored bytes and names.
+`json_storage_policy_v2.py` shares exclusions between automatic writes and batch
+migration. `data/json-storage-consumers-v2.json` and
+`check_json_storage_io_v2.py` are mechanical regression guards. See the consumer
+audit document for the separate physical/logical decisions and remaining scope.
 
-The pilot covers only `receipts/season-package.effective.json` in these six
-folders under `.local/season-static-qualification-v1/`:
+## Migration, interruption and restore
 
-- `2005-06-20260904-r2`
-- `2005-06-20260904-r3`
-- `2005-06-20260904-r4`
-- `2005-06-20260904-r5-a`
-- `2005-06-20260904-r6-a`
-- `2005-06-20260904-r6-b`
+`json_storage_batches_v2.py` inventories >=1 MiB raw JSON inode groups. It follows
+preferred/original JSON dependencies, release parents and directory references;
+excludes control/game roots, recent outputs, readable open handles, inbound
+symlinks, incomplete aliases and oversized documents. Only explicitly selected
+roots enter a manifest; each batch is capped at 1 GiB actual allocated input.
+Registered historical scope requires a separate explicit selection.
 
-These six snapshots happen to contain identical original bytes, each with 9,177
-players. They provide a narrow compatibility proof, not a representative estimate
-for every JSON family. Each original was 17,016,877 bytes; each compressed frame
-is approximately 0.86 MiB. The set shrank from 97.37 MiB logical to about 5.16 MiB
-allocated. Initial measured allocation released was 96,755,712 bytes (92.27 MiB).
-Rollback/reapply allocation receipts may vary by filesystem metadata allocation;
-do not add initial conversion and final conversion savings together.
+A complete alias group is hash/metadata checked under ordered directory locks.
+One verified frame is published at every alias before raw aliases are retired.
+The journal is flushed/fsynced at each transition. Modes, owner/group, mtime,
+original bytes and inode sharing are preserved. The hard free-space reserve is
+6 GiB; normal build reserve remains 8 GiB unless explicitly configured otherwise.
+The live workbook's earlier explicit reserve setting is not a new default.
 
-Manifest, original file hashes/modes/descriptors, conversion journal, inline
-read verification, actual rollback proof and final reapply journal are under
-`.local/json-compression-pilot-20261113/`. The preferred catalogue hash locked
-in the manifest is unchanged. No preferred game or registered package input was
-selected. No workbook/browser path has been broadly migrated or certified for
-compressed inputs: existing plain workflows are tested separately.
+Typical commands, from `/home/joe/pm99-research`:
 
-## Invariants for further work
+```bash
+python3 scripts/json_storage_batches_v2.py inventory --output NEW-inventory.json
+python3 scripts/json_storage_batches_v2.py apply BATCH-manifest.json --output NEW-apply.jsonl
+python3 scripts/json_storage_batches_v2.py restore BATCH-manifest.json --output NEW-restore.jsonl
+python3 scripts/json_storage_batches_v2.py recover ORIGINAL-interrupted-journal.jsonl --output NEW-recovery.jsonl
+```
 
-- Hash original decoded bytes, including the original whitespace/newline. Do
-  not reserialise a document during compression or relax canonical validation.
-- Logical input descriptors retain original sizes and hashes. Physical game
-  inventories retain physical sizes and hashes. Do not conflate these contracts.
-- Both plain and compressed representations at once are an error. Do not pick
-  whichever is newer. A corrupt frame is an error, not an absent optional input.
-- Migration verifies the compressed frame before retiring a raw file and
-  refuses shared inodes, symlinks, changed sources and non-JSON game assets.
-- Directory advisory locks serialize cooperating helper readers and writers.
-  Legacy direct readers do not honor them: convert only inactive audited inputs.
-- The compressed reader limit is 512 MiB per decoded document. Retain this
-  bound until larger inputs have a separately reviewed streaming implementation.
-- Copy logical JSON with `copy_json`; use `iter_json_paths` for logical JSON
-  discovery. Copies preserve the source's compressed/plain format by default.
-  Direct os.link/shutil.copy and glob('*.json') require an audit.
-- Shared helper adoption is not universal support. Hundreds of old direct
-  Path reads and existence checks remain. Do not convert their inputs first.
+Inventory is read-only. Manifest selection is an API operation (`make_manifest`)
+from reviewed roots, not a blanket recursive conversion. Use a new journal
+filename every time. A manifest passed to `recover` is rejected. Recovery
+verifies every surviving representation, consolidates aliases and removes only
+verified reserved staging links left by interruption. Never remove raw or
+compressed files manually to resolve ambiguity.
 
-## Commands, regression and recovery
+Later legitimate hardlinks change an alias group. Restore/recovery then refuses
+until an expanded manifest is reviewed; an old journal is not authorization to
+unlink new aliases. Preferred catalogue changes also require re-audit. Locks
+coordinate cooperating helpers; they do not make direct external writers safe.
+Use inactive inputs and a per-family consumer/shell audit. The dependency scan
+can take time; it deduplicates inode contents, path references and queued nodes
+and reports progress. Its cache lives only within the migration process.
 
-Run commands from `/home/joe/pm99-research`. Use the existing test environment;
-system Python does not have pytest installed.
+## Verification
 
 ```bash
 .local/venvs/season-pipeline/bin/python -m pytest -q \
-  scripts/test_json_storage_v1.py scripts/test_season_pipeline_v2.py \
-  scripts/test_season_package_v2.py scripts/test_season_release_registry_v1.py \
-  scripts/test_season_delivery_status_v1.py
+  scripts/test_json_storage_v1.py scripts/test_json_storage_rollout_v2.py \
+  scripts/test_season_pipeline_v2.py scripts/test_season_package_v2.py \
+  scripts/test_season_release_registry_v1.py scripts/test_season_delivery_status_v1.py
 
 PYTHONPATH=upstream/pm99-skezmod-db-editor:upstream/pm99-skezmod-patcher \
   .local/venvs/season-pipeline/bin/python -m pytest -q \
   tools/test_season_preset_browser.py scripts/test_editorial_amendment_delta_v1.py
 
+python3 scripts/check_json_storage_io_v2.py
+python3 scripts/check_repo_boundary.py
 ./pm99-season validate all
 ./pm99-season play 2015-16 --original --check
-python3 scripts/check_repo_boundary.py
 ```
 
-The final storage/pipeline/package/registry/status batch passed 73 tests. The
-workbook/amendment batch passed 69 tests with one existing scenario-dependent
-skip. All 26 preferred releases passed release validation, and the original
-2015 backup passed its full inventory/playable check. These are regressions of
-the existing plain workflows, not proof of a compressed active build route.
-Logs and validation results are stored in the pilot evidence folder.
+The new tests include native plain-file semantics, locale/UTF-8 mode, CRLF,
+symlinks, no-clobber writes, corruption/missing codec, both restore directions,
+source mutation, disk reserve, shared aliases and real SIGKILL recovery. An
+unpreferred private canary must exercise the real workbook, two chained edits,
+compressed recipe reads, complete SOURCE replay and a byte-identical plain
+control before activation. It must not alter the preferred catalogue.
 
-Dry run and full rollback of these six files:
+Local rollout evidence: `.local/json-storage-rollout-20261113/` (manifests,
+journals, actual allocations/free space, tests, browser proof and ephemeral
+Claude Sonnet QA sessions). Broader family regressions have 14 pre-existing
+failures, reproduced exactly at baseline `6d9746e`; see
+`family-failure-comparison.json` and `family-baseline-comparison-v2.log`. These
+are not represented as passing tests and are outside storage repair scope.
+
+## Earlier pilot
+
+Baseline commit `6d9746e` compressed six inactive 2005/06 qualification
+`receipts/season-package.effective.json` snapshots (r2, r3, r4, r5-a, r6-a,
+r6-b). Original allocation was 97.37 MiB; final frame allocation about 5.16 MiB.
+Initial measured saving was 92.27 MiB. Do not add rollback/reapply savings twice.
+Evidence remains under `.local/json-compression-pilot-20261113/`.
+
+That earlier six-file manifest still uses `scripts/migrate_json_storage_v1.py`:
 
 ```bash
-.local/venvs/season-pipeline/bin/python scripts/migrate_json_storage_v1.py \
-  .local/json-compression-pilot-20261113/manifest.json --restore
-
-.local/venvs/season-pipeline/bin/python scripts/migrate_json_storage_v1.py \
-  .local/json-compression-pilot-20261113/manifest.json --restore --apply \
-  --receipt .local/json-compression-pilot-20261113/rollback-next.jsonl
+python3 scripts/migrate_json_storage_v1.py .local/json-compression-pilot-20261113/manifest.json --restore
+python3 scripts/migrate_json_storage_v1.py .local/json-compression-pilot-20261113/manifest.json --restore --apply --receipt NEW-pilot-restore.jsonl
 ```
-
-Use a new receipt filename each time. The manifest locks original byte hashes
-and the preferred catalogue hash. If the catalogue has changed, stop and review
-the scope rather than blindly changing its expected hash. The tool excludes
-paths directly referenced by any release locator, registry metadata, game
-directories, paths outside `.local`, path escapes and symlinks. Indirect runtime
-and source dependencies still require a human/agent audit before a new manifest.
-
-An interrupted conversion can leave both representations. Keep both, verify
-them against the manifest, and review the journal before removing either. The
-reader rejects this ambiguous state. Never delete a frame to resolve a missing
-raw-file error without proving a good original representation remains.
-
-## Next bounded rollout
-
-Audit one active end-to-end recipe route: workbook discovery/editing, amendment
-materialisation, builder source replay, artifact copying, direct hashes and
-existence checks. Test compressed fixtures and an isolated unpreferred build.
-Only after that route passes should one of its actual inputs be migrated. The
-rest of the 53 GiB JSON estate is not yet covered by this pilot. Do not start a
-whole-project conversion or promise the earlier sample's saving across it.

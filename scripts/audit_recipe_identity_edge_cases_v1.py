@@ -14,6 +14,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_duplicate_ownership_plan_v1 as planner
 from scripts import season_historical_roster_audit_v1 as roster
 from scripts import season_pipeline_v2 as pipeline
@@ -64,7 +65,7 @@ def inspect(players, clubs, anchor):
 
 
 def run(output):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('identity edge-case audit is immutable')
     sections = []
     for season in registry.supported_seasons():

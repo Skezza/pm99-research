@@ -1,6 +1,7 @@
 """Independently adjudicate one nominated club label, without game writes."""
 from datetime import UTC,datetime
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_original_carrier_label_restoration_v1 as source
 from scripts.build_original_carrier_label_20261017 import external
 from scripts.build_takano_period_country_20261017 import RELEASE
@@ -11,7 +12,7 @@ def main():
     root=source.registry.ROOT/'.local/consolidated-audit-20261009/hertha2000-cohort-label-20261017'
     root.mkdir(exist_ok=True)
     output=root/'source-native-identity-review.json'
-    if output.exists():raise ValueError('existing Hertha adjudication requires inspection, not repetition')
+    if storage_io.exists(output):raise ValueError('existing Hertha adjudication requires inspection, not repetition')
     base=source.registry.load_registered_release('2000-01',RELEASE)
     package=source.pipeline.read_json_file(base.package_path)
     club=next(c for c in package['clubs'] if c['carrier_id']==421)
@@ -28,7 +29,7 @@ def main():
     capture=matches[0];raw_proof=source.old.roster.SourceVerifier('2000-01').verify(capture)
     if raw_proof['status']!='raw-source-reparsed':raise ValueError('original period squad cannot be reparsed')
     raw=source.registry.ROOT/raw_proof['local_path']
-    header=' '.join(raw.read_text().splitlines()[0].split())
+    header=' '.join(storage_io.read_text(raw).splitlines()[0].split())
     if (header!='= Hertha Berlin - German Bundesliga 2000/01'
             or len(players)!=25 or authored['selector']['club_name']!='Hertha Berlin'):
         raise ValueError('literal original season/club/full represented cohort differs')
@@ -37,8 +38,8 @@ def main():
     baseline=next(c for c in fixed['carriers'] if c['carrier_id']==421)['baseline_club']
     if source.old.builder._normalise_club_name(baseline['name'])!='herthaberlin':
         raise ValueError('source cohort is not original Hertha carrier')
-    eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
-    jug=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
+    jug=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
     entry=next(e for e in source.IndexedFDIFile.from_bytes(eq).entries if e.record_id==421)
     payload=entry.decode_payload(eq);short,full,_=source.labels.prefix_parts(payload)
     marker=payload.find(bytes.fromhex('dd6361'));_,_,end=source._read_eq_inline_string(payload,marker+4)

@@ -10,6 +10,7 @@ import hashlib
 import re
 
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_historical_opening_review_v1 as opening
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
@@ -37,7 +38,7 @@ def bound_annual_capture(release, club, pre, root):
     plan_path = root / 'plan.json'
     plan = pipeline.read_json_file(plan_path)
     intake_binding = plan['source_intake']
-    intake_path = (registry.ROOT / intake_binding['path']).resolve()
+    intake_path = storage_io.resolve(registry.ROOT / intake_binding['path'])
     registry.relative_workspace_path(intake_path)
     if registry.sha256_file(intake_path) != intake_binding['sha256']:
         raise ValueError('bound source intake changed')
@@ -48,7 +49,7 @@ def bound_annual_capture(release, club, pre, root):
     # This is the explicit composition in the bound revision, never a search
     # for whichever historical file happens to have the preferred facts.
     capture_path = intake_path.parent / 'world-squads-composed.json'
-    if not capture_path.is_file():
+    if not storage_io.is_file(capture_path):
         return facts.annual_capture(release.season, club)
     document = pipeline.read_json_file(capture_path)
     if registry.sha256_file(capture_path) != intake['source_capture_sha256']:
@@ -204,14 +205,14 @@ def prepare(release, case, *, numeric_annual=False):
         annual_path = registry.ROOT / annual_proof['local_path']
         if registry.sha256_file(annual_path) != annual_proof['source_sha256']:
             raise ValueError('original annual numeric witness changed')
-        numeric_identity = annual_numeric_identity(annual_path.read_bytes(), profile['published_full_name'], id)
+        numeric_identity = annual_numeric_identity(storage_io.read_bytes(annual_path), profile['published_full_name'], id)
     retained, removed = prove_projection_pair(people, projected['players'], capture['players'], profile, shirt,
         numeric_identity=numeric_identity)
     proof_id = 'opening-squad-preallocation-' + release.season
     if any(p['proof']['artifact_id'] != proof_id for p in people):
         raise ValueError('one recipe identity comes from an unrelated person source')
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (release.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
     _, _, roster = native.roster_rows(eq, club['carrier_id'])
     before = {str(p['carrier_id']): facts.native_facts(jug, p['carrier_id']) for p in people}
     if before[str(retained['carrier_id'])]['birth_date'] != profile['published_birth_date']:

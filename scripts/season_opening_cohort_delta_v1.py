@@ -18,6 +18,7 @@ import re
 from bs4 import BeautifulSoup
 
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_compiler_v2 as compiler
 from scripts import season_package_v2 as packages
 from scripts import season_release_registry_v1 as registry
@@ -45,7 +46,7 @@ def _verify_identity_crosswalks(plan: Mapping[str, Any]) -> None:
         roster = sources[crosswalk["period_roster_source_id"]]
         official_path = core._safe_workspace_path(official["path"], "official identity profile")
         roster_path = core._safe_workspace_path(roster["path"], "period published-name row")
-        official_text = " ".join(BeautifulSoup(official_path.read_bytes(), "html.parser").stripped_strings)
+        official_text = " ".join(BeautifulSoup(storage_io.read_bytes(official_path), "html.parser").stripped_strings)
         claims = crosswalk["same_identity_fields"]
         assertions = crosswalk.get("official_profile_text_claims")
         if (not isinstance(assertions, list) or not assertions
@@ -55,7 +56,7 @@ def _verify_identity_crosswalks(plan: Mapping[str, Any]) -> None:
             raise core.CohortDeltaError("official profile does not substantiate the bound identity crosswalk")
         if not isinstance(crosswalk.get("period_row_text"), str) or _sha(crosswalk["period_row_text"].encode()) != crosswalk.get("period_row_sha256"):
             raise core.CohortDeltaError("period crosswalk row lacks its exact text/hash binding")
-        if crosswalk["period_row_text"] not in roster_path.read_text(encoding="utf-8", errors="replace"):
+        if crosswalk["period_row_text"] not in storage_io.read_text(roster_path, encoding='utf-8', errors='replace'):
             raise core.CohortDeltaError("period published row is absent from its bound source body")
         parsed = core._parse_footballsquads_row(crosswalk["period_row_text"], season_start_year=int(plan["parent"]["season"][:4]))
         parsed_claims = {"birth_date": parsed["birth_date"], "nationality": parsed["nationality"],
@@ -86,7 +87,7 @@ def _verify_fixture_source_membership(plan: Mapping[str, Any]) -> None:
         if source is None:
             raise core.CohortDeltaError("raw fixture assertion references no bound body")
         path = core._safe_workspace_path(source["path"], "opening fixture")
-        body = path.read_bytes()
+        body = storage_io.read_bytes(path)
         if _sha(body) != source["sha256"] or assertion.get("source_body_sha256") != source["sha256"]:
             raise core.CohortDeltaError("fixture raw body hash differs from the exact source assertion")
         slots = club["source_slot_rows"]
@@ -158,7 +159,7 @@ def _verify_fixture_source_membership(plan: Mapping[str, Any]) -> None:
         if source is None:
             raise core.CohortDeltaError("reserve identity assertion has no bound source body")
         path = core._safe_workspace_path(source["path"], "reserve identity report")
-        body = path.read_bytes()
+        body = storage_io.read_bytes(path)
         if _sha(body) != source["sha256"] or reserve.get("source_body_sha256") != source["sha256"]:
             raise core.CohortDeltaError("reserve identity raw body hash differs")
         if reserve.get("parser") == "profile-link-html-v1":
@@ -184,7 +185,7 @@ def _verify_fixture_source_membership(plan: Mapping[str, Any]) -> None:
                 path = core._safe_workspace_path(source["path"], "published position source")
                 row_format = row_binding.get("row_format")
                 if row_format == "preallocation-player-row-v1":
-                    document = json.loads(path.read_text())
+                    document = json.loads(storage_io.read_text(path))
                     rows = [row for source_club in document.get("source_clubs", [])
                             for row in source_club.get("players", [])]
                     matches = [row for row in rows if row.get("source_row_sha256") == row_binding.get("row_sha256")]
@@ -192,7 +193,7 @@ def _verify_fixture_source_membership(plan: Mapping[str, Any]) -> None:
                         raise core.CohortDeltaError("published annual position row/hash is absent or ambiguous")
                     position = matches[0].get("facts", {}).get("position")
                 elif row_format == "footballsquads-csv-row-v1":
-                    raw = path.read_text(encoding="utf-8", errors="replace")
+                    raw = storage_io.read_text(path, encoding='utf-8', errors='replace')
                     text = row_binding.get("row_text")
                     if (not isinstance(text, str) or _sha(text.encode("utf-8")) != row_binding.get("row_sha256")
                             or text not in raw):
@@ -209,7 +210,7 @@ def _verify_fixture_source_membership(plan: Mapping[str, Any]) -> None:
                 if source is None or source.get("sha256") != position_binding.get("source_body_sha256"):
                     raise core.CohortDeltaError("slot source position binding is not pinned to a source body")
                 path = core._safe_workspace_path(source["path"], "slot period-position source")
-                raw = path.read_text(encoding="utf-8", errors="replace")
+                raw = storage_io.read_text(path, encoding='utf-8', errors='replace')
                 row_text = position_binding.get("row_text")
                 if (position_binding.get("row_format") != "footballsquads-csv-row-v1"
                         or not isinstance(row_text, str)
@@ -235,12 +236,12 @@ def _verify_fixture_source_membership(plan: Mapping[str, Any]) -> None:
                 exception_text = exception.get("period_source_row_text")
                 fixture_path = core._safe_workspace_path(fixture_source["path"], "utility exception fixture")
                 period_path = core._safe_workspace_path(period_source["path"], "utility exception period row")
-                if (_sha(fixture_path.read_bytes()) != exception.get("fixture_source_body_sha256")
+                if (_sha(storage_io.read_bytes(fixture_path)) != exception.get("fixture_source_body_sha256")
                         or fixture_source["sha256"] != exception.get("fixture_source_body_sha256")
-                        or _sha(period_path.read_bytes()) != exception.get("period_source_body_sha256")
+                        or _sha(storage_io.read_bytes(period_path)) != exception.get("period_source_body_sha256")
                         or period_source["sha256"] != exception.get("period_source_body_sha256")
                         or not isinstance(exception_text, str)
-                        or exception_text not in period_path.read_text(encoding="utf-8", errors="replace")
+                        or exception_text not in storage_io.read_text(period_path, encoding='utf-8', errors='replace')
                         or _sha(exception_text.encode("utf-8")) != exception.get("period_source_row_sha256")):
                     raise core.CohortDeltaError("utility exception source body/row hash binding changed")
                 period_row = core._parse_footballsquads_row(exception_text, season_start_year=int(plan["parent"]["season"][:4]))
@@ -261,7 +262,7 @@ def _verify_fixture_source_membership(plan: Mapping[str, Any]) -> None:
             if source is None:
                 raise core.CohortDeltaError("formation grid lacks a raw source binding")
             grid_path = core._safe_workspace_path(source["path"], "raw formation grid")
-            raw_grid = grid_path.read_bytes()
+            raw_grid = storage_io.read_bytes(grid_path)
             if _sha(raw_grid) != source["sha256"]:
                 raise core.CohortDeltaError("raw formation grid body hash changed")
             soup = BeautifulSoup(raw_grid, "html.parser")
@@ -329,15 +330,15 @@ def _safe_relative(raw: Any) -> Path:
     if not isinstance(raw, str):
         raise core.CohortDeltaError("embedded plan path must be relative text")
     path = Path(raw)
-    root = registry.ROOT.resolve()
+    root = storage_io.resolve(registry.ROOT)
     if path.is_absolute() or not path.parts or ".." in path.parts:
         raise core.CohortDeltaError("embedded plan path escapes workspace")
-    resolved = (root / path).resolve(strict=True)
+    resolved = storage_io.resolve(root / path, strict=True)
     try:
         resolved.relative_to(root)
     except ValueError as exc:
         raise core.CohortDeltaError("embedded plan path escapes workspace through symlink") from exc
-    if not resolved.is_file():
+    if not storage_io.is_file(resolved):
         raise core.CohortDeltaError("embedded plan is not a regular file")
     return resolved
 
@@ -355,7 +356,7 @@ def embedded_plan(package: Mapping[str, Any]) -> tuple[dict[str, Any], Path, str
         if not isinstance(relative, str) or not isinstance(expected, str):
             continue
         path = _safe_relative(relative)
-        body = path.read_bytes()
+        body = storage_io.read_bytes(path)
         if _sha(body) != expected:
             raise core.CohortDeltaError(f"package artifact changed: {artifact.get('id')}")
         try:
@@ -420,9 +421,9 @@ def verify_recipe(parent_release: Any, package: Mapping[str, Any], *,
     if (not isinstance(season, dict) or season.get("start_year") != parent_start
             or season.get("end_year") != parent_end):
         raise core.CohortDeltaError("child recipe season differs from immutable parent")
-    parent_package = json.loads(parent_release.package_path.read_text())
-    parent_jug = (parent_release.game_path / "DBDAT/JUG98030.FDI").read_bytes()
-    parent_eq = (parent_release.game_path / "DBDAT/EQ98030.FDI").read_bytes()
+    parent_package = json.loads(storage_io.read_text(parent_release.package_path))
+    parent_jug = storage_io.read_bytes(parent_release.game_path / 'DBDAT/JUG98030.FDI')
+    parent_eq = storage_io.read_bytes(parent_release.game_path / 'DBDAT/EQ98030.FDI')
     country_codes = compiler._extract_country_codes_from_textos(
         parent_release.game_path / "DBDAT/TEXTOS.PKF")
     recomputed = core.bind_same_person_preimages(parent_package, parent_jug, parent_eq, plan, country_codes)
@@ -498,7 +499,7 @@ def _verify_recipe_field_mask(parent_package: Mapping[str, Any],
     rating_rows = {}
     if rating_source:
         rating_path = core._safe_workspace_path(rating_source["path"], "rating output")
-        rating_doc = json.loads(rating_path.read_text())
+        rating_doc = json.loads(storage_io.read_text(rating_path))
         rating_rows = {str(row.get("person_id")): row for row in rating_doc.get("rows", [])}
     for actor in actors:
         player_id = str(actor["recipe_player_id"])
@@ -567,7 +568,7 @@ def _load_profile_plan(profile_plan: Mapping[str, Any]) -> tuple[dict[str, Any],
         raise core.CohortDeltaError("profile plan must bind a child recipe and typed source plan")
     recipe_path = _safe_relative(recipe_binding.get("path"))
     plan_path = _safe_relative(plan_binding.get("path"))
-    recipe_body, plan_body = recipe_path.read_bytes(), plan_path.read_bytes()
+    recipe_body, plan_body = storage_io.read_bytes(recipe_path), storage_io.read_bytes(plan_path)
     if _sha(recipe_body) != recipe_binding.get("sha256") or _sha(plan_body) != plan_binding.get("sha256"):
         raise core.CohortDeltaError("profile plan child recipe or typed plan SHA changed")
     package = json.loads(recipe_body)
@@ -635,18 +636,18 @@ def verify_source(parent_release: Any, child_release: Any,
     if not stored_path:
         raise core.CohortDeltaError("child release has no stored opening-cohort profile plan locator")
     stored_plan_path = _safe_relative(stored_path)
-    persisted = json.loads(stored_plan_path.read_text())
+    persisted = json.loads(storage_io.read_text(stored_plan_path))
     if persisted != dict(stored_profile_plan):
         raise core.CohortDeltaError("SOURCE profile plan differs from its stored release plan")
     child_package_sha = registry.sha256_file(child_release.package_path)
     if child_package_sha != stored_profile_plan.get("child_recipe", {}).get("sha256"):
         raise core.CohortDeltaError("SOURCE child recipe bytes differ from stored profile plan")
-    package = json.loads(child_release.package_path.read_text())
+    package = json.loads(storage_io.read_text(child_release.package_path))
     reconstructed, receipt = reconstruct_from_parent(
         parent_release, package, expected_package_sha256=child_package_sha)
-    child_jug = (child_release.game_path / "DBDAT/JUG98030.FDI").read_bytes()
-    child_eq = (child_release.game_path / "DBDAT/EQ98030.FDI").read_bytes()
-    parent_eq = (parent_release.game_path / "DBDAT/EQ98030.FDI").read_bytes()
+    child_jug = storage_io.read_bytes(child_release.game_path / 'DBDAT/JUG98030.FDI')
+    child_eq = storage_io.read_bytes(child_release.game_path / 'DBDAT/EQ98030.FDI')
+    parent_eq = storage_io.read_bytes(parent_release.game_path / 'DBDAT/EQ98030.FDI')
     if reconstructed != child_jug:
         raise core.CohortDeltaError("SOURCE immutable-parent JUG reconstruction differs from registered child")
     if child_eq != parent_eq:
@@ -654,7 +655,7 @@ def verify_source(parent_release: Any, child_release: Any,
     receipt["source_child_release_id"] = child_release.release_id
     receipt["source_child_jug_sha256"] = _sha(child_jug)
     receipt["source_child_eq_sha256"] = _sha(child_eq)
-    receipt["stored_profile_plan_sha256"] = _sha(stored_plan_path.read_bytes())
+    receipt["stored_profile_plan_sha256"] = _sha(storage_io.read_bytes(stored_plan_path))
     return receipt
 
 
@@ -683,14 +684,14 @@ def reconstruction(previous_release: Any, release_id: str, *,
     profile_plan = pipeline.read_json_file(plan_path)
     if profile_plan.get("schema") != PROFILE_SCHEMA:
         raise core.CohortDeltaError("opening-cohort SOURCE stored profile plan has another schema")
-    if (plan_path != (previous_release.package_path.parent / filename(profile_plan)).resolve()
+    if (plan_path != storage_io.resolve(previous_release.package_path.parent / filename(profile_plan))
             or registry.sha256_file(plan_path) != compiler_receipt.get("original_profile_assignment_plan_sha256")):
         raise core.CohortDeltaError("opening-cohort SOURCE profile plan locator/hash differs from compiler receipt")
-    if registry.locator_path(previous_release.season, release_id).exists():
+    if storage_io.exists(registry.locator_path(previous_release.season, release_id)):
         raise core.CohortDeltaError("opening-cohort SOURCE target release ID is already registered")
     workspace = registry.ROOT / ".local/historical-role-deltas-v1" / previous_release.season / release_id
     destination = registry.locator_path(previous_release.season, release_id).parent
-    if workspace.exists() or destination.exists():
+    if storage_io.exists(workspace) or storage_io.exists(destination):
         raise core.CohortDeltaError("opening-cohort SOURCE target workspace or release locator already exists")
 
     parent = registry.load_registered_release(profile_plan["parent"]["season"],
@@ -699,8 +700,8 @@ def reconstruction(previous_release: Any, release_id: str, *,
     # A is itself verified against the immutable parent before using its
     # package/source metadata to create B.
     verify_source(parent, previous_release, profile_plan)
-    expected_recipe = bind(json.loads(parent.package_path.read_text()), profile_plan)
-    if json.loads(previous_release.package_path.read_text()) != expected_recipe:
+    expected_recipe = bind(json.loads(storage_io.read_text(parent.package_path)), profile_plan)
+    if json.loads(storage_io.read_text(previous_release.package_path)) != expected_recipe:
         raise core.CohortDeltaError("edited opening-cohort child recipe cannot be silently reconstructed")
     descriptor_path = previous_release.package_path.parent / "role-delta-input.json"
     expected_descriptor = {
@@ -710,7 +711,7 @@ def reconstruction(previous_release: Any, release_id: str, *,
         "jug_sha256": profile_plan["parent"]["native_sha256"]["JUG98030.FDI"],
         "updates": [], "unresolved": [],
     }
-    if not descriptor_path.is_file() or pipeline.read_json_file(descriptor_path) != expected_descriptor:
+    if not storage_io.is_file(descriptor_path) or pipeline.read_json_file(descriptor_path) != expected_descriptor:
         raise core.CohortDeltaError("opening-cohort SOURCE inert parent descriptor differs")
     publisher.publish(parent.season, descriptor_path, release_id=release_id,
                       source_release_id=parent.release_id,
@@ -719,7 +720,7 @@ def reconstruction(previous_release: Any, release_id: str, *,
     rebuilt = registry.load_registered_release(parent.season, release_id)
     inventory = pipeline.read_json_file(previous_release.inventory_path)
     pipeline.assert_tree_matches_inventory(rebuilt.game_path, inventory)
-    if rebuilt.package_path.read_bytes() != previous_release.package_path.read_bytes():
+    if storage_io.read_bytes(rebuilt.package_path) != storage_io.read_bytes(previous_release.package_path):
         raise core.CohortDeltaError("opening-cohort SOURCE whole recipe differs")
     return {"season": rebuilt.season, "release_id": rebuilt.release_id,
             "source_release_id": parent.release_id, "compilation_mode": MODE,
@@ -746,8 +747,8 @@ def apply(parent_jug: bytes, parent_eq: bytes, profile_plan: Mapping[str, Any]
     package, _plan, _recipe_path, _plan_path = _load_profile_plan(profile_plan)
     release = registry.load_registered_release(profile_plan["parent"]["season"],
                                                profile_plan["parent"]["release_id"])
-    expected_jug = (release.game_path / "DBDAT/JUG98030.FDI").read_bytes()
-    expected_eq = (release.game_path / "DBDAT/EQ98030.FDI").read_bytes()
+    expected_jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
+    expected_eq = storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
     if parent_eq != expected_eq:
         raise core.CohortDeltaError("publisher native preimage differs from immutable registered parent")
     output_jug, _receipt = reconstruct_from_parent(
@@ -772,9 +773,9 @@ def apply_compiled(parent_release: Any, package: Mapping[str, Any], *,
     """Shared build/SOURCE callback after ordinary player and EQ compilation."""
     bound, receipt = verify_recipe(parent_release, package,
                                    expected_package_sha256=expected_package_sha256)
-    parent_package = json.loads(parent_release.package_path.read_text())
-    parent_jug = (parent_release.game_path / "DBDAT/JUG98030.FDI").read_bytes()
-    parent_eq = (parent_release.game_path / "DBDAT/EQ98030.FDI").read_bytes()
+    parent_package = json.loads(storage_io.read_text(parent_release.package_path))
+    parent_jug = storage_io.read_bytes(parent_release.game_path / 'DBDAT/JUG98030.FDI')
+    parent_eq = storage_io.read_bytes(parent_release.game_path / 'DBDAT/EQ98030.FDI')
     if compiled_eq != parent_eq:
         raise core.CohortDeltaError("opening-cohort provider does not authorize EQ changes")
     country_codes = compiler._extract_country_codes_from_textos(
@@ -794,8 +795,8 @@ def replay(package: Mapping[str, Any], *, compiled_jug: bytes, compiled_eq: byte
     """Compiler/SOURCE hook resolving the immutable parent from its stored plan."""
     plan, _path, _sha256 = embedded_plan(package)
     release = registry.load_registered_release(plan["parent"]["season"], plan["parent"]["release_id"])
-    frozen_jug = (release.game_path / "DBDAT/JUG98030.FDI").read_bytes()
-    frozen_eq = (release.game_path / "DBDAT/EQ98030.FDI").read_bytes()
+    frozen_jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
+    frozen_eq = storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
     if parent_jug != frozen_jug or parent_eq != frozen_eq:
         raise core.CohortDeltaError("compiler SOURCE parent native bytes differ from embedded immutable parent")
     return apply_compiled(release, package, compiled_jug=compiled_jug,
@@ -808,8 +809,8 @@ def reconstruct_from_parent(parent_release: Any, package: Mapping[str, Any], *,
     """SOURCE leg: compile ordinary actor rows from the immutable parent, then replay plan."""
     _bound, receipt = verify_recipe(parent_release, package,
                                     expected_package_sha256=expected_package_sha256)
-    parent_jug = (parent_release.game_path / "DBDAT/JUG98030.FDI").read_bytes()
-    parent_eq = (parent_release.game_path / "DBDAT/EQ98030.FDI").read_bytes()
+    parent_jug = storage_io.read_bytes(parent_release.game_path / 'DBDAT/JUG98030.FDI')
+    parent_eq = storage_io.read_bytes(parent_release.game_path / 'DBDAT/EQ98030.FDI')
     country_codes = compiler._extract_country_codes_from_textos(
         parent_release.game_path / "DBDAT/TEXTOS.PKF")
     plan, _plan_path, _plan_sha = embedded_plan(package)

@@ -20,6 +20,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_portrait_pipeline_v1 as portrait
 from scripts import season_release_registry_v1 as registry
 from scripts import season_visual_patch_v1 as art
@@ -81,7 +82,7 @@ def identity_title(name, title):
 def discover(name, year, root):
     key = hashlib.sha256(f'{name}:{year}:v1'.encode()).hexdigest()
     path = root / 'discovery' / (key + '.json')
-    if path.exists(): return json.loads(path.read_text())
+    if storage_io.exists(path): return json.loads(storage_io.read_text(path))
     query_name = 'Ronaldo -Cristiano -pdf' if name == 'Ronaldo Nazario' else name
     queries = [f'{query_name} {year}', f'{query_name} {year-1}', f'{query_name} {year+1}']
     pages = {}
@@ -95,7 +96,7 @@ def discover(name, year, root):
         time.sleep(.35)
     path.parent.mkdir(parents=True, exist_ok=True)
     art.save(path, {'name': name, 'year': year, 'queries': queries, 'pages': list(pages.values())})
-    return json.loads(path.read_text())
+    return json.loads(storage_io.read_text(path))
 
 
 def candidates(discovery, name, year, maximum=10):
@@ -164,7 +165,7 @@ def bounded_tight_crop(photo, face):
 def process(season, root, detector, maximum, *, cache_root=None, overrides=None, only_overrides=False, targets=None):
     cache_root = cache_root or root
     release = registry.load_preferred_release(season)
-    package = json.loads(release.package_path.read_text())
+    package = json.loads(storage_io.read_text(release.package_path))
     players = package['players']
     clubs = portrait._club_by_player(package)
     selected = []
@@ -186,8 +187,8 @@ def process(season, root, detector, maximum, *, cache_root=None, overrides=None,
                                                                separators=(',', ':')).encode()).hexdigest()}
     if targets is not None:
         parameters['requested_players'] = [[name, dob] for name, dob in targets]
-    if (target / 'selection.json').is_file():
-        cached = json.loads((target / 'selection.json').read_text())
+    if storage_io.is_file(target / 'selection.json'):
+        cached = json.loads(storage_io.read_text(target / 'selection.json'))
         if (cached.get('policy_version') != POLICY_VERSION or cached['package_sha256'] != art.sha(release.package_path)
                 or cached.get('selection_parameters') != parameters):
             raise ValueError('retained selection has another policy/recipe; use a new output root')
@@ -240,12 +241,12 @@ def process(season, root, detector, maximum, *, cache_root=None, overrides=None,
                     for folder in ['crops', 'previews', 'patch/DBDAT/MINIFOTO']: (target / folder).mkdir(parents=True, exist_ok=True)
                     crop_path = target / 'crops' / (base + '.png'); crop.save(crop_path)
                     preview_path = target / 'previews' / (base + '.png'); preview.save(preview_path)
-                    bitmap_path = target / 'patch/DBDAT/MINIFOTO' / (base + '.BMP'); bitmap_path.write_bytes(bitmap)
+                    bitmap_path = target / 'patch/DBDAT/MINIFOTO' / (base + '.BMP'); storage_io.write_bytes(bitmap_path, bitmap)
                     row.update(status='source-and-framing-pass', source=candidate,
-                               face_view=view, source_cache_root=str((cache_root / 'source-cache').resolve()),
+                               face_view=view, source_cache_root=str(storage_io.resolve(cache_root / 'source-cache')),
                                palette_source=palette_source,
-                               source_sha256=qa.sha(raw), crop_path=str(crop_path.resolve()),
-                               preview_path=str(preview_path.resolve()), bitmap_path=str(bitmap_path.resolve()),
+                               source_sha256=qa.sha(raw), crop_path=str(storage_io.resolve(crop_path)),
+                               preview_path=str(storage_io.resolve(preview_path)), bitmap_path=str(storage_io.resolve(bitmap_path)),
                                bitmap_sha256=qa.sha(bitmap), face_count=1,
                                background_face_count=len(all_faces) - len(detected),
                                face_pixels=round(float(min(detected[0][2:4])), 1),
@@ -303,7 +304,7 @@ if __name__ == '__main__':
     cv2.setNumThreads(1)
     model = ROOT / '.local/season-historical-photo-pilots-v1/shared/face_detection_yunet_2023mar.onnx'
     detector = cv2.FaceDetectorYN_create(str(model), '', (320, 320), score_threshold=.8)
-    overrides = json.loads(args.source_overrides.read_text())['players'] if args.source_overrides else None
+    overrides = json.loads(storage_io.read_text(args.source_overrides))['players'] if args.source_overrides else None
     results = [process(s, args.output_root, detector, args.maximum_per_season,
                        cache_root=args.cache_root, overrides=overrides, only_overrides=args.only_overrides)
                for s in registry.supported_seasons() if args.season in ('all', s)]

@@ -28,6 +28,7 @@ for candidate in (ROOT, EDITOR):
         sys.path.insert(0, str(candidate))
 
 from app.fdi_indexed import IndexedFDIFile  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_compiler_v2 as compiler  # noqa: E402
 from scripts import season_package_v2 as package_v2  # noqa: E402
 from scripts import prepare_provisional_compile_package_v1 as preparation  # noqa: E402
@@ -42,7 +43,7 @@ class OpeningLineupPositionRepairError(ValueError):
 
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
@@ -51,10 +52,10 @@ def _sha256(path: Path) -> str:
 def _write_package(path: Path, package: Mapping[str, Any]) -> str:
     payload = package_v2.canonical_json_bytes(dict(package))
     temporary = path.with_name(f".{path.name}.opening-position-repair.tmp")
-    if temporary.exists() or temporary.is_symlink():
+    if storage_io.exists(temporary) or temporary.is_symlink():
         raise OpeningLineupPositionRepairError(f"temporary recipe path already exists: {temporary}")
-    temporary.write_bytes(payload)
-    os.replace(temporary, path)
+    storage_io.write_bytes(temporary, payload)
+    storage_io.replace_file(temporary, path)
     return hashlib.sha256(payload).hexdigest()
 
 
@@ -157,7 +158,7 @@ def _plan_package(path: Path) -> tuple[dict[str, Any], dict[str, Any]]:
 
 
 def _decoded_payloads(path: Path) -> dict[int, bytes]:
-    data = path.read_bytes()
+    data = storage_io.read_bytes(path)
     return {
         int(entry.record_id): entry.decode_payload(data)
         for entry in IndexedFDIFile.from_bytes(data).entries
@@ -179,12 +180,12 @@ def _refresh_live_jug(
     }
     if len(target_carriers) != len(target_ids):
         raise OpeningLineupPositionRepairError("not every opening-position target has one player carrier")
-    runtime_game = runtime_game.resolve()
-    base_tree = base_tree.resolve()
+    runtime_game = storage_io.resolve(runtime_game)
+    base_tree = storage_io.resolve(base_tree)
     live_jug = runtime_game / "DBDAT/JUG98030.FDI"
-    if not runtime_game.is_dir() or not base_tree.is_dir() or not live_jug.is_file():
+    if not runtime_game.is_dir() or not base_tree.is_dir() or not storage_io.is_file(live_jug):
         raise OpeningLineupPositionRepairError("runtime game, clean base or live JUG is unavailable")
-    original = live_jug.read_bytes()
+    original = storage_io.read_bytes(live_jug)
     live_index = IndexedFDIFile.from_bytes(original)
     live_entries = {int(entry.record_id): entry for entry in live_index.entries}
     with tempfile.TemporaryDirectory(prefix="pm99-opening-position-repair-", dir=runtime_game.parent) as temporary_root:
@@ -194,7 +195,7 @@ def _refresh_live_jug(
             package_path=package_path, base_tree=base_tree, materialisation_tree=materialisation,
         )
         compiled_jug = materialisation / "DBDAT/JUG98030.FDI"
-        compiled_bytes = compiled_jug.read_bytes()
+        compiled_bytes = storage_io.read_bytes(compiled_jug)
         compiled_entries = {int(entry.record_id): entry for entry in IndexedFDIFile.from_bytes(compiled_bytes).entries}
         replacements: dict[int, bytes] = {}
         for carrier in target_carriers:
@@ -205,9 +206,9 @@ def _refresh_live_jug(
             replacements[carrier] = compiled_entries[carrier].decode_payload(compiled_bytes)
         rebuilt = compiler._rebuild_indexed(original, live_index, replacements)
         temporary_jug = live_jug.with_name(f".{live_jug.name}.opening-position-repair.tmp")
-        if temporary_jug.exists() or temporary_jug.is_symlink():
+        if storage_io.exists(temporary_jug) or temporary_jug.is_symlink():
             raise OpeningLineupPositionRepairError(f"temporary JUG path already exists: {temporary_jug}")
-        temporary_jug.write_bytes(rebuilt)
+        storage_io.write_bytes(temporary_jug, rebuilt)
         try:
             before_payloads = _decoded_payloads(live_jug)
             after_payloads = _decoded_payloads(temporary_jug)
@@ -226,10 +227,10 @@ def _refresh_live_jug(
             before_sha256 = _sha256(live_jug)
             after_sha256 = _sha256(temporary_jug)
             if apply:
-                os.replace(temporary_jug, live_jug)
+                storage_io.replace_file(temporary_jug, live_jug)
         finally:
-            if temporary_jug.exists() or temporary_jug.is_symlink():
-                temporary_jug.unlink()
+            if storage_io.exists(temporary_jug) or temporary_jug.is_symlink():
+                storage_io.unlink(temporary_jug)
     return {
         "package_path": str(package_path),
         "package_sha256": package_v2.sha256_bytes(package_v2.canonical_json_bytes(package)),
@@ -249,10 +250,10 @@ def repair(
     *, package_paths: Sequence[Path], compile_package_path: Path, base_tree: Path,
     runtime_game: Path, receipt_path: Path, apply: bool,
 ) -> dict[str, Any]:
-    resolved = [path.resolve() for path in package_paths]
+    resolved = [storage_io.resolve(path) for path in package_paths]
     if len(set(resolved)) != len(resolved):
         raise OpeningLineupPositionRepairError("each --package must be supplied once")
-    compile_package_path = compile_package_path.resolve()
+    compile_package_path = storage_io.resolve(compile_package_path)
     if compile_package_path not in resolved:
         raise OpeningLineupPositionRepairError("--compile-package must also be supplied through --package")
     plans = [(path, *_plan_package(path)) for path in resolved]
@@ -292,7 +293,7 @@ def repair(
     }
     if apply:
         receipt_path.parent.mkdir(parents=True, exist_ok=True)
-        receipt_path.write_bytes(package_v2.canonical_json_bytes(result))
+        storage_io.write_bytes(receipt_path, package_v2.canonical_json_bytes(result))
     return result
 
 

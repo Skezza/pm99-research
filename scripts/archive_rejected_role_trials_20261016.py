@@ -7,6 +7,7 @@ import subprocess
 import tarfile
 from datetime import UTC, datetime
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts.archive_rejected_rating_recovery_to_pi_20261011 import ssh, HOST, UUID
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
@@ -24,7 +25,7 @@ def active(workspace):
 
 
 def run(*, baselines=None, skip_seasons=()):
-    if (ROOT / 'completed.json').exists():
+    if storage_io.exists(ROOT / 'completed.json'):
         raise ValueError('completed retirement must not repeat')
     if ssh('findmnt -n -o UUID --target /srv/hdd').strip() != UUID:
         raise ValueError('Pi archive volume is absent or incorrect')
@@ -41,16 +42,16 @@ def run(*, baselines=None, skip_seasons=()):
         base = registry.load_registered_release(baseline['season'], baseline['release_id'])
         for rid in RELEASES:
             workspace = registry.ROOT / '.local/historical-role-deltas-v1' / baseline['season'] / rid
-            if not workspace.exists():
+            if not storage_io.exists(workspace):
                 continue
-            if workspace.is_symlink() or workspace.resolve() != workspace or active(workspace):
+            if workspace.is_symlink() or storage_io.resolve(workspace) != workspace or active(workspace):
                 raise ValueError('rejected role workspace is unsafe or active')
             receipt = ROOT / (baseline['season'] + '-' + rid[-5:] + '.json')
-            if receipt.exists():
+            if storage_io.exists(receipt):
                 raise ValueError('partially completed retirement requires receipt inspection')
             original = pipeline.read_json_file(base.inventory_path)
             trial_names = {p.relative_to(workspace / 'game').as_posix()
-                for p in (workspace / 'game').rglob('*') if p.is_file()}
+                for p in storage_io.glob(workspace / 'game', '*', recursive=True) if storage_io.is_file(p)}
             if trial_names != {r['path'] for r in original['files']}:
                 raise ValueError('rejected trial contains additional or missing game files')
             for item in original['files']:
@@ -59,16 +60,16 @@ def run(*, baselines=None, skip_seasons=()):
                 path = workspace / 'game' / item['path']
                 if path.is_symlink():
                     raise ValueError('symlink in private trial game')
-                st = path.stat(); key = st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns
+                st = storage_io.stat_result(path); key = st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns
                 if key not in checked:
                     checked[key] = registry.sha256_file(path)
                 if checked[key] != item['sha256']:
                     raise ValueError('rejected role trial has unique non-role game changes')
-            files = [p for p in workspace.rglob('*') if p.is_file() and not p.is_relative_to(workspace / 'game')]
+            files = [p for p in storage_io.glob(workspace, '*', recursive=True) if storage_io.is_file(p) and not p.is_relative_to(workspace / 'game')]
             files.append(workspace / 'game' / DELTA)
             items = [(p, p.relative_to(workspace).as_posix()) for p in files]
             locator = registry.locator_path(baseline['season'], rid)
-            if locator.exists():
+            if storage_io.exists(locator):
                 items.append((locator, 'registered-locator.json'))
             if any(p.is_symlink() for p, _ in items):
                 raise ValueError('symlink in rejected role recovery inputs')
@@ -118,8 +119,8 @@ with p.open('rb') as f:print(hashlib.file_digest(f,'sha256').hexdigest())
                 reason=REASON)
             retained(receipt, proof)
             subprocess.run(['rsync', '-a', str(receipt), HOST + ':' + REMOTE + '/'], check=True)
-            if locator.exists():
-                locator.unlink()
+            if storage_io.exists(locator):
+                storage_io.unlink(locator)
             shutil.rmtree(workspace)
             rows.append(dict(receipt=registry.relative_workspace_path(receipt), sha256=registry.sha256_file(receipt)))
             print(dict(retired=rid, season=baseline['season'], recoverable=True), flush=True)

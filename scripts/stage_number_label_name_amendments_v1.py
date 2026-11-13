@@ -24,6 +24,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from tools import season_manifest_amendments as amendments  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_name_provenance_v1 as provenance  # noqa: E402
 
 
@@ -37,7 +38,7 @@ class NameAmendmentError(ValueError):
 
 def _read(path: Path, *, label: str) -> dict[str, Any]:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(storage_io.read_text(path, encoding='utf-8'))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise NameAmendmentError(f"cannot read {label}: {path}") from exc
     if not isinstance(value, dict):
@@ -47,7 +48,7 @@ def _read(path: Path, *, label: str) -> dict[str, Any]:
 
 def _file_sha256(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()

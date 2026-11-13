@@ -18,6 +18,7 @@ from urllib.parse import urlsplit
 
 from bs4 import BeautifulSoup
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_opening_identity_exchange_v1 as exchange
 from scripts import season_release_registry_v1 as registry
 
@@ -42,21 +43,21 @@ RM_MATCH_URL = "https://www.transfermarkt.co.uk/spielbericht/index/spielbericht/
 
 
 def _sha(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def _bound_source(value: dict, *, path: str, sha: str, url: str,
                   receipt_path: str | None = None, receipt_sha: str | None = None) -> Path:
     if not isinstance(value, dict) or value.get("path") != path or value.get("sha256") != sha or value.get("url") != url:
         raise ValueError("source path/hash/URL differs from retained original")
-    body = (ROOT / path).resolve(strict=True)
-    if not body.is_relative_to(ROOT.resolve()) or _sha(body) != sha:
+    body = storage_io.resolve(ROOT / path, strict=True)
+    if not body.is_relative_to(storage_io.resolve(ROOT)) or _sha(body) != sha:
         raise ValueError("retained original body hash differs")
     if receipt_path is not None:
-        receipt = (ROOT / receipt_path).resolve(strict=True)
-        if not receipt.is_relative_to(ROOT.resolve()) or _sha(receipt) != receipt_sha:
+        receipt = storage_io.resolve(ROOT / receipt_path, strict=True)
+        if not receipt.is_relative_to(storage_io.resolve(ROOT)) or _sha(receipt) != receipt_sha:
             raise ValueError("retained source receipt hash differs")
-        parsed = json.loads(receipt.read_text(encoding="utf-8"))
+        parsed = json.loads(storage_io.read_text(receipt, encoding='utf-8'))
         if parsed != {"sha256": sha, "url": url}:
             raise ValueError("source receipt does not bind exact body URL/hash")
     return body
@@ -69,17 +70,17 @@ def _official_rm_birthday(witness: dict, annual_name: str) -> str:
     if (witness["path"], witness["sha256"], witness["url"], witness["receipt_path"], witness["receipt_sha256"]) != (
             RM_PATH, RM_SHA, RM_URL, RM_RECEIPT_PATH, RM_RECEIPT_SHA):
         raise ValueError("official Real Madrid witness binding differs")
-    body = (ROOT / RM_PATH).resolve(strict=True)
-    receipt = (ROOT / RM_RECEIPT_PATH).resolve(strict=True)
-    if (not body.is_relative_to(ROOT.resolve()) or _sha(body) != RM_SHA
-            or not receipt.is_relative_to(ROOT.resolve()) or _sha(receipt) != RM_RECEIPT_SHA):
+    body = storage_io.resolve(ROOT / RM_PATH, strict=True)
+    receipt = storage_io.resolve(ROOT / RM_RECEIPT_PATH, strict=True)
+    if (not body.is_relative_to(storage_io.resolve(ROOT)) or _sha(body) != RM_SHA
+            or not receipt.is_relative_to(storage_io.resolve(ROOT)) or _sha(receipt) != RM_RECEIPT_SHA):
         raise ValueError("official Real Madrid body/receipt hash differs")
-    receipt_data = json.loads(receipt.read_text(encoding="utf-8"))
+    receipt_data = json.loads(storage_io.read_text(receipt, encoding='utf-8'))
     if (receipt_data.get("schema_version") != "pm99-original-source-body-receipt-v1"
             or receipt_data.get("url") != RM_URL or receipt_data.get("path") != RM_PATH
             or receipt_data.get("sha256") != RM_SHA):
         raise ValueError("official Real Madrid receipt does not bind body URL/hash")
-    soup = BeautifulSoup(body.read_bytes(), "html.parser")
+    soup = BeautifulSoup(storage_io.read_bytes(body), "html.parser")
     title = soup.title.get_text(" ", strip=True) if soup.title else ""
     text = " ".join(soup.get_text(" ", strip=True).split())
     if title != f"{RM_OFFICIAL_NAME} - Historia y palmarés | Web oficial Real Madrid C.F.":
@@ -125,7 +126,7 @@ def _rm_bench(selection: dict, evidence: dict, season: str) -> dict:
         raise ValueError("same-season August membership is required")
     exchange.verify_match_club(fixture, "Real Madrid")
     pid = str(selection["provider_player_id"])
-    page = BeautifulSoup(exchange.original(fixture).read_bytes(), "html.parser")
+    page = BeautifulSoup(storage_io.read_bytes(exchange.original(fixture)), "html.parser")
     stamp = page.select_one(".sb-datum")
     dates = re.findall(r"\b\d{2}/\d{2}/\d{2}\b", stamp.get_text(" ", strip=True) if stamp else "")
     if len(dates) != 1 or datetime.strptime(dates[0], "%d/%m/%y").date() != played:

@@ -8,6 +8,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_duplicate_ownership_delta_v1 as delta
 from scripts import season_opening_identity_exchange_v1 as exchange
 from scripts import season_opening_order_repair_v1 as ordering
@@ -48,7 +49,7 @@ def sha(raw):
 def bind_source(path, digest):
     p = registry.ROOT / path
     registry.relative_workspace_path(p)
-    raw = p.read_bytes()
+    raw = storage_io.read_bytes(p)
     if sha(raw) != digest:
         raise ValueError('retained FTC source hash differs: ' + str(path))
     return p, raw
@@ -245,7 +246,7 @@ def prepare(base, input_path):
     input_path = Path(input_path)
     if not input_path.is_absolute():
         input_path = registry.ROOT / input_path
-    req = json.loads(input_path.read_text(encoding='utf-8'))
+    req = json.loads(storage_io.read_text(input_path, encoding='utf-8'))
     if req.get('schema') != SCHEMA or req.get('policy') != POLICY:
         raise ValueError('explicit Tempó whole-roster policy required')
     if (base.season, base.release_id) != (req['parent']['season'], req['parent']['release_id']):
@@ -261,7 +262,7 @@ def prepare(base, input_path):
     _, nat_raw = bind_source(req['nationality_review']['path'], req['nationality_review']['sha256'])
     _, allocation_raw = bind_source(req['allocation_review']['path'], req['allocation_review']['sha256'])
     cohort, nat, allocation = map(json.loads, (cohort_raw, nat_raw, allocation_raw))
-    package = json.loads(base.package_path.read_text(encoding='utf-8'))
+    package = json.loads(storage_io.read_text(base.package_path, encoding='utf-8'))
     clubs = [c for c in package['clubs'] if c['carrier_id'] == CLUB]
     if len(clubs) != 1 or clubs[0]['id'] != 'club-1701' or len(clubs[0]['roster_player_ids']) != 21:
         raise ValueError('r198a FTC recipe capacity not exactly 21')
@@ -270,8 +271,8 @@ def prepare(base, input_path):
     old = {p['carrier_id']:p for p in package['players'] if p['club_id'] == club['id']}
     if len(old) != 21 or {p['id'] for p in old.values()} != set(club['roster_player_ids']):
         raise ValueError('exact FTC actor/recipe set differs')
-    jug = (base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     owners = ordering.native_owners(eq)
     native = {c:exchange.facts.native_facts(jug,c) for c in old}
     if any(owners.get(c) != {CLUB} for c in old):

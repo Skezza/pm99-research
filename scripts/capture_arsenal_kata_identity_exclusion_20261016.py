@@ -1,4 +1,5 @@
 """Distinguish the current Kata from Hein; no historical owner/fact update."""
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import season_historical_roster_audit_v1 as roster
 from scripts import season_published_person_identity_v1 as people
@@ -14,7 +15,7 @@ def main():
     package=pipeline.read_json_file(base.package_path)
     player=next(p for p in package['players'] if p['carrier_id']==19780)
     jug=base.game_path/'DBDAT/JUG98030.FDI'
-    native=facts.native_facts(jug.read_bytes(),19780)
+    native=facts.native_facts(storage_io.read_bytes(jug),19780)
     if (roster.normalise(player.get('source_name') or player['name']),native['birth_date'])!=('mihalykata','2002-04-13'):
         raise ValueError('literal current birthday neighbour changed')
     query=arsenal.ROOT/'kata-identity-query-input.json'
@@ -25,7 +26,7 @@ def main():
         source_name=player['source_name'],native=native,
         native_JUG_sha256=registry.sha256_file(jug),package_sha256=registry.sha256_file(base.package_path)))
     output=arsenal.ROOT/'kata-original-person-identity.json'
-    if output.exists():document=pipeline.read_json_file(output)
+    if storage_io.exists(output):document=pipeline.read_json_file(output)
     else:document=capture_ids([543774],arsenal.ROOT/'identity-exclusion-cache',output,[bound(query)])
     parsed,_=people.merge({},document)
     person=identities.unique_person(player,parsed)

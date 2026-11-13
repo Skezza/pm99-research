@@ -25,6 +25,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_kit_catalogue_v1 as catalogue_v1
 
 SCHEMA = "pm99-season-kit-source-capture-v1"
@@ -169,12 +170,12 @@ def _prefix_titles_cache(cache_dir: Path, language: str, start_year: int, end_ye
     key = f"{language}-{start_year}-{end_year}"
     index_path = cache_dir / "season-prefix-index" / f"{key}.json"
     if titles is None:
-        if not index_path.is_file():
+        if not storage_io.is_file(index_path):
             return None
         try:
-            index = json.loads(index_path.read_text(encoding="utf-8"))
+            index = json.loads(storage_io.read_text(index_path, encoding='utf-8'))
             object_path = cache_dir / str(index["relative_path"])
-            payload = object_path.read_bytes()
+            payload = storage_io.read_bytes(object_path)
             if sha256_bytes(payload) != index.get("sha256"):
                 return None
             value = json.loads(payload.decode("utf-8"))
@@ -185,10 +186,10 @@ def _prefix_titles_cache(cache_dir: Path, language: str, start_year: int, end_ye
     digest = sha256_bytes(payload)
     object_path = cache_dir / "season-prefixes" / digest[:2] / f"{digest}.json"
     object_path.parent.mkdir(parents=True, exist_ok=True)
-    if not object_path.exists():
-        object_path.write_bytes(payload)
+    if not storage_io.exists(object_path):
+        storage_io.write_bytes(object_path, payload)
     index_path.parent.mkdir(parents=True, exist_ok=True)
-    index_path.write_bytes(canonical_json_bytes({"sha256": digest, "relative_path": str(object_path.relative_to(cache_dir))}))
+    storage_io.write_bytes(index_path, canonical_json_bytes({'sha256': digest, 'relative_path': str(object_path.relative_to(cache_dir))}))
     return list(titles)
 
 
@@ -290,20 +291,20 @@ def materialise(allocation: Mapping[str, Any], *, output_dir: Path, cache_dir: P
     request = {"schema_version": catalogue_v1.REQUEST_SCHEMA, "season": ledger["season"], "clubs": request_rows}
     catalogue = catalogue_v1.build_catalogue(request, cache_dir=cache_dir, allow_network=False)
     output_dir.mkdir(parents=True, exist_ok=True)
-    (output_dir / "kit-source-capture-v1.json").write_bytes(canonical_json_bytes(ledger))
-    (output_dir / "kit-catalogue-request-v1.json").write_bytes(canonical_json_bytes(request))
-    (output_dir / "kit-catalogue-v1.json").write_bytes(canonical_json_bytes(catalogue))
+    storage_io.write_bytes(output_dir / 'kit-source-capture-v1.json', canonical_json_bytes(ledger))
+    storage_io.write_bytes(output_dir / 'kit-catalogue-request-v1.json', canonical_json_bytes(request))
+    storage_io.write_bytes(output_dir / 'kit-catalogue-v1.json', canonical_json_bytes(catalogue))
     return {"capture": ledger["coverage"], "catalogue": catalogue["coverage"]}
 
 
 def _allocation_paths(path: Path) -> Iterable[tuple[Path, dict[str, Any]]]:
-    if path.is_file():
+    if storage_io.is_file(path):
         return [(path, {})]
-    pointers = sorted(path.glob("*/current.json"))
+    pointers = sorted(storage_io.glob(path, '*/current.json'))
     if pointers:
         resolved = []
         for pointer_path in pointers:
-            pointer_bytes = pointer_path.read_bytes()
+            pointer_bytes = storage_io.read_bytes(pointer_path)
             pointer = json.loads(pointer_bytes.decode("utf-8"))
             if pointer.get("schema_version") != "pm99-historical-squad-backfill-current-v1":
                 raise KitCaptureError(f"unsupported historical current pointer: {pointer_path}")
@@ -313,12 +314,12 @@ def _allocation_paths(path: Path) -> Iterable[tuple[Path, dict[str, Any]]]:
             if not isinstance(relative, str) or Path(relative).is_absolute() or ".." in Path(relative).parts or not isinstance(expected, str):
                 raise KitCaptureError(f"unsafe allocation pointer: {pointer_path}")
             allocation_path = pointer_path.parent / relative
-            actual = hashlib.sha256(allocation_path.read_bytes()).hexdigest()
+            actual = hashlib.sha256(storage_io.read_bytes(allocation_path)).hexdigest()
             if actual != expected:
                 raise KitCaptureError(f"allocation pointer hash mismatch: {pointer_path}")
             resolved.append((allocation_path, {"historical_revision_id": pointer.get("revision_id"), "historical_current_sha256": hashlib.sha256(pointer_bytes).hexdigest(), "historical_allocation_file_sha256": actual}))
         return resolved
-    return [(item, {}) for item in sorted(path.glob("*/carrier-allocation.json"))]
+    return [(item, {}) for item in sorted(storage_io.glob(path, '*/carrier-allocation.json'))]
 
 
 def _chunk_plan_provenance(plan_path: Path, allocation: Mapping[str, Any]) -> dict[str, Any]:
@@ -330,9 +331,9 @@ def _chunk_plan_provenance(plan_path: Path, allocation: Mapping[str, Any]) -> di
     scale without allowing a later cache to masquerade as a fresh capture.
     """
     try:
-        if plan_path.is_symlink() or not plan_path.is_file():
+        if plan_path.is_symlink() or not storage_io.is_file(plan_path):
             raise KitCaptureError(f"chunk plan must be a regular file: {plan_path}")
-        payload = plan_path.read_bytes()
+        payload = storage_io.read_bytes(plan_path)
         plan = json.loads(payload.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise KitCaptureError(f"chunk plan is not valid JSON: {exc}") from exc
@@ -360,14 +361,14 @@ def _chunk_plan_provenance(plan_path: Path, allocation: Mapping[str, Any]) -> di
         raise KitCaptureError("chunk plan full allocation provenance is malformed")
     full_path = Path(full_path_text)
     try:
-        if full_path.is_symlink() or not full_path.is_file() or sha256_bytes(full_path.read_bytes()) != full_sha:
+        if full_path.is_symlink() or not storage_io.is_file(full_path) or sha256_bytes(storage_io.read_bytes(full_path)) != full_sha:
             raise KitCaptureError("chunk plan full allocation is unavailable or hash-stale")
     except OSError as exc:
         raise KitCaptureError(f"chunk plan full allocation is unavailable: {exc}") from exc
     return {
-        "full_allocation_path": str(full_path.resolve()),
+        "full_allocation_path": str(storage_io.resolve(full_path)),
         "full_allocation_sha256": full_sha,
-        "chunk_plan": {"path": str(plan_path.resolve()), "sha256": sha256_bytes(payload)},
+        "chunk_plan": {"path": str(storage_io.resolve(plan_path)), "sha256": sha256_bytes(payload)},
         "chunk_assignments_sha256": selected_assignments_sha,
         "chunk_carrier_ids": selected,
         "stale_capture_reuse": "prohibited-fresh-cache-created-for-this-chunk",
@@ -390,14 +391,14 @@ def main() -> int:
         parser.error("--chunk-plan requires exactly one allocation input")
     summary = {}
     for path, origin in inputs:
-        allocation = json.loads(path.read_text(encoding="utf-8"))
+        allocation = json.loads(storage_io.read_text(path, encoding='utf-8'))
         if args.chunk_plan is not None:
             origin = {**origin, **_chunk_plan_provenance(args.chunk_plan, allocation)}
         label = _season(allocation)["label"].replace("/", "-")
         capture_path = args.output_root / label / "kit-source-capture-v1.json"
-        if args.skip_existing and (args.output_root / label / "kit-catalogue-v1.json").is_file() and capture_path.is_file():
+        if args.skip_existing and storage_io.is_file(args.output_root / label / 'kit-catalogue-v1.json') and storage_io.is_file(capture_path):
             try:
-                retained = json.loads(capture_path.read_text(encoding="utf-8"))
+                retained = json.loads(storage_io.read_text(capture_path, encoding='utf-8'))
                 current_hash = sha256_bytes(canonical_json_bytes(dict(allocation)))
                 retained_provenance = retained.get("provenance", {})
                 if retained_provenance.get("allocation_sha256") == current_hash and all(retained_provenance.get(key) == value for key, value in origin.items()):

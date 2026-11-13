@@ -12,6 +12,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
 from scripts import season_published_transfer_history_v1 as history
@@ -20,12 +21,12 @@ from scripts import season_published_transfer_history_v1 as history
 def cached_record(id, cache):
     path = cache / 'history' / f'{id}.json'
     receipt = path.with_suffix('.source.json')
-    if not path.is_file() or not receipt.is_file():
+    if not storage_io.is_file(path) or not storage_io.is_file(receipt):
         return None
-    raw = path.read_bytes()
+    raw = storage_io.read_bytes(path)
     digest = hashlib.sha256(raw).hexdigest()
     url = history.BASE + str(id)
-    if json.loads(receipt.read_text()) != {'url': url, 'sha256': digest}:
+    if json.loads(storage_io.read_text(receipt)) != {'url': url, 'sha256': digest}:
         raise ValueError('cached reserve original URL/SHA differs')
     try:
         events = history.parse(json.loads(raw), id)
@@ -38,14 +39,14 @@ def cached_record(id, cache):
 
 
 def assemble(query_path, prior_path, cache, output):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('combined history supplement is immutable')
     inputs = {k: {'path': registry.relative_workspace_path(p), 'sha256': registry.sha256_file(p)}
               for k, p in [('reserve_queries', query_path), ('prior_histories', prior_path)]}
-    query = json.loads(query_path.read_text())
+    query = json.loads(storage_io.read_text(query_path))
     if query.get('schema_version') != 'pm99-unused-opening-reserve-history-requests-v1':
         raise ValueError('unsupported reserve query ledger')
-    prior = json.loads(prior_path.read_text())
+    prior = json.loads(storage_io.read_text(prior_path))
     history.merge({}, prior)
     records = {row['player_id']: row for row in prior['players']}
     unfetched, captured = [], []

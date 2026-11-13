@@ -34,6 +34,7 @@ from app.eq_team_manager_links import parse_indexed_eq_manager_links
 from app.eq_jug_linked import parse_eq_external_team_roster_payload
 from app.fdi_indexed import IndexedFDIFile
 from app.models import PlayerRecord
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2
 from scripts.season_package_compiler_v2 import SeasonCompilerError, _pm99_text
 
@@ -284,9 +285,9 @@ def build_package(
         raise ProjectionError("reviewed partial-source carrier set is empty")
     displaced_person_rows = _ownership_displacements(candidate, ownership_decisions)
     dbdat = base_tree / "DBDAT"
-    eq_data = (dbdat / "EQ98030.FDI").read_bytes()
-    jug_data = (dbdat / "JUG98030.FDI").read_bytes()
-    ent_data = (dbdat / "ENT98030.FDI").read_bytes()
+    eq_data = storage_io.read_bytes(dbdat / 'EQ98030.FDI')
+    jug_data = storage_io.read_bytes(dbdat / 'JUG98030.FDI')
+    ent_data = storage_io.read_bytes(dbdat / 'ENT98030.FDI')
     eq_entries = {int(e.record_id): e for e in IndexedFDIFile.from_bytes(eq_data).entries}
     jug_entries = {int(e.record_id): e for e in IndexedFDIFile.from_bytes(jug_data).entries}
     ent_entries = {int(e.record_id): e for e in IndexedFDIFile.from_bytes(ent_data).entries}
@@ -817,20 +818,20 @@ def main() -> int:
     parser.add_argument("--output-package", required=True, type=Path)
     parser.add_argument("--output-receipt", required=True, type=Path)
     args = parser.parse_args()
-    candidate = json.loads(args.candidate.read_text(encoding="utf-8"))
-    dispositions = json.loads(args.unresolved_dispositions.read_text(encoding="utf-8"))
-    metadata_dispositions = json.loads(args.club_metadata_dispositions.read_text(encoding="utf-8"))
-    ownership_decisions = json.loads(args.person_ownership_decisions.read_text(encoding="utf-8")) if args.person_ownership_decisions else None
+    candidate = json.loads(storage_io.read_text(args.candidate, encoding='utf-8'))
+    dispositions = json.loads(storage_io.read_text(args.unresolved_dispositions, encoding='utf-8'))
+    metadata_dispositions = json.loads(storage_io.read_text(args.club_metadata_dispositions, encoding='utf-8'))
+    ownership_decisions = json.loads(storage_io.read_text(args.person_ownership_decisions, encoding='utf-8')) if args.person_ownership_decisions else None
     try:
         package, receipt = build_package(
             candidate=candidate, base_tree=args.base_tree, dispositions=dispositions,
             metadata_dispositions=metadata_dispositions,
-            candidate_path=args.candidate.resolve(), contract_path=args.contract.resolve(),
-            dispositions_path=args.unresolved_dispositions.resolve(),
-            metadata_dispositions_path=args.club_metadata_dispositions.resolve(),
+            candidate_path=storage_io.resolve(args.candidate), contract_path=storage_io.resolve(args.contract),
+            dispositions_path=storage_io.resolve(args.unresolved_dispositions),
+            metadata_dispositions_path=storage_io.resolve(args.club_metadata_dispositions),
             ownership_decisions=ownership_decisions,
-            ownership_decisions_path=args.person_ownership_decisions.resolve() if args.person_ownership_decisions else None,
-            calendar_receipt_path=args.calendar_receipt.resolve(),
+            ownership_decisions_path=storage_io.resolve(args.person_ownership_decisions) if args.person_ownership_decisions else None,
+            calendar_receipt_path=storage_io.resolve(args.calendar_receipt),
             fit_native_rosters=args.fit_native_rosters,
         )
     except (
@@ -842,7 +843,7 @@ def main() -> int:
     args.output_package.parent.mkdir(parents=True, exist_ok=True)
     season_package_v2.write_canonical_package(args.output_package, package)
     args.output_receipt.parent.mkdir(parents=True, exist_ok=True)
-    args.output_receipt.write_bytes(season_package_v2.canonical_json_bytes(receipt))
+    storage_io.write_bytes(args.output_receipt, season_package_v2.canonical_json_bytes(receipt))
     print(json.dumps(receipt["coverage"], sort_keys=True))
     return 0
 

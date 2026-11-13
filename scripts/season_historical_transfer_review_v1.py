@@ -20,6 +20,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_historical_roster_audit_v1 as roster
@@ -41,16 +42,16 @@ def verify_opening_sources(opening):
 
 
 def reuse_completed(season, binding, opening_path, destination):
-    if not destination.exists(): return None
-    previous = json.loads(destination.read_text())
+    if not storage_io.exists(destination): return None
+    previous = json.loads(storage_io.read_text(destination))
     release = registry.load_preferred_release(season)
-    opening_sha = registry.sha256_file(opening_path) if opening_path.exists() else None
+    opening_sha = registry.sha256_file(opening_path) if storage_io.exists(opening_path) else None
     expected = (release.release_id, registry.sha256_file(release.package_path), binding, opening_sha)
     actual = previous['bindings']
     if (previous['schema_version'] != SCHEMA or previous['season'] != season or
             (actual['release_id'], actual['package_sha256'], actual['snapshot'], actual['opening_review_sha256']) != expected):
         raise ValueError('completed transfer review inputs changed; use a new output root')
-    verify_opening_sources(json.loads(opening_path.read_text()) if opening_path.exists() else None)
+    verify_opening_sources(json.loads(storage_io.read_text(opening_path)) if storage_io.exists(opening_path) else None)
     return previous['summary']
 
 
@@ -108,7 +109,7 @@ def transfer_interval(events, fixture_date):
 
 
 def load_snapshot(database, receipt_path):
-    receipt = json.loads(receipt_path.read_text())
+    receipt = json.loads(storage_io.read_text(receipt_path))
     expected = receipt['source']['database_sha256']
     if registry.sha256_file(database) != expected:
         raise ValueError('historical snapshot differs from the already pinned source')
@@ -138,10 +139,10 @@ def load_snapshot(database, receipt_path):
 
 def review(season, index, transfers, appearances, binding, opening_path, output):
     release = registry.load_preferred_release(season)
-    package = json.loads(release.package_path.read_text())
+    package = json.loads(storage_io.read_text(release.package_path))
     clubs, players, legacy = roster.add_legacy_english(package, season)
     by_club = {c['id']: c for c in clubs}
-    opening = json.loads(opening_path.read_text()) if opening_path.exists() else None
+    opening = json.loads(storage_io.read_text(opening_path)) if storage_io.exists(opening_path) else None
     verify_opening_sources(opening)
     verified = {c['club_id']: c['evidence'] for c in (opening or {}).get('clubs', []) if c['status'] == 'original-first-fixture-reparsed'}
     rows = []; counts = collections.Counter()
@@ -214,13 +215,13 @@ def main():
         destination = args.output / season / 'transfer-review.json'
         summary = reuse_completed(season, binding, opening_path, destination) if args.resume else None
         if summary is None:
-            if destination.exists(): raise ValueError('transfer review already exists; use --resume or a new output root')
+            if storage_io.exists(destination): raise ValueError('transfer review already exists; use --resume or a new output root')
             summary = review(season, people, transfers, appearances, binding, opening_path, args.output)
         summaries.append(summary); print(json.dumps(summary), flush=True)
     summary_path = args.output / ('summary-all.json' if args.season == 'all' else 'summary.json')
     summary = {'seasons': summaries, 'historical_verification_complete': False}
-    if summary_path.exists():
-        if json.loads(summary_path.read_text()) != summary: raise ValueError('completed transfer summary changed')
+    if storage_io.exists(summary_path):
+        if json.loads(storage_io.read_text(summary_path)) != summary: raise ValueError('completed transfer summary changed')
     else: pipeline.write_canonical_json(summary_path, summary)
 
 

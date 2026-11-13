@@ -28,6 +28,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import world_fixed_carrier_ledger_v2 as ledger
 
 
@@ -60,12 +61,12 @@ def _canonical_json_bytes(value: Any) -> bytes:
 
 def _write_canonical_json(path: Path, value: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(_canonical_json_bytes(value))
+    storage_io.write_bytes(path, _canonical_json_bytes(value))
 
 
 def _sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
@@ -113,7 +114,7 @@ def loose_club_key(value: object) -> str:
 
 
 def _read_rows(path: Path) -> tuple[list[dict[str, str]], list[str]]:
-    with path.open("r", encoding="utf-8-sig", newline="") as handle:
+    with storage_io.open_file(path, 'r', encoding='utf-8-sig', newline='') as handle:
         reader = csv.DictReader(handle)
         if reader.fieldnames is None:
             raise ValueError("player CSV has no header")

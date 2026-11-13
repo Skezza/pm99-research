@@ -11,6 +11,7 @@ from datetime import date, datetime
 from pathlib import Path
 from bs4 import BeautifulSoup
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2 as packages
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
@@ -61,7 +62,7 @@ def _body(key):
         raise ValueError('original receipt URL/body binding differs')
     if 'status' in receipt and receipt['status']!='original-captured':
         raise ValueError('source is not retained as original capture')
-    return p.read_bytes()
+    return storage_io.read_bytes(p)
 
 def verify_sources():
     schedule=_body('team')
@@ -121,8 +122,8 @@ def _mask(jug):
 def prepare(base,input_path):
     path=Path(input_path)
     if not path.is_absolute(): path=ROOT/path
-    path=path.resolve()
-    if path!=INPUT_PATH.resolve() or registry.sha256_file(path)!=INPUT_SHA256:
+    path=storage_io.resolve(path)
+    if path!=storage_io.resolve(INPUT_PATH) or registry.sha256_file(path)!=INPUT_SHA256:
         raise ValueError('exact retained r188 source input path/hash required')
     request=pipeline.read_json_file(path)
     import scripts.season_source_verified_player_changes_v1 as common
@@ -139,7 +140,7 @@ def prepare(base,input_path):
     package=pipeline.read_json_file(base.package_path); hits=[p for p in package['players'] if p.get('carrier_id')==CARRIER]
     if len(hits)!=1: raise ValueError('exact recipe carrier must be unique')
     actor=hits[0]
-    jug=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes(); eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    jug=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI'); eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     if (actor.get('name')!=FULL_NAME or actor.get('source_name')!=FULL_NAME
                     or actor.get('facts',{}).get('birth_date')!=OLD_DOB or _native_fact(jug,CARRIER).get('birth_date')!=OLD_DOB):
         raise ValueError('exact r188 recipe/native old DOB preimage differs')

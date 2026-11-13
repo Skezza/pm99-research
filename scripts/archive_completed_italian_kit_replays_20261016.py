@@ -10,6 +10,7 @@ import subprocess
 import tarfile
 from datetime import UTC, datetime
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import archive_completed_arsenal_replays_20261016 as prior
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
@@ -23,15 +24,15 @@ SEASONS = ('2005-06', '2006-07')
 
 def safe_workspace(replay, season):
     path = registry.ROOT / '.local/season-visual-replays-v1' / season / REPLAY
-    if path.resolve() != path or path.is_symlink() or replay.game_path != path / 'game':
+    if storage_io.resolve(path) != path or path.is_symlink() or replay.game_path != path / 'game':
         raise ValueError('unexpected private workspace target')
-    if any(p.is_symlink() for p in path.rglob('*')) or prior.active(path):
+    if any(p.is_symlink() for p in storage_io.glob(path, '*', recursive=True)) or prior.active(path):
         raise ValueError('symlink or active private workspace')
     return path
 
 
 def main():
-    if (ROOT / 'completed.json').exists():
+    if storage_io.exists(ROOT / 'completed.json'):
         raise ValueError('completed archival must not repeat')
     if prior.ssh('findmnt -n -o UUID --target /srv/hdd').strip() != prior.UUID:
         raise ValueError('wrong or absent Pi archive volume')
@@ -42,9 +43,9 @@ def main():
     rows = []
     for season in SEASONS:
         ledger = ROOT / (season + '.json')
-        if ledger.exists():
+        if storage_io.exists(ledger):
             proof = pipeline.read_json_file(ledger)
-            if (registry.ROOT / proof['removed_private_workspace']).exists() or registry.locator_path(season, REPLAY).exists():
+            if storage_io.exists(registry.ROOT / proof['removed_private_workspace']) or storage_io.exists(registry.locator_path(season, REPLAY)):
                 raise ValueError('inspect partially retired private replay')
             rows.append(dict(path=registry.relative_workspace_path(ledger), sha256=registry.sha256_file(ledger)))
             continue
@@ -57,9 +58,9 @@ def main():
         prior.no_dependants(REPLAY, locator)
         inventory = prior.assert_equal_games(base, replay)
         members = [(p, 'workspace/' + p.relative_to(workspace).as_posix())
-                   for p in workspace.rglob('*') if p.is_file() and not p.is_relative_to(workspace / 'game')]
+                   for p in storage_io.glob(workspace, '*', recursive=True) if storage_io.is_file(p) and not p.is_relative_to(workspace / 'game')]
         members += [(p, 'registration/' + p.relative_to(locator.parent).as_posix())
-                    for p in locator.parent.rglob('*') if p.is_file()]
+                    for p in storage_io.glob(locator.parent, '*', recursive=True) if storage_io.is_file(p)]
         if any(p.is_symlink() for p, _ in members):
             raise ValueError('symlink recovery metadata')
         expected = {name: registry.sha256_file(path) for path, name in members}

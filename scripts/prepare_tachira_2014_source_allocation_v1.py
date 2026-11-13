@@ -9,6 +9,7 @@ import itertools
 import re
 import unicodedata
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts.capture_tachira_2014_original_people_v1 import join, source_rows
 from scripts.capture_stock_replacement_sources_20261010 import ROOT
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
@@ -75,7 +76,7 @@ def dated_roles(actual, matched):
 
 
 def prepare(output, baseline_release_id=None):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('source-only allocation is immutable')
     actual, matched, original_bindings = join()
     role_rows, conflicts, role_bindings = dated_roles(actual, matched)
@@ -102,7 +103,7 @@ def prepare(output, baseline_release_id=None):
     slots = [p for p in package['players'] if p['club_id'] == club['id']]
     if len(slots) != 16:
         raise ValueError('original fixed16 capacity changed')
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     orders = allocation.startup_orders(jug, slots)
     xi = [r['source_player_id'] for r in matched[:11]]
     bench = [r['source_player_id'] for r in matched[11:] if r['source_player_id'] != 271257]

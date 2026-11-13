@@ -18,6 +18,7 @@ from app.editor_actions import _patch_indexed_player_variable_name_payload
 from app.eq_jug_linked import parse_eq_external_team_roster_payload
 from app.fdi_indexed import IndexedFDIFile
 from app.player_initial_order import read_initial_order
+from scripts import json_storage_io_v1 as storage_io
 from scripts import prepare_duplicate_club_disposition_v1 as allocation_core
 from scripts import season_duplicate_ownership_delta_v1 as ownership_delta
 from scripts import season_historical_roster_audit_v1 as roster_reader
@@ -25,7 +26,7 @@ from scripts import season_release_registry_v1 as registry
 from scripts import season_within_club_reserve_repair_v1 as native_facts
 from scripts.prepare_duplicate_whole_club_native_v1 import _manager_graph
 
-HERE = Path(__file__).resolve().parent
+HERE = storage_io.resolve(Path(__file__)).parent
 DATA_INPUT = (registry.ROOT / ".local/consolidated-audit-20261009/parallel-rc-20261023/"
               "resume-qa/altrincham-18-data-proposal-v1/altrincham-18-data-input-proposal-v1.json")
 NATIONALITY_INPUT = (registry.ROOT / ".local/consolidated-audit-20261009/parallel-rc-20261023/"
@@ -83,14 +84,14 @@ EXPLICIT_ENG = {
 
 
 def _sha(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def _bound(path: str, digest: str, *, receipt_path: str | None = None,
            receipt_sha256: str | None = None) -> bytes:
     target = registry.ROOT / path
     registry.relative_workspace_path(target)
-    data = target.read_bytes()
+    data = storage_io.read_bytes(target)
     if hashlib.sha256(data).hexdigest() != digest:
         raise ValueError(f"bound source bytes changed: {path}")
     if receipt_path is not None:
@@ -98,7 +99,7 @@ def _bound(path: str, digest: str, *, receipt_path: str | None = None,
         registry.relative_workspace_path(receipt_file)
         if _sha(receipt_file) != receipt_sha256:
             raise ValueError(f"source receipt hash changed: {receipt_path}")
-        receipt = json.loads(receipt_file.read_text())
+        receipt = json.loads(storage_io.read_text(receipt_file))
         recorded = receipt.get("body_sha256", receipt.get("sha256"))
         receipt_body = receipt.get("body_path", receipt.get("local_path"))
         if recorded != digest or receipt_body not in (path, Path(path).name):
@@ -298,7 +299,7 @@ def _native_parent_and_slots():
             or registry.sha256_file(jug_path) != PARENT_JUG_SHA256
             or registry.sha256_file(eq_path) != PARENT_EQ_SHA256):
         raise ValueError("explicit r207a research package/JUG/EQ pin changed")
-    package = json.loads(package_path.read_text())
+    package = json.loads(storage_io.read_text(package_path))
     club = next((c for c in package["clubs"] if c.get("carrier_id") == 3310), None)
     if club is None or club["id"] != "club-3310" or club["manager_id"] != "manager-807":
         raise ValueError("r207a exact duplicate club/manager target changed")
@@ -306,8 +307,8 @@ def _native_parent_and_slots():
                    key=lambda p: p["carrier_id"])
     if len(slots) != 18 or len({p["carrier_id"] for p in slots}) != 18:
         raise ValueError("r207a Kidderminster 3310 target is not exact 18 unique slots")
-    jug = jug_path.read_bytes()
-    eq = eq_path.read_bytes()
+    jug = storage_io.read_bytes(jug_path)
+    eq = storage_io.read_bytes(eq_path)
     jindex = IndexedFDIFile.from_bytes(jug)
     jentries = {e.record_id: e for e in jindex.entries}
     if not set(p["carrier_id"] for p in slots) <= set(jentries):
@@ -344,7 +345,7 @@ def _native_parent_and_slots():
         raise ValueError("manager 807 must be the exclusive current owner under 3310")
     if manager_names.get(807) != "Graham Allner":
         raise ValueError("r207a native manager 807 preimage display differs")
-    raw_manager = (release.game_path / "DBDAT/ENT98030.FDI").read_bytes()
+    raw_manager = storage_io.read_bytes(release.game_path / 'DBDAT/ENT98030.FDI')
     return release, package, club, slots, jug, eq, jentries, all_owners, manager_names, roster_flags, flag_repairs
 
 
@@ -424,7 +425,7 @@ def _verify_source_and_report(data: dict, nat_doc: dict) -> dict:
     receipt_path = registry.ROOT / NATIONALITY_RECEIPT
     if _sha(receipt_path) != NATIONALITY_RECEIPT_SHA256:
         raise ValueError("nationality report revision receipt changed")
-    nat_receipt = json.loads(receipt_path.read_text())
+    nat_receipt = json.loads(storage_io.read_text(receipt_path))
     if (nat_receipt.get("current_report_path") != registry.relative_workspace_path(NATIONALITY_INPUT)
             or nat_receipt.get("current_report_sha256") != NATIONALITY_INPUT_SHA256
             or nat_receipt.get("superseded_by_current_report") is not True):
@@ -468,8 +469,8 @@ def _verify_source_and_report(data: dict, nat_doc: dict) -> dict:
 
 
 def prepare_proposal() -> dict:
-    data = json.loads(DATA_INPUT.read_text())
-    nat_doc = json.loads(NATIONALITY_INPUT.read_text())
+    data = json.loads(storage_io.read_text(DATA_INPUT))
+    nat_doc = json.loads(storage_io.read_text(NATIONALITY_INPUT))
     source_proof = _verify_source_and_report(data, nat_doc)
     release, package, before_club, slots, jug, eq, jentries, owners, manager_names, roster_flags, flag_repairs = _native_parent_and_slots()
     desired = _build_desired(data, source_proof["nationality_rows"])

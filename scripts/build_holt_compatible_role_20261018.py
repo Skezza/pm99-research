@@ -1,4 +1,5 @@
 """Replace one proved legacy defensive role set; preserve every other game byte."""
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry, season_pipeline_v2 as pipeline
 from scripts import season_source_verified_player_changes_v1 as source
 from scripts import publish_historical_role_delta_v1 as publisher
@@ -11,7 +12,7 @@ REPLAY = 'replayed-compatible-holt-midfield-20261018-r158b'
 
 
 def run():
-    if not (ROOT.parent / 'Celtic2000-opening-review-v1/complete-SOURCE-replay.json').exists():
+    if not storage_io.exists(ROOT.parent / 'Celtic2000-opening-review-v1/complete-SOURCE-replay.json'):
         raise ValueError('parent Celtic source/native/full replay must complete first')
     base = registry.load_registered_release('2000-01', BASE)
     plan = source.prepare(base, ROOT / 'compatible-role-input-v2.json')
@@ -21,14 +22,14 @@ def run():
     retained(inert, dict(season='2000-01', release_id=BASE,
         package_sha256=registry.sha256_file(base.package_path),
         jug_sha256=registry.sha256_file(base.game_path / 'DBDAT/JUG98030.FDI'), updates=[], unresolved=[]))
-    if not registry.locator_path('2000-01', RELEASE).exists():
+    if not storage_io.exists(registry.locator_path('2000-01', RELEASE)):
         publisher.publish('2000-01', inert, release_id=RELEASE, source_release_id=BASE,
                           profile_assignment_plan_path=path)
     child = registry.load_registered_release('2000-01', RELEASE)
-    before = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
-    after = (child.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    after_eq = (child.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    before = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
+    after = storage_io.read_bytes(child.game_path / 'DBDAT/JUG98030.FDI')
+    after_eq = storage_io.read_bytes(child.game_path / 'DBDAT/EQ98030.FDI')
     if source.apply(before, eq, plan) != (after, after_eq) or source.apply(after, after_eq, plan) != (after, after_eq):
         raise ValueError('actual role/native correction or idempotence differs')
     if source.bind(pipeline.read_json_file(base.package_path), plan) != pipeline.read_json_file(child.package_path):
@@ -48,8 +49,8 @@ def run():
         after_roles=[9, 98, 98, 98, 98, 98], changed_native_bytes=sum(a != b for a, b in zip(before, after)),
         all_other_native_bytes_game_files_and_recipe_fields_unchanged=True, playable_validation=valid,
         scope='Original row/firstfixture confirms exact11689 identity, published biography supplies compatible midfield role; not exacteditionFIFA proof. Other eight original Holt actors already compatible and unchanged.'))
-    if not (ROOT / 'complete-SOURCE-replay.json').exists():
-        if registry.locator_path('2000-01', REPLAY).exists():
+    if not storage_io.exists(ROOT / 'complete-SOURCE-replay.json'):
+        if storage_io.exists(registry.locator_path('2000-01', REPLAY)):
             raise ValueError('unreceipted SOURCE child exists; inspect without regeneration')
         retained(ROOT / 'complete-SOURCE-replay.json', source.reconstruction(child, REPLAY))
     print('Holt sole incompatible role actual native + full SOURCE PASS; private, runtime/promotion pending', flush=True)

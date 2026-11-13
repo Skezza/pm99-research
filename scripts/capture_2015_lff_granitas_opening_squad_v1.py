@@ -25,6 +25,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import capture_transfermarkt_opening_lineups_v1 as cache_lib  # noqa: E402
 
 
@@ -87,7 +88,7 @@ def canonical_bytes(value: Any) -> bytes:
 
 def _load(path: Path) -> tuple[dict[str, Any], str]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise LffOpeningSquadError(f"cannot read tail plan: {path}") from exc
@@ -316,7 +317,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--offline", action="store_true")
     parser.add_argument("--delay", type=float, default=0.2)
     args = parser.parse_args(argv)
-    if args.output.exists():
+    if storage_io.exists(args.output):
         parser.error(f"refusing to overwrite source receipt: {args.output}")
     try:
         plan, plan_sha = _load(args.plan)
@@ -328,7 +329,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error(str(exc))
     result["source"]["tail_plan_sha256"] = plan_sha
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_bytes(result))
+    storage_io.write_bytes(args.output, canonical_bytes(result))
     print(json.dumps(result["coverage"], sort_keys=True))
     return 0
 

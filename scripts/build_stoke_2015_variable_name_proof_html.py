@@ -3,6 +3,14 @@
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import html
 import json
@@ -19,14 +27,14 @@ def _parse_args() -> argparse.Namespace:
 
 
 def _load_json(path: Path) -> Any:
-    return json.loads(path.read_text(encoding="utf-8"))
+    return json.loads(storage_io.read_text(path, encoding='utf-8'))
 
 
 def _safe_rel(from_dir: Path, target: Path) -> str:
     try:
-        return target.resolve().relative_to(from_dir.resolve()).as_posix()
+        return storage_io.resolve(target).relative_to(storage_io.resolve(from_dir)).as_posix()
     except Exception:
-        return str(target.resolve())
+        return str(storage_io.resolve(target))
 
 
 def _status_class(ok: bool) -> str:
@@ -53,10 +61,10 @@ def _copy_summary(runner_summary: dict[str, Any]) -> dict[str, Any]:
 
 def main() -> int:
     args = _parse_args()
-    artifact_dir = Path(args.artifact_dir).expanduser().resolve()
-    runner_artifacts_dir = Path(args.runner_artifacts_dir).expanduser().resolve()
+    artifact_dir = storage_io.resolve(Path(args.artifact_dir).expanduser())
+    runner_artifacts_dir = storage_io.resolve(Path(args.runner_artifacts_dir).expanduser())
     output_html = (
-        Path(args.output_html).expanduser().resolve()
+        storage_io.resolve(Path(args.output_html).expanduser())
         if args.output_html
         else artifact_dir / "stoke_2015_variable_name_proof.html"
     )
@@ -133,7 +141,7 @@ def main() -> int:
     squad_images = []
     for name in ("29_dashboard_select_squad.png", "31_dashboard_activate_squad.png"):
         path = runner_artifacts_dir / "screens" / name
-        if path.is_file():
+        if storage_io.is_file(path):
             squad_images.append(
                 "<figure>"
                 f"<figcaption>{html.escape(name)}</figcaption>"
@@ -214,7 +222,7 @@ code{background:#fff7d1;padding:1px 4px}
             "</html>",
         ]
     )
-    output_html.write_text(html_text + "\n", encoding="utf-8")
+    storage_io.write_text(output_html, html_text + '\n', encoding='utf-8')
     print(json.dumps({"ok": True, "output_html": str(output_html), "runner_visual_ok": runner_visual_ok}, indent=2))
     return 0
 

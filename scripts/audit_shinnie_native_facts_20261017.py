@@ -6,6 +6,7 @@ dated annual rows before reporting a secondary-fact or broad-role conflict.
 from datetime import UTC, datetime
 
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_historical_roster_audit_v1 as roster
 from scripts import season_package_compiler_v2 as compiler
@@ -22,7 +23,7 @@ def binding(path):
 def main():
     ROOT.mkdir(parents=True, exist_ok=True)
     output = ROOT / 'all26-source-native-readback.json'
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('completed readback exists; inspect rather than repeat')
     rows = []
     for season in registry.supported_seasons():
@@ -31,7 +32,7 @@ def main():
                   if roster.normalise(p.get('source_name') or p['name']) == 'graemeshinnie']
         if not people:
             continue
-        raw = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+        raw = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
         entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(raw).entries}
         codes = compiler._extract_country_codes_from_textos(release.game_path / 'DBDAT/TEXTOS.PKF')
         sources, _ = roster.load_sources(season)

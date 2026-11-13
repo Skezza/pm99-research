@@ -8,6 +8,14 @@ source manifest changes, materialisation refuses rather than guessing.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import copy
 import hashlib
 import json
@@ -43,7 +51,7 @@ def sha256_bytes(value: bytes) -> str:
 
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
@@ -148,12 +156,12 @@ def validate_document(value: Any) -> dict[str, Any]:
 
 
 def load_or_empty(path: Path, *, season: str) -> dict[str, Any]:
-    if not path.exists():
+    if not storage_io.exists(path):
         return empty_document(season)
-    if path.is_symlink() or not path.is_file():
+    if path.is_symlink() or not storage_io.is_file(path):
         raise AmendmentError(f"amendment path is not a regular file: {path}")
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(storage_io.read_text(path, encoding='utf-8'))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise AmendmentError(f"cannot read amendment document: {exc}") from exc
     document = validate_document(value)
@@ -165,7 +173,7 @@ def load_or_empty(path: Path, *, season: str) -> dict[str, Any]:
 def write_document(path: Path, document: Mapping[str, Any]) -> None:
     value = validate_document(copy.deepcopy(dict(document)))
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(canonical_json_bytes(value))
+    storage_io.write_bytes(path, canonical_json_bytes(value))
 
 
 def stage_change(
@@ -215,7 +223,7 @@ def materialise(
     value = validate_document(copy.deepcopy(dict(document)))
     document_hash = sha256_bytes(canonical_json_bytes(value))
     destination = output_root / value["season"] / document_hash
-    if destination.exists():
+    if storage_io.exists(destination):
         raise AmendmentError(f"refusing to overwrite existing amendment materialisation: {destination}")
     destination.mkdir(parents=True)
     grouped: dict[str, list[dict[str, Any]]] = {}
@@ -230,7 +238,7 @@ def materialise(
         if any(change["manifest_sha256"] != actual_sha256 for change in changes):
             raise AmendmentError(f"amendments target a different source revision: {manifest_id}")
         try:
-            source = json.loads(path.read_text(encoding="utf-8"))
+            source = json.loads(storage_io.read_text(path, encoding='utf-8'))
         except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
             raise AmendmentError(f"cannot read selected manifest {manifest_id}: {exc}") from exc
         amended = copy.deepcopy(source)
@@ -244,7 +252,7 @@ def materialise(
         filename = f"{len(outputs) + 1:02d}-{hashlib.sha256(manifest_id.encode('utf-8')).hexdigest()[:12]}.json"
         output_path = destination / "manifests" / filename
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_bytes(canonical_json_bytes(amended))
+        storage_io.write_bytes(output_path, canonical_json_bytes(amended))
         outputs.append({
             "manifest_id": manifest_id,
             "source_sha256": actual_sha256,
@@ -261,5 +269,5 @@ def materialise(
         "outputs": outputs,
         "state": "materialised-source-copies-not-promoted",
     }
-    (destination / "amendment-receipt.json").write_bytes(canonical_json_bytes(receipt))
+    storage_io.write_bytes(destination / 'amendment-receipt.json', canonical_json_bytes(receipt))
     return receipt

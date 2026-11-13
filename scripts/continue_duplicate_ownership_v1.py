@@ -12,6 +12,7 @@ from pathlib import Path
 import sys
 
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_duplicate_ownership_plan_v1 as planner
 from scripts import season_duplicate_source_context_v1 as context
 from scripts import season_release_registry_v1 as registry
@@ -45,7 +46,7 @@ def parameters(plan,dated_position_policy=False):
         'soccerbase_review_path':None,'soccerbase_club_entities_path':None}
     if bindings.get('supplemental_opening'):
         result['supplemental_opening_path']=bound_path(bindings['supplemental_opening'])
-        if json.loads(result['supplemental_opening_path'].read_text())['season']!=season:
+        if json.loads(storage_io.read_text(result['supplemental_opening_path']))['season']!=season:
             raise ValueError('continuation supplemental fixture source belongs to another season')
     for key,arg in (('published_person_supplement','published_person_path'),
                     ('published_transfer_supplement','published_transfer_path')):
@@ -65,7 +66,7 @@ def run(input_root,output_root,season='all',dated_position_policy=False):
     selected=registry.supported_seasons() if season=='all' else [season]
     inputs=[]
     for season in selected:
-        path=input_root/season/'ownership-plan.json';plan=json.loads(path.read_text())
+        path=input_root/season/'ownership-plan.json';plan=json.loads(storage_io.read_text(path))
         if plan['season']!=season:raise ValueError('continuation input season differs from its directory')
         params=parameters(plan,dated_position_policy)
         inputs.append((plan,params,{'season':season,'prior_plan_path':registry.relative_workspace_path(path),
@@ -77,8 +78,8 @@ def run(input_root,output_root,season='all',dated_position_policy=False):
         'native_writes':0,'source_downloads':0,'explicit_dated_position_policy_upgrade':dated_position_policy,
         'seasons':[receipt for _,_,receipt in inputs]}
     config_path=output_root/'run-inputs.json'
-    if config_path.exists():
-        if json.loads(config_path.read_text())!=run_config:raise ValueError('immutable continuation inputs changed')
+    if storage_io.exists(config_path):
+        if json.loads(storage_io.read_text(config_path))!=run_config:raise ValueError('immutable continuation inputs changed')
     else:
         config_path.parent.mkdir(parents=True,exist_ok=True);pipeline.write_canonical_json(config_path,run_config)
     people,events,binding=context.load_snapshot(registry.ROOT/pins[0]['path'],registry.ROOT/pins[0]['pinned_receipt_path'])

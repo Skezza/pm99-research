@@ -14,6 +14,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import derive_provider_identity_resolutions_v1 as derivation
 from scripts import scan_duplicate_whole_club_sources_v1 as scanner
 
@@ -75,10 +76,10 @@ def original_review(season, club, bindings, cache, destination, *, exclude_unpub
 
 
 def review(prior_path, output):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('forward review output is immutable; do not rerun a completed review')
     output.mkdir(parents=True)
-    prior = json.loads(prior_path.read_text())
+    prior = json.loads(storage_io.read_text(prior_path))
     cache = scanner.BoundSnapshotCache()
     grouped = {}
     for row in selected_decisions(prior):
@@ -88,7 +89,7 @@ def review(prior_path, output):
         release = whole.registry.load_preferred_release(season)
         clubs = [c for _, pkg, _ in whole.planner.package_layers(release) for c in pkg['clubs']]
         seed = original_decision(attempts[0])
-        parent = json.loads((ROOT / seed['prior_plan_path']).read_text())
+        parent = json.loads(storage_io.read_text(ROOT / seed['prior_plan_path']))
         if whole.registry.sha256_file(ROOT / seed['prior_plan_path']) != seed['prior_plan_sha256']:
             raise ValueError('prior source plan changed')
         bindings = parent['bindings']
@@ -125,7 +126,7 @@ def review(prior_path, output):
                 cap_path = ROOT / old['capacity_plan_path']
                 if whole.registry.sha256_file(cap_path) != old['capacity_plan_sha256']:
                     raise ValueError('capacity source plan changed')
-                bundle = json.loads(cap_path.read_text())['bindings']['same_carrier_name_capacity']
+                bundle = json.loads(storage_io.read_text(cap_path))['bindings']['same_carrier_name_capacity']
                 try:
                     whole.prepare(season, attempt['carrier_id'], club,
                         ROOT / bindings['published_person_supplement']['path'],
@@ -136,7 +137,7 @@ def review(prior_path, output):
                         allow_keeper_order_exchange=True, snapshot_loader=cache.load,
                         public_loader=cache.merge_public, identity_review_path=review_path,
                         allow_original_matchday_only_club_identity=True)
-                    proposal = json.loads(path.read_text())
+                    proposal = json.loads(storage_io.read_text(path))
                     row.update(status='allocation-gap' if proposal['allocation_gap'] else 'complete-source-fit',
                         reason=proposal['allocation_gap'], outside_collisions=proposal['outside_collisions'],
                         proposal_path=whole.registry.relative_workspace_path(path),

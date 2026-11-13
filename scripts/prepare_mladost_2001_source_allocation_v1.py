@@ -5,6 +5,7 @@ Unresolved fixture surnames do not acquire a namesake's first name or birthday.
 import copy
 import re
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import mladost_2001_original_august_v1 as opening
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_duplicate_ownership_plan_v1 as planner
@@ -26,7 +27,7 @@ HISTORY_STEMS=['original-candidate-histories','additional-original-histories','t
 
 
 def prepare(output,baseline_release_id=None):
-    if output.exists():raise ValueError('Mladost source allocation is immutable')
+    if storage_io.exists(output):raise ValueError('Mladost source allocation is immutable')
     path,raw,binding=source_rows('partizanopedia-2001-original-season')
     actual=opening.parse_match(raw,url=pipeline.read_json_file(path.with_suffix('.source.json'))['url'])
     path,raw,catalogue_binding=source_rows('mladost-apatin-2001-original-alltransfers')
@@ -49,7 +50,7 @@ def prepare(output,baseline_release_id=None):
     # Preserve the actual shared schema and outer metadata of the original batch.
     merged=copy.deepcopy(documents[0]);merged['batches']=sum([copy.deepcopy(d['batches']) for d in documents],[])
     biography=ROOT/'mladost-2001-combined-original-person-candidates-v1.json'
-    if biography.exists():
+    if storage_io.exists(biography):
         if pipeline.read_json_file(biography)!=merged:raise ValueError('retained combined original biography differs')
     else:pipeline.write_canonical_json(biography,merged)
     people.merge({},merged)
@@ -86,7 +87,7 @@ def prepare(output,baseline_release_id=None):
         raise ValueError('obsolete club changed or replacement already represented')
     slots=[p for p in package['players'] if p['club_id']==club['id']]
     if len(slots)!=18:raise ValueError('fixed18 capacity changed')
-    jug=(release.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    jug=storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     fitted=allocation.allocate(jug,slots,desired,display.claims(biography),published_families=families.claims(biography,[i for i in IDS if i]),
         opening_slot_orders=allocation.startup_orders(jug,slots),allow_keeper_order_exchange=True,
         unknown_birthday_reference_date=actual['fixture_date'])

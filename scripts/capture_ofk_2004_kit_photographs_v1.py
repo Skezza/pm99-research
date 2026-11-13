@@ -7,6 +7,7 @@ from urllib.request import Request, urlopen
 
 from bs4 import BeautifulSoup
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts.prepare_ofk_2004_source_allocation_v1 import original, AUDIT
 from scripts.season_art_transaction_v1 import atomic_bytes
@@ -32,7 +33,7 @@ def main(*, sources=None, directory=None):
                 raise ValueError('selected photograph is absent from the retained original period article')
             path = (AUDIT / 'ofk-2004-kit-originals' if directory is None else directory) / f'{key}-{n}.jpg'
             receipt = path.with_name(path.name + '.source.json')
-            if path.exists():
+            if storage_io.exists(path):
                 if pipeline.read_json_file(receipt) != dict(url=url, sha256=registry.sha256_file(path)):
                     raise ValueError('retained photograph URL/hash changed')
                 continue

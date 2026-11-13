@@ -7,6 +7,7 @@ import copy
 
 from bs4 import BeautifulSoup
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import estudiantes_2000_original_august_v1 as opening
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import season_duplicate_ownership_plan_v1 as planner
@@ -26,7 +27,7 @@ ROLES=['G','D','D','D','D','M','M','M','M','F','F','D','G','F','M','D']
 
 
 def prepare(output,baseline_release_id=None):
-    if output.exists():raise ValueError('source allocation is immutable')
+    if storage_io.exists(output):raise ValueError('source allocation is immutable')
     review_path=ROOT/'estudiantes-2000-original-magazine66-August2-visual-review-v1.json'
     actual=opening.replay(review_path)
     _,catalogue,catalogue_binding=source_rows('estudiantes-2000-original-linked-identity-catalogue')
@@ -68,7 +69,7 @@ def prepare(output,baseline_release_id=None):
         for _,p,_ in layers for c in p['clubs']):raise ValueError('club changed or target already represented')
     slots=[p for p in package['players'] if p['club_id']==club['id']]
     if len(slots)!=16:raise ValueError('fixed16 capacity changed')
-    jug=(release.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    jug=storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     fitted=allocation.allocate(jug,slots,desired,display.claims(biography),
         published_families=families.claims(biography,[id for id in IDS if id is not None]),
         opening_slot_orders=allocation.startup_orders(jug,slots),allow_keeper_order_exchange=True)

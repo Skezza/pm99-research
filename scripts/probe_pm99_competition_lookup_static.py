@@ -9,6 +9,14 @@ being described as competition selection.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -27,7 +35,7 @@ WINDOWS = {
 
 def sha256(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
@@ -53,7 +61,7 @@ def disassemble(executable: Path, start: int, stop: int) -> str:
 
 
 def collect(executable: Path) -> dict[str, Any]:
-    if not executable.is_file():
+    if not storage_io.is_file(executable):
         raise FileNotFoundError(f"MANAGPRE.EXE not found: {executable}")
     if shutil.which("objdump") is None:
         raise RuntimeError("objdump is required for this read-only probe")
@@ -66,7 +74,7 @@ def collect(executable: Path) -> dict[str, Any]:
     lookup = disassembly["watched_lookup"]
     return {
         "read_only": True,
-        "executable": str(executable.resolve()),
+        "executable": str(storage_io.resolve(executable)),
         "executable_sha256": sha256(executable),
         "windows": {label: {"start": f"0x{start:08x}", "stop": f"0x{stop:08x}"} for label, (start, stop) in WINDOWS.items()},
         "instruction_checks": {
@@ -105,7 +113,7 @@ def main() -> int:
     rendered = json.dumps(result, indent=2, sort_keys=True)
     if args.report:
         args.report.parent.mkdir(parents=True, exist_ok=True)
-        args.report.write_text(rendered + "\n", encoding="utf-8")
+        storage_io.write_text(args.report, rendered + '\n', encoding='utf-8')
     print(rendered)
     return 0
 

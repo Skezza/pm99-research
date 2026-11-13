@@ -26,6 +26,7 @@ for candidate in (ROOT, EDITOR):
         sys.path.insert(0, str(candidate))
 
 from app.minifoto_bitmap_archive import discover_riff_palette_resource, iter_obfuscated_bmp_records, load_riff_palette  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts import materialise_2015_world_kits as legacy_renderer  # noqa: E402
 from scripts import patch_english80_reference_kits_v2 as reviewed_renderer  # noqa: E402
 from scripts import pm99_factory_kit_renderer_v6 as factory_tone_renderer  # noqa: E402
@@ -88,7 +89,7 @@ def sha256_bytes(value: bytes) -> str:
 
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
@@ -121,12 +122,12 @@ def _cached_layers(tokens: Mapping[str, str], cache_dir: Path) -> dict[str, Any]
             continue
         url = f"https://commons.wikimedia.org/wiki/Special:Redirect/file/Kit_{part}_{stem}.png"
         index = cache_dir / "pattern-index" / f"{sha256_bytes(url.encode('utf-8'))}.json"
-        if not index.is_file():
+        if not storage_io.is_file(index):
             return None
         try:
-            row = json.loads(index.read_text(encoding="utf-8"))
+            row = json.loads(storage_io.read_text(index, encoding='utf-8'))
             path = Path(str(row.get("path") or ""))
-            if not path.is_file() or sha256_file(path) != row.get("sha256"):
+            if not storage_io.is_file(path) or sha256_file(path) != row.get("sha256"):
                 return None
             layers[part] = row
         except (OSError, ValueError, json.JSONDecodeError):
@@ -137,11 +138,11 @@ def _cached_layers(tokens: Mapping[str, str], cache_dir: Path) -> dict[str, Any]
 def _fetch_exact_layer(part: str, stem: str, cache_dir: Path) -> dict[str, Any]:
     url = f"https://commons.wikimedia.org/wiki/Special:Redirect/file/Kit_{part}_{stem}.png"
     index_path = cache_dir / "pattern-index" / f"{sha256_bytes(url.encode('utf-8'))}.json"
-    if index_path.is_file():
+    if storage_io.is_file(index_path):
         try:
-            row = json.loads(index_path.read_text(encoding="utf-8"))
+            row = json.loads(storage_io.read_text(index_path, encoding='utf-8'))
             path = Path(str(row.get("path") or ""))
-            if path.is_file() and sha256_file(path) == row.get("sha256"):
+            if storage_io.is_file(path) and sha256_file(path) == row.get("sha256"):
                 return {"status": "ready", "layer": row}
         except (OSError, ValueError, json.JSONDecodeError):
             pass
@@ -155,23 +156,23 @@ def _fetch_exact_layer(part: str, stem: str, cache_dir: Path) -> dict[str, Any]:
                 continue
             if response.status_code != 200:
                 return {"status": "missing", "reason": f"{part}-http-{response.status_code}", "failed_url": url}
-            image = legacy_renderer.Image.open(io.BytesIO(response.content))
+            image = storage_io.open_file(legacy_renderer.Image, io.BytesIO(response.content))
             image.verify()
             digest = sha256_bytes(response.content)
             path = cache_dir / "patterns" / digest[:2] / f"{digest}.png"
             path.parent.mkdir(parents=True, exist_ok=True)
-            if path.exists() and sha256_file(path) != digest:
+            if storage_io.exists(path) and sha256_file(path) != digest:
                 raise KitRenderError(f"content-addressed collision: {path}")
-            if not path.exists():
-                path.write_bytes(response.content)
+            if not storage_io.exists(path):
+                storage_io.write_bytes(path, response.content)
             result = {
                 "url": url,
-                "path": str(path.resolve()),
+                "path": str(storage_io.resolve(path)),
                 "sha256": digest,
                 "dimensions": {"width": image.width, "height": image.height},
             }
             index_path.parent.mkdir(parents=True, exist_ok=True)
-            index_path.write_bytes(canonical_json_bytes(result))
+            storage_io.write_bytes(index_path, canonical_json_bytes(result))
             return {"status": "ready", "layer": result}
         except Exception as exc:
             if attempt == 3:
@@ -197,11 +198,11 @@ def resolve_wikipedia_layers(tokens: Mapping[str, str], cache_dir: Path, *, allo
             continue
         url = f"https://commons.wikimedia.org/wiki/Special:Redirect/file/Kit_{part}_{stem}.png"
         index_path = cache_dir / "pattern-index" / f"{sha256_bytes(url.encode('utf-8'))}.json"
-        if index_path.is_file():
+        if storage_io.is_file(index_path):
             try:
-                row = json.loads(index_path.read_text(encoding="utf-8"))
+                row = json.loads(storage_io.read_text(index_path, encoding='utf-8'))
                 path = Path(str(row.get("path") or ""))
-                if path.is_file() and sha256_file(path) == row.get("sha256"):
+                if storage_io.is_file(path) and sha256_file(path) == row.get("sha256"):
                     layers[part] = row
                     continue
             except (OSError, ValueError, json.JSONDecodeError):
@@ -217,10 +218,10 @@ def _write_artifact(payload: bytes, output_dir: Path) -> tuple[Path, str]:
     digest = sha256_bytes(payload)
     path = output_dir / "artifacts" / digest[:2] / f"{digest}.bmp"
     path.parent.mkdir(parents=True, exist_ok=True)
-    if path.exists() and path.read_bytes() != payload:
+    if storage_io.exists(path) and storage_io.read_bytes(path) != payload:
         raise KitRenderError(f"content-addressed collision: {path}")
-    if not path.exists():
-        path.write_bytes(payload)
+    if not storage_io.exists(path):
+        storage_io.write_bytes(path, payload)
     return path, digest
 
 
@@ -244,7 +245,7 @@ def _reviewed_style_payload(
 def _pattern_texture(path, fabric_rgb, size, part=None):
     """Unwrap the source garment, not Commons' white diagram backdrop."""
     from collections import deque
-    with legacy_renderer.Image.open(path) as opened:
+    with storage_io.open_file(legacy_renderer.Image, path) as opened:
         source = opened.convert('RGBA')
     base = legacy_renderer.Image.new('RGBA', source.size, fabric_rgb + (255,))
     source = legacy_renderer.Image.alpha_composite(base, source).convert('RGB')
@@ -417,10 +418,10 @@ def render_catalogue(
     archive_hashes = {}
     for archive in ARCHIVES:
         path = dbdat / archive
-        if record_loader is None and not path.is_file():
+        if record_loader is None and not storage_io.is_file(path):
             raise KitRenderError(f"missing clean base archive: {path}")
         archives[archive] = load_records(path)
-        archive_hashes[archive] = sha256_file(path) if path.is_file() else "fixture-injected"
+        archive_hashes[archive] = sha256_file(path) if storage_io.is_file(path) else "fixture-injected"
     palette, palette_source = (palette_loader or _palette)(dbdat)
     nearest_cache: dict[tuple[int, int, int], int] = {}
     bindings, receipts = [], []
@@ -487,7 +488,7 @@ def render_catalogue(
     counts: dict[str, int] = {}
     for row in receipts:
         counts[row["status"]] = counts.get(row["status"], 0) + 1
-    receipt = {"schema_version": RECEIPT_SCHEMA, "season": dict(season), "kit_catalogue_sha256": catalogue_sha, "policy": {"base": "clean-record-wrapper-and-runtime-palette", "reviewed_style_renderer": factory_tone_renderer.RENDERER_ID, "wikipedia": "exact-captured-template-fields-and-hash-bound-commons-pattern-layers", "football_kit_archive": "manually-reviewed-pm99-style-contract-rendered-through-original-factory-tonal-art", "gaps": "no-artifact-no-binding-no-native-fallback"}, "source": {"dbdat": str(dbdat.resolve()), "archive_sha256": archive_hashes, "palette": palette_source}, "coverage": {"catalogue_club_count": len(rows), "bound_club_count": len(bindings), "artifact_count": sum(len(row["artifacts"]) for row in bindings), "status_counts": dict(sorted(counts.items()))}, "rows": receipts}
+    receipt = {"schema_version": RECEIPT_SCHEMA, "season": dict(season), "kit_catalogue_sha256": catalogue_sha, "policy": {"base": "clean-record-wrapper-and-runtime-palette", "reviewed_style_renderer": factory_tone_renderer.RENDERER_ID, "wikipedia": "exact-captured-template-fields-and-hash-bound-commons-pattern-layers", "football_kit_archive": "manually-reviewed-pm99-style-contract-rendered-through-original-factory-tonal-art", "gaps": "no-artifact-no-binding-no-native-fallback"}, "source": {"dbdat": str(storage_io.resolve(dbdat)), "archive_sha256": archive_hashes, "palette": palette_source}, "coverage": {"catalogue_club_count": len(rows), "bound_club_count": len(bindings), "artifact_count": sum(len(row["artifacts"]) for row in bindings), "status_counts": dict(sorted(counts.items()))}, "rows": receipts}
     return binding, receipt
 
 
@@ -502,19 +503,19 @@ def main() -> int:
     parser.add_argument("--pattern-cache-dir", type=Path, required=True)
     parser.add_argument("--allow-network", action="store_true")
     args = parser.parse_args()
-    compiler_catalogue = catalogue_from_english_compiler_input(json.loads(args.english_compiler_input.read_text(encoding="utf-8"))) if args.english_compiler_input else None
-    paths = [args.kit_catalogue] if args.kit_catalogue else (sorted(args.catalogue_root.glob("*/kit-catalogue-v1.json")) if args.catalogue_root else [])
+    compiler_catalogue = catalogue_from_english_compiler_input(json.loads(storage_io.read_text(args.english_compiler_input, encoding='utf-8'))) if args.english_compiler_input else None
+    paths = [args.kit_catalogue] if args.kit_catalogue else (sorted(storage_io.glob(args.catalogue_root, '*/kit-catalogue-v1.json')) if args.catalogue_root else [])
     if not paths and compiler_catalogue is None:
         parser.error("no kit catalogues found")
     summary = {}
     for path in paths or [None]:
-        catalogue = compiler_catalogue if path is None else json.loads(path.read_text(encoding="utf-8"))
+        catalogue = compiler_catalogue if path is None else json.loads(storage_io.read_text(path, encoding='utf-8'))
         season_slug = str((catalogue.get("season") or {}).get("label") or (path.parent.name if path else "season")).replace("/", "-")
         output_dir = args.output_dir if (args.kit_catalogue or compiler_catalogue is not None) else args.output_dir / season_slug
         binding, receipt = render_catalogue(catalogue, dbdat=args.clean_dbdat, output_dir=output_dir, pattern_cache_dir=args.pattern_cache_dir, allow_network=args.allow_network)
         output_dir.mkdir(parents=True, exist_ok=True)
-        (output_dir / "kit-render-bindings-v1.json").write_bytes(canonical_json_bytes(binding))
-        (output_dir / "kit-render-receipt-v1.json").write_bytes(canonical_json_bytes(receipt))
+        storage_io.write_bytes(output_dir / 'kit-render-bindings-v1.json', canonical_json_bytes(binding))
+        storage_io.write_bytes(output_dir / 'kit-render-receipt-v1.json', canonical_json_bytes(receipt))
         summary[season_slug] = receipt["coverage"]
     print(json.dumps(summary if len(summary) > 1 else next(iter(summary.values())), indent=2, sort_keys=True))
     return 0

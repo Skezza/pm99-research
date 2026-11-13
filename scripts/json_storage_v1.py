@@ -14,6 +14,7 @@ import stat
 import subprocess
 import tempfile
 from contextlib import contextmanager
+from functools import lru_cache
 from pathlib import Path
 from typing import Iterator
 
@@ -24,6 +25,7 @@ except ImportError:  # Plain readers remain usable outside the POSIX pilot.
 
 MAX_DECODED_BYTES = 512 * 1024**2
 CHUNK = 1024**2
+AUTO_MIN_BYTES = 1024**2
 
 
 class StorageError(OSError):
@@ -147,17 +149,27 @@ def size(path: Path) -> int:
         selected = physical_path(path)
         if not selected.name.endswith(".json.zst"):
             return selected.stat().st_size
-        return sum(len(block) for block in _decoded_chunks(selected))
+        s = selected.stat()
+        return _decoded_size(str(selected), (s.st_dev, s.st_ino, s.st_size, s.st_mtime_ns, s.st_ctime_ns))
 
 
-def iter_json_paths(directory: Path, pattern: str = "*.json") -> Iterator[Path]:
+@lru_cache(maxsize=256)
+def _decoded_size(path: str, identity: tuple) -> int:
+    return sum(len(block) for block in _decoded_chunks(Path(path)))
+
+
+def iter_json_paths(directory: Path, pattern: str = "*.json", *, recursive: bool = False) -> Iterator[Path]:
     """Return logical paths once, including compressed files, without recursion."""
     if not pattern.endswith(".json"):
         raise ValueError("JSON discovery pattern must end in .json")
-    paths = {logical_path(p) for glob in (pattern, pattern + ".zst")
-             for p in Path(directory).glob(glob)}
-    for path in sorted(paths):
-        if is_file(path):
+    try:
+        from . import json_storage_io_v1 as adapter
+    except ImportError:
+        import json_storage_io_v1 as adapter
+    for path in adapter.glob(Path(directory),pattern,recursive=recursive):
+        if path.is_dir() or path.is_symlink():
+            continue
+        if adapter.is_file(path):
             yield path
 
 
@@ -208,7 +220,7 @@ def _stage(path: Path, data: bytes, *, compressed: bool, mode: int) -> Path:
         raise
 
 
-def _write_bytes(path: Path, data: bytes, *, compressed: bool | None = None,
+def _write_bytes(path: Path, data: bytes, *, compressed: bool | str | None = None,
                  overwrite: bool = False) -> Path:
     """Write JSON atomically; default to plain, preserving an existing format.
 
@@ -222,6 +234,13 @@ def _write_bytes(path: Path, data: bytes, *, compressed: bool | None = None,
     if existing is not None and not overwrite:
         raise FileExistsError(str(path))
     was_compressed = existing == packed
+    if was_compressed and overwrite and existing.stat().st_nlink > 1:
+        raise StorageError("shared compressed evidence is immutable; write a new logical artifact")
+    automatic = compressed == "auto"
+    if automatic:
+        compressed = was_compressed if existing else len(data) >= AUTO_MIN_BYTES
+    elif compressed is not None and type(compressed) is not bool:
+        raise ValueError("compressed must be True, False, None or 'auto'")
     if compressed is None:
         compressed = was_compressed
     if compressed and fcntl is None:
@@ -232,6 +251,11 @@ def _write_bytes(path: Path, data: bytes, *, compressed: bool | None = None,
     mode = stat.S_IMODE(existing.stat().st_mode) if existing else 0o644
     temporary = _stage(destination, data, compressed=compressed, mode=mode)
     try:
+        if automatic and compressed and existing is None and temporary.stat().st_size > len(data) * .9:
+            temporary.unlink()
+            compressed = False
+            destination = path
+            temporary = _stage(destination, data, compressed=False, mode=mode)
         if overwrite and existing is not None:
             os.replace(temporary, destination)
         else:
@@ -242,14 +266,14 @@ def _write_bytes(path: Path, data: bytes, *, compressed: bool | None = None,
     return destination
 
 
-def write_bytes(path: Path, data: bytes, *, compressed: bool | None = None,
+def write_bytes(path: Path, data: bytes, *, compressed: bool | str | None = None,
                 overwrite: bool = False) -> Path:
     """Atomically write JSON, preserving its format and no-clobber contract."""
     with _directory_lock(path, exclusive=True):
         return _write_bytes(path, data, compressed=compressed, overwrite=overwrite)
 
 
-def _convert_locked(path: Path, *, compress: bool) -> dict:
+def _convert_locked(path: Path, *, compress: bool, expected_sha256: str | None = None) -> dict:
     if fcntl is None:
         raise StorageError("migration requires POSIX directory locking in this pilot")
     path = logical_path(path)
@@ -267,6 +291,8 @@ def _convert_locked(path: Path, *, compress: bool) -> dict:
         raise StorageError("JSON exceeds the compressed reader's size limit")
     snapshot = _snapshot(source)
     data = b"".join(_chunks_unlocked(path))
+    if expected_sha256 is not None and hashlib.sha256(data).hexdigest() != expected_sha256:
+        raise StorageError("source no longer matches the manifest's original byte hash")
     json.loads(data.decode("utf-8"))
     destination = packed if compress else path
     temporary = _stage(destination, data, compressed=compress,
@@ -275,6 +301,7 @@ def _convert_locked(path: Path, *, compress: bool) -> dict:
     try:
         if temporary.stat().st_gid != before.st_gid:
             os.chown(temporary, -1, before.st_gid)
+        os.utime(temporary, ns=(before.st_atime_ns, before.st_mtime_ns))
         if _snapshot(source) != snapshot:
             raise StorageError("source changed during conversion")
         if compress and temporary.stat().st_blocks >= before.st_blocks:
@@ -302,16 +329,36 @@ def _convert_locked(path: Path, *, compress: bool) -> dict:
             "allocated_released": (before.st_blocks - after.st_blocks) * 512}
 
 
-def compress_file(path: Path) -> dict:
+def compress_file(path: Path, *, expected_sha256: str | None = None) -> dict:
     """Convert one audited inactive, unshared JSON file; verify before removal."""
     with _directory_lock(path, exclusive=True):
-        return _convert_locked(path, compress=True)
+        return _convert_locked(path, compress=True, expected_sha256=expected_sha256)
 
 
-def restore_file(path: Path) -> dict:
+def restore_file(path: Path, *, expected_sha256: str | None = None) -> dict:
     """Restore exact original bytes and permissions at the original JSON path."""
     with _directory_lock(path, exclusive=True):
-        return _convert_locked(path, compress=False)
+        return _convert_locked(path, compress=False, expected_sha256=expected_sha256)
+
+
+def read_prefix(path: Path, limit: int = 128 * 1024, *, tail: bool = False) -> bytes:
+    """Bound memory for display snippets; this is not a complete integrity proof."""
+    if limit < 0 or limit > CHUNK:
+        raise ValueError("prefix limit must be between zero and one MiB")
+    result = b""
+    with _directory_lock(path, exclusive=False):
+        iterator = _chunks_unlocked(path)
+        try:
+            for block in iterator:
+                if tail:
+                    result = (result + block)[-limit:] if limit else b""
+                else:
+                    result += block[:max(0, limit - len(result))]
+                    if len(result) >= limit:
+                        break
+        finally:
+            iterator.close()
+    return result
 
 
 def copy_json(source: Path, destination: Path, *, compressed: bool | None = None) -> Path:

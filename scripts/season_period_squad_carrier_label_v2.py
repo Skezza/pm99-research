@@ -8,6 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_original_carrier_label_restoration_v1 as prior
 
 registry,pipeline=prior.registry,prior.pipeline
@@ -21,7 +22,7 @@ def coach_alias(native,full):
 
 def dated_annual_title(path,season,group):
     if path.suffix!='.txt':raise ValueError('this typed annual policy requires a literal dated FootballSquads source, not an unreviewed HTML adapter')
-    title=next((line for line in path.read_text().splitlines() if line.strip()),'')
+    title=next((line for line in storage_io.read_text(path).splitlines() if line.strip()),'')
     match=prior.old.roster.csv_source._TITLE.fullmatch(title)
     if match is None:raise ValueError('literal dated annual title missing')
     label=match.group(3);year=int(season[:4])
@@ -54,7 +55,7 @@ def ground(raw,review,target,native,year):
 
 def prepare(base,inputs):
     pre=prior.checked(inputs['preallocation']);fixed_path=prior.checked(inputs['fixed_registry'])
-    if fixed_path.resolve()!=(registry.ROOT/'seasons'/base.season/'fixed-carrier-registry.json').resolve():
+    if storage_io.resolve(fixed_path)!=storage_io.resolve(registry.ROOT / 'seasons' / base.season / 'fixed-carrier-registry.json'):
         raise ValueError('requires this season original registry, not an arbitrary club mapping')
     fixed=pipeline.read_json_file(fixed_path)
     if fixed['schema_version']!='pm99-world-fixed-carrier-registry-v2':raise ValueError('unsupported original registry schema')
@@ -66,7 +67,7 @@ def prepare(base,inputs):
     index,sources=prior.old.indexed_claims(pipeline.read_json_file(pre))
     captures,_=prior.old.roster.load_sources(base.season)
     verifier=prior.old.roster.SourceVerifier(base.season)
-    eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes();jug=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI');jug=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
     entries={e.record_id:e for e in prior.IndexedFDIFile.from_bytes(eq).entries}
     people={e.record_id:e for e in prior.IndexedFDIFile.from_bytes(jug).entries}
     owners=prior.owners.native_owners(eq)

@@ -7,6 +7,7 @@ import argparse
 from pathlib import Path
 import time
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import capture_discovered_fixture_batches_20261017 as capture
 from scripts import build_public_fixture_batches_20261017 as build
 
@@ -17,9 +18,9 @@ def tag(season):
 
 def main(previous_runner_pid):
     process = Path('/proc') / str(previous_runner_pid) / 'cmdline'
-    while process.exists():
+    while storage_io.exists(process):
         try:
-            command = process.read_bytes()
+            command = storage_io.read_bytes(process)
         except FileNotFoundError:
             break
         if not command:
@@ -29,7 +30,7 @@ def main(previous_runner_pid):
         print(dict(waiting_for_owned_runner_pid=previous_runner_pid), flush=True)
         time.sleep(10)
     folder = build.ROOT / '2024-25'
-    if not (folder / 'complete-SOURCE-replay.json').exists():
+    if not storage_io.exists(folder / 'complete-SOURCE-replay.json'):
         raise ValueError('Exeter actual whole SOURCE proof required before capture')
     capture.ROOT = build.ROOT
     capture.RELEASE = build.RELEASE

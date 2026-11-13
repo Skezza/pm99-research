@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import compose_2015_source_tail_package_v1 as v1
 
 
@@ -36,7 +37,7 @@ def canonical_bytes(value: Any) -> bytes:
 
 def _read(path: Path, *, label: str) -> tuple[dict[str, Any], str]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise SelectedPackageError(f"cannot read {label}: {path}") from exc
@@ -140,7 +141,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--opening-order", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args(argv)
-    if args.output.exists():
+    if storage_io.exists(args.output):
         parser.error(f"refusing to overwrite selected package: {args.output}")
     try:
         source_package, source_sha = _read(args.source_package, label="source package")
@@ -149,7 +150,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (OSError, SelectedPackageError) as exc:
         parser.error(str(exc))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_bytes(result))
+    storage_io.write_bytes(args.output, canonical_bytes(result))
     print(json.dumps(result["summary"], sort_keys=True))
     return 0
 

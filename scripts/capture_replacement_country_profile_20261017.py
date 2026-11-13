@@ -5,6 +5,7 @@ Retain the original failed carrier evidence/spec; never rerun startup or build.
 import argparse
 import os
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import build_original_country_defaults_20261017 as build
 from scripts.capture_original_country_defaults_20261017 import tag
@@ -23,15 +24,15 @@ def main(season, carrier):
     if old['manifest_sha256']!=actual.manifest_sha256 or carrier==old['profiles'][0]['carrier_id']:
         raise ValueError('alternate must use the same game and a distinct missing carrier')
     saved=folder/'runtime-profile-spec-rejected-wrong-carrier-v1.json'
-    if saved.exists():
+    if storage_io.exists(saved):
         raise ValueError('alternate capture already prepared; inspect before rerun')
     label='country_'+str(carrier)
-    if (folder/(label+'-profile-transport.json')).exists():
+    if storage_io.exists(folder / (label + '-profile-transport.json')):
         raise ValueError('existing alternate transport needs inspection')
     old_review=folder/(old_label+'-profile-visual-review.json')
-    if old_review.exists():
-        old_review.rename(folder/(old_label+'-profile-visual-review-rejected-wrong-carrier-v1.json'))
-    (folder/'runtime-profile-spec.json').rename(saved)
+    if storage_io.exists(old_review):
+        storage_io.move(old_review, folder / (old_label + '-profile-visual-review-rejected-wrong-carrier-v1.json'))
+    storage_io.move(folder / 'runtime-profile-spec.json', saved)
     actor=next(p for p in pipeline.read_json_file(actual.package_path)['players'] if p['carrier_id']==carrier)
     search=build.source.original.names.undecorated(actor['name'])
     profile=dict(carrier_id=carrier,label=label,search=search,token=search.split()[-1],

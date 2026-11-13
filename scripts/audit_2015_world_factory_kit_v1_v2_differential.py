@@ -21,6 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts.materialise_2015_world_kits import ARCHIVES  # noqa: E402
 from scripts import pm99_factory_kit_renderer_v1 as renderer_v1  # noqa: E402
 from scripts import pm99_factory_kit_renderer_v2 as renderer_v2  # noqa: E402
@@ -106,14 +107,14 @@ def main() -> int:
     args = parser.parse_args()
     try:
         result = audit(
-            json.loads(args.v1_materialisation.read_text(encoding="utf-8")),
-            json.loads(args.v2_materialisation.read_text(encoding="utf-8")),
+            json.loads(storage_io.read_text(args.v1_materialisation, encoding='utf-8')),
+            json.loads(storage_io.read_text(args.v2_materialisation, encoding='utf-8')),
         )
     except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError, KeyError) as exc:
         parser.error(str(exc))
         return 2
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(args.output, json.dumps(result, indent=2, sort_keys=True) + '\n', encoding='utf-8')
     print(json.dumps({"result": result["result"], **result["coverage"]}, sort_keys=True))
     return 0 if result["result"] == "pass" else 1
 

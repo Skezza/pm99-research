@@ -1,5 +1,6 @@
 """Reuse safe completed coach candidates; replace rejected-date private trials."""
 import argparse
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import season_cached_manager_repairs_v2_20261016 as source
 from scripts import build_cached_manager_repairs_20261016 as prior
@@ -15,7 +16,7 @@ def build(season):
     decision=source.decision(base);root=ROOT/season;root.mkdir(parents=True,exist_ok=True)
     retained(root/'source-acceptance-decision.json',decision)
     old=prior.ROOT/season
-    if decision['reuse_exact_existing_private_plan'] and (old/'complete-SOURCE-replay.json').exists():
+    if decision['reuse_exact_existing_private_plan'] and storage_io.exists(old / 'complete-SOURCE-replay.json'):
         if pipeline.read_json_file(old/'manager-plan.json')!=decision['selected_plan']:
             raise ValueError('existing safe private plan differs; no evidence reuse')
         retained(root/'selected-delivery.json',dict(season=season,release_id=prior.RELEASE,

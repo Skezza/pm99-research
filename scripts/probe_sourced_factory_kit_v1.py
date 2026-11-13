@@ -14,6 +14,7 @@ from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_kit_render_bindings_v1 as renderer
 from scripts import season_release_registry_v1 as registry
 from scripts.season_portrait_pipeline_v1 import _normalise_name
@@ -25,9 +26,9 @@ from app.bitmap_pixel_rows import bitmap_pixel_ranges
 
 def run(season, club, output):
     release = registry.load_preferred_release(season)
-    package = json.loads(release.package_path.read_text())
+    package = json.loads(storage_io.read_text(release.package_path))
     catalogue_path = ROOT / '.local/season-kit-sources-historical-backfill-v1' / season / 'kit-catalogue-v1.json'
-    catalogue = json.loads(catalogue_path.read_text())
+    catalogue = json.loads(storage_io.read_text(catalogue_path))
     sources = [r for r in catalogue['rows'] if _normalise_name(r['club_name']) == _normalise_name(club) and r['status'] == 'source-ready']
     if len(sources) != 1:
         raise ValueError('no unique dated source-ready club')
@@ -42,7 +43,7 @@ def run(season, club, output):
                 'left_arm': fields['pattern_la1'], 'right_arm': fields['pattern_ra1']}, cache, allow_network=True)
     if layers['status'] != 'ready':
         raise ValueError('exact historical pattern is unavailable: ' + str(layers))
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('probe output already exists')
     dbdat = output / 'game/DBDAT'
     dbdat.mkdir(parents=True)
@@ -50,14 +51,14 @@ def run(season, club, output):
         'JUG98030.FDI', 'EQ98030.FDI', 'ENT98030.FDI', 'MINIFOTO.PKF',
         'MINIESC.PKF', 'NANOESC.PKF', 'RIDIESC.PKF', 'BIGESC.PKF', 'BIGCAMP.PKF')]]
     for name in names:
-        shutil.copyfile(release.game_path / name, output / 'game' / name)
+        storage_io.copy_file(release.game_path / name, output / 'game' / name)
     palette, palette_source = renderer._palette(release.game_path / 'DBDAT')
     sheet = Image.new('RGB', (720, 600), '#18212a')
     draw = ImageDraw.Draw(sheet)
     changes = []
     for index, name in enumerate(renderer.ARCHIVES):
         path = dbdat / name
-        original = path.read_bytes()
+        original = storage_io.read_bytes(path)
         record = renderer._record_index(path)[carrier]
         templates = renderer._record_index(ROOT / '.local/season-pipeline-v2/pm99-base-clean/DBDAT' / name)
         template = templates[renderer.factory_tone_renderer.factory_template_carrier(name, {'pattern': 'solid'})]
@@ -69,7 +70,7 @@ def run(season, club, output):
         permitted = {start + i for lo, hi in bitmap_pixel_ranges(record) for i in range(lo, hi)}
         if len(after) != len(original) or any(i not in permitted for i in changed):
             raise ValueError('kit correction changed bytes outside target pixels')
-        path.write_bytes(after)
+        storage_io.write_bytes(path, after)
         readback = renderer._record_index(path)[carrier]
         if readback.raw_bitmap != payload:
             raise ValueError('rendered kit readback failed')
@@ -94,7 +95,7 @@ def run(season, club, output):
                'pattern_layers': layers, 'runtime_palette': palette_source, 'changes': changes,
                'input_hashes': {name: registry.sha256_file(output / 'game' / name) for name in names},
                'scope': 'Minimal runner overlay, not a standalone playable local game or all-season kit certification.'}
-    (output / 'receipt.json').write_text(json.dumps(receipt, indent=2) + '\n')
+    storage_io.write_text(output / 'receipt.json', json.dumps(receipt, indent=2) + '\n')
     return receipt
 
 
@@ -127,23 +128,23 @@ def prepare_batch(season, catalogue_path, render_root, output, exclusions=(), *,
     release = source_release if source_release is not None else registry.load_preferred_release(season)
     if release.season != season:
         raise ValueError('kit source release belongs to another season')
-    package = json.loads(release.package_path.read_text())
-    catalogue = json.loads(catalogue_path.read_text())
+    package = json.loads(storage_io.read_text(release.package_path))
+    catalogue = json.loads(storage_io.read_text(catalogue_path))
     if catalogue['season']['label'].replace('/', '-') != season:
         raise ValueError('catalogue belongs to another season')
     binding_path = render_root / 'kit-render-bindings-v1.json'
-    binding = json.loads(binding_path.read_text())
+    binding = json.loads(storage_io.read_text(binding_path))
     render_receipt_path = render_root / 'kit-render-receipt-v1.json'
-    render_receipt = json.loads(render_receipt_path.read_text())
+    render_receipt = json.loads(storage_io.read_text(render_receipt_path))
     digest = renderer.sha256_bytes(renderer.canonical_json_bytes(catalogue))
     if binding['kit_catalogue_sha256'] != digest or render_receipt['kit_catalogue_sha256'] != digest:
         raise ValueError('rendered candidates do not match the captured catalogue')
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('batch output already exists')
     clubs = {int(c['carrier_id']): c for c in package['clubs']}
     source_rows = {int(r['carrier_id']): r for r in catalogue['rows']}
     palette, palette_source = renderer._palette(release.game_path / 'DBDAT')
-    originals = {name: (release.game_path / 'DBDAT' / name).read_bytes() for name in renderer.ARCHIVES}
+    originals = {name: storage_io.read_bytes(release.game_path / 'DBDAT' / name) for name in renderer.ARCHIVES}
     changed = {name: bytearray(value) for name, value in originals.items()}
     records = {name: renderer._record_index(release.game_path / 'DBDAT' / name) for name in renderer.ARCHIVES}
     render_rows = {int(r['carrier_id']): r for r in render_receipt['rows']}
@@ -178,11 +179,11 @@ def prepare_batch(season, catalogue_path, render_root, output, exclusions=(), *,
             if artifact['id'] != f"kit-render-{season}-{source_carrier}-{name.lower().replace('.pkf', '')}":
                 raise ValueError('candidate archive order or identity is invalid')
             path = render_root / artifact['relative_path']
-            path.resolve().relative_to(render_root.resolve())
+            storage_io.resolve(path).relative_to(storage_io.resolve(render_root))
             if registry.sha256_file(path) != artifact['sha256']:
                 raise ValueError('candidate bitmap changed')
             record = records[name][carrier]
-            candidate = path.read_bytes()
+            candidate = storage_io.read_bytes(path)
             shape = validate_minifoto_bitmap(candidate)
             if (shape.width, shape.height, shape.bits_per_pixel) != (record.width, record.height, 8):
                 raise ValueError('source kit cannot be rebound to current record shape')
@@ -217,7 +218,7 @@ def prepare_batch(season, catalogue_path, render_root, output, exclusions=(), *,
             raise ValueError('batch changed bytes outside approved carrier pixel lanes')
         path = output / 'patch/DBDAT' / name
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(changed[name])
+        storage_io.write_bytes(path, changed[name])
         readback = renderer._record_index(path)
         if any(renderer.sha256_bytes(readback[e['carrier_id']].raw_bitmap) != e['after_bitmap_sha256'] for e in events if e['archive'] == name):
             raise ValueError('batch archive readback failed')
@@ -256,12 +257,12 @@ def prepare_batch(season, catalogue_path, render_root, output, exclusions=(), *,
 
 def audit_legacy_2015(output):
     """Inspect ALL installed source-backed foreign kits without copying a game."""
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('audit output already exists')
     release = registry.load_preferred_release('2015-16')
     source = ROOT / '.local/season-pipeline-v2/world-2015-combined-kit-materialisation-factory-template-v5-native-tone-transfer.json'
-    materialisation = json.loads(source.read_text())
-    package = json.loads(release.package_path.read_text())
+    materialisation = json.loads(storage_io.read_text(source))
+    package = json.loads(storage_io.read_text(release.package_path))
     clubs = {int(c['carrier_id']): c for c in package['clubs']}
     palette, palette_source = renderer._palette(release.game_path / 'DBDAT')
     records = {name: renderer._record_index(release.game_path / 'DBDAT' / name) for name in renderer.ARCHIVES}
@@ -281,7 +282,7 @@ def audit_legacy_2015(output):
                 failures.append('installed-bitmap-differs-from-bound-source-render:' + name)
         source_image = row.get('source_image') or {}
         path = Path(source_image.get('cache_path') or '')
-        if path.is_file() and registry.sha256_file(path) == source_image.get('sha256'):
+        if storage_io.is_file(path) and registry.sha256_file(path) == source_image.get('sha256'):
             with Image.open(path) as opened:
                 image = opened.convert('RGBA')
                 image.thumbnail((80, 110), Image.Resampling.LANCZOS)
@@ -342,7 +343,7 @@ def record_legacy_visual_findings(output):
         1161: 'blue/white quarter/panel structure turned into stripes',
     }
     report_path = output / 'report.json'
-    report = json.loads(report_path.read_text())
+    report = json.loads(storage_io.read_text(report_path))
     clubs = {r['carrier_id']: r for r in report['clubs']}
     findings = [{'carrier_id': carrier, 'club': clubs[carrier]['club'], 'observation': defect,
                  'source_image_sha256': clubs[carrier]['source'].get('sha256'),

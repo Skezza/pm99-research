@@ -1,6 +1,7 @@
 """Queue coupled-name runtime evidence after all existing country captures."""
 from pathlib import Path
 import time
+from scripts import json_storage_io_v1 as storage_io
 from scripts import build_hertha_dated_cohort_coach_20261017 as build
 from scripts import build_kiraly_period_profiles_20261017 as countries
 from scripts.capture_shinnie_country_20261017 import main as capture,wait_owned
@@ -20,14 +21,14 @@ def main(previous_pid,builders):
             raise ValueError('country capture queue incomplete/failed; resolve it before coupled captures')
     for season,pid in builders:
         folder=build.ROOT/season
-        while not (folder/'complete-SOURCE-replay.json').exists():
-            try:command=(Path('/proc')/str(pid)/'cmdline').read_bytes()
+        while not storage_io.exists(folder / 'complete-SOURCE-replay.json'):
+            try:command=storage_io.read_bytes(Path('/proc') / str(pid) / 'cmdline')
             except FileNotFoundError as exc:raise ValueError('coupled builder stopped without SOURCE; inspect, not restart') from exc
             if b'scripts.build_hertha_dated_cohort_coach_20261017' not in command:
                 raise ValueError('coupled builder PID identity changed')
             time.sleep(10)
         spec_path=folder/'runtime-profile-spec.json'
-        if spec_path.exists():raise ValueError('existing coupled capture must be inspected, not restarted')
+        if storage_io.exists(spec_path):raise ValueError('existing coupled capture must be inspected, not restarted')
         release=build.source.registry.load_registered_release(season,build.RELEASE)
         carrier,label,search,token=profile(season)
         spec=dict(carrier_id=carrier,label=label,search=search,token=token)

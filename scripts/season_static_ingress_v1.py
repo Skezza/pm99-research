@@ -28,6 +28,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import audit_season_clean_base_v1 as clean_audit  # noqa: E402
 from scripts import lift_mode1_source_write_policy_v1 as policy_lift  # noqa: E402
 from scripts import reconcile_mode1_roster_base_batch_v1 as mode1_batch  # noqa: E402
@@ -50,14 +51,14 @@ def _canonical_bytes(value: Any) -> bytes:
 
 
 def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def _write_new(path: Path, value: Any) -> str:
-    if path.exists() or path.is_symlink():
+    if storage_io.exists(path) or path.is_symlink():
         raise StaticIngressError(f"refusing to replace existing output: {path}")
     payload = _canonical_bytes(value)
-    path.write_bytes(payload)
+    storage_io.write_bytes(path, payload)
     return hashlib.sha256(payload).hexdigest()
 
 
@@ -72,11 +73,11 @@ def _source_bound_whole_record_preserve_count(package: dict[str, Any]) -> int:
 def ingress(
     *, package_path: Path, base_tree: Path, verified_base_path: Path, output_dir: Path
 ) -> dict[str, Any]:
-    package_path = package_path.resolve()
-    base_tree = base_tree.resolve()
-    verified_base_path = verified_base_path.resolve()
-    output_dir = output_dir.resolve()
-    if output_dir.exists() or output_dir.is_symlink():
+    package_path = storage_io.resolve(package_path)
+    base_tree = storage_io.resolve(base_tree)
+    verified_base_path = storage_io.resolve(verified_base_path)
+    output_dir = storage_io.resolve(output_dir)
+    if storage_io.exists(output_dir) or output_dir.is_symlink():
         raise StaticIngressError(f"output directory must be new: {output_dir}")
     if not output_dir.parent.is_dir() or output_dir.parent.is_symlink():
         raise StaticIngressError(f"output parent must be an existing non-symlink directory: {output_dir.parent}")

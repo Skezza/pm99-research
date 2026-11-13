@@ -12,6 +12,7 @@ import unicodedata
 
 from app.editor_actions import _indexed_variable_name_runtime_segments
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_historical_roster_audit_v1 as audit
 from scripts import season_opening_order_repair_v1 as order
 from scripts import season_package_compiler_v2 as compiler
@@ -83,8 +84,8 @@ def renamed_payload(raw, row):
 
 def prepare(release):
     package = pipeline.read_json_file(release.package_path)
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (release.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
     entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(jug).entries}
     owners = order.native_owners(eq)
     clubs = {c['id']: c for c in package['clubs']}
@@ -151,7 +152,7 @@ def prepare(release):
         import sys
         sys.path.insert(0, str(registry.ROOT / 'upstream/pm99-skezmod-patcher'))
         from player_birth_year_guard import patch_native_birth_year_guard
-        exe = (release.game_path / 'MANAGPRE.EXE').read_bytes()
+        exe = storage_io.read_bytes(release.game_path / 'MANAGPRE.EXE')
         if patch_native_birth_year_guard(exe)[0] != exe:
             raise ValueError('source-proven modern birthday needs the installed executable guard')
     if (pipeline.read_json_file(release.package_path) != package
@@ -239,7 +240,7 @@ def reconstruction(previous, release_id):
         return None
     path = registry.ROOT / relative
     plan = pipeline.read_json_file(path)
-    if (plan.get('schema') != SCHEMA or path.resolve() != (previous.package_path.parent / FILENAME).resolve()
+    if (plan.get('schema') != SCHEMA or storage_io.resolve(path) != storage_io.resolve(previous.package_path.parent / FILENAME)
             or registry.sha256_file(path) != receipt['original_name_only_plan_sha256']):
         raise ValueError('numeric-label replay source path/hash differs')
     baseline = registry.load_registered_release(previous.season, plan['release_id'])

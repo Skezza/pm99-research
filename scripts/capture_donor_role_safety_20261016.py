@@ -3,6 +3,7 @@ import argparse
 import os
 from pathlib import Path
 import time
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry, season_pipeline_v2 as pipeline
 from scripts import capture_registered_season_runtime_v1 as capture
 from scripts.build_donor_role_safety_20261016 import ROOT, RELEASE
@@ -17,15 +18,15 @@ def main(build_pid):
     env=dict(os.environ,PM99_RUNNER_ARCHIVE_COLD_RUNS='0',PM99_RUNNER_RUN_ROOT_BUDGET_ENFORCE='0')
     for season in registry.supported_seasons():
         root=ROOT/season;deadline=time.monotonic()+14400
-        while not (root/'complete-SOURCE-replay.json').exists():
+        while not storage_io.exists(root / 'complete-SOURCE-replay.json'):
             proc=Path('/proc')/str(build_pid)/'cmdline'
-            if not proc.exists() or b'scripts.build_donor_role_safety_20261016' not in proc.read_bytes():
+            if not storage_io.exists(proc) or b'scripts.build_donor_role_safety_20261016' not in storage_io.read_bytes(proc):
                 raise ValueError('own builder is no longer live; inspect its terminal outcome before resuming')
             if time.monotonic()>deadline:raise ValueError('bounded own build wait expired')
             time.sleep(10)
         release=registry.load_registered_release(season,RELEASE)
         receipt=root/'startup-transport.json'
-        if receipt.exists():
+        if storage_io.exists(receipt):
             prior=pipeline.read_json_file(receipt)
             if prior['exit_code']!=0 or prior['release_manifest_sha256']!=release.manifest_sha256:
                 raise ValueError('existing startup transport failed or belongs to a different game')

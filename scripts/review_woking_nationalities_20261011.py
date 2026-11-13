@@ -1,6 +1,7 @@
 """Save ROOT's observed original frames, not OCR-derived approvals."""
 import argparse
 from pathlib import Path
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts.capture_woking_nationalities_20261011 import ROOT,RELEASE,TAG
 from scripts.build_savio_bobb_alias_reserve_20261011 import retained
@@ -26,7 +27,7 @@ def save(label):
         target=ROOT/'startup-visual-review.json'
     else:
         transport=pipeline.read_json_file(ROOT/(label+'-profile-transport.json'))
-        summaries=list((registry.ROOT/transport['evidence']).rglob('summary.json'))
+        summaries=list(storage_io.glob(registry.ROOT / transport['evidence'], 'summary.json', recursive=True))
         if len(summaries)!=1:raise ValueError('one completed actual profile required')
         summary=pipeline.read_json_file(summaries[0])
         screenshot=summaries[0].parent/'screens'/Path(summary['player_profile']['screenshot']).name

@@ -9,6 +9,7 @@ import hashlib
 from pathlib import Path
 import re
 from app.indexed_jug_nationality import rewrite_indexed_native_nationalities
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import season_package_v2 as packages,season_package_compiler_v2 as compiler
 from scripts import prepare_stoke_alias_identity_evidence_20261016 as originals
@@ -55,7 +56,7 @@ def prepare(base):
     page,binding=originals.original(SOURCES/'reserve-originals',key,url)
     code=literal(page,base.season)
     if base.season=='2002-03':
-        person,_=wiki.read((registry.ROOT/binding['path']).read_bytes(),'Jurgen_Vandeurzen',url,
+        person,_=wiki.read(storage_io.read_bytes(registry.ROOT / binding['path']),'Jurgen_Vandeurzen',url,
             '2002-08-01','Stoke City','england',expected_name=spec['name'])
         if person['birth_date']!=spec['birthday']:raise ValueError('positive biography identity differs')
     package=pipeline.read_json_file(base.package_path)
@@ -101,8 +102,8 @@ def bind(package,plan):
 
 def apply(jug,eq,plan):
     base=registry.load_registered_release(plan['season'],plan['release_id'])
-    original=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    original_eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
+    original=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    original_eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     if (digest(original),digest(original_eq))!=(plan['jug_sha256'],plan['eq_sha256']) or eq!=original_eq:
         raise ValueError('country-only native preimage changed')
     updates={r['carrier_id']:r['native_country_code'] for r in plan['updates']}
@@ -117,7 +118,7 @@ def reconstruction(previous,release_id):
     from scripts import publish_historical_role_delta_v1 as publisher
     path=registry.ROOT/previous.locator['sourced_profile_assignment_plan_path'];plan=pipeline.read_json_file(path)
     base=registry.load_registered_release(plan['season'],plan['release_id']);verify(base,plan)
-    if path.resolve()!=(previous.package_path.parent/FILENAME).resolve():raise ValueError('country SOURCE plan is not release-local')
+    if storage_io.resolve(path)!=storage_io.resolve(previous.package_path.parent / FILENAME):raise ValueError('country SOURCE plan is not release-local')
     if bind(pipeline.read_json_file(base.package_path),plan)!=pipeline.read_json_file(previous.package_path):
         raise ValueError('country SOURCE cannot silently discard recipe edits')
     descriptor=previous.package_path.parent/'role-delta-input.json'

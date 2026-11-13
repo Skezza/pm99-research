@@ -7,6 +7,7 @@ import copy
 from pathlib import Path
 import tempfile
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import prepare_ofk_2004_private_native_v1 as ofk_native
 from scripts import prepare_ofk_2004_source_allocation_v1 as source
 from scripts import prepare_ofk_2015_verified_inputs_v1 as inputs
@@ -64,7 +65,7 @@ def compose_recipe(package,proposal):
 def compile_files(baseline,proposal):
     package=pipeline.read_json_file(baseline.package_path)
     result,compositions,changed_ids=compose_recipe(package,proposal)
-    before={n:(baseline.game_path/'DBDAT'/n).read_bytes() for n in ('JUG98030.FDI','EQ98030.FDI','ENT98030.FDI','MINIFOTO.PKF')}
+    before={n:storage_io.read_bytes(baseline.game_path / 'DBDAT' / n) for n in ('JUG98030.FDI','EQ98030.FDI','ENT98030.FDI','MINIFOTO.PKF')}
     old_index=IndexedFDIFile.from_bytes(before['EQ98030.FDI'])
     owners={}
     rosters={}
@@ -152,7 +153,7 @@ def compile_files(baseline,proposal):
 
 
 def prepare(output):
-    if output.exists(): raise ValueError('private coupled foreign candidate is immutable')
+    if storage_io.exists(output): raise ValueError('private coupled foreign candidate is immutable')
     path=source.AUDIT/'ofk-2015-celta-verified-source-inputs-v1.json'
     proposal=pipeline.read_json_file(path)
     with tempfile.TemporaryDirectory(prefix='pm99-coupled-foreign-source-') as temporary:

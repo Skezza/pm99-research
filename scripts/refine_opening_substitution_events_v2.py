@@ -14,6 +14,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_opening_used_substitutes_v1 as old
 from scripts import season_opening_used_substitutes_v2 as new
 from scripts import season_historical_transfer_review_v1 as transfer
@@ -56,9 +57,9 @@ def run(input_root, output_root, seasons=None):
             raise ValueError('unsupported season')
         source = input_root / 'opening' / season / 'opening-review.json'
         target = output_root / 'opening' / season / 'opening-review.json'
-        if target.exists():
+        if storage_io.exists(target):
             raise ValueError('refinement is immutable; use another output root')
-        document = json.loads(source.read_text())
+        document = json.loads(storage_io.read_text(source))
         binding = document['used_substitute_refresh']
         if (registry.sha256_file(ROOT / binding['input_path']) != binding['input_sha256'] or
                 registry.sha256_file(Path(old.__file__)) != binding['implementation_sha256']):
@@ -68,8 +69,8 @@ def run(input_root, output_root, seasons=None):
             path = ROOT / row['path']
             if registry.sha256_file(path) != row['sha256']:
                 raise ValueError('original report changed during refinement')
-            return path.read_bytes()
-        original_document = json.loads((ROOT / binding['input_path']).read_text())
+            return storage_io.read_bytes(path)
+        original_document = json.loads(storage_io.read_text(ROOT / binding['input_path']))
         result, summary = refine(document, loader, original_document)
         result['substitution_event_refinement'] = {
             'policy': new.POLICY, 'input_path': registry.relative_workspace_path(source),
@@ -81,8 +82,8 @@ def run(input_root, output_root, seasons=None):
         parent.mkdir(parents=True, exist_ok=True)
         for name in ('report.json', 'roster-audit.json'):
             original = input_root / 'reviews' / season / name
-            if original.is_file():
-                os.link(original, parent / name)
+            if storage_io.is_file(original):
+                storage_io.link(original, parent / name)
         print(json.dumps(dict(summary, season=season)), flush=True)
 
 

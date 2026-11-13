@@ -32,6 +32,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import materialise_opening_manager_ledger_v1 as ledger_v1  # noqa: E402
 
 
@@ -53,12 +54,12 @@ def canonical_json_bytes(value: Any) -> bytes:
 
 
 def _sha256_file(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
 
 
 def _read(path: Path, label: str) -> tuple[dict[str, Any], str]:
     try:
-        raw = path.read_bytes()
+        raw = storage_io.read_bytes(path)
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise ManagerGapTriageError(f"cannot read {label}: {path}") from exc
@@ -69,9 +70,9 @@ def _read(path: Path, label: str) -> tuple[dict[str, Any], str]:
 
 def _relative(path: Path, *, root: Path) -> str:
     try:
-        return path.resolve().relative_to(root.resolve()).as_posix()
+        return storage_io.resolve(path).relative_to(storage_io.resolve(root)).as_posix()
     except ValueError:
-        return str(path.resolve())
+        return str(storage_io.resolve(path))
 
 
 def _sha256(value: Any, label: str) -> str:
@@ -96,8 +97,8 @@ def _selector_object(selector: tuple[str, str, str]) -> dict[str, str]:
 def _safe_child(parent: Path, relative: Any, label: str) -> Path:
     if not isinstance(relative, str) or not relative or Path(relative).is_absolute() or ".." in Path(relative).parts:
         raise ManagerGapTriageError(f"{label} path is unsafe")
-    path = (parent / relative).resolve()
-    if parent.resolve() not in path.parents:
+    path = storage_io.resolve(parent / relative)
+    if storage_io.resolve(parent) not in path.parents:
         raise ManagerGapTriageError(f"{label} path escapes its parent")
     return path
 
@@ -246,7 +247,7 @@ def _candidate_documents(
 ) -> tuple[list[dict[str, Any]], dict[tuple[str, str, str], list[dict[str, Any]]], dict[tuple[str, str, str], list[str]]]:
     """Return all inspected receipt metadata plus qualified dated candidates/gaps."""
     directory = operations_root / season
-    paths = sorted(path for path in directory.glob("opening-manager-supplement*.json") if path.is_file())
+    paths = sorted(path for path in storage_io.glob(directory, 'opening-manager-supplement*.json') if storage_io.is_file(path))
     documents: list[dict[str, Any]] = []
     candidates: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
     capture_gaps: dict[tuple[str, str, str], list[str]] = {}
@@ -382,7 +383,7 @@ def build_report(
     if overlay_index.get("schema_version") != OVERLAY_INDEX_SCHEMA:
         raise ManagerGapTriageError("manager overlay index has an unsupported schema")
     requested = set(seasons or ())
-    pointer_paths = sorted(current_root.glob("*/current.json"))
+    pointer_paths = sorted(storage_io.glob(current_root, '*/current.json'))
     if requested:
         pointer_paths = [path for path in pointer_paths if path.parent.name in requested]
         missing = requested - {path.parent.name for path in pointer_paths}
@@ -514,7 +515,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args(argv)
     try:
-        if args.output.exists():
+        if storage_io.exists(args.output):
             raise ManagerGapTriageError(f"refusing to overwrite triage receipt: {args.output}")
         result = build_report(
             current_root=args.current_root, overlay_index_path=args.overlay_index,
@@ -523,7 +524,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (OSError, ManagerGapTriageError) as exc:
         parser.error(str(exc))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(canonical_json_bytes(result))
+    storage_io.write_bytes(args.output, canonical_json_bytes(result))
     print(json.dumps(result["summary"], sort_keys=True))
     return 0
 

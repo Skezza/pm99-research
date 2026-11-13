@@ -28,6 +28,7 @@ for candidate in (ROOT, EDITOR):
 
 from app.ent_manager_profiles import parse_indexed_ent_manager_profile  # noqa: E402
 from app.fdi_indexed import IndexedFDIFile  # noqa: E402
+from scripts import json_storage_io_v1 as storage_io
 from scripts import capture_transfermarkt_historical_squads_v1 as capture_v1  # noqa: E402
 from scripts import compose_season_source_captures_v1 as compose_v1  # noqa: E402
 from scripts import reconcile_mode1_roster_base_v1 as base_rows  # noqa: E402
@@ -59,16 +60,16 @@ class SimpleSeasonError(ValueError):
 
 
 def _write(path: Path, value: Any) -> str:
-    if path.exists() or path.is_symlink():
+    if storage_io.exists(path) or path.is_symlink():
         raise SimpleSeasonError(f"refusing to replace output: {path}")
     payload = package_v2.canonical_json_bytes(value)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(payload)
+    storage_io.write_bytes(path, payload)
     return hashlib.sha256(payload).hexdigest()
 
 
 def _read(path: Path) -> dict[str, Any]:
-    raw = path.read_bytes()
+    raw = storage_io.read_bytes(path)
     value = json.loads(raw.decode("utf-8"))
     if not isinstance(value, dict) or raw != package_v2.canonical_json_bytes(value):
         raise SimpleSeasonError(f"input is not canonical JSON: {path}")
@@ -169,7 +170,7 @@ def _neutral_template(
             "proof": {"artifact_id": "world-mode1-runtime-contract", "grade": "static-contract"},
         })
 
-    ent_data = (base_tree / "DBDAT/ENT98030.FDI").read_bytes()
+    ent_data = storage_io.read_bytes(base_tree / 'DBDAT/ENT98030.FDI')
     ent_entries = {int(row.record_id): row for row in IndexedFDIFile.from_bytes(ent_data).entries}
     for manager in result["managers"]:
         carrier = int(manager["carrier_id"])
@@ -181,7 +182,7 @@ def _neutral_template(
             "proof": {"artifact_id": "world-mode1-runtime-contract", "grade": "static-contract"},
         })
 
-    jug_data = (base_tree / "DBDAT/JUG98030.FDI").read_bytes()
+    jug_data = storage_io.read_bytes(base_tree / 'DBDAT/JUG98030.FDI')
     jug_entries = {int(row.record_id): row for row in IndexedFDIFile.from_bytes(jug_data).entries}
     preserve = {"policy": "preserve-existing-mode1"}
     for index, player in enumerate(result["players"]):
@@ -265,8 +266,8 @@ def build(
     offline: bool, delay: float,
 ) -> dict[str, Any]:
     season_id, start, end, label = _season(season_text)
-    output_root = output_root.resolve()
-    if output_root.exists() or output_root.is_symlink():
+    output_root = storage_io.resolve(output_root)
+    if storage_io.exists(output_root) or output_root.is_symlink():
         raise SimpleSeasonError(f"output root must be new: {output_root}")
     output_root.mkdir(parents=True)
 
@@ -329,7 +330,7 @@ def build(
         package_path=package_path, base_tree=base_tree,
         verified_base_path=verified_base, output_dir=ingress_dir,
     )
-    shutil.copy2(calendar_exe, ingress_dir / "game/MANAGPRE.EXE")
+    storage_io.copy_file(calendar_exe, ingress_dir / 'game/MANAGPRE.EXE', metadata=True)
     report = {
         "schema_version": SCHEMA, "season": season_id,
         "state": "compiled-provisional-partial-not-runtime-validated",
@@ -384,8 +385,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         report = build(
             season_text=args.season, output_root=output_root, cache_root=args.cache_root,
             scopes=tuple(args.scope or DEFAULT_SCOPES), registry_path=args.registry,
-            template_path=args.template_package, base_tree=args.base_tree.resolve(),
-            verified_base=args.verified_base.resolve(), offline=args.offline, delay=args.delay,
+            template_path=args.template_package, base_tree=storage_io.resolve(args.base_tree),
+            verified_base=storage_io.resolve(args.verified_base), offline=args.offline, delay=args.delay,
         )
     except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
         parser.error(str(exc))

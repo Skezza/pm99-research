@@ -8,6 +8,14 @@ players and does not patch MANAGPRE.EXE.
 """
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import json
 import shutil
@@ -36,11 +44,11 @@ def _norm(value: str) -> str:
 
 def main() -> int:
     args = _parse_args()
-    src = args.source_dbdat.resolve()
-    out = args.out_dbdat.resolve()
+    src = storage_io.resolve(args.source_dbdat)
+    out = storage_io.resolve(args.out_dbdat)
     if not src.is_dir():
         raise SystemExit(f"missing source DBDAT: {src}")
-    if out.exists():
+    if storage_io.exists(out):
         shutil.rmtree(out)
     shutil.copytree(src, out)
 
@@ -57,7 +65,7 @@ def main() -> int:
     roster = roster_matches[0]
     target_ids = {int(getattr(row, "player_record_id", 0) or 0) for row in getattr(roster, "rows", [])}
 
-    before_bytes = jug_file.read_bytes()
+    before_bytes = storage_io.read_bytes(jug_file)
     indexed = IndexedFDIFile.from_bytes(before_bytes)
     staged = []
     changes = []
@@ -111,7 +119,7 @@ def main() -> int:
             create_backup_before_write=False,
         )
 
-    after_bytes = jug_file.read_bytes()
+    after_bytes = storage_io.read_bytes(jug_file)
     after_indexed = IndexedFDIFile.from_bytes(after_bytes)
     after_by_id = {int(entry.record_id): entry for entry in after_indexed.entries}
     for change in changes:
@@ -139,7 +147,7 @@ def main() -> int:
 
     report_path = args.report or (out.parent / "stars_db_payload_padding_report.json")
     report_path.parent.mkdir(parents=True, exist_ok=True)
-    report_path.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+    storage_io.write_text(report_path, json.dumps(report, indent=2, ensure_ascii=False), encoding='utf-8')
     print(json.dumps(report, indent=2, ensure_ascii=False))
     return 0
 

@@ -2,6 +2,7 @@
 import argparse
 import copy
 from datetime import UTC,datetime
+from scripts import json_storage_io_v1 as storage_io
 from scripts import build_haladas2000_opening_keeper_20261017 as build
 from scripts.capture_haladas2000_opening_keeper_20261017 import TAG,PROFILES
 from scripts import season_release_registry_v1 as registry,season_pipeline_v2 as pipeline
@@ -23,7 +24,7 @@ def bind(path):return dict(path=registry.relative_workspace_path(path),sha256=re
 def main(previous_version):
     root=build.ROOT;season='2000-01';old_path=root.parent/f'release-delivery-checklist-v{previous_version}.json'
     output=root.parent/f'release-delivery-checklist-v{previous_version+1}.json'
-    if output.exists():raise ValueError('completed Haladas publication must not repeat')
+    if storage_io.exists(output):raise ValueError('completed Haladas publication must not repeat')
     previous=pipeline.read_json_file(old_path);initial=bindings()
     if initial!=previous['current_release_bindings']:raise ValueError('Haladas previous checkpoint differs from actual defaults')
     plan=pipeline.read_json_file(root/'keeper-plan.json');base=registry.load_preferred_release(season)
@@ -42,7 +43,7 @@ def main(previous_version):
     rebuilt=registry.load_registered_release(season,build.REPLAY);proof=pipeline.read_json_file(root/'complete-SOURCE-replay.json')
     if not proof['complete_game_inventory_identical'] or not proof['complete_recipe_identical']:raise ValueError('Haladas SOURCE incomplete')
     for release in (actual,rebuilt):pipeline.assert_tree_matches_inventory(release.game_path,pipeline.read_json_file(actual.inventory_path))
-    if actual.package_path.read_bytes()!=rebuilt.package_path.read_bytes():raise ValueError('Haladas SOURCE recipe differs')
+    if storage_io.read_bytes(actual.package_path)!=storage_io.read_bytes(rebuilt.package_path):raise ValueError('Haladas SOURCE recipe differs')
     evidence=registry.ROOT/'.local/runlogs/pm99_runner'/TAG
     transport=pipeline.read_json_file(root/'startup-transport.json');summary=pipeline.read_json_file(evidence/'summary.json')
     visual=pipeline.read_json_file(root/'startup-visual-review.json');check_visual(visual)

@@ -4,6 +4,7 @@ from urllib.request import Request, urlopen
 
 from bs4 import BeautifulSoup
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts.capture_stock_replacement_sources_20261010 import ROOT
 from scripts.capture_tachira_2014_original_people_v1 import source_rows
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
@@ -27,12 +28,12 @@ def capture():
         path = ROOT.parent / 'borac-2003-period-originals' / (key + '.jpg')
         path.parent.mkdir(parents=True, exist_ok=True)
         receipt = path.with_name(path.name + '.source.json')
-        if receipt.exists() and not path.exists():
+        if storage_io.exists(receipt) and not storage_io.exists(path):
             retained = pipeline.read_json_file(receipt)
             if retained.get('status') != 'source-acquisition-gap' or retained.get('url') != url or retained.get('source_binding') != binding:
                 raise ValueError('retained photograph gap receipt changed')
             continue
-        if path.exists():
+        if storage_io.exists(path):
             if pipeline.read_json_file(receipt) != dict(url=url, sha256=registry.sha256_file(path), source_binding=binding):
                 raise ValueError('retained original photograph or article binding changed')
             continue

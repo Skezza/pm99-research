@@ -15,6 +15,14 @@ editor does not yet expose a released write surface for competition bytes.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import csv
 import hashlib
@@ -26,12 +34,12 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 EDITOR_ROOT = REPO_ROOT / "upstream" / "pm99-skezmod-db-editor"
 if str(EDITOR_ROOT) not in sys.path:
     sys.path.insert(0, str(EDITOR_ROOT))
-if str(Path(__file__).resolve().parent) not in sys.path:
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
+if str(storage_io.resolve(Path(__file__)).parent) not in sys.path:
+    sys.path.insert(0, str(storage_io.resolve(Path(__file__)).parent))
 
 from assert_pm99_isolated_input import core_file_hashes, resolve_game_root, sha256  # noqa: E402
 from app.editor_helpers import team_query_matches  # noqa: E402
@@ -170,7 +178,7 @@ def _sha256_text(value: str) -> str:
 
 
 def _json_dump(path: Path, payload: Any) -> None:
-    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(path, json.dumps(payload, indent=2, sort_keys=True) + '\n', encoding='utf-8')
 
 
 def _require_mapping(mapping: Any, *, label: str) -> dict[str, Any]:
@@ -229,8 +237,8 @@ def _default_runtime_routes(item: dict[str, Any]) -> list[str]:
 
 
 def load_selector_map(path: str | Path) -> dict[str, Any]:
-    source_path = Path(path).expanduser().resolve()
-    payload = json.loads(source_path.read_text(encoding="utf-8"))
+    source_path = storage_io.resolve(Path(path).expanduser())
+    payload = json.loads(storage_io.read_text(source_path, encoding='utf-8'))
     payload = _require_mapping(payload, label="selector map")
     schema = str(payload.get("schema") or payload.get("schema_id") or "").strip()
     if schema != SELECTOR_MAP_SCHEMA_ID:
@@ -263,8 +271,8 @@ def load_selector_map(path: str | Path) -> dict[str, Any]:
 def _load_selector_rows_lenient(path: str | Path | None) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
     if path is None:
         return [], None
-    source_path = Path(path).expanduser().resolve()
-    payload = json.loads(source_path.read_text(encoding="utf-8"))
+    source_path = storage_io.resolve(Path(path).expanduser())
+    payload = json.loads(storage_io.read_text(source_path, encoding='utf-8'))
     payload = _require_mapping(payload, label="selector map")
     schema = str(payload.get("schema") or payload.get("schema_id") or "").strip()
     if schema != SELECTOR_MAP_SCHEMA_ID:
@@ -478,8 +486,8 @@ def build_selector_coverage(world_path: str | Path, selector_map_path: str | Pat
 
 
 def load_world_state(path: str | Path) -> dict[str, Any]:
-    source_path = Path(path).expanduser().resolve()
-    payload = json.loads(source_path.read_text(encoding="utf-8"))
+    source_path = storage_io.resolve(Path(path).expanduser())
+    payload = json.loads(storage_io.read_text(source_path, encoding='utf-8'))
     payload = _require_mapping(payload, label="world state")
     schema = str(payload.get("schema") or payload.get("schema_id") or "").strip()
     if schema != SCHEMA_ID:
@@ -542,7 +550,7 @@ def load_world_state(path: str | Path) -> dict[str, Any]:
 
 
 def _build_player_index(player_file: Path) -> tuple[dict[int, ResolvedPlayer], dict[str, list[ResolvedPlayer]]]:
-    data = player_file.read_bytes()
+    data = storage_io.read_bytes(player_file)
     indexed = IndexedFDIFile.from_bytes(data)
     by_record_id: dict[int, ResolvedPlayer] = {}
     by_name: dict[str, list[ResolvedPlayer]] = {}
@@ -1046,7 +1054,7 @@ def compile_world_plan(world_path: str | Path, *, game_root: str | Path, selecto
 
 
 def write_plan_bundle(plan: dict[str, Any], output_dir: str | Path) -> PlanBundle:
-    resolved_output_dir = Path(output_dir).expanduser().resolve()
+    resolved_output_dir = storage_io.resolve(Path(output_dir).expanduser())
     resolved_output_dir.mkdir(parents=True, exist_ok=True)
     world_plan_path = resolved_output_dir / "world_plan.json"
     _json_dump(world_plan_path, plan)
@@ -1059,7 +1067,7 @@ def write_plan_bundle(plan: dict[str, Any], output_dir: str | Path) -> PlanBundl
             "name", "offset", "new_name", "position", "nationality", "dob_day", "dob_month", "dob_year", "height", "weight",
             *[f"attr{idx}" for idx in range(12)],
         ]
-        with player_csv_path.open("w", newline="", encoding="utf-8") as handle:
+        with storage_io.open_file(player_csv_path, 'w', newline='', encoding='utf-8') as handle:
             writer = csv.DictWriter(handle, fieldnames=fieldnames)
             writer.writeheader()
             for row in player_rows:
@@ -1070,7 +1078,7 @@ def write_plan_bundle(plan: dict[str, Any], output_dir: str | Path) -> PlanBundl
     if roster_rows:
         roster_csv_path = resolved_output_dir / "team_roster_batch.csv"
         fieldnames = ["team", "source", "eq_record_id", "team_offset", "slot", "player_id", "flag", "pid"]
-        with roster_csv_path.open("w", newline="", encoding="utf-8") as handle:
+        with storage_io.open_file(roster_csv_path, 'w', newline='', encoding='utf-8') as handle:
             writer = csv.DictWriter(handle, fieldnames=fieldnames)
             writer.writeheader()
             for row in roster_rows:
@@ -1130,7 +1138,7 @@ def _patch_linked_team_name_fallback(team_file: Path, *, team_offset: int, new_n
     known offset.
     """
 
-    data = bytearray(team_file.read_bytes())
+    data = bytearray(storage_io.read_bytes(team_file))
     offset = int(team_offset)
     if offset < 0 or offset + 2 > len(data):
         raise ValueError(f"team_offset 0x{offset:08X} is outside {team_file}")
@@ -1175,10 +1183,10 @@ def _patch_linked_team_name_fallback(team_file: Path, *, team_offset: int, new_n
             "new_name": str(new_name or "")[:width].rstrip(),
         }
     backup_path = team_file.with_suffix(team_file.suffix + ".raw_linked_name_fallback.backup")
-    if not backup_path.exists():
-        backup_path.write_bytes(bytes(data))
+    if not storage_io.exists(backup_path):
+        storage_io.write_bytes(backup_path, bytes(data))
     data[text_pos:text_end] = new_raw
-    team_file.write_bytes(bytes(data))
+    storage_io.write_bytes(team_file, bytes(data))
     return {
         "applied_to_disk": True,
         "backup_path": str(backup_path),
@@ -1316,9 +1324,9 @@ def apply_world_plan(
     allow_raw_team_name_fallbacks: bool = False,
 ) -> dict[str, Any]:
     resolved_game_root = resolve_game_root(game_root, require_writable=True)
-    resolved_output_dir = Path(output_dir).expanduser().resolve()
+    resolved_output_dir = storage_io.resolve(Path(output_dir).expanduser())
     resolved_output_dir.mkdir(parents=True, exist_ok=True)
-    plan = json.loads(Path(plan_path).expanduser().resolve().read_text(encoding="utf-8"))
+    plan = json.loads(storage_io.read_text(storage_io.resolve(Path(plan_path).expanduser()), encoding='utf-8'))
     blockers = list(plan.get("blockers") or [])
     if blockers and not allow_blocked:
         result = {
@@ -1528,8 +1536,8 @@ def apply_world_plan(
 
 
 def render_report(summary_path: str | Path, output_html: str | Path) -> Path:
-    summary = json.loads(Path(summary_path).expanduser().resolve().read_text(encoding="utf-8"))
-    output_path = Path(output_html).expanduser().resolve()
+    summary = json.loads(storage_io.read_text(storage_io.resolve(Path(summary_path).expanduser()), encoding='utf-8'))
+    output_path = storage_io.resolve(Path(output_html).expanduser())
     rows = []
     for item in list(summary.get("coverage_matrix") or []):
         counts = item.get("counts") or {}
@@ -1573,7 +1581,7 @@ code {{ background: #f5f5f5; padding: 0.1rem 0.25rem; }}
 </body>
 </html>
 """
-    output_path.write_text(html, encoding="utf-8")
+    storage_io.write_text(output_path, html, encoding='utf-8')
     return output_path
 
 
@@ -1621,7 +1629,7 @@ def _cmd_compile_plan(args: argparse.Namespace) -> int:
 def _cmd_selector_coverage(args: argparse.Namespace) -> int:
     result = build_selector_coverage(args.world_state, selector_map_path=args.selector_map)
     if args.output_json:
-        _json_dump(Path(args.output_json).expanduser().resolve(), result)
+        _json_dump(storage_io.resolve(Path(args.output_json).expanduser()), result)
     if args.json:
         print(json.dumps(result, indent=2, sort_keys=True))
     else:
@@ -1633,7 +1641,7 @@ def _cmd_selector_coverage(args: argparse.Namespace) -> int:
 def _cmd_selector_scaffold(args: argparse.Namespace) -> int:
     result = build_selector_scaffold(args.world_state, selector_map_path=args.selector_map)
     if args.output_json:
-        _json_dump(Path(args.output_json).expanduser().resolve(), result)
+        _json_dump(storage_io.resolve(Path(args.output_json).expanduser()), result)
     if args.json:
         print(json.dumps(result, indent=2, sort_keys=True))
     else:
@@ -1654,7 +1662,7 @@ def _cmd_selector_generate(args: argparse.Namespace) -> int:
         team_step_y=int(args.team_step_y),
     )
     if args.output_json:
-        _json_dump(Path(args.output_json).expanduser().resolve(), result)
+        _json_dump(storage_io.resolve(Path(args.output_json).expanduser()), result)
     if args.json:
         print(json.dumps(result, indent=2, sort_keys=True))
     else:

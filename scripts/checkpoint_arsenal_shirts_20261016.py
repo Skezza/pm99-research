@@ -2,6 +2,7 @@
 import copy
 from datetime import UTC,datetime
 from app.fdi_indexed import IndexedFDIFile
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline,season_release_registry_v1 as registry
 from scripts import season_source_bound_shirt_numbers_v1 as source
 from scripts import publish_historical_role_delta_v1 as publisher
@@ -18,14 +19,14 @@ from scripts.review_rating_frames_20261011 import lineup_frame
 
 
 def inherit_profile_and_tactics_proofs(base,release):
-    original=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    current=(release.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    original=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    current=storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     old={e.record_id:e for e in IndexedFDIFile.from_bytes(original).entries}
     new={e.record_id:e for e in IndexedFDIFile.from_bytes(current).entries}
     left=pipeline.read_json_file(base.package_path);right=pipeline.read_json_file(release.package_path)
     a=next(c for c in left['clubs'] if c['carrier_id']==309)
     b=next(c for c in right['clubs'] if c['carrier_id']==309)
-    if a!=b or (base.game_path/'DBDAT/EQ98030.FDI').read_bytes()!=(release.game_path/'DBDAT/EQ98030.FDI').read_bytes():
+    if a!=b or storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')!=storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI'):
         raise ValueError('shirt delta changed the proven roster/phase coordinate inputs')
     records=[]
     for carrier,label,_ in PROFILES:
@@ -58,7 +59,7 @@ def inherit_profile_and_tactics_proofs(base,release):
 
 def run():
     prior=ROOT.parent/'release-delivery-checklist-v50.json';output=ROOT.parent/'release-delivery-checklist-v51.json'
-    if output.exists():raise ValueError('completed shirt publication must not repeat')
+    if storage_io.exists(output):raise ValueError('completed shirt publication must not repeat')
     previous=pipeline.read_json_file(prior);result=copy.deepcopy(previous)
     base=registry.load_registered_release(SEASON,BASE);release=registry.load_registered_release(SEASON,RELEASE)
     plan=pipeline.read_json_file(ROOT/'shirt-number-plan.json');source.verify(base,plan)
@@ -73,9 +74,9 @@ def run():
         raise ValueError('actual shirt native/full SOURCE proof incomplete')
     actual=pipeline.read_json_file(release.package_path)
     if source.bind(pipeline.read_json_file(base.package_path),plan)!=actual:raise ValueError('actual shirt recipe changed')
-    original=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    eq=(base.game_path/'DBDAT/EQ98030.FDI').read_bytes()
-    if source.apply(original,eq,plan)!=((release.game_path/'DBDAT/JUG98030.FDI').read_bytes(),eq):
+    original=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq=storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
+    if source.apply(original,eq,plan)!=(storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI'),eq):
         raise ValueError('actual thirteen-byte native readback differs')
     expected={str(row['carrier_id']):row['number'] for row in plan['updates']}
     players_by_id={p['id']:p for p in actual['players']}
@@ -116,7 +117,7 @@ def run():
     current_bindings()
     pipeline.assert_tree_matches_inventory(release.game_path,pipeline.read_json_file(release.inventory_path))
     publisher.register_completed_delta(SEASON,RELEASE)
-    if not (ROOT/'final-attestation.json').exists():retained(ROOT/'final-attestation.json',runtime.attest(season=SEASON,
+    if not storage_io.exists(ROOT / 'final-attestation.json'):retained(ROOT/'final-attestation.json',runtime.attest(season=SEASON,
         evidence_dir=registry.ROOT/'.local/runlogs/pm99_runner'/(TAG+'_stoke')))
     validation=registry.validate_preferred_release(SEASON,level='playable')
     if not validation['valid']:raise ValueError('shirt child failed playable validation')

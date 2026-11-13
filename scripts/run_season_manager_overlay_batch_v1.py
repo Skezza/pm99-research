@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import run_allocated_manager_backfill_batch_v1 as raw_batch  # noqa: E402
 from scripts import season_manager_overlay_v1 as overlay_v1  # noqa: E402
 
@@ -33,7 +34,7 @@ def _bytes(value: Any) -> bytes:
 
 
 def _latest_raw_supplement(operations_root: Path, season: str) -> Path:
-    candidates = list((operations_root / season).glob("opening-manager-supplement.allocated-transfermarkt*.json"))
+    candidates = list(storage_io.glob(operations_root / season, 'opening-manager-supplement.allocated-transfermarkt*.json'))
     if not candidates:
         raise OverlayBatchError(f"{season}: allocated-manager raw supplement is missing")
     def version(path: Path) -> int:
@@ -58,7 +59,7 @@ def run_batch(
     rows: list[dict[str, Any]] = []
     for season in sorted(set(seasons)):
         output_root = overlays_root / season / "manager-v1"
-        if output_root.exists():
+        if storage_io.exists(output_root):
             audit_path = output_root / "manager-overlay-audit.json"
             audit, digest = raw_batch._load(audit_path, "existing manager overlay audit")
             if audit.get("schema_version") != overlay_v1.SCHEMA:
@@ -81,7 +82,7 @@ def run_batch(
             raise OverlayBatchError(str(exc)) from exc
         audit_path = output_root / "manager-overlay-audit.json"
         rows.append({"season": season, "state": "materialised", "audit": str(audit_path),
-                     "sha256": hashlib.sha256(audit_path.read_bytes()).hexdigest(), "coverage": receipt["coverage"]})
+                     "sha256": hashlib.sha256(storage_io.read_bytes(audit_path)).hexdigest(), "coverage": receipt["coverage"]})
     return {
         "schema_version": SCHEMA,
         "policy": "write-once-manager-overlays-from-hash-bound-current-source-and-raw-supplements",
@@ -106,7 +107,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--receipt", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
-        if args.receipt.exists():
+        if storage_io.exists(args.receipt):
             raise OverlayBatchError(f"refusing to overwrite batch receipt: {args.receipt}")
         result = run_batch(
             baseline_index=args.baseline_index, current_root=args.current_root, opening_root=args.opening_root,
@@ -115,7 +116,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (OSError, OverlayBatchError) as exc:
         parser.error(str(exc))
     args.receipt.parent.mkdir(parents=True, exist_ok=True)
-    args.receipt.write_bytes(_bytes(result))
+    storage_io.write_bytes(args.receipt, _bytes(result))
     print(json.dumps(result["summary"], sort_keys=True))
     return 0
 

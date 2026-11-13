@@ -6,6 +6,14 @@ This probe is read-only. It does not mutate game/database files.
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import json
 import re
@@ -15,13 +23,13 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 UPSTREAM_EDITOR = REPO_ROOT / "upstream" / "pm99-skezmod-db-editor"
 
 if str(UPSTREAM_EDITOR) not in sys.path:
     sys.path.insert(0, str(UPSTREAM_EDITOR))
-if str(Path(__file__).resolve().parent) not in sys.path:
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
+if str(storage_io.resolve(Path(__file__)).parent) not in sys.path:
+    sys.path.insert(0, str(storage_io.resolve(Path(__file__)).parent))
 
 from assert_pm99_isolated_input import choose_preferred_game_root, ensure_not_legacy_path
 from app.editor_actions import _load_indexed_coach_slots  # type: ignore
@@ -104,7 +112,7 @@ def _probe_coach_file(path: Path, target_name: str) -> dict[str, Any]:
 
 
 def _raw_plaintext_presence(path: Path, needle: str) -> bool:
-    lower = path.read_bytes().lower()
+    lower = storage_io.read_bytes(path).lower()
     return needle.lower().encode("latin-1", "ignore") in lower
 
 
@@ -192,14 +200,14 @@ def _scan_runner_summaries(
     names: list[str],
     sample_limit: int = 3,
 ) -> dict[str, Any]:
-    summary_files = sorted(p for p in runner_root.glob("**/summary.json") if p.is_file())
+    summary_files = sorted(p for p in storage_io.glob(runner_root, '**/summary.json') if storage_io.is_file(p))
     hits: dict[str, dict[str, Any]] = {
         name: {"hit_count": 0, "files": set(), "samples": []} for name in names
     }
 
     for summary_file in summary_files:
         try:
-            payload = json.loads(summary_file.read_text(encoding="utf-8"))
+            payload = json.loads(storage_io.read_text(summary_file, encoding='utf-8'))
         except Exception:
             continue
         for text in _iter_json_strings(payload):
@@ -239,13 +247,13 @@ def _scan_runner_summaries(
 
 def _build_validation_report(args: argparse.Namespace) -> dict[str, Any]:
     coach_files = [
-        Path(str(args.coach_file)).expanduser().resolve(),
-        Path(str(args.install_coach_file)).expanduser().resolve(),
+        storage_io.resolve(Path(str(args.coach_file)).expanduser()),
+        storage_io.resolve(Path(str(args.install_coach_file)).expanduser()),
     ]
     coach_file_reports = [
         _probe_coach_file(path, args.target_name)
         for path in coach_files
-        if path.exists()
+        if storage_io.exists(path)
     ]
     plaintext_presence = [
         {
@@ -253,13 +261,13 @@ def _build_validation_report(args: argparse.Namespace) -> dict[str, Any]:
             "target_plaintext_present": _raw_plaintext_presence(path, args.target_name),
         }
         for path in coach_files
-        if path.exists()
+        if storage_io.exists(path)
     ]
 
     staff_probe_payload = _run_staff_probe(
-        team_file=Path(str(args.team_file)).expanduser().resolve(),
-        coach_file=Path(str(args.coach_file)).expanduser().resolve(),
-        pdf_dir=Path(str(args.pdf_dir)).expanduser().resolve(),
+        team_file=storage_io.resolve(Path(str(args.team_file)).expanduser()),
+        coach_file=storage_io.resolve(Path(str(args.coach_file)).expanduser()),
+        pdf_dir=storage_io.resolve(Path(str(args.pdf_dir)).expanduser()),
     )
     premier_alignment = _premier_alignment(
         list(staff_probe_payload.get("premier_league_rows") or [])
@@ -278,7 +286,7 @@ def _build_validation_report(args: argparse.Namespace) -> dict[str, Any]:
         scan_names.append(target_surname)
     scan_names.extend(["strachan", "ferguson", "wenger"])
     runner_probe = _scan_runner_summaries(
-        runner_root=Path(str(args.runner_root)).expanduser().resolve(),
+        runner_root=storage_io.resolve(Path(str(args.runner_root)).expanduser()),
         names=scan_names,
         sample_limit=int(args.sample_limit),
     )
@@ -298,11 +306,11 @@ def _build_validation_report(args: argparse.Namespace) -> dict[str, Any]:
 
     return {
         "inputs": {
-            "team_file": str(Path(str(args.team_file)).expanduser().resolve()),
-            "coach_file": str(Path(str(args.coach_file)).expanduser().resolve()),
-            "install_coach_file": str(Path(str(args.install_coach_file)).expanduser().resolve()),
-            "pdf_dir": str(Path(str(args.pdf_dir)).expanduser().resolve()),
-            "runner_root": str(Path(str(args.runner_root)).expanduser().resolve()),
+            "team_file": str(storage_io.resolve(Path(str(args.team_file)).expanduser())),
+            "coach_file": str(storage_io.resolve(Path(str(args.coach_file)).expanduser())),
+            "install_coach_file": str(storage_io.resolve(Path(str(args.install_coach_file)).expanduser())),
+            "pdf_dir": str(storage_io.resolve(Path(str(args.pdf_dir)).expanduser())),
+            "runner_root": str(storage_io.resolve(Path(str(args.runner_root)).expanduser())),
         },
         "coach_file_reports": coach_file_reports,
         "plaintext_presence": plaintext_presence,
@@ -460,9 +468,9 @@ def main() -> int:
 
     json_output = str(args.json_output or "").strip()
     if json_output:
-        output_path = Path(json_output).expanduser().resolve()
+        output_path = storage_io.resolve(Path(json_output).expanduser())
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
+        storage_io.write_text(output_path, json.dumps(report, indent=2, sort_keys=True), encoding='utf-8')
 
     if args.json:
         print(json.dumps(report, indent=2, sort_keys=True))

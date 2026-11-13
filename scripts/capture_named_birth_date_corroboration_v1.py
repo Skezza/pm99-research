@@ -20,6 +20,7 @@ from bs4 import BeautifulSoup
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_release_registry_v1 as registry
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_historical_transfer_review_v1 as transfer
@@ -68,10 +69,10 @@ def validate_url(provider, url):
 
 
 def capture(plan_path, pages, cache, output):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('birth-date corroboration is immutable')
     digest = registry.sha256_file(plan_path)
-    plan = json.loads(plan_path.read_text())
+    plan = json.loads(storage_io.read_text(plan_path))
     if plan.get('schema_version') != 'pm99-source-repaired-opening-club-roster-plan-v1':
         raise ValueError('unsupported bounded club reconciliation plan')
     claims = {r['source_player_id']: r for r in plan['local_DOB_conflicts']}
@@ -84,9 +85,9 @@ def capture(plan_path, pages, cache, output):
         validate_url(provider, url)
         key = hashlib.sha256(url.encode()).hexdigest()
         path, receipt = cache / (key + '.html'), cache / (key + '.source.json')
-        if path.exists():
-            raw = path.read_bytes()
-            if json.loads(receipt.read_text()) != {'url': url, 'sha256': hashlib.sha256(raw).hexdigest()}:
+        if storage_io.exists(path):
+            raw = storage_io.read_bytes(path)
+            if json.loads(storage_io.read_text(receipt)) != {'url': url, 'sha256': hashlib.sha256(raw).hexdigest()}:
                 raise ValueError('cached independent biography URL/SHA changed')
         else:
             with urlopen(Request(url, headers={'User-Agent': 'PM99 historical player facts research',

@@ -3,6 +3,14 @@
 
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import html
 import json
@@ -12,7 +20,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = storage_io.resolve(Path(__file__)).parents[1]
 RUNNER_ROOT = REPO_ROOT / "upstream" / "pm99-runner" / "scripts" / "pm99_runner"
 DEFAULT_LATEST_FILE = REPO_ROOT / ".local" / "latest_variable_name_contract_research_dir.txt"
 SQUAD_SCREEN_DHASH_16 = int(
@@ -28,21 +36,21 @@ SCREEN_DHASH_THRESHOLD = 40
 
 def _read_json(path: Path) -> dict[str, Any] | list[Any] | None:
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return json.loads(storage_io.read_text(path, encoding='utf-8'))
     except (OSError, json.JSONDecodeError):
         return None
 
 
 def _resolve_out_dir(cli_out_dir: str | None, latest_file: Path) -> Path:
     if cli_out_dir:
-        return Path(cli_out_dir).expanduser().resolve()
+        return storage_io.resolve(Path(cli_out_dir).expanduser())
     try:
-        raw = latest_file.read_text(encoding="utf-8").strip()
+        raw = storage_io.read_text(latest_file, encoding='utf-8').strip()
     except OSError as exc:
         raise SystemExit(f"Unable to read latest-output pointer: {latest_file} ({exc})") from exc
     if not raw:
         raise SystemExit(f"Latest-output pointer is empty: {latest_file}")
-    return (REPO_ROOT / raw).resolve() if not Path(raw).is_absolute() else Path(raw).resolve()
+    return storage_io.resolve(REPO_ROOT / raw) if not Path(raw).is_absolute() else storage_io.resolve(Path(raw))
 
 
 def _relpath(path: Path, root: Path) -> str:
@@ -126,8 +134,8 @@ def _discover_static_contracts(out_dir: Path) -> dict[str, Any]:
                 )
 
     return {
-        "contracts_json": contract_json if contract_json.is_file() else None,
-        "contracts_stdout_json": stdout_json if stdout_json.is_file() else None,
+        "contracts_json": contract_json if storage_io.is_file(contract_json) else None,
+        "contracts_stdout_json": stdout_json if storage_io.is_file(stdout_json) else None,
         "contract_payload": contract_payload if isinstance(contract_payload, dict) else None,
         "stdout_payload": stdout_payload if isinstance(stdout_payload, dict) else None,
         "contract_family_counts": dict(sorted(family_counts.items())),
@@ -293,7 +301,7 @@ def _hash_screen_classification(image_path: Path) -> dict[str, Any] | None:
 @lru_cache(maxsize=1024)
 def _offline_classify_screen(image_path: str) -> dict[str, Any]:
     path = Path(image_path)
-    if not path.is_file():
+    if not storage_io.is_file(path):
         return {"screen": "unknown", "confidence": 0.0, "reason": "missing_image"}
     hash_classification = _hash_screen_classification(path)
     if hash_classification is not None:
@@ -311,7 +319,7 @@ def _offline_classify_screen(image_path: str) -> dict[str, Any]:
 def _offline_screen_matches(rel_path: str | None, out_dir: Path, expected_screen: str | None) -> tuple[bool, dict[str, Any] | None]:
     if not rel_path or expected_screen is None:
         return False, None
-    classification = _offline_classify_screen(str((out_dir / rel_path).resolve()))
+    classification = _offline_classify_screen(str(storage_io.resolve(out_dir / rel_path)))
     return classification.get("screen") == expected_screen, classification
 
 
@@ -320,17 +328,17 @@ def _local_screenshot_relpath(screenshot: str | None, summary_path: Path | None,
         return None
     shot_path = Path(str(screenshot))
     if not shot_path.is_absolute():
-        return _relpath((summary_path.parent / shot_path).resolve(), out_dir)
+        return _relpath(storage_io.resolve(summary_path.parent / shot_path), out_dir)
 
     parts = shot_path.parts
     if "clubs" in parts:
         clubs_index = parts.index("clubs")
         if len(parts) > clubs_index + 2 and parts[clubs_index + 1] == summary_path.parent.name:
             candidate = summary_path.parent.joinpath(*parts[clubs_index + 2 :])
-            return _relpath(candidate.resolve(), out_dir)
+            return _relpath(storage_io.resolve(candidate), out_dir)
 
-    if shot_path.exists():
-        return _relpath(shot_path.resolve(), out_dir)
+    if storage_io.exists(shot_path):
+        return _relpath(storage_io.resolve(shot_path), out_dir)
     return None
 
 
@@ -351,7 +359,7 @@ def _record_case_evidence(
     case_status = int(case.get("status") or 0)
     case_ok = bool(case.get("ok"))
 
-    summary_payload = _read_json(summary_path) if summary_path and summary_path.is_file() else None
+    summary_payload = _read_json(summary_path) if summary_path and storage_io.is_file(summary_path) else None
     if not isinstance(summary_payload, dict):
         summary_payload = None
 
@@ -360,7 +368,7 @@ def _record_case_evidence(
             if isinstance(step, dict) and step.get("screenshot"):
                 screenshots.append(str(step["screenshot"]))
 
-    rel_summary = _relpath(summary_path, out_dir) if summary_path and summary_path.exists() else None
+    rel_summary = _relpath(summary_path, out_dir) if summary_path and storage_io.exists(summary_path) else None
     route_hits = Counter()
     for shot in screenshots:
         route = _infer_route_kind(Path(shot).name)
@@ -454,14 +462,14 @@ def _resolve_case_summary(source_summary: Path, case: dict[str, Any]) -> Path | 
     summary_path = case.get("summary_path")
     if isinstance(summary_path, str) and summary_path.strip():
         candidate = Path(summary_path)
-        if candidate.is_file():
-            return candidate.resolve()
+        if storage_io.is_file(candidate):
+            return storage_io.resolve(candidate)
     club_key = str(case.get("club_key") or case.get("set_name") or "").strip()
     if not club_key:
         return None
     candidate = source_summary.parent / "clubs" / club_key / "summary.json"
-    if candidate.is_file():
-        return candidate.resolve()
+    if storage_io.is_file(candidate):
+        return storage_io.resolve(candidate)
     return None
 
 
@@ -476,7 +484,7 @@ def _record_orphan_club_summary(out_dir: Path, club_summary: Path, club_index: d
     payload = _read_json(club_summary)
     if not isinstance(payload, dict):
         return
-    screenshots = sorted(str(p.relative_to(club_summary.parent)) for p in (club_summary.parent / "screens").glob("*.png"))
+    screenshots = sorted(str(p.relative_to(club_summary.parent)) for p in storage_io.glob(club_summary.parent / 'screens', '*.png'))
     phase = str(payload.get("phase_reached") or "")
     ok = phase == "return_from_transfers" and not bool(payload.get("crash_detected"))
     pseudo_case = {
@@ -489,7 +497,7 @@ def _record_orphan_club_summary(out_dir: Path, club_summary: Path, club_index: d
         "summary_path": str(club_summary),
     }
     source_summary = club_summary.parents[2] / "summary.json"
-    if not source_summary.is_file():
+    if not storage_io.is_file(source_summary):
         source_summary = club_summary
     _record_case_evidence(
         case=pseudo_case,
@@ -503,16 +511,16 @@ def _record_orphan_club_summary(out_dir: Path, club_summary: Path, club_index: d
 
 def _resolve_pointer_path(out_dir: Path, pointer_name: str) -> Path | None:
     pointer_path = out_dir / pointer_name
-    if not pointer_path.is_file():
+    if not storage_io.is_file(pointer_path):
         return None
-    raw = pointer_path.read_text(encoding="utf-8").strip()
+    raw = storage_io.read_text(pointer_path, encoding='utf-8').strip()
     if not raw:
         return None
     candidate = Path(raw)
     if not candidate.is_absolute():
         candidate = REPO_ROOT / candidate
-    candidate = candidate.resolve()
-    return candidate if candidate.exists() else None
+    candidate = storage_io.resolve(candidate)
+    return candidate if storage_io.exists(candidate) else None
 
 
 def _intended_runner_roots(out_dir: Path) -> list[Path]:
@@ -528,7 +536,7 @@ def _intended_runner_roots(out_dir: Path) -> list[Path]:
         root = _resolve_pointer_path(out_dir, pointer_name)
         if root is None or root in seen:
             continue
-        if (root / "summary.json").is_file():
+        if storage_io.is_file(root / 'summary.json'):
             roots.append(root)
             seen.add(root)
     return roots
@@ -540,7 +548,7 @@ def _discover_runner_summaries(out_dir: Path) -> dict[str, Any]:
         root_summaries = [root / "summary.json" for root in intended_roots]
     else:
         root_summaries = sorted(
-            p for p in out_dir.rglob("summary.json") if p.is_file() and "/clubs/" not in f"/{_relpath(p, out_dir)}"
+            p for p in storage_io.glob(out_dir, 'summary.json', recursive=True) if storage_io.is_file(p) and "/clubs/" not in f"/{_relpath(p, out_dir)}"
         )
     club_index: dict[str, dict[str, Any]] = {}
     root_matrix_missing: set[str] = set()
@@ -589,7 +597,7 @@ def _discover_runner_summaries(out_dir: Path) -> dict[str, Any]:
 
     orphan_roots = intended_roots or [out_dir]
     for root in orphan_roots:
-        for club_summary in sorted(root.rglob("clubs/*/summary.json")):
+        for club_summary in sorted(storage_io.glob(root, 'clubs/*/summary.json', recursive=True)):
             _record_orphan_club_summary(out_dir, club_summary, club_index)
 
     found_clubs = set(club_index)
@@ -665,7 +673,7 @@ def _write_json_report(out_dir: Path, report: dict[str, Any]) -> Path:
     evidence_dir = out_dir / "evidence"
     evidence_dir.mkdir(parents=True, exist_ok=True)
     path = evidence_dir / "variable_name_contract_research_evidence.json"
-    path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    storage_io.write_text(path, json.dumps(report, indent=2, sort_keys=True) + '\n', encoding='utf-8')
     return path
 
 
@@ -818,7 +826,7 @@ def _write_html_report(out_dir: Path, report: dict[str, Any]) -> Path:
     evidence_dir = out_dir / "evidence"
     evidence_dir.mkdir(parents=True, exist_ok=True)
     path = evidence_dir / "variable_name_contract_research_evidence.html"
-    path.write_text(_render_html(report), encoding="utf-8")
+    storage_io.write_text(path, _render_html(report), encoding='utf-8')
     return path
 
 
@@ -873,7 +881,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    latest_file = Path(args.latest_file).expanduser().resolve()
+    latest_file = storage_io.resolve(Path(args.latest_file).expanduser())
     out_dir = _resolve_out_dir(args.out_dir, latest_file)
     if not out_dir.is_dir():
         raise SystemExit(f"Output directory does not exist: {out_dir}")

@@ -1,4 +1,5 @@
 """Resolve the original Jimmy case only after actual positive owner correction."""
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_verified_owned_roster_transaction_v1 as transaction
 from scripts.publish_barrow2017_owned_transaction_20261017 import FOLDER,RELEASE
 from scripts.prepare_barrow2017_opening_source_20261017 import ROOT,retained
@@ -27,8 +28,8 @@ def main():
     retained_actor=next(p for p in before['players'] if p['carrier_id']==11214)
     if actors[11214]!=retained_actor or actors[11214]['source_name']!='Alex Lynch':
         raise ValueError('completed Chester correction changed')
-    old=(base.game_path/'DBDAT/JUG98030.FDI').read_bytes()
-    new=(release.game_path/'DBDAT/JUG98030.FDI').read_bytes()
+    old=storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    new=storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     def payload(data):
         entry=next(e for e in transaction.IndexedFDIFile.from_bytes(data).entries if e.record_id==11214)
         return entry.decode_payload(data)

@@ -19,6 +19,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import archive_retired_season_tests_20261004 as transport
 from scripts import compact_superseded_kit_experiments_v1 as compact
 from scripts import season_release_registry_v1 as registry
@@ -58,24 +59,24 @@ def nested_strings(value):
 @lru_cache(maxsize=64)
 def package_paths(path, mtime_ns, size):
     # The stat signature invalidates the cache if an editor changes a recipe.
-    values = set(value for value in nested_strings(json.loads(path.read_text()))
+    values = set(value for value in nested_strings(json.loads(storage_io.read_text(path)))
                  if value.startswith(('.local/', str(ROOT) + '/')))
-    return tuple(str((ROOT / value).resolve()) for value in values)
+    return tuple(str(storage_io.resolve(ROOT / value)) for value in values)
 
 
 def guard(source):
-    if not selected_shape(source) or source.is_symlink() or source.resolve() != source.absolute():
+    if not selected_shape(source) or source.is_symlink() or storage_io.resolve(source) != source.absolute():
         raise ValueError('not an exact permitted game child: ' + str(source))
     for season in registry.supported_seasons():
         release = registry.load_preferred_release(season)
         # Protect all current locator paths, not only its primary game.
         for value in nested_strings(release.locator):
             if value.startswith('.local/'):
-                target = (ROOT / value).resolve()
+                target = storage_io.resolve(ROOT / value)
                 if target == source or target.is_relative_to(source):
                     raise ValueError('current release depends on this game: ' + season)
         # Current rebuild is previous.game + clean base; recipes stay local.
-        stat = release.package_path.stat()
+        stat = storage_io.stat_result(release.package_path)
         if any(target == str(source) or target.startswith(str(source) + '/')
                for target in package_paths(release.package_path, stat.st_mtime_ns, stat.st_size)):
             raise ValueError('current recipe depends on this game: ' + season)
@@ -111,15 +112,15 @@ def destination(source):
 
 def archive(source):
     receipt = receipt_path(source)
-    if not source.exists():
-        row = json.loads(receipt.read_text())
+    if not storage_io.exists(source):
+        row = json.loads(storage_io.read_text(receipt))
         if not row.get('archive_verified') or not row.get('local_removed'):
             raise ValueError('missing source without completed receipt')
         return row
     guard(source)
     disk_guard()
     files, directories = compact.inventory(source)
-    allocated = sum(p.stat().st_blocks * 512 for p in source.rglob('*') if p.is_file())
+    allocated = sum(storage_io.stat_result(p).st_blocks * 512 for p in storage_io.glob(source, '*', recursive=True) if storage_io.is_file(p))
     remote = destination(source)
     transport.remote('mkdir -p ' + shlex.quote(remote) + ' ' + shlex.quote(REMOTE_RECEIPTS))
     row = dict(source=str(source), host=HOST, remote=remote, files=files,
@@ -161,8 +162,8 @@ def archive(source):
                                     'archive_verified', 'local_removed')})
     # Older registered releases must report archival explicitly, not silently
     # look like broken current releases. No preferred locator is modified.
-    for locator in (registry.LOCAL_ROOT / 'releases').glob('*/*/locator.json'):
-        old = json.loads(locator.read_text())
+    for locator in storage_io.glob(registry.LOCAL_ROOT / 'releases', '*/*/locator.json'):
+        old = json.loads(storage_io.read_text(locator))
         if old.get('game_path') == source.relative_to(ROOT).as_posix():
             old.update(technical_status='archived-superseded-game-on-pi',
                        archived_game_receipt_path=receipt.relative_to(ROOT).as_posix(),
@@ -187,7 +188,7 @@ def main():
     if args.verify_current:
         rows = [registry.validate_preferred_release(s, level='release')
                 for s in registry.supported_seasons()]
-        plan = json.loads((OUTPUT / 'plan.json').read_text())
+        plan = json.loads(storage_io.read_text(OUTPUT / 'plan.json'))
         unchanged = compact.digest(registry.CATALOG_PATH) == plan['catalogue_sha256']
         report = {'valid': all(r['valid'] for r in rows) and unchanged,
                   'catalogue_unchanged': unchanged, 'seasons': rows,
@@ -199,13 +200,13 @@ def main():
         return
     if args.verify_receipts:
         disk_guard()
-        plan = json.loads((OUTPUT / 'plan.json').read_text())
+        plan = json.loads(storage_io.read_text(OUTPUT / 'plan.json'))
         checks, count, files = [], 0, 0
         for target in plan['targets']:
             source = ROOT / target
             receipt = receipt_path(source)
-            row = json.loads(receipt.read_text())
-            if source.exists() or not row.get('local_removed') or not row.get('archive_verified'):
+            row = json.loads(storage_io.read_text(receipt))
+            if storage_io.exists(source) or not row.get('local_removed') or not row.get('archive_verified'):
                 raise ValueError('archive not complete: ' + target)
             if row['remote'] != destination(source) or row['host'] != HOST:
                 raise ValueError('archive receipt location differs')
@@ -223,22 +224,22 @@ def main():
     OUTPUT.mkdir(parents=True, exist_ok=True) if args.plan or args.apply else None
     if not args.apply:
         targets = sorted(p for name, glob in zip(ROOTS, GLOBS)
-                         for p in (ROOT / '.local' / name).glob(glob)
-                         if (p / 'MANAGPRE.EXE').is_file())
+                         for p in storage_io.glob(ROOT / '.local' / name, glob)
+                         if storage_io.is_file(p / 'MANAGPRE.EXE'))
         for p in targets:
             guard(p)
         row = {'catalogue_sha256': compact.digest(registry.CATALOG_PATH),
                'targets': [p.relative_to(ROOT).as_posix() for p in targets]}
         if args.plan:
             path = OUTPUT / 'plan.json'
-            if path.exists():
+            if storage_io.exists(path):
                 raise ValueError('existing plan; do not replace audit history')
             save(path, row)
         print(json.dumps(row, indent=2))
         return
-    with (OUTPUT / 'cleanup.lock').open('a') as lock:
+    with storage_io.open_file(OUTPUT / 'cleanup.lock', 'a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        plan = json.loads((OUTPUT / 'plan.json').read_text())
+        plan = json.loads(storage_io.read_text(OUTPUT / 'plan.json'))
         if compact.digest(registry.CATALOG_PATH) != plan['catalogue_sha256']:
             raise ValueError('preferred seasons changed since plan')
         def process(target):
@@ -253,7 +254,7 @@ def main():
             return brief
         results = []
         # Warm the read-only dependency cache once before concurrent archiving.
-        remaining = [ROOT / p for p in plan['targets'] if (ROOT / p).exists()]
+        remaining = [ROOT / p for p in plan['targets'] if storage_io.exists(ROOT / p)]
         if remaining:
             guard(remaining[0])
         with ThreadPoolExecutor(max_workers=args.jobs) as pool:

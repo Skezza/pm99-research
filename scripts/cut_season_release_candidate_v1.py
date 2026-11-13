@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts.pm99_season_play_v1 import REQUIRED, game_path  # noqa: E402
 from scripts.pm99_season_qa_v1 import SEASONS, resolve_package  # noqa: E402
 from scripts.season_package_v2 import canonical_json_bytes  # noqa: E402
@@ -30,26 +31,26 @@ class ReleaseCandidateError(ValueError):
 
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
+    with storage_io.open_file(path, 'rb') as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
 
 
 def _record(path: Path) -> dict[str, Any]:
-    path = path.resolve()
+    path = storage_io.resolve(path)
     try:
         relative = path.relative_to(ROOT).as_posix()
     except ValueError as exc:
         raise ReleaseCandidateError(f"release evidence lies outside workspace: {path}") from exc
-    if not path.is_file() or path.is_symlink():
+    if not storage_io.is_file(path) or path.is_symlink():
         raise ReleaseCandidateError(f"release evidence is missing or unsafe: {path}")
-    return {"path": relative, "sha256": _sha256(path), "size": path.stat().st_size}
+    return {"path": relative, "sha256": _sha256(path), "size": storage_io.size(path)}
 
 
 def _read(path: Path) -> dict[str, Any]:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(storage_io.read_text(path, encoding='utf-8'))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise ReleaseCandidateError(f"cannot read JSON evidence: {path}") from exc
     if not isinstance(value, dict):
@@ -60,7 +61,7 @@ def _read(path: Path) -> dict[str, Any]:
 def _manager_receipt(season: str) -> Path | None:
     for root in ("season-direct-target-manager-repairs-v2", "season-direct-target-manager-repairs-v1"):
         path = ROOT / ".local" / root / f"{season}.json"
-        if path.is_file():
+        if storage_io.is_file(path):
             return path
     return None
 
@@ -68,8 +69,8 @@ def _manager_receipt(season: str) -> Path | None:
 def cut(*, rc_id: str, qa_root: Path, output_root: Path) -> dict[str, Any]:
     if not re.fullmatch(r"[a-z0-9][a-z0-9.-]{1,39}", rc_id):
         raise ReleaseCandidateError("RC id must be a short lowercase filename-safe label")
-    qa_root, output_root = qa_root.resolve(), output_root.resolve()
-    if output_root.exists() or output_root.is_symlink():
+    qa_root, output_root = storage_io.resolve(qa_root), storage_io.resolve(output_root)
+    if storage_io.exists(output_root) or output_root.is_symlink():
         raise ReleaseCandidateError(f"refusing to replace release output: {output_root}")
     aggregate_path = qa_root / "qa-report.json"
     aggregate = _read(aggregate_path)
@@ -101,7 +102,7 @@ def cut(*, rc_id: str, qa_root: Path, output_root: Path) -> dict[str, Any]:
             "classification": "playable-source-backed-release-candidate",
             "recipe": _record(package_path),
             "runtime": {
-                "game_tree": game.resolve().relative_to(ROOT).as_posix(),
+                "game_tree": storage_io.resolve(game).relative_to(ROOT).as_posix(),
                 "files": {relative: _record(game / relative) for relative in REQUIRED},
             },
             "quality": {
@@ -122,7 +123,7 @@ def cut(*, rc_id: str, qa_root: Path, output_root: Path) -> dict[str, Any]:
         season_dir = output_root / season
         season_dir.mkdir()
         manifest_path = season_dir / "release-candidate.json"
-        manifest_path.write_bytes(canonical_json_bytes(manifest))
+        storage_io.write_bytes(manifest_path, canonical_json_bytes(manifest))
         index_rows.append({"season": season, "manifest": _record(manifest_path)})
     index = {
         "schema_version": "pm99-season-release-candidate-index-v1",
@@ -133,7 +134,7 @@ def cut(*, rc_id: str, qa_root: Path, output_root: Path) -> dict[str, Any]:
         "seasons": index_rows,
     }
     index_path = output_root / "release-candidate-index.json"
-    index_path.write_bytes(canonical_json_bytes(index))
+    storage_io.write_bytes(index_path, canonical_json_bytes(index))
     return index
 
 

@@ -15,6 +15,7 @@ from pathlib import Path
 
 from app.fdi_indexed import IndexedFDIFile
 from app.indexed_jug_roles import read_indexed_native_roles
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_exact_primary_position_delta_v2 as native_writer
 from scripts import season_historical_roster_audit_v1 as roster
 from scripts import season_opening_order_repair_v1 as ownership
@@ -45,7 +46,7 @@ def artifact_id(plan):
 
 
 def sha(path):
-    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    return hashlib.sha256(storage_io.read_bytes(Path(path))).hexdigest()
 
 
 def _annual_row(change):
@@ -55,7 +56,7 @@ def _annual_row(change):
     raw = ROOT / change['annual_source']['source_file']
     if sha(ds) != change['annual_source']['dataset_sha256']:
         raise ValueError('annual dataset hash differs')
-    dataset = json.loads(ds.read_text(encoding='utf-8'))
+    dataset = json.loads(storage_io.read_text(ds, encoding='utf-8'))
     if (dataset.get('schema_version') != 'pm99-footballsquads-season-capture-v1'
             or dataset.get('season', {}).get('label') != change['season'][:4] + '/' + change['season'][-2:]
             or dataset.get('source', {}).get('repository') != 'https://github.com/footballcsv/cache.footballsquads'):
@@ -75,7 +76,7 @@ def _annual_row(change):
     if (len(expected) != 1 or expected[0][0]['club_name'] != selected['source_club']):
         raise ValueError('annual source must resolve exactly one full-name/DOB/position row')
     rows = []
-    for fields in csv.reader(raw.read_text(encoding='utf-8-sig').splitlines()):
+    for fields in csv.reader(storage_io.read_text(raw, encoding='utf-8-sig').splitlines()):
         if len(fields) < 8 or fields[1].strip() != selected['name']:
             continue
         try:
@@ -102,7 +103,7 @@ def _fifa_row(change):
     matches = _FIFA_ROWS_BY_SHA.get(key)
     if matches is None:
         fields = ('fifa_version', 'fifa_update_date', 'player_id', 'long_name', 'dob', 'player_positions')
-        with FIFA.open(encoding='utf-8-sig', newline='') as stream:
+        with storage_io.open_file(FIFA, encoding='utf-8-sig', newline='') as stream:
             matches = [{name: row[name] for name in fields} for row in csv.DictReader(stream)
                        if row['fifa_version'] == wanted['fifa_version']
                        and row['player_id'] == wanted['player_id']]
@@ -123,13 +124,13 @@ def _fifa_row(change):
 
 def prepare(base, input_path=INPUT):
     request_path = Path(input_path)
-    if (request_path.is_absolute() is False and not (ROOT / request_path).resolve().is_relative_to(ROOT.resolve())):
+    if (request_path.is_absolute() is False and not storage_io.resolve(ROOT / request_path).is_relative_to(storage_io.resolve(ROOT))):
         raise ValueError('annual source input path escapes the workspace')
     if not request_path.is_absolute():
         request_path = ROOT / request_path
-    if not request_path.resolve().is_relative_to(ROOT.resolve()) or not request_path.is_file():
+    if not storage_io.resolve(request_path).is_relative_to(storage_io.resolve(ROOT)) or not storage_io.is_file(request_path):
         raise ValueError('annual source input must be a retained workspace file')
-    request = json.loads(request_path.read_text(encoding='utf-8'))
+    request = json.loads(storage_io.read_text(request_path, encoding='utf-8'))
     selected = [r for r in request['changes'] if r['season'] == base.season and r['release_id'] == base.release_id]
     if len(selected) != 1:
         raise ValueError('input must select exactly one matching registered parent')
@@ -148,7 +149,7 @@ def prepare(base, input_path=INPUT):
             or annual['player']['position'] != change['target']['primary_position_after']):
         raise ValueError('annual full-name/DOB/broad position does not bind the selected actor')
     jug_path, eq_path = base.game_path / 'DBDAT/JUG98030.FDI', base.game_path / 'DBDAT/EQ98030.FDI'
-    jug, eq = jug_path.read_bytes(), eq_path.read_bytes()
+    jug, eq = storage_io.read_bytes(jug_path), storage_io.read_bytes(eq_path)
     entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(jug).entries}
     if change['carrier_id'] not in entries:
         raise ValueError('native carrier record is absent')
@@ -255,8 +256,8 @@ def _writer_bridge(plan):
 def apply(jug, eq, plan):
     base = registry.load_registered_release(plan['season'], plan['release_id'])
     verify(base, plan, ROOT / plan['source_input']['path'])
-    before = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    before_eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    before = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    before_eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     if (hashlib.sha256(before).hexdigest() != plan['jug_sha256']
             or hashlib.sha256(before_eq).hexdigest() != plan['eq_sha256'] or eq != before_eq):
         raise ValueError('annual role SOURCE native parent or full EQ differs')
@@ -283,7 +284,7 @@ def reconstruction(previous, release_id):
     if not relative:
         return None
     path = registry.ROOT / relative
-    if Path(relative).is_absolute() or not path.resolve().is_relative_to(registry.ROOT.resolve()) or not path.is_file():
+    if Path(relative).is_absolute() or not storage_io.resolve(path).is_relative_to(storage_io.resolve(registry.ROOT)) or not storage_io.is_file(path):
         raise ValueError('annual role source locator escapes workspace')
     plan = pipeline.read_json_file(path)
     if plan.get('schema') != SCHEMA:
@@ -296,7 +297,7 @@ def reconstruction(previous, release_id):
     if bind(pipeline.read_json_file(base.package_path), plan) != package:
         raise ValueError('annual role SOURCE would discard recipe edits')
     artifact = next((a for a in package['artifacts'] if a['id'] == artifact_id(plan)), None)
-    if (artifact is None or path.resolve() != (previous.package_path.parent / filename(plan)).resolve()
+    if (artifact is None or storage_io.resolve(path) != storage_io.resolve(previous.package_path.parent / filename(plan))
             or artifact['sha256'] != hashlib.sha256(packages.canonical_json_bytes(plan)).hexdigest()):
         raise ValueError('annual role source artifact path/hash differs')
     for release in (base, previous):
@@ -321,8 +322,8 @@ def reconstruction(previous, release_id):
 
 def build_postimage(base, plan):
     verify(base, plan)
-    before = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
+    before = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
     after, out_eq = apply(before, eq, plan)
     if out_eq != eq or len(after) != len(before):
         raise ValueError('existing native writer changed EQ or JUG length')

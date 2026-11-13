@@ -8,6 +8,14 @@ every unrelated payload byte remain untouched.
 """
 from __future__ import annotations
 
+try:
+    from scripts import json_storage_io_v1 as storage_io
+except ModuleNotFoundError:
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(next(p for p in _StoragePath(__file__).resolve().parents if (p / 'scripts/json_storage_io_v1.py').is_file())))
+    from scripts import json_storage_io_v1 as storage_io
+
 import argparse
 import hashlib
 import json
@@ -48,8 +56,8 @@ def _changed_spans(before: bytes, after: bytes) -> list[dict[str, int]]:
 
 def main() -> int:
     args = _parse_args()
-    ent_path = args.dbdat.resolve() / "ENT98030.FDI"
-    if not ent_path.is_file():
+    ent_path = storage_io.resolve(args.dbdat) / "ENT98030.FDI"
+    if not storage_io.is_file(ent_path):
         raise SystemExit(f"missing ENT98030.FDI: {ent_path}")
     try:
         expected_bytes = args.expected_name.encode("cp1252")
@@ -62,7 +70,7 @@ def main() -> int:
             f"replacement is {len(replacement)}"
         )
 
-    before_file = ent_path.read_bytes()
+    before_file = storage_io.read_bytes(ent_path)
     indexed = IndexedFDIFile.from_bytes(before_file)
     entry = next((row for row in indexed.entries if row.record_id == args.manager_record_id), None)
     if entry is None:
@@ -97,7 +105,7 @@ def main() -> int:
     after_file = bytearray(before_file)
     after_file[entry.payload_offset : entry.payload_offset + entry.payload_length] = raw_after
     IndexedFDIFile.from_bytes(bytes(after_file))
-    ent_path.write_bytes(after_file)
+    storage_io.write_bytes(ent_path, after_file)
 
     receipt = {
         "schema": "pm99-mode1-manager-ent-profile-probe/v1",
@@ -112,7 +120,7 @@ def main() -> int:
         "after_sha256": hashlib.sha256(after_file).hexdigest(),
     }
     args.receipt.parent.mkdir(parents=True, exist_ok=True)
-    args.receipt.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
+    storage_io.write_text(args.receipt, json.dumps(receipt, indent=2) + '\n', encoding='utf-8')
     print(json.dumps(receipt, indent=2))
     return 0
 

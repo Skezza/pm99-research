@@ -11,6 +11,7 @@ from pathlib import Path
 from app.fdi_indexed import IndexedFDIFile
 from app.indexed_jug_roles import rewrite_indexed_native_roles
 from app.xor import xor_encode
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_authored_country_delta_v2 as common
 from scripts import season_exact_fifa_role_delta_v1 as roles
 from scripts import season_historical_roster_audit_v1 as audit
@@ -85,9 +86,9 @@ def _reconstruct(base, request):
         _bound(binding)
     before, after = p.read_json_file(base.package_path), p.read_json_file(child)
     selected = verify_recipe_mask(before, after, request)
-    jug = (base.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
-    eq = (base.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
-    ent = (base.game_path / 'DBDAT/ENT98030.FDI').read_bytes()
+    jug = storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI')
+    eq = storage_io.read_bytes(base.game_path / 'DBDAT/EQ98030.FDI')
+    ent = storage_io.read_bytes(base.game_path / 'DBDAT/ENT98030.FDI')
     old = {a['id']: a for a in before['players']}
     new = {a['id']: a for a in after['players']}
     clubs = {c['id']: c for c in before['clubs']}
@@ -142,7 +143,7 @@ def _reconstruct(base, request):
 
 
 def prepare(base, input_path):
-    path = Path(input_path).resolve()
+    path = storage_io.resolve(Path(input_path))
     request = p.read_json_file(path)
     _reconstruct(base, request)
     plan = dict(schema=SCHEMA, season=base.season, release_id=base.release_id,
@@ -185,7 +186,7 @@ def bind(package, plan):
 def apply(jug, eq, plan):
     base = r.load_registered_release(plan['season'], plan['release_id'])
     out = _outputs(plan)
-    before = ((base.game_path / 'DBDAT/JUG98030.FDI').read_bytes(), out['eq'])
+    before = (storage_io.read_bytes(base.game_path / 'DBDAT/JUG98030.FDI'), out['eq'])
     after = (out['jug'], out['eq'])
     if (jug, eq) not in (before, after):
         raise ValueError('role input is neither complete parent nor postimage')
@@ -200,7 +201,7 @@ def apply_ent(ent, plan):
 
 def apply_minifoto(archive, plan):
     base = r.load_registered_release(plan['season'], plan['release_id'])
-    if archive != (base.game_path / 'DBDAT/MINIFOTO.PKF').read_bytes():
+    if archive != storage_io.read_bytes(base.game_path / 'DBDAT/MINIFOTO.PKF'):
         raise ValueError('role edit cannot change portraits')
     return archive, {}
 
@@ -214,10 +215,10 @@ def copy_new_inputs(workspace, plan):
                 or artifacts.get(str(relative), {}).get('sha256') != row['sha256']):
             raise ValueError('role artifact is not a confined child recipe input')
         target = Path(workspace) / relative
-        if target.exists():
+        if storage_io.exists(target):
             raise ValueError('role artifact would overwrite an existing input')
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(_bound(row).read_bytes())
+        storage_io.write_bytes(target, storage_io.read_bytes(_bound(row)))
 
 
 def reconstruction(previous, release_id, *, minimum_free_bytes=8 * 1024**3):
@@ -227,7 +228,7 @@ def reconstruction(previous, release_id, *, minimum_free_bytes=8 * 1024**3):
     base = r.load_registered_release(plan['season'], plan['release_id'])
     verify(base, plan)
     receipt = p.read_json_file(previous.compiler_receipt_path)
-    if (path.resolve() != (previous.package_path.parent / filename(plan)).resolve()
+    if (storage_io.resolve(path) != storage_io.resolve(previous.package_path.parent / filename(plan))
             or r.sha256_file(path) != receipt.get('original_profile_assignment_plan_sha256')
             or p.read_json_file(previous.package_path) != bind(p.read_json_file(base.package_path), plan)):
         raise ValueError('role SOURCE plan or recipe differs from reviewed inputs')
@@ -236,6 +237,6 @@ def reconstruction(previous, release_id, *, minimum_free_bytes=8 * 1024**3):
         profile_assignment_plan_path=path, minimum_free_bytes=minimum_free_bytes)
     child = r.load_registered_release(base.season, release_id)
     p.assert_tree_matches_inventory(child.game_path, p.read_json_file(previous.inventory_path))
-    if child.package_path.read_bytes() != previous.package_path.read_bytes():
+    if storage_io.read_bytes(child.package_path) != storage_io.read_bytes(previous.package_path):
         raise ValueError('role SOURCE recipe bytes differ')
     return dict(complete_recipe_identical=True, complete_game_inventory_identical=True)

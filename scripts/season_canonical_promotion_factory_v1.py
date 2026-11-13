@@ -34,6 +34,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_editorial_timeline_v1 as editorial_v1  # noqa: E402
 from scripts import season_package_v2 as package_v2  # noqa: E402
 from scripts import season_pipeline_v2 as pipeline_v2  # noqa: E402
@@ -67,7 +68,7 @@ def _sha256_file(path: Path) -> str:
 
 def _read_json(path: Path, *, label: str) -> tuple[dict[str, Any], bytes]:
     try:
-        payload = path.read_bytes()
+        payload = storage_io.read_bytes(path)
         value = json.loads(payload.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise PromotionFactoryError(f"cannot read {label}: {path}: {exc}") from exc
@@ -79,7 +80,7 @@ def _read_json(path: Path, *, label: str) -> tuple[dict[str, Any], bytes]:
 def _write(path: Path, value: Mapping[str, Any]) -> str:
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = _bytes(dict(value))
-    path.write_bytes(payload)
+    storage_io.write_bytes(path, payload)
     return _sha256_bytes(payload)
 
 
@@ -544,7 +545,7 @@ def _write_candidate(
 ) -> dict[str, Any]:
     """Materialise one already-verified candidate ingress route."""
 
-    if output_dir.exists():
+    if storage_io.exists(output_dir):
         raise PromotionFactoryError(f"refusing to replace an existing output directory: {output_dir}")
     season_id = _season_id(package)
     alias_bound = alias_binding is not None
@@ -591,7 +592,7 @@ def _write_candidate(
     build_plan = _build_plan_candidate(
         package=effective_package,
         effective_package_sha256=_sha256_file(effective_path),
-        effective_package_size=effective_path.stat().st_size,
+        effective_package_size=storage_io.size(effective_path),
         base=base,
         workspace_sha256=workspace_sha256,
     )
@@ -838,26 +839,26 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if args.roster_package is not None:
             result = create_alias_roster_chain_bound_candidate(
-                source_package_path=args.package.resolve(),
-                alias_package_path=args.alias_package.resolve(),
-                alias_audit_path=args.alias_audit.resolve(),
-                roster_package_paths=[path.resolve() for path in args.roster_package],
-                roster_audit_paths=[path.resolve() for path in args.roster_audit],
-                calendar_audit_path=args.calendar_audit.resolve(),
-                base_descriptor_path=args.base_descriptor.resolve(), output_dir=args.output_dir.resolve(),
+                source_package_path=storage_io.resolve(args.package),
+                alias_package_path=storage_io.resolve(args.alias_package),
+                alias_audit_path=storage_io.resolve(args.alias_audit),
+                roster_package_paths=[storage_io.resolve(path) for path in args.roster_package],
+                roster_audit_paths=[storage_io.resolve(path) for path in args.roster_audit],
+                calendar_audit_path=storage_io.resolve(args.calendar_audit),
+                base_descriptor_path=storage_io.resolve(args.base_descriptor), output_dir=storage_io.resolve(args.output_dir),
             )
         elif args.alias_package is None:
             result = create_candidate(
-                package_path=args.package.resolve(), calendar_audit_path=args.calendar_audit.resolve(),
-                base_descriptor_path=args.base_descriptor.resolve(), output_dir=args.output_dir.resolve(),
+                package_path=storage_io.resolve(args.package), calendar_audit_path=storage_io.resolve(args.calendar_audit),
+                base_descriptor_path=storage_io.resolve(args.base_descriptor), output_dir=storage_io.resolve(args.output_dir),
             )
         else:
             result = create_alias_bound_candidate(
-                source_package_path=args.package.resolve(),
-                alias_package_path=args.alias_package.resolve(),
-                alias_audit_path=args.alias_audit.resolve(),
-                calendar_audit_path=args.calendar_audit.resolve(),
-                base_descriptor_path=args.base_descriptor.resolve(), output_dir=args.output_dir.resolve(),
+                source_package_path=storage_io.resolve(args.package),
+                alias_package_path=storage_io.resolve(args.alias_package),
+                alias_audit_path=storage_io.resolve(args.alias_audit),
+                calendar_audit_path=storage_io.resolve(args.calendar_audit),
+                base_descriptor_path=storage_io.resolve(args.base_descriptor), output_dir=storage_io.resolve(args.output_dir),
             )
     except (OSError, PromotionFactoryError, package_v2.PackageValidationError,
             pipeline_v2.PipelineError, editorial_v1.TimelineError, workspace_v1.WorkspaceError) as exc:

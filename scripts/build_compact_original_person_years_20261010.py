@@ -1,4 +1,5 @@
 """Repair two compact player records from original entity and period DOBs."""
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_original_secondary_facts_v1 as layer
 from scripts import season_pipeline_v2 as pipeline, season_release_registry_v1 as registry
 from scripts import publish_historical_role_delta_v1 as publisher
@@ -31,25 +32,25 @@ def main(*, root=ROOT, cases=CASES, source=SOURCE, identity_document_path=None):
             jug_sha256=registry.sha256_file(base.game_path / 'DBDAT/JUG98030.FDI'), updates=[], unresolved=[])
         control = root / (season + '-inert.json')
         for saved, data in ((path, plan), (control, descriptor)):
-            if saved.exists():
+            if storage_io.exists(saved):
                 if pipeline.read_json_file(saved) != data:
                     raise ValueError('immutable compact birthday evidence differs')
             else:
                 pipeline.write_canonical_json(saved, data)
-        if not registry.locator_path(season, case['release']).exists():
+        if not storage_io.exists(registry.locator_path(season, case['release'])):
             publisher.publish(season, control, release_id=case['release'],
                 profile_assignment_plan_path=path, source_release_id=base.release_id)
         release = registry.load_registered_release(season, case['release'])
         proof = root / (season + '-independent-proof.json')
-        if not proof.exists():
+        if not storage_io.exists(proof):
             verify(season, case['release'], path, proof)
         retained = pipeline.read_json_file(proof)
         limit = sum(2 if fields == ['native_birth_year'] else 4 for fields in targets.values())
         if retained['native_bytes_changed'] > limit or not retained['all_other_recipe_facts_identical']:
             raise ValueError('compact year repair changed anything outside its two-byte scope')
         replay = root / (season + '-complete-replay-proof.json')
-        if not replay.exists():
-            if registry.locator_path(season, case['replay']).exists():
+        if not storage_io.exists(replay):
+            if storage_io.exists(registry.locator_path(season, case['replay'])):
                 raise ValueError('unreceipted compact birthday replay requires inspection')
             pipeline.write_canonical_json(replay, layer.reconstruction(release, case['replay']))
         else:

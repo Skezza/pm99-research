@@ -15,6 +15,7 @@ from app.eq_roster_pruning import prune_visible_mode1_roster_payload
 from app.fdi_indexed import IndexedFDIFile
 from app.indexed_jug_roles import read_indexed_native_roles, rewrite_indexed_native_primary_roles
 from app.player_initial_order import OrderReplacement, patch_owned_mode1_complete_orders
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_package_v2 as packages
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
@@ -46,7 +47,7 @@ def roster_rows(eq, club_id):
 
 
 def reviewed(release, review_path):
-    review = json.loads(review_path.read_text())
+    review = json.loads(storage_io.read_text(review_path))
     module = importlib.import_module(REVIEWERS[release.season])
     if module.prepare(release=release) != review:
         raise ValueError('original Italian source review does not independently reproduce')
@@ -97,21 +98,21 @@ def _primary_role_changes(jug, factory_jug, xi, players):
 
 def prepare(release, review_path, *, repair_primary_roles=False):
     review = reviewed(release, review_path)
-    package = json.loads(release.package_path.read_text())
+    package = json.loads(storage_io.read_text(release.package_path))
     xi = review['approved_XI_identities']
     ids = [r['carrier_id'] for r in xi]
     players = {p['carrier_id']: p for p in package['players']}
     if len(ids) != 11 or len(set(ids)) != 11:
         raise ValueError('opening source must provide eleven distinct carrier identities')
     club = next(c for c in package['clubs'] if c['id'] == players[ids[0]]['club_id'])
-    eq = (release.game_path / 'DBDAT/EQ98030.FDI').read_bytes()
-    jug = (release.game_path / 'DBDAT/JUG98030.FDI').read_bytes()
+    eq = storage_io.read_bytes(release.game_path / 'DBDAT/EQ98030.FDI')
+    jug = storage_io.read_bytes(release.game_path / 'DBDAT/JUG98030.FDI')
     _, _, before = roster_rows(eq, club['carrier_id'])
     from scripts.finalize_season_release_v1 import DEFAULT_BASE
     factory_jug_path = DEFAULT_BASE / 'DBDAT/JUG98030.FDI'
     factory_eq_path = DEFAULT_BASE / 'DBDAT/EQ98030.FDI'
-    factory_jug = factory_jug_path.read_bytes()
-    if roster_rows(factory_eq_path.read_bytes(), club['carrier_id'])[2] != before:
+    factory_jug = storage_io.read_bytes(factory_jug_path)
+    if roster_rows(storage_io.read_bytes(factory_eq_path), club['carrier_id'])[2] != before:
         raise ValueError('Italian pruning requires the exact same factory and runtime roster preimage')
     if [id for id, _ in before] != [next(p['carrier_id'] for p in package['players'] if p['id'] == id)
                                    for id in club['roster_player_ids']]:
@@ -340,7 +341,7 @@ def layers(package, package_path):
         path = package_path.parent / rel
         if registry.sha256_file(path) != artifact['sha256']:
             raise ValueError('Italian recipe-local plan hash changed')
-        plan = json.loads(path.read_text())
+        plan = json.loads(storage_io.read_text(path))
         if plan['season'] != f"{package['season']['start_year']}-{str(package['season']['end_year'])[-2:]}":
             raise ValueError('Italian opening artifact season differs')
         baseline = registry.load_registered_release(plan['season'], plan['source_release_id'])
@@ -352,7 +353,7 @@ def layers(package, package_path):
         old_id = 'mode1-sourced-keeper-slot-' + plan['season'] + '-' + str(plan['club_carrier_id'])
         if any(a['id'] == old_id for a in package['artifacts']):
             raise ValueError('superseded keeper replay is still active')
-        baseline_package = json.loads(baseline.package_path.read_text())
+        baseline_package = json.loads(storage_io.read_text(baseline.package_path))
         expected = bind(baseline_package, plan)
         expected_club = next(c for c in expected['clubs'] if c['id'] == plan['club_id'])
         if club.get('shared_preserve_player_ids', []) != expected_club.get('shared_preserve_player_ids', []):

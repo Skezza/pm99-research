@@ -18,6 +18,7 @@ from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_11v11_opening_source_v1 as archive
 from scripts import season_published_person_identity_v1 as source
 from scripts import season_release_registry_v1 as registry
@@ -33,9 +34,9 @@ def validate_person(person, biography):
 
 
 def run(review_path, prior_path, queries, cache, output):
-    if output.exists():
+    if storage_io.exists(output):
         raise ValueError('named archive person supplement is immutable')
-    review = json.loads(review_path.read_text())
+    review = json.loads(storage_io.read_text(review_path))
     if review['schema_version'] != 'pm99-original-11v11-opening-bridge-review-v1':
         raise ValueError('unsupported named archive bridge review')
     missing = {r['archive_player']['source_player_id']: r for r in review['players']
@@ -43,7 +44,7 @@ def run(review_path, prior_path, queries, cache, output):
     if set(queries) != set(missing) or len({id for id, _ in queries.values()}) != len(queries):
         raise ValueError('named queries must cover exactly the unresolved original archive biographies')
     prior_sha = registry.sha256_file(prior_path)
-    prior = json.loads(prior_path.read_text())
+    prior = json.loads(storage_io.read_text(prior_path))
     source.merge({}, prior)
     already = {id for row in prior['batches'] for id in row['requested_ids']}
     if already & {id for id, _ in queries.values()}:
@@ -55,20 +56,20 @@ def run(review_path, prior_path, queries, cache, output):
         row = missing[archive_id]
         original = row['original_biography']
         path = ROOT / original['path']
-        if registry.sha256_file(path) != original['sha256'] or json.loads((ROOT / original['receipt_path']).read_text()) != {
+        if registry.sha256_file(path) != original['sha256'] or json.loads(storage_io.read_text(ROOT / original['receipt_path'])) != {
                 'url': original['url'], 'sha256': original['sha256']}:
             raise ValueError('named original archive biography URL/hash changed')
-        biographies[id] = archive.profile_person(path.read_bytes(), row['archive_player'])
+        biographies[id] = archive.profile_person(storage_io.read_bytes(path), row['archive_player'])
     ids = sorted(biographies)
     url = source.url(ids)
     key = hashlib.sha256(url.encode()).hexdigest()
     path, receipt = cache / 'people' / (key + '.json'), cache / 'people' / (key + '.source.json')
-    if path.exists():
-        raw = path.read_bytes()
-        if json.loads(receipt.read_text()) != {'url': url, 'sha256': hashlib.sha256(raw).hexdigest()}:
+    if storage_io.exists(path):
+        raw = storage_io.read_bytes(path)
+        if json.loads(storage_io.read_text(receipt)) != {'url': url, 'sha256': hashlib.sha256(raw).hexdigest()}:
             raise ValueError('original named person response receipt changed')
     else:
-        if receipt.exists():
+        if storage_io.exists(receipt):
             raise ValueError('original named person receipt lacks its response')
         with urlopen(Request(url, headers={'Accept': 'application/json', 'Accept-Language': 'en-GB',
                 'User-Agent': 'PM99 historical football research'}), timeout=25) as response:

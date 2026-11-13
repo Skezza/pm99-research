@@ -11,6 +11,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from bs4 import BeautifulSoup
+from scripts import json_storage_io_v1 as storage_io
 from scripts import season_pipeline_v2 as pipeline
 from scripts import season_release_registry_v1 as registry
 from scripts import season_package_compiler_v2 as compiler
@@ -26,10 +27,10 @@ def _read_file(binding):
     if not isinstance(binding, dict) or not isinstance(binding.get('path'), str):
         raise ValueError('annual identity file binding is malformed')
     path = registry.ROOT / binding['path']
-    if (Path(binding['path']).is_absolute() or not path.resolve().is_relative_to(registry.ROOT.resolve())
-            or path.is_symlink() or not path.is_file()):
+    if (Path(binding['path']).is_absolute() or not storage_io.resolve(path).is_relative_to(storage_io.resolve(registry.ROOT))
+            or path.is_symlink() or not storage_io.is_file(path)):
         raise ValueError('annual identity path must be retained workspace file')
-    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    digest = hashlib.sha256(storage_io.read_bytes(path)).hexdigest()
     if digest != binding.get('sha256'):
         raise ValueError('annual identity retained file digest differs')
     return path
@@ -79,7 +80,7 @@ def _require_unique_null_dob_name(row, source_club):
 
 def _profile_context(source, full_name, date_value, official_sources):
     path = _read_file(source['body'])
-    if hashlib.sha256(path.read_bytes()).hexdigest() != source.get('sha256'):
+    if hashlib.sha256(storage_io.read_bytes(path)).hexdigest() != source.get('sha256'):
         raise ValueError('official subject body hash differs')
     parsed = urlsplit(source.get('url', ''))
     if parsed.scheme != 'https':
@@ -87,7 +88,7 @@ def _profile_context(source, full_name, date_value, official_sources):
     if not any(x.get('url') == source['url'] and x.get('path') == source['body']['path']
                and x.get('sha256') == source['sha256'] for x in official_sources):
         raise ValueError('subject guard must bind an official fact source in the same witness')
-    page = BeautifulSoup(path.read_bytes(), 'lxml')
+    page = BeautifulSoup(storage_io.read_bytes(path), 'lxml')
     text = ' '.join(page.get_text(' ', strip=True).replace('\u00ad', '').split())
     if source.get('profile_family') == 'inter-archive-player-v1':
         if (parsed.hostname != 'www.inter.it'
@@ -179,10 +180,10 @@ def verify(witness):
     eq_path = _read_file(annual['native_eq'])
     textos_path = _read_file(annual['native_textos'])
     base = registry.load_registered_release(annual['season'], annual['release_id'])
-    if (base.package_path.resolve() != package_path.resolve()
-            or base.game_path.joinpath('DBDAT/JUG98030.FDI').resolve() != jug_path.resolve()
-            or base.game_path.joinpath('DBDAT/EQ98030.FDI').resolve() != eq_path.resolve()
-            or base.game_path.joinpath('DBDAT/TEXTOS.PKF').resolve() != textos_path.resolve()
+    if (storage_io.resolve(base.package_path) != storage_io.resolve(package_path)
+            or storage_io.resolve(base.game_path.joinpath('DBDAT/JUG98030.FDI')) != storage_io.resolve(jug_path)
+            or storage_io.resolve(base.game_path.joinpath('DBDAT/EQ98030.FDI')) != storage_io.resolve(eq_path)
+            or storage_io.resolve(base.game_path.joinpath('DBDAT/TEXTOS.PKF')) != storage_io.resolve(textos_path)
             or base.manifest_sha256 != annual['release_manifest_sha256']):
         raise ValueError('annual identity files do not bind the exact registered package/native parent')
     season_label = annual['season'].replace('-', '/')
@@ -250,7 +251,7 @@ def verify(witness):
     if null_dob_policy:
         from scripts import season_official_career_context_v1 as career_source
         verified_source_club = _verified_actor_club(selector.get('club_name'), package, actor['club_id'])
-    jug = jug_path.read_bytes()
+    jug = storage_io.read_bytes(jug_path)
     from app.fdi_indexed import IndexedFDIFile
     entries = {e.record_id: e for e in IndexedFDIFile.from_bytes(jug).entries}
     entry = entries.get(annual['carrier_id'])
@@ -260,7 +261,7 @@ def verify(witness):
     facts = native_facts(jug, annual['carrier_id'])
     if normalise(record['name']) != normalise(actor['name']) or (facts['birth_date'] != witness.get('native_before_birth_date') if null_dob_policy else facts['birth_date'] != source_birth_date):
         raise ValueError('native full-name projection/DOB does not agree with exact annual/native preimage')
-    if ownership.native_owners(eq_path.read_bytes()).get(annual['carrier_id']) != {clubs[0]['carrier_id']}:
+    if ownership.native_owners(storage_io.read_bytes(eq_path)).get(annual['carrier_id']) != {clubs[0]['carrier_id']}:
         raise ValueError('native EQ owner differs; this is an unchanged preimage only')
     country_table = compiler._extract_country_codes_from_textos(textos_path)
     country_byte = jug[entry.payload_offset + record['name_end'] + 8]
