@@ -1,3 +1,13 @@
+## Storage handover reviewed for generator work — 2026-11-14T01:06:57.012891+00:00
+
+Machine: joe-Vostro-3350. Source research session: 01a0592d-fcd5-7262-a637-743a8253d9b4; storage implementation session: 01a1c97b-1165-7fa0-a47f-2f9698bcb4a1.
+
+Read current AGENTS, this handoff, `docs/JSON_STORAGE_HANDOVER_2026-11-13.md`, the linked consumer audit and actual adapter/activation code. Inspected current diff and submodule state; unrelated reconstruction work, prior dirty docs/experiments and upstream artifact deletions remain untouched. Fresh consumer regression guard and normal repository boundary passed. Preferred catalog logical SHA unchanged (`495789e1691b9c792ddd53e4fb1eedeb107593bef7776a20a1886b44c10efd2b`); automatic roots remain historical-role-deltas-v1 only; zstd is present. Measured free space ~24.77 GiB, distinct from rollout allocation savings. Existing canary/26-release results are recorded rollout evidence, not newly rerun here.
+
+Added a storage compatibility addendum to `docs/REUSABLE_SEASON_RECIPE_GENERATOR_PLAN_2026-11-12.md`: use shared logical adapters/hashes, retain physical game/archive inventories, immutable shared frames, exclusions, no-clobber rules and recovery journals; no new automatic root or raw-cache migration. Keep the disclosed eCryptfs timestamp precision, original 2015 inconsistent status and 14 known baseline family failures. No storage implementation, data, game, recipe, activation or registry change in this review.
+
+Next generator development remains D1 source/543-slot preflight, then reusable dated ownership and complete 1990/91 recipe/edit/replay/Native proof under the reviewed plan. The generate command is still proposed, not implemented. New consumers must use the adapters and pass the guard; any new compression family would require its own actual build/SOURCE/plain-control canary. This review does not claim historical RC closure or broaden source-generation scope.
+
 ## Inline JSON storage rollout complete — 2026-11-14T00:32:14.039440+00:00
 
 Machine: joe-Vostro-3350. Source session: 01a1c97b-1165-7fa0-a47f-2f9698bcb4a1.

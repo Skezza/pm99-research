@@ -332,3 +332,20 @@ Sidecars next to the existing recipe (`pm99-season-package-v2`): `expected-clubs
 - *"Overrides pile up."* Repeated override types point to a resolver rule fixed once.
 
 **Evidence that would convince us:** a cold 1990/91 run with English and foreign clubs and all 543 slots accounted for, achieved numbers printed against the ceilings, a byte-identical portable replay, owner corrections through the workbook with no collateral change, and a Native proof. Until then, "repeatable with minor gaps" is a hypothesis.
+
+## Storage compatibility addendum — 2026-11-14
+
+The completed inline JSON rollout is a required input contract for generator implementation. Read `docs/JSON_STORAGE_HANDOVER_2026-11-13.md` and `docs/JSON_STORAGE_CONSUMER_AUDIT_2026-11-13.md` before changing consumers. This addendum supersedes any earlier assumption that every logical JSON name is a plain file.
+
+- Use `scripts.json_storage_io_v1` for JSON-aware reads, writes, existence, discovery, copy/link and atomic publication. Use `json_storage_v1` for explicit decoded JSON hashes/sizes and JSON operations. No direct Path/builtin bypass, global monkeypatch or permanent decompressed cache.
+- Lock/provenance input hashes cover the original decoded bytes, including whitespace. Native game/tree and archive inventories remain physical. Never substitute a compressed-frame hash for a logical input hash.
+- Register and audit new generator consumers; keep `check_json_storage_io_v2.py` passing. Mechanical module adoption does not authorise automatic compression or establish that every external/shell consumer understands logical names.
+- Automatic compression remains enabled only for `historical-role-deltas-v1`. New generator roots remain plain unless a separate concrete consumer/build/SOURCE canary justifies activation. Preserve existing file representations and exclusions. No further migration is part of the generator milestone.
+- Mutable controls, working amendments, candidates, locators, preferred/original dependencies, game trees and raw source collections retain their protection. Raw HTML/cache compression proposed earlier is not required for the first generator milestone and must not migrate existing sources incidentally.
+- Shared compressed inode groups are immutable. Publish new artifacts; do not overwrite an alias or link a frame through a temporary plain name. Preserve no-overwrite evidence rules and skip compressed artifacts in optional replay dedup.
+- Corruption, ambiguous plain-plus-compressed names and missing codecs fail closed. Restore uses reviewed manifests and original journals; do not manually delete a representation to resolve ambiguity. NAS deployment remains a separate filesystem gate.
+- The 512 MiB decoded-document limit is not a total RAM bound. Keep preflight parsing and retained outputs bounded. Normal build reserve remains 8 GiB, hard minimum 6 GiB; the live workbook retains its existing explicit reserve.
+
+The recorded eCryptfs whole-second mtime limitation and original nanoseconds in manifests remain disclosed. Reproducibility checks compare the specified logical bytes or physical game inventory, not an unsupported promise of nanosecond restoration. The original 2015 technical-status inconsistency and 14 baseline family failures remain baseline qualifications, not newly introduced storage defects or passing checks.
+
+This review did not replay the migration or change storage code, activation, recipes, games or registrations. Fresh checks passed the consumer guard and repository boundary; the preferred catalog hash remained `495789e1691b9c792ddd53e4fb1eedeb107593bef7776a20a1886b44c10efd2b`. Free space measured about 24.77 GiB at review, distinct from both the rollout's 21.52 GiB allocation reduction and its final free-space observation.
