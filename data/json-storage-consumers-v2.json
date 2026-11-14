@@ -8837,6 +8837,11 @@
       }
     },
     {
+      "path": "scripts/season_recipe_preflight_v1.py",
+      "physical_exceptions": [],
+      "adapter_calls": {}
+    },
+    {
       "path": "scripts/season_recipe_v1.py",
       "physical_exceptions": [],
       "adapter_calls": {

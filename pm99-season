@@ -4,6 +4,10 @@ set -euo pipefail
 repo_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 
 case "${1:-}" in
+  preflight)
+    shift
+    exec "${PM99_PYTHON:-python3}" "$repo_dir/scripts/season_recipe_preflight_v1.py" "$@"
+    ;;
   preview)
     shift
     exec python3 "$repo_dir/scripts/pm99_simple_season_v1.py" "$@"
@@ -62,6 +66,7 @@ case "${1:-}" in
   *)
     echo "usage:" >&2
     echo "  ./pm99-season preview YYYY-YY [--offline] [--output-root PATH]" >&2
+    echo "  ./pm99-season preflight YYYY-YY --output-dir NEW_DIR [--lock LOCK]" >&2
     echo "  ./pm99-season status [YYYY-YY|all] [--verify] [--json]" >&2
     echo "  ./pm99-season validate [YYYY-YY|all]" >&2
     echo "  ./pm99-season build YYYY-YY|all [--release-id ID] [--jobs N] [--resume] [--register]" >&2
