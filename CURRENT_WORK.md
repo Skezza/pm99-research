@@ -1,3 +1,11 @@
+## PM99-only space audit — 2026-11-14T01:45:52.530875+00:00
+
+Machine: joe-Vostro-3350. Storage source session: 01a1c97b-1165-7fa0-a47f-2f9698bcb4a1.
+
+User narrowed immediate space work to PM99; preferred/original JSON compression remains deferred during the active research turn. Read-only audit found 1.37 GiB potentially reclaimable by byte-identical PNG sharing in 1,537 runs with no file mtime/ctime changes in seven days (7,344 duplicate inode candidates, complete candidate alias counts, matching modes/uid/gid). Retain every image path/byte; fresh process/stat/hash checks are still required, and shared inode timestamps would follow the anchor. A separate old 2000/01 local-runner Wine prefix accounts for 1.24 GiB of exclusively linked files; readable process checks found no active references, and no game/save markers or DAT files were found. Verify retirement or archive before removal. Combined candidate allocation is 2.60 GiB; nothing was relinked, removed or moved.
+
+A Modelos.pkf sample across identity/visual families found 34 distinct inodes with one identical content SHA: 1.72 GiB duplicated allocation upper bound. Only two sampled inode copies have all aliases inside those two families, so do not treat that upper bound as immediately reclaimable. The 8.5 GiB identity tree is already mostly hardlinked and directly referenced by registered releases. Larger static-pack sharing requires complete alias enumeration and immutable/atomic-replacement write guarantees; deleting large folder names does not imply equivalent space release. Evidence: `.local/json-storage-rollout-20261113/followup-pm99-only-summary.json` and its three linked audits. Active code, games, research inputs and processes preserved.
+
 ## Preferred/original JSON compression deferred — 2026-11-14T01:28:56.447813+00:00
 
 Machine: joe-Vostro-3350. Storage source session: 01a1c97b-1165-7fa0-a47f-2f9698bcb4a1.
