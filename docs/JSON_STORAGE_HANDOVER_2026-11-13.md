@@ -1,18 +1,93 @@
 # Inline JSON storage and agent handover
 
 Machine: `joe-Vostro-3350`. Source storage session:
-`01a1c97b-1165-7fa0-a47f-2f9698bcb4a1`. Date: 2026-11-13 UTC.
+`01a1c97b-1165-7fa0-a47f-2f9698bcb4a1`. Started: 2026-11-13 UTC; completed: 2026-11-14 UTC.
 
-Status: staged rollout running. Final measured scope and results will be added
-here after the migration gates finish. Do not infer conversion scope from the
-mechanical adapter inventory.
+Status: implementation, narrow activation and the selected cold-output rollout
+are complete. 2,527 complete inode groups (2,528 logical names)
+were migrated in 25 counted batches. Allocated input fell from
+23.29 GiB to 1.77 GiB: **21.52 GiB allocation reclaimed**.
+Actual filesystem free space was **25.33 GiB** at final accounting
+(6.65 GiB at the recorded rollout baseline; net +18.68 GiB).
+Allocation reduction and free-space change are different measurements. The
+approximately 2.84 GiB gap is unexplained and was not diagnosed;
+concurrent research activity was observed, without attributing a measured share.
+Restore
+proofs and recompression passes are counted once. The >=20 GiB free-space target
+was met; these are measured results, not an estimate for the rest of the tree.
+
+Automatic new-output compression is enabled **only** for
+`historical-role-deltas-v1`. Existing files preserve their representation.
+The live workbook at `http://127.0.0.1:8765/` was refreshed; all 26 selected bases
+were preserved, spreadsheet metadata/table requests passed, and its earlier
+explicit `6710886400`-byte reserve was retained.
+
+Inactive unregistered outputs were migrated first. Registered non-preferred
+outputs followed a fresh dependency audit, a single complete-group release
+slice, identical locator/canonical/playable results, a restore-to-original-byte
+proof and final reapplication. Every batch used a fresh manifest and journal,
+original-byte hash verification for every alias, and the live safety checks.
+The unregistered stage retained the original inventory as its candidate allowlist;
+it did not blindly admit new outputs during the long-running audit.
+
+The working-control scan covered 436 plain JSON documents and all 26 live bases.
+`season-editorial-amendments-v1` was absent; the existing amendment-build root
+and actual `seasons/` documents were scanned (`control-scan-roots.json`).
+It found seven candidate groups referenced by controls. The entire existing
+`historical-role-deltas-v1` family was conservatively retained in plain form
+for this migration; the new-output activation is a separate audited behavior.
+Physical asset/archive-interoperability families, mutable controls, raw source
+collections, preferred/original dependencies and game trees also remain outside
+the selected migration. The 278 retained groups/reasons from the initial
+allowlist inventory are in
+`remaining-original-eligible.json`. Outputs created during the run are not
+enumerated there; this is not a whole-estate conversion claim.
+
+Verification: 161 final tests passed, with one skipped test; the
+consumer guard, all 1,082 module compilation checks and repository boundary check
+passed. The 26 preferred releases pass final validation, and original 2015 passes
+its inventory/playable check. Its `technical_status` remains `inconsistent`;
+the complete result is identical to the earlier pilot baseline in
+`original-baseline-comparison.json`, so this is not a new storage failure. All 136 checked historical release records match
+the before baseline exactly (135 valid and one existing registry error).
+The preferred catalogue SHA remains
+`495789e1691b9c792ddd53e4fb1eedeb107593bef7776a20a1886b44c10efd2b`.
+All final frame modes, owner/group and complete inode sharing were checked.
+Explicit timestamp restoration through this laptop's eCryptfs mount truncates
+fractional seconds: 2,418 file mtimes were restored to the
+correct whole second. A disposable-file native `os.utime(ns=...)` probe reproduces
+this independently of compression. Original nanoseconds remain in every manifest;
+exact subsecond restoration is not claimed. This truncation also applies to
+plain originals restored by the rollback helper, not only compressed frames.
+See `mtime-precision-probe.json` and
+`final-metadata-mismatches.json`.
+The broader family's 14 failures were reproduced exactly on the baseline and
+were not introduced by storage work.
+
+The real browser canary applied two chained edits, retained the first edit,
+passed full SOURCE reconstruction and matched a plain control's complete game
+inventory and original package bytes. Ephemeral Claude Sonnet QA used actual
+`claude-sonnet-5-5`, no session persistence, read-only tools and no MCP/hooks.
+Six reviews are recorded; final acceptance session `da5abb95-3472-4862-895e-d210c2ec735f`
+found no remaining blocker after assessing the completed gates and the
+disclosed mtime limitation. QA5 supplied the earlier conditional approval.
+Of the eight files in the QA5 source freeze, only `json_storage_io_v1.py`
+differs: the approved `AUTO_ROOTS` activation.
+
+Evidence is local-only under `.local/json-storage-rollout-20261113/`, including
+`completed.json`, every manifest/journal/result, `browser-proof.json`,
+`plain-control-proof.json`, `actual-sample-roundtrip.json`, the registered-slice
+proofs, `registered-validation-comparison.json`, final preferred/original output,
+`live-workbook-refresh.json`, `final-compilation.log`, test logs and
+`sonnet-qa-sessions.json`.
+Unrelated staged reconstruction work was byte-checked unchanged.
 
 ## Prompt to give the other agent
 
 ```text
 Before continuing PM99 work, read AGENTS.md, CURRENT_WORK.md,
 docs/JSON_STORAGE_HANDOVER_2026-11-13.md and
- docs/JSON_STORAGE_CONSUMER_AUDIT_2026-11-13.md.
+docs/JSON_STORAGE_CONSUMER_AUDIT_2026-11-13.md.
 Preserve the inline JSON storage implementation and its consumer adaptations.
 It may coexist with unrelated reconstruction/submodule work: inspect the diff;
 do not reset, clean, replace or revert it as incidental cleanup.
@@ -33,8 +108,10 @@ A corrupt frame or simultaneous plain+compressed copies is an error; fail
 closed and use the migration journal. Never update a receipt hash to the frame
 hash, delete an ambiguous copy blindly, or swallow codec errors as missing data.
 
-New automatic compression is limited by AUTO_ROOTS and the shared exclusion
-policy. Existing compressed outputs retain their representation. Controls such
+AUTO_ROOTS enables historical-role-deltas-v1 only. Keep every other root
+disabled until its own concrete consumer/build canary passes. New automatic
+compression also follows the shared exclusion policy. Existing compressed
+outputs retain their representation. Controls such
 as current.json, *-current.json, working.json, candidates.json and locator.json
 stay plain; game/binary trees, preferred input dependencies and the original
 2015 backup are excluded from migration. Evidence no-overwrite rules remain.
@@ -58,7 +135,8 @@ Continue the user's research work while preserving this storage contract.
 resolution and POSIX directory locks. `scripts/json_storage_io_v1.py` dispatches
 logical `.json` paths to it and delegates ordinary files and objects to native
 Python behavior. No global monkeypatching is used. Plain copies and moves stay
-native. Text decoding preserves Python's default encoding and newline handling.
+native. The `zstd` executable must remain installed and on PATH; missing codecs
+fail closed. Text decoding preserves Python's default encoding and newline handling.
 
 Zstd level 1 is used for fast inline operation. Automatic new-output compression
 requires at least 1 MiB and at least 10% saving, applies only in enabled families,
@@ -89,8 +167,12 @@ Registered historical scope requires a separate explicit selection.
 
 A complete alias group is hash/metadata checked under ordered directory locks.
 One verified frame is published at every alias before raw aliases are retired.
-The journal is flushed/fsynced at each transition. Modes, owner/group, mtime,
-original bytes and inode sharing are preserved. The hard free-space reserve is
+The journal is flushed/fsynced at each transition. Modes, owner/group, original
+bytes and inode sharing are preserved. Mtime
+restoration requests the original nanoseconds, retained in the manifest. On this
+laptop, explicit restoration through eCryptfs truncates to whole seconds;
+exact subsecond preservation is not claimed. See the native probe above.
+The hard free-space reserve is
 6 GiB; normal build reserve remains 8 GiB unless explicitly configured otherwise.
 The live workbook's earlier explicit reserve setting is not a new default.
 
