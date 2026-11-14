@@ -1,3 +1,9 @@
+## Preferred/original JSON compression deferred — 2026-11-14T01:28:56.447813+00:00
+
+Machine: joe-Vostro-3350. Storage source session: 01a1c97b-1165-7fa0-a47f-2f9698bcb4a1.
+
+User asked to save the next compression stage for later because research is mid-turn. The earlier 22.77 GiB preferred/original plaintext dependency inventory remains outside migration; no new activation or data change is authorised by this note. The saved plan in `docs/JSON_STORAGE_HANDOVER_2026-11-13.md` specifies a fresh dependency/reference audit, one preferred-release slice, read-performance measurement, complete build/SOURCE equivalence, original-byte restore/reapply, ephemeral Sonnet QA and bounded expansion with final preferred/original checks. Resume at a stable research checkpoint. Immediate space-cleanup proposals should focus on logs and verified stale temporary artifacts while preserving active project inputs and processes.
+
 ## Storage handover reviewed for generator work — 2026-11-14T01:06:57.012891+00:00
 
 Machine: joe-Vostro-3350. Source research session: 01a0592d-fcd5-7262-a637-743a8253d9b4; storage implementation session: 01a1c97b-1165-7fa0-a47f-2f9698bcb4a1.

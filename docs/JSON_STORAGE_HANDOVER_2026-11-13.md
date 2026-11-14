@@ -232,6 +232,34 @@ failures, reproduced exactly at baseline `6d9746e`; see
 `family-failure-comparison.json` and `family-baseline-comparison-v2.log`. These
 are not represented as passing tests and are outside storage repair scope.
 
+## Deferred: preferred/original JSON compression
+
+User decision, 2026-11-14: defer this extension while the current research
+agent is mid-turn. Do not migrate these dependencies as part of immediate
+space cleanup. The earlier inventory recorded 22.77 GiB of eligible-size raw
+JSON excluded as preferred/original dependencies; that is input allocation,
+not a promised saving or a fresh inventory.
+
+Resume after the research work reaches a stable checkpoint:
+
+1. Refresh the inventory, preferred catalogue, original-release bindings,
+   dependency graph, working references and live-reader checks. Preserve
+   unrelated changes and capture original decoded hashes and restore manifests.
+2. Choose one preferred release's bounded JSON dependency slice. Audit remaining
+   direct/external readers, discovery, locators, logical versus physical hashes
+   and the build/SOURCE route. Keep mutable controls and game/binary trees out.
+3. Measure compressed reads against plain reads, verify original decoded bytes,
+   and prove complete build/SOURCE equivalence. Use a new journal, complete inode
+   groups, <=1 GiB allocated batches and the existing reserve checks.
+4. Restore the slice, verify exact original bytes, then reapply. Timestamp
+   restoration through this eCryptfs mount remains limited to whole seconds;
+   retain original nanoseconds in manifests.
+5. Obtain ephemeral read-only Claude Sonnet QA. If the gate passes, extend the
+   migration in bounded batches, retaining rollback evidence. Do not broaden
+   automatic roots merely because existing dependencies are being converted.
+6. Finish with all 26 preferred validations, original 2015 inventory/playable
+   checks, catalogue/hash checks and measured allocation/free-space accounting.
+
 ## Earlier pilot
 
 Baseline commit `6d9746e` compressed six inactive 2005/06 qualification
